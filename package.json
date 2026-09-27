@@ -1,0 +1,22 @@
+{
+  "name": "education-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Egyptian recorded-programming-course platform (M1: Docker foundation + bilingual shell). client/ and server/ are independent npm projects, each with its own lockfile.",
+  "scripts": {
+    "install:all": "npm --prefix client install && npm --prefix server install",
+    "build:client": "npm --prefix client run build",
+    "build:server": "npm --prefix server run build",
+    "typecheck": "npm --prefix client run typecheck && npm --prefix server run typecheck",
+    "test:server": "npm --prefix server run test:ci",
+    "dev:up": "docker compose -f docker/compose.dev.yml up -d --wait",
+    "dev:down": "docker compose -f docker/compose.dev.yml down",
+    "dev:logs": "docker compose -f docker/compose.dev.yml logs -f"
+  },
+  "main": "index.js",
+  "devDependencies": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

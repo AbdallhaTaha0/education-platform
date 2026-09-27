@@ -1,0 +1,53 @@
+# Implementation work packages
+
+Updated after owner answers. No work package authorizes edits inside external DRM. The manager reviews actual worker changes and reproduces critical checks.
+
+## WP0: Contracts
+
+Use decisions.md and confirmed-flows.md. Map one modular backend to platform responsibilities. Define environment names, request/error contracts, external identifiers and data ownership. Keep unresolved policies local to their dependent tasks.
+
+## WP1: Docker foundation
+
+Create separate client/server build/runtime images, Nginx, platform PostgreSQL/Redis, Prisma migration job and disposable test services. Establish health/readiness, startup ordering, internal/public addressing, persistent development data and isolated test volumes. Backend replicas run the same application image.
+
+Use an external DRM API URL and server-side credentials. Do not copy DRM source into platform images, alter its Dockerfiles, share its tables or implement its workers. Document connection to an independently running unchanged distribution. Basic local startup must not require live Cloudflare credentials. Resolve local storage substitute before storage-dependent features; explicitly label test doubles.
+
+Acceptance: clean Docker build/start, separate image identities, migration failure handling, health/readiness, persistence, browser-to-platform routing and external connectivity/error reporting. Do not invent business models just to test startup.
+
+## WP2: Authentication and localization
+
+After identifier/onboarding and session semantics are clarified, implement authentication/session tokens in HttpOnly cookies, Secure in production, explicit SameSite/domain/path policy, server revocation, expiry and CSRF protection. No platform tokens in local/session storage or JavaScript-readable persistence. Clarify session-token rotation before implementing refresh semantics.
+
+Build Arabic-default RTL and English LTR shell, forms/errors and server STUDENT/ADMIN authorization. Acceptance: cookie flags, cross-origin/CSRF denial, revoked/expired sessions, logout and role isolation plus browser language checks.
+
+## WP3: Catalog and administration
+
+Implement bilingual programming courses, ordered sections/lessons as required and EGP-priced plans with admin-set fixed duration. Publishing requires both translations. Public course offers remain visible; lesson/segment lists and content require entitlement.
+
+Original upload uses the external DRM registration/upload/completion/status contract. Persist media IDs/readiness in platform PostgreSQL. Do not process video, manage keys or mutate DRM tables. Use supported status polling/reconciliation until external webhooks are confirmed. Download/removal await retention and supported endpoint contracts.
+
+Acceptance: admin-only mutation, bilingual completeness, unready asset exclusion, API-only media lifecycle and no protected listing leaks.
+
+## WP4: Manual recharge and purchase
+
+Implement student funding requests with agreed reference/proof fields. Admin independently verifies receipt before approval. An approval transaction must atomically move a pending request to approved, record the wallet credit and audit the actor, so concurrent approvals cannot duplicate money. Submitted screenshots are not automatic proof of receipt. No automated gateway in release one.
+
+Purchase uses trusted server price/duration, concurrency-safe wallet balance validation, atomic debit/purchase/entitlement and idempotency. Proposed integrity policy: snapshot purchased price/duration so later plan edits do not silently rewrite purchases. Start duration at successful purchase; finalize units and renewal rules before date arithmetic. Rejection/resubmission and reversals need their own approved policies.
+
+Acceptance: duplicate/concurrent approval, unauthorized approval, simultaneous spending, retries and rollback; exact EGP reconciliation and no unpaid access.
+
+## WP5: Learning and expiry
+
+Implement dashboard and protected lesson listing, backend course/lesson/asset binding, required DRM assertions, frontend-safe API responses and player lifecycle. Platform cookie authentication and transient DRM bearer tokens are separate contracts. Keep privileged DRM credentials server-only.
+
+Compute subscription validity from backend time and stored dates. On expiry deny listings, new playback and platform-mediated renewal, show needs-renewal, stop the player and request supported external session termination. Maintain necessary session references; retry failed revocation and measure enforcement delay. If an external direct-renewal path bypasses expiry, report a release blocker rather than editing DRM or claiming the UI solves it.
+
+Acceptance: real external upload-to-playback, token lifecycle, watermark observation, wrong asset/user denial and expiry during playback. External failures do not expand worker scope.
+
+## WP6: Background and realtime
+
+No live classes. Implement only confirmed notification/realtime scope. Platform expiry/reconciliation jobs can use BullMQ/Redis after contracts are approved. Define idempotency, retries, failure visibility and replica coordination. Chat/email/WhatsApp release scope is pending.
+
+## WP7: Qualification
+
+Use Docker for functional/integration/browser/security/load/recovery verification. Separate platform and external DRM/CDN bottlenecks in the recorded-course workload. Report image IDs, commands, results, blockers and migration/rollback/restore evidence. Do not certify external behavior using mocks.

@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Build output
+client/dist/
+server/dist/
+server/.prisma-fallback/
+*.tsbuildinfo
+
+# Env with real values (example file is committed instead)
+.env
+*.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Docker / volumes (never commit local database data)
+docker/volumes/

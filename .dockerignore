@@ -1,0 +1,16 @@
+# Root build context guard. Platform images must NEVER contain the external
+# DRM package, local secrets, or development database data.
+education-drm-service/
+node_modules/
+client/node_modules/
+server/node_modules/
+client/dist/
+server/dist/
+.git/
+**/.git/
+.env
+*.local
+reports-and-markdown-files/
+docker/volumes/
+output/
+.DS_Store

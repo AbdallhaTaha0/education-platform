@@ -1,0 +1,76 @@
+# Isolated automated-test stack. ALWAYS run with a disposable project name so
+# test containers/volumes never touch development data or anything else:
+#
+#   docker compose -p education-platform-test -f docker/compose.test.yml build
+#   docker compose -p education-platform-test -f docker/compose.test.yml up -d --wait migrate
+#   docker compose -p education-platform-test -f docker/compose.test.yml run --rm test
+#   docker compose -p education-platform-test -f docker/compose.test.yml down -v
+#
+# The `test` service runs server unit tests (stubbed I/O) plus integration
+# tests against these REAL postgres/redis containers and asserts the m1_init
+# migration was applied. No ports are published. The write-smoke fixture uses
+# a transient table that is never part of Prisma migrations.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: education_platform_test
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - pgdata-test:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d education_platform_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+      target: migrate
+    image: edu-platform-migrate-test:0.1.0-m1
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  test:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+      target: test
+    image: edu-platform-server-test:0.1.0-m1
+    environment:
+      NODE_ENV: test
+      LOG_LEVEL: warn
+      SERVICE_VERSION: 0.1.0-m1-test
+      READY_TIMEOUT_MS: 2000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_test
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  # Disposable by design: the project prefix (-p education-platform-test)
+  # keeps these separate from development volumes; `down -v` removes them.
+  pgdata-test:

@@ -1,0 +1,22 @@
+// Platform Prisma configuration (M1).
+//
+// Prisma owns ONLY platform PostgreSQL tables. It must never manage the
+// external DRM database, its tables, or its migrations, and platform code
+// must never use DRM database credentials.
+//
+// M1 intentionally defines NO business models (no User, Wallet, Course, or
+// Subscription tables). Those arrive with their own milestones, migrations,
+// and acceptance tests per reports-and-markdown-files/schema.md. An empty
+// business schema is the correct starting point: the migration pipeline
+// (prisma/migrations/* + `npm run db:migrate` one-shot container) is proven
+// by the m1_init migration and by real SELECT/PING readiness checks, not by
+// invented domain tables.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
