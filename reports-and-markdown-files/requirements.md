@@ -11,7 +11,7 @@ Updated from owner decisions; unresolved details remain in decisions.md.
 | R05 | Wallet purchase creates course subscription | Atomic debit/purchase/access; no overspending/double charge |
 | R06 | Dashboard and lesson/segment listing after subscription | Entitlement enforced on listing, content and playback APIs |
 | R07 | Admin content, prices, promotions, uploads/downloads/removal | Audited actions; retention and external capabilities clarified before destructive work |
-| R08 | API-only external DRM; no internal edits | Upload/status/playback/termination integration; credentials remain server-side |
+| R08 | Platform uses the independently deployed DRM through APIs only; DRM internals never become platform persistence. The owner may separately authorize bounded maintenance within their DRM package. | Upload/status/playback/termination/deletion integration; credentials remain server-side; no cross-database access |
 | R09 | React/TypeScript; one modular Express/TypeScript backend; PostgreSQL/Prisma | Required stack and single replicable backend image |
 | R10 | Docker throughout platform development/testing/deployment | Independent frontend/backend images, dependency containers and isolated tests |
 | R11 | Preserve original architecture with explicit owner clarifications | No silent service/infrastructure substitution |

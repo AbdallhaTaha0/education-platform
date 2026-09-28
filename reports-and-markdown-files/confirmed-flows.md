@@ -20,9 +20,11 @@ Subscribed students see course segments/lessons and can request playback. Expire
 
 ## Admin video lifecycle
 
-Admin creates bilingual programming-course and lesson records, then uploads the original video using the external DRM API's prescribed sequence. DRM owns processing, watermark/security and storage handling. Platform persists lesson/media identifiers and readiness in its own PostgreSQL and only enables playback when the external asset is ready.
+Admin creates a bilingual programming course, ordered sections and ordered lessons, with one external DRM video per lesson. Plans use a current EGP price, an integer duration in days, and may optionally show a higher previous price as a visual marketing offer. The course follows DRAFT, PROCESSING, READY and PUBLISHED states; ARCHIVED is reversible. Only PUBLISHED courses appear publicly.
 
-Production storage is Cloudflare R2, configured through external DRM. Local substitute/setup remains pending. Do not build a second pipeline or upload raw video blobs into platform business tables. Do not assume the original must be deleted after processing. Download/removal/retention need separate clarification.
+The admin uploads each original video using the external DRM API's prescribed sequence. DRM owns processing, watermark/security and storage handling. Platform persists lesson/media identifiers and readiness in its own PostgreSQL and only enables publication when both translations exist and every required external asset is ready.
+
+Production storage is Cloudflare R2, configured through external DRM. Local Docker verification uses an S3-compatible substitute; live R2 verification remains blocked pending credentials. Do not build a second pipeline or upload raw video blobs into platform business tables. Archive/unarchive changes platform visibility and is reversible. Permanent deletion must remove platform content and external stored media through the independently accepted DRM deletion API; it must never be imitated by deleting only platform records.
 
 ## Authentication and language
 

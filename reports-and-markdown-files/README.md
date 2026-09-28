@@ -1,6 +1,6 @@
 # Education platform documentation
 
-Baseline updated: 2026-09-28 after M2 acceptance. The Docker foundation remains accepted at revision `fce352f`; cookie identity, STUDENT/ADMIN authorization, the one-time admin bootstrap, and the Arabic-default bilingual shell are implemented and independently verified. Remaining detailed business policies are marked pending, and M3 is not yet authorized.
+Baseline updated: 2026-09-28 after acceptance of the DRM permanent-deletion prerequisite at nested revision `6e1e01c`. The Docker foundation remains accepted at revision `fce352f`; cookie identity, STUDENT/ADMIN authorization, the one-time admin bootstrap, and the Arabic-default bilingual shell are implemented and independently verified. The external DRM package now provides the accepted permanent media-deletion contract required by M3. Remaining detailed business policies stay marked pending.
 
 ## Authority and evidence
 
@@ -33,5 +33,7 @@ Where sources conflict, record the conflict and ask the owner. Neither existing 
 | [open-code-worker-prompt.md](open-code-worker-prompt.md) | Bounded M1 Docker foundation implementation prompt |
 | [m2-open-code-worker-prompt.md](m2-open-code-worker-prompt.md) | Bounded M2 identity and bilingual shell implementation prompt |
 | [m2-implementation-report.md](m2-implementation-report.md) | M2 implementation, correction, Docker verification and independent acceptance evidence |
+| [drm-media-deletion-open-code-worker-prompt.md](drm-media-deletion-open-code-worker-prompt.md) | Owner-authorized DRM prerequisite prompt for durable permanent media deletion before M3 |
+| [drm-media-deletion-implementation-report.md](drm-media-deletion-implementation-report.md) | Accepted DRM deletion implementation and independent Docker evidence |
 
-M1 and M2 are accepted. The original design sources and external DRM package remain unchanged. No production readiness or 10,000-user capability is certified.
+M1, M2, and the bounded DRM permanent-deletion prerequisite are accepted. The original design sources remain unchanged. Live Cloudflare R2 verification is blocked pending credentials; no production readiness or 10,000-user capability is certified.

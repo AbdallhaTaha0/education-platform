@@ -6,16 +6,16 @@ DRAFT model updated with confirmed decisions; not executable Prisma or migration
 | --- | --- | --- |
 | User | Identity; exactly STUDENT or ADMIN; unique normalized email and phone; password hash; basic display name and timestamps | Email/phone verification, recovery and retention are outside M2 |
 | AuthSession | Server-side session/family validity; refresh-token hash/rotation state; access-token session binding; 30-day absolute expiry; revocation/reuse metadata and timestamps | Device naming and session-history retention |
-| Course | Programming course; required Arabic/English title/description; publication lifecycle | Publication transitions and archival |
-| CourseSection / Lesson | Ordered video structure, mandatory translated labels/content; course ownership | Whether explicit section grouping is necessary |
-| SubscriptionPlan | Course/package, EGP price, admin-set fixed duration | Duration unit and plan edit policy; starts at purchase |
-| Promotion | Discount and eligibility | Stacking, limits and accounting policy |
+| Course | Programming course; required Arabic/English title/description; DRAFT, PROCESSING, READY, PUBLISHED and reversible ARCHIVED lifecycle | Permanent deletion coordinates with the accepted external DRM deletion API |
+| CourseSection / Lesson | Course → ordered sections → ordered lessons; mandatory translated labels/content; one opaque external DRM video asset per lesson | Asset replacement/versioning |
+| SubscriptionPlan | Course/package, current EGP price, positive integer duration in days, optional higher previous price for visual marketing | Purchase-time snapshot and plan edit policy; starts at purchase |
+| Promotion | No promotion engine in M3; optional previous/current plan price display only | Coupon, scheduling, eligibility, stacking and accounting policy remain future decisions |
 | Wallet | Student EGP account/balance | Approved numeric bounds |
 | RechargeRequest | Student request, amount, transfer reference/proof, review state, reviewer and review time | Evidence fields, deduplication scope, rejection/resubmission |
 | WalletEntry | Durable EGP credit/debit and source reference | Reversal/refund policy |
 | Purchase | Student/plan and trusted purchase terms | Renewal/cancellation rules |
 | Enrollment / Entitlement | User/course access and fixed validity interval | Starts at purchase; early renewal semantics pending |
-| MediaMapping | Lesson to external application/asset IDs and observed readiness | Asset replacement/versioning |
+| MediaMapping | Lesson to external application/asset IDs and observed readiness | Permanent removal uses the accepted external delete operation and retained status reference |
 | PlaybackReference | External session reference bound to student/entitlement | Retention and termination reconciliation |
 | LessonProgress | Student lesson progress | Completion definition |
 | AuditEvent | Actor, action, target, time and outcome | Retention/redaction policy |
@@ -28,6 +28,8 @@ DRAFT model updated with confirmed decisions; not executable Prisma or migration
 - Snapshot trusted price/duration at purchase as a proposed protection against later plan edits. Do not hard-code 30 days or assume lifetime access.
 - Subscription validity uses server time and persisted start/end timestamps; determine timezone and duration arithmetic once duration units are confirmed; start is successful purchase.
 - Both translations are mandatory at publication. Schema representation (paired fields or translation table) remains an implementation design choice to document; it does not imply translated video tracks.
+- Plan duration is a positive bounded integer number of days. Optional previous-price display is valid only when enabled and strictly higher than the current price.
+- Archive is reversible. Never claim permanent deletion or delete only platform rows while external video objects remain; complete deletion must coordinate through a supported external DRM API and fail safely on partial errors.
 - Validate course/lesson/media relationships before issuing external playback authorization.
 - Protected lesson-list endpoints enforce entitlement regardless of frontend route visibility.
 - No cascading deletion of financial history without explicit retention policy.

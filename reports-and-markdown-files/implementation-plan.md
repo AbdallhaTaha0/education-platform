@@ -1,6 +1,6 @@
 # Implementation work packages
 
-Updated after owner answers. No work package authorizes edits inside external DRM. The manager reviews actual worker changes and reproduces critical checks.
+Updated after owner answers. Platform work packages consume DRM through its API. The owner separately authorized the bounded DRM permanent-deletion prerequisite linked from the documentation index; it is independent package maintenance and does not permit cross-database coupling or unrelated DRM changes. The manager reviews actual worker changes and reproduces critical checks.
 
 ## WP0: Contracts
 
@@ -24,11 +24,11 @@ Build Arabic-default RTL and English LTR registration/login/account shell and lo
 
 ## WP3: Catalog and administration
 
-Implement bilingual programming courses, ordered sections/lessons as required and EGP-priced plans with admin-set fixed duration. Publishing requires both translations. Public course offers remain visible; lesson/segment lists and content require entitlement.
+Implement bilingual programming courses using Course → ordered Sections → ordered Lessons, with one external DRM video per lesson. Plans use EGP prices and an admin-set positive integer duration in days. A plan may optionally show a higher previous price beside the current selling price as a visual marketing offer; this is not a coupon or promotion engine. Publishing requires both translations. Public course offers remain visible; lesson/segment lists and content require entitlement.
 
-Original upload uses the external DRM registration/upload/completion/status contract. Persist media IDs/readiness in platform PostgreSQL. Do not process video, manage keys or mutate DRM tables. Use supported status polling/reconciliation until external webhooks are confirmed. Download/removal await retention and supported endpoint contracts.
+Use DRAFT, PROCESSING, READY, PUBLISHED and reversible ARCHIVED states, with validated transitions and only PUBLISHED courses visible publicly. Original upload uses the external DRM registration/upload/completion/status contract. Persist media IDs/readiness in platform PostgreSQL. Do not process video, manage keys or mutate DRM tables. Use supported status polling/reconciliation until external webhooks are confirmed. Implement the adapter and contract verification so real upload waits only for credentials/storage configuration. Mark real external verification BLOCKED until supplied. The independently accepted DRM media-delete endpoint is the required permanent-deletion path; platform-only row deletion remains forbidden because it does not free space.
 
-Acceptance: admin-only mutation, bilingual completeness, unready asset exclusion, API-only media lifecycle and no protected listing leaks.
+Acceptance: admin-only mutation, deterministic ordering, bilingual completeness, lifecycle transition checks, reversible archive, compare-at price validation, unready asset exclusion, API-only media lifecycle and no protected listing leaks. Report real DRM upload as BLOCKED rather than passing it with a fixture when credentials are unavailable.
 
 ## WP4: Manual recharge and purchase
 

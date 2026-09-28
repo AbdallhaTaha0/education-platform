@@ -1,6 +1,6 @@
 # External DRM integration contract
 
-Confirmed boundary: API-only, no edits anywhere inside education-drm-service/. Earlier observations are dependency findings, never platform repair assignments. Use supported responses and frontend requirements; never query DRM persistence.
+Confirmed platform boundary: API-only; platform code never queries DRM persistence. On 2026-09-28 the owner separately authorized bounded maintenance inside education-drm-service to add missing permanent media deletion. That work remains an independent DRM package change and does not alter the platform integration boundary.
 
 ## Upload
 
@@ -26,8 +26,12 @@ Existing assertion verification uses JWKS, configured issuer/audience and a maxi
 
 Backend must deny access after expiry regardless of UI state. Track necessary session references and call supported external revocation/termination. Stop the frontend player and show renewal-required. Retry failed external termination with bounded observable handling.
 
-An external bearer session is not itself proof that platform enrollment remains valid. Direct heartbeat/renewal and already-issued licenses/buffered content may constrain enforcement timing. Test and document actual behavior. Do not promise instantaneous termination merely because a platform endpoint now denies access. If the API cannot enforce the requirement, report an external blocker to the owner without editing DRM.
+An external bearer session is not itself proof that platform enrollment remains valid. Direct heartbeat/renewal and already-issued licenses/buffered content may constrain enforcement timing. Test and document actual behavior. Do not promise instantaneous termination merely because a platform endpoint now denies access. Repair DRM behavior only under a separate explicit owner-authorized maintenance assignment.
 
 ## External readiness
 
-The prior source review found incomplete commercial licensing and possible playback issues. These remain dependency observations to confirm against the supplied running service, not instructions to rewrite it. Validate real upload-to-playback, renewal, watermark and termination black-box. Mocks are insufficient production evidence. Admin download/removal requires supported external endpoints plus owner policy.
+The prior source review found incomplete commercial licensing and possible playback issues. These remain dependency observations to confirm against the supplied running service, not permission for an unrelated rewrite. Validate real upload-to-playback, renewal, watermark and termination black-box. Mocks are insufficient production evidence.
+
+## Permanent media deletion prerequisite
+
+The bounded DRM prerequisite is accepted. The API now exposes an application-scoped asynchronous media-deletion contract and safe status endpoint. Acceptance verified immediate playback denial, active-session revocation, source and packaged-prefix cleanup, personalized variants, cascading secret/material cleanup, retained non-secret operation/audit evidence, retry and reconciliation, and prefixes containing more than 1,000 objects. The platform may integrate this API in M3, while live Cloudflare R2 verification remains blocked until credentials are supplied.

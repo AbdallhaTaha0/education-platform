@@ -10,7 +10,7 @@ Read the root AGENTS.md and documentation index first. Work only on the assigned
 
 For each implementation assignment, provide: changed files, requirement IDs, migration and configuration impacts, Docker commands actually run, test results, failures, remaining blockers, and rollback instructions. A successful build does not establish correct payment handling, secure playback, or capacity.
 
-DRM is an external API-only dependency. Never edit its files or access its persistence. Observe its behavior through integration tests and report failures to the manager. Do not implement fixes inside it, even if discovery identifies a defect. The platform is one modular Express application; do not split business modules into independent APIs. Use decisions.md for owner-approved manual recharge, cookie authentication, R2 storage and fixed-duration access.
+DRM is an external API-only dependency from the platform's perspective. Never access its persistence from platform code. The owner may issue a separate, bounded maintenance assignment for the independently deployed DRM package; only that assignment permits edits inside it. Such maintenance must preserve the API boundary and must not couple platform Prisma models to DRM tables. The platform is one modular Express application; do not split business modules into independent APIs. Use decisions.md for owner-approved manual recharge, cookie authentication, R2 storage and fixed-duration access.
 
 ## Independent reviewer
 

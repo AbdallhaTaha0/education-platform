@@ -5,7 +5,7 @@
 - Preserve the supplied system design. Recommendations must be explicitly labeled and must not become implementation decisions without the owner.
 - Exactly two platform roles: STUDENT and ADMIN. The diagram/report's instructor wording does not authorize an instructor role.
 - React/TypeScript frontend; one Node.js/Express/TypeScript backend with separate internal modules; PostgreSQL/Prisma for platform persistence. Backend replicas run the same image.
-- DRM is an external API-only dependency. Never edit anything inside education-drm-service/, including Docker/configuration/migrations. Never query its database or replace its video/security implementation. Its technologies are independent of the platform.
+- DRM is an external API-only dependency to platform code. Never query its database or replace its video/security implementation from the platform. The owner explicitly authorized a separate bounded maintenance assignment inside education-drm-service/ for the missing permanent media-deletion API; this does not authorize unrelated DRM rewrites or cross-database coupling.
 - Arabic primary/default and English secondary, RTL/LTR respectively; both content translations are mandatory. Programming courses contain recorded videos only; no live classes. Lesson/segment listings require subscription.
 - Admin sets fixed plan duration; duration starts immediately at successful purchase. Expiry must stop viewing and show unsubscribed / needs renewal, enforced on the backend and through external session APIs.
 - Manual EGP recharge initially: student submits request/reference/proof; admin verifies receipt and approves before credit. No automated payment gateway.
