@@ -4,8 +4,8 @@ DRAFT model updated with confirmed decisions; not executable Prisma or migration
 
 | Entity | Responsibility and confirmed fields/concepts | Pending details |
 | --- | --- | --- |
-| User | Identity; STUDENT or ADMIN | Login identifier, profile, recovery and retention |
-| AuthSession | Server-side session validity and cookie-token relationship | Token semantics, lifetime, rotation and device metadata |
+| User | Identity; exactly STUDENT or ADMIN; unique normalized email and phone; password hash; basic display name and timestamps | Email/phone verification, recovery and retention are outside M2 |
+| AuthSession | Server-side session/family validity; refresh-token hash/rotation state; access-token session binding; 30-day absolute expiry; revocation/reuse metadata and timestamps | Device naming and session-history retention |
 | Course | Programming course; required Arabic/English title/description; publication lifecycle | Publication transitions and archival |
 | CourseSection / Lesson | Ordered video structure, mandatory translated labels/content; course ownership | Whether explicit section grouping is necessary |
 | SubscriptionPlan | Course/package, EGP price, admin-set fixed duration | Duration unit and plan edit policy; starts at purchase |
@@ -32,6 +32,8 @@ DRAFT model updated with confirmed decisions; not executable Prisma or migration
 - Protected lesson-list endpoints enforce entitlement regardless of frontend route visibility.
 - No cascading deletion of financial history without explicit retention policy.
 - Choose indexes from query paths: active entitlement lookup, course lesson order, pending review queue, wallet history, idempotency references and expiry/session reconciliation.
+- Normalize email and phone before uniqueness checks; accept either identifier at login without exposing which accounts exist. Store only password hashes and refresh-token digests, never plaintext credentials or reusable raw tokens.
+- Public registration fixes role to STUDENT. The bootstrap path creates the first ADMIN only when no admin exists; later admin creation is an authenticated ADMIN operation.
 
 ## External DRM
 

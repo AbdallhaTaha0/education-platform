@@ -2,6 +2,7 @@ import cors from 'cors';
 import express, { type Express } from 'express';
 import helmet from 'helmet';
 import pinoHttp from 'pino-http';
+import type { PrismaClient } from '@prisma/client';
 import type { Pool } from 'pg';
 import type Redis from 'ioredis';
 import type { Logger } from 'pino';
@@ -12,11 +13,14 @@ import { checkRedis } from './infra/redis.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { createHealthRouter } from './routes/health.js';
+import { createIdentityModule } from './modules/identity/index.js';
+import type { Clock } from './modules/identity/tokens.js';
 
 export interface AppDependencies {
   config: ServerConfig;
   postgresPool: Pool;
   redisClient: Redis;
+  prisma: PrismaClient;
 }
 
 export interface AppTunables {
@@ -25,13 +29,15 @@ export interface AppTunables {
   checkRedisFn?: () => ReturnType<typeof checkRedis>;
   /** Override the request logger (used by unit tests to capture log output). */
   logger?: Logger;
+  /** Override the clock (used by tests to simulate token/session expiry). */
+  clock?: Clock;
 }
 
 /**
  * Application factory (no listening sockets here; see index.ts).
- * Future business areas (identity, catalog, wallet, purchases, learning,
- * administration, DRM adapter) will mount as internal modules under
- * src/modules/* in their own milestones — not as separate services.
+ * Identity (M2) is an internal module mounted below; catalog, wallet,
+ * purchases and learning arrive as further internal modules in their own
+ * milestones — never as separate services.
  */
 export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Express {
   const app = express();
@@ -55,6 +61,35 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
   app.use(express.json({ limit: '256kb' }));
 
   const startedAt = Date.now();
+
+  // Identity guards read shared context (prisma/redis/auth) from app settings.
+  const identity = createIdentityModule({
+    prisma: deps.prisma,
+    redis: deps.redisClient,
+    auth: {
+      secret: deps.config.jwtSecret,
+      issuer: deps.config.authIssuer,
+      audience: deps.config.authAudience,
+      allowedOrigins: deps.config.allowedOrigins,
+      cookieSecure: deps.config.cookieSecure,
+      argon2: deps.config.argon2,
+    },
+    ...(tunables.clock ? { clock: tunables.clock } : {}),
+  });
+  app.set('identity', {
+    prisma: deps.prisma,
+    redis: deps.redisClient,
+    auth: {
+      secret: deps.config.jwtSecret,
+      issuer: deps.config.authIssuer,
+      audience: deps.config.authAudience,
+      allowedOrigins: deps.config.allowedOrigins,
+    },
+    ...(tunables.clock ? { clock: tunables.clock } : {}),
+  });
+  app.use('/auth', identity.authRouter);
+  app.use('/admin', identity.adminRouter);
+
   app.use(
     '/health',
     createHealthRouter({

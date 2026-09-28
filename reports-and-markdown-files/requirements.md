@@ -16,9 +16,14 @@ Updated from owner decisions; unresolved details remain in decisions.md.
 | R10 | Docker throughout platform development/testing/deployment | Independent frontend/backend images, dependency containers and isolated tests |
 | R11 | Preserve original architecture with explicit owner clarifications | No silent service/infrastructure substitution |
 | R12 | 10,000 simultaneous users; recorded courses only | Agreed realistic load qualification, no live-class features |
-| R13 | Authentication/session tokens in cookies, not local storage | HttpOnly/Secure policy, CSRF checks and server session revocation |
+| R13 | Students have unique email and phone identifiers and may log in with either plus password. Access tokens last 15 minutes; rotating refresh sessions last 30 days. Both use HttpOnly cookies, never browser storage. | Either-identifier login, duplicate rejection, HttpOnly/production-Secure/SameSite policy, CSRF denial, rotation/reuse detection, logout and server-side revocation |
+| R16 | First admin is created once through Docker; only an authenticated ADMIN can create later admins. Password recovery is excluded until a delivery channel is approved. | Bootstrap succeeds once and then refuses; student/admin authorization tests; local credentials handed to owner without committing them; no recovery endpoints or misleading UI |
 | R14 | Expiry stops access and shows unsubscribed / needs renewal | Backend time checks, active playback termination and renewal-required UI |
 | R15 | Cloudflare production object storage; Docker local environment | R2 through external DRM; local/staging contract verification |
+
+## Identity journey
+
+Student registration collects both email and phone with a password. Either normalized identifier can be used at login. Public registration always creates STUDENT and cannot accept a caller-selected role. The first ADMIN is created by a one-time Docker bootstrap; later admins require an authenticated ADMIN. Email/phone verification and password recovery are not part of M2 because no delivery channel is approved.
 
 ## Student journey
 

@@ -7,6 +7,7 @@
  */
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { PrismaClient } from '@prisma/client';
 import { createApp } from '../../src/app.js';
 import { loadConfig } from '../../src/config.js';
 import { createPostgresPool, closePostgres } from '../../src/infra/postgres.js';
@@ -15,10 +16,11 @@ import { createRedisClient, closeRedis } from '../../src/infra/redis.js';
 const config = loadConfig(process.env);
 const pool = createPostgresPool(config.databaseUrl);
 const redis = createRedisClient(config.redisUrl);
-const app = createApp({ config, postgresPool: pool, redisClient: redis });
+const prisma = new PrismaClient();
+const app = createApp({ config, postgresPool: pool, redisClient: redis, prisma });
 
 afterAll(async () => {
-  await Promise.all([closePostgres(pool), closeRedis(redis)]);
+  await Promise.all([closePostgres(pool), closeRedis(redis), prisma.$disconnect()]);
 });
 
 describe('health integration (real postgres + redis)', () => {
@@ -41,6 +43,7 @@ describe('health integration (real postgres + redis)', () => {
       config: { ...config, readyTimeoutMs: 500 },
       postgresPool: createPostgresPool('postgresql://invalid:5432@127.0.0.1:5999/nope'),
       redisClient: createRedisClient('redis://127.0.0.1:5998'),
+      prisma,
     });
     const started = Date.now();
     const res = await request(badApp).get('/health/ready');

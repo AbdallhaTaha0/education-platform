@@ -16,9 +16,11 @@ Acceptance: clean Docker build/start, separate image identities, migration failu
 
 ## WP2: Authentication and localization
 
-After identifier/onboarding and session semantics are clarified, implement authentication/session tokens in HttpOnly cookies, Secure in production, explicit SameSite/domain/path policy, server revocation, expiry and CSRF protection. No platform tokens in local/session storage or JavaScript-readable persistence. Clarify session-token rotation before implementing refresh semantics.
+Implement the confirmed identity contract: students register with unique email and phone plus password, then sign in with either normalized identifier. Public registration always creates STUDENT. Create the first ADMIN once through a Docker bootstrap command; after that, only an authenticated ADMIN creates additional admins. The worker provides local test credentials to the owner without committing them. Password recovery and identifier verification remain excluded until a delivery channel is approved.
 
-Build Arabic-default RTL and English LTR shell, forms/errors and server STUDENT/ADMIN authorization. Acceptance: cookie flags, cross-origin/CSRF denial, revoked/expired sessions, logout and role isolation plus browser language checks.
+Use a 15-minute access token and rotating 30-day refresh session in HttpOnly cookies, Secure in production, with explicit SameSite/domain/path policy, server-side revocation, refresh reuse detection and CSRF/origin protection. No platform credential may enter localStorage, sessionStorage or JavaScript-readable persistence. Authorization recognizes exactly STUDENT and ADMIN inside the same Express application.
+
+Build Arabic-default RTL and English LTR registration/login/account shell and localized validation/errors using design.md. Acceptance: either-identifier login, uniqueness and normalization, safe password hashing, rate limiting, cookie flags, cross-origin/CSRF denial, refresh rotation/reuse, concurrent refresh behavior, revoked/expired sessions, logout, bootstrap one-time behavior, admin creation isolation and RTL/LTR browser checks.
 
 ## WP3: Catalog and administration
 

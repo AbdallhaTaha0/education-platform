@@ -8,6 +8,7 @@ import express from 'express';
 import pinoHttp from 'pino-http';
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
+import type { PrismaClient } from '@prisma/client';
 import type { Pool } from 'pg';
 import type Redis from 'ioredis';
 import { createApp } from '../../src/app.js';
@@ -20,6 +21,7 @@ const SECRETS = {
   'proxy-authorization': 'Basic ZHmmbXktcHJveHktc2VjcmV0',
   'x-api-key': 'dummy-apikey-7h2j5t9w',
   'x-client-secret': 'dummy-clientsecret-3q6w8e1r',
+  'x-csrf-token': 'a'.repeat(64),
   responseCookie: 'session=dummy-setcookie-5t9y2u4i',
 } as const;
 
@@ -51,15 +53,22 @@ const config: ServerConfig = {
   redisUrl: 'redis://redis:6379',
   logLevel: 'info',
   serviceName: 'education-platform-server',
-  serviceVersion: '0.1.0-m1-test',
+  serviceVersion: '0.2.0-m2-test',
   readyTimeoutMs: 1000,
+  isProduction: false,
+  jwtSecret: 'test-secret-that-is-long-enough-32',
+  authIssuer: 'edu-platform-test',
+  authAudience: 'edu-platform-test-web',
+  allowedOrigins: ['http://localhost:8080'],
+  cookieSecure: false,
+  argon2: { memoryKb: 8192, timeCost: 2, parallelism: 1 },
 };
 
 describe('sensitive header redaction', () => {
   it('redacts secret request headers logged by the application', async () => {
     const stream = new CaptureStream();
     const app = createApp(
-      { config, postgresPool: {} as Pool, redisClient: {} as Redis },
+      { config, postgresPool: {} as Pool, redisClient: {} as Redis, prisma: {} as PrismaClient },
       {
         logger: createLogger('info', stream),
         checkPostgresFn: vi.fn().mockResolvedValue({ status: 'up', latencyMs: 1 }),
@@ -73,7 +82,8 @@ describe('sensitive header redaction', () => {
       .set('Cookie', SECRETS.cookie)
       .set('Proxy-Authorization', SECRETS['proxy-authorization'])
       .set('X-Api-Key', SECRETS['x-api-key'])
-      .set('X-Client-Secret', SECRETS['x-client-secret']);
+      .set('X-Client-Secret', SECRETS['x-client-secret'])
+      .set('X-Csrf-Token', SECRETS['x-csrf-token']);
     expect(res.status).toBe(200);
 
     const logs = dumpedLogs(stream);

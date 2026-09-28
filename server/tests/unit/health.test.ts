@@ -1,5 +1,6 @@
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
+import type { PrismaClient } from '@prisma/client';
 import type { Pool } from 'pg';
 import type Redis from 'ioredis';
 import { createApp } from '../../src/app.js';
@@ -13,8 +14,15 @@ const config: ServerConfig = {
   redisUrl: 'redis://redis:6379',
   logLevel: 'silent',
   serviceName: 'education-platform-server',
-  serviceVersion: '0.1.0-m1-test',
+  serviceVersion: '0.2.0-m2-test',
   readyTimeoutMs: 1000,
+  isProduction: false,
+  jwtSecret: 'test-secret-that-is-long-enough-32',
+  authIssuer: 'edu-platform-test',
+  authAudience: 'edu-platform-test-web',
+  allowedOrigins: ['http://localhost:8080'],
+  cookieSecure: false,
+  argon2: { memoryKb: 8192, timeCost: 2, parallelism: 1 },
 };
 
 const up = { status: 'up' as const, latencyMs: 1 };
@@ -26,6 +34,7 @@ function buildApp(checks: { postgres?: typeof up | typeof down; redis?: typeof u
       config,
       postgresPool: {} as Pool,
       redisClient: {} as Redis,
+      prisma: {} as PrismaClient,
     },
     {
       checkPostgresFn: vi.fn().mockResolvedValue(checks.postgres ?? up),

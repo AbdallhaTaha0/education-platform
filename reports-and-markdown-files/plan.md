@@ -17,4 +17,4 @@ Start operational and security checks in each milestone, not only M7. M1 does no
 
 ## Next step
 
-The backend module decision and recharge approval model are confirmed. The bounded M1 implementation prompt is ready to hand to Open Code. Cloudflare R2 and access starting at purchase are confirmed; local storage setup gates storage-dependent work, not basic platform container scaffolding. The manager has prepared the prompt, not executed application implementation.
+M1 is accepted at revision `fce352f`. M2 identity and bilingual shell are accepted after independent Docker verification on 2026-09-28. M3 catalog/media work remains unauthorized until the owner starts that milestone; no milestone authorizes edits inside the external DRM package.

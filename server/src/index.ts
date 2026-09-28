@@ -5,6 +5,7 @@ import { loadConfig, redactUrlForLog } from './config.js';
 import { getLogger, createLogger } from './logger.js';
 import { createPostgresPool, closePostgres } from './infra/postgres.js';
 import { createRedisClient, closeRedis } from './infra/redis.js';
+import { getPrisma, closePrisma } from './infra/prisma.js';
 import { describeDrmConnection } from './infra/drm.js';
 
 dotenv.config();
@@ -18,8 +19,9 @@ async function main(): Promise<void> {
   // Compose startup ordering (healthchecks + depends_on) still applies.
   const postgresPool = createPostgresPool(config.databaseUrl);
   const redisClient = createRedisClient(config.redisUrl);
+  const prisma = getPrisma();
 
-  const app = createApp({ config, postgresPool, redisClient });
+  const app = createApp({ config, postgresPool, redisClient, prisma });
   const server: Server = await new Promise((resolve, reject) => {
     const listener = app.listen(config.port, () => resolve(listener));
     listener.on('error', reject);
@@ -52,7 +54,7 @@ async function main(): Promise<void> {
       if (err) logger.error({ err }, 'http server close error');
       void (async () => {
         try {
-          await Promise.all([closePostgres(postgresPool), closeRedis(redisClient)]);
+          await Promise.all([closePostgres(postgresPool), closeRedis(redisClient), closePrisma()]);
           logger.info('connections closed; exiting');
           clearTimeout(force);
           process.exit(0);

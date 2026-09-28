@@ -1,10 +1,12 @@
-# Local development stack (M1 Docker foundation).
+# Local development stack (M2 identity + bilingual shell).
 #
-# Usage (repository root):
-#   docker compose -f docker/compose.dev.yml config --quiet   # parse check
-#   docker compose -f docker/compose.dev.yml build            # build images
-#   docker compose -f docker/compose.dev.yml up -d --wait     # start in order
-#   docker compose -f docker/compose.dev.yml down             # stop (keeps data)
+# Usage (repository root). --env-file is required because Compose otherwise
+# reads docker/.env instead of the ignored root .env that holds the local
+# AUTH_JWT_SECRET (no default exists by design — startup fails closed):
+#   docker compose --env-file .env -f docker/compose.dev.yml config --quiet
+#   docker compose --env-file .env -f docker/compose.dev.yml build
+#   docker compose --env-file .env -f docker/compose.dev.yml up -d --wait
+#   docker compose --env-file .env -f docker/compose.dev.yml down   # keeps data
 #
 # Public entry point: http://localhost:8080 (Nginx).
 # Only the Nginx port is published; postgres/redis are reachable inside the
@@ -21,7 +23,7 @@
 x-common-env: &common-env
   NODE_ENV: ${NODE_ENV:-development}
   LOG_LEVEL: ${LOG_LEVEL:-info}
-  SERVICE_VERSION: ${SERVICE_VERSION:-0.1.0-m1}
+  SERVICE_VERSION: ${SERVICE_VERSION:-0.2.0-m2}
   READY_TIMEOUT_MS: ${READY_TIMEOUT_MS:-2000}
 
 services:
@@ -58,7 +60,7 @@ services:
       context: ..
       dockerfile: server/Dockerfile
       target: migrate
-    image: edu-platform-migrate:0.1.0-m1
+    image: edu-platform-migrate:0.2.0-m2
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-education_platform}
     depends_on:
@@ -71,12 +73,22 @@ services:
       context: ..
       dockerfile: server/Dockerfile
       target: runtime
-    image: edu-platform-server:0.1.0-m1
+    image: edu-platform-server:0.2.0-m2
     environment:
       <<: *common-env
       PORT: 3000
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-education_platform}
       REDIS_URL: redis://redis:6379
+      # Identity/auth (server-only). AUTH_JWT_SECRET must be strong (32+
+      # chars); keep the real local value in the ignored root .env, never
+      # in compose files or the frontend build.
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-}
+      AUTH_ISSUER: ${AUTH_ISSUER:-edu-platform-dev}
+      AUTH_AUDIENCE: ${AUTH_AUDIENCE:-edu-platform-dev-web}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080}
+      # Local Docker HTTP explicitly disables Secure cookies. Production
+      # builds fail closed unless COOKIE_SECURE=true.
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
       # Optional external DRM (M1: unset is fine; readiness never gates on it).
       DRM_BASE_URL: ${DRM_BASE_URL:-}
       DRM_CLIENT_ID: ${DRM_CLIENT_ID:-}
@@ -100,7 +112,7 @@ services:
     build:
       context: ..
       dockerfile: client/Dockerfile
-    image: edu-platform-client:0.1.0-m1
+    image: edu-platform-client:0.2.0-m2
     depends_on:
       - server
     # Static-file probe via the busybox wget shipped in the image.
@@ -115,9 +127,11 @@ services:
     build:
       context: ..
       dockerfile: docker/nginx/Dockerfile
-    image: edu-platform-nginx:0.1.0-m1
+    image: edu-platform-nginx:0.2.0-m2
     ports:
-      - "8080:8080"
+      # Host port is overridable so isolated projects (browser tests) can run
+      # beside development: NGINX_PORT=8081 docker compose -p other ...
+      - "${NGINX_PORT:-8080}:8080"
     depends_on:
       server:
         condition: service_healthy
@@ -131,6 +145,30 @@ services:
       timeout: 5s
       retries: 3
       start_period: 15s
+
+  # Containerized M2 browser harness (test-only profile, never started by
+  # default). Runs Chromium assertions through Nginx against an isolated
+  # project, e.g.:
+  #   docker compose -p education-platform-browser -f docker/compose.dev.yml --profile browser run --rm browser
+  # Bootstrap admin credentials arrive via environment (never committed).
+  browser:
+    build:
+      context: ..
+      dockerfile: docker/browser/Dockerfile
+    image: edu-platform-browser:0.2.0-m2
+    profiles: ["browser"]
+    environment:
+      BASE_URL: http://nginx:8080
+      EVIDENCE_DIR: /srv/browser/evidence
+      ADMIN_EMAIL: ${BROWSER_ADMIN_EMAIL:-}
+      ADMIN_PHONE: ${BROWSER_ADMIN_PHONE:-}
+      ADMIN_PASSWORD: ${BROWSER_ADMIN_PASSWORD:-}
+    volumes:
+      - ../reports-and-markdown-files/m2-evidence:/srv/browser/evidence
+    depends_on:
+      nginx:
+        condition: service_healthy
+    restart: "no"
 
 volumes:
   # Persistent development data: survives `down` and normal container

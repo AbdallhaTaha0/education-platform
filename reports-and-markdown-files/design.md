@@ -55,7 +55,7 @@ Student: choose offer -> insufficient funds -> submit recharge -> pending verifi
 Admin: verify actual transfer receipt independently -> approve request once -> audit credit. Proof alone must never imply automatic credit.
 Course metadata and purchased terms must be clear. Sample duration unit and numbers are illustrative, not a business-policy decision. No credit-card checkout, automatic payment gateway, instructor role, live teaching or certificates.
 Video originals are handled through external DRM; platform stores identifiers/readiness. DRM/R2/security internals are not exposed as student UI choices.
-Authentication screens are deferred until login identifiers are chosen. No email-only/phone-only policy is invented.
+Authentication screens use the confirmed policy: registration collects both email and phone; login accepts either identifier plus password. Public registration never offers a role selector. Password recovery and identifier-verification screens remain deferred until a delivery channel is approved.
 Pending/rejected empty/error states should be documented even where only the primary screen is rendered.
 
 ## Engineering handoff

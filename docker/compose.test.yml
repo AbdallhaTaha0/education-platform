@@ -42,7 +42,7 @@ services:
       context: ..
       dockerfile: server/Dockerfile
       target: migrate
-    image: edu-platform-migrate-test:0.1.0-m1
+    image: edu-platform-migrate-test:0.2.0-m2
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_test
     depends_on:
@@ -55,14 +55,24 @@ services:
       context: ..
       dockerfile: server/Dockerfile
       target: test
-    image: edu-platform-server-test:0.1.0-m1
+    image: edu-platform-server-test:0.2.0-m2
     environment:
       NODE_ENV: test
       LOG_LEVEL: warn
-      SERVICE_VERSION: 0.1.0-m1-test
+      SERVICE_VERSION: 0.2.0-m2-test
       READY_TIMEOUT_MS: 2000
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_test
       REDIS_URL: redis://redis:6379
+      # Isolated test-only secrets. Distinct from every other environment;
+      # never production credentials.
+      AUTH_JWT_SECRET: 9f3k7q2m4x8z1v6n7h2j5t9w3q6w8e1r5t9y2u4i6o0p
+      AUTH_ISSUER: edu-platform-test
+      AUTH_AUDIENCE: edu-platform-test-web
+      ALLOWED_ORIGINS: http://localhost:8080
+      # Reduced Argon2id cost for suite speed only (production uses 65536/3/4).
+      ARGON2_MEMORY_KB: 8192
+      ARGON2_TIME_COST: 2
+      ARGON2_PARALLELISM: 1
     depends_on:
       migrate:
         condition: service_completed_successfully

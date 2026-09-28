@@ -12,6 +12,17 @@
 // by the m1_init migration and by real SELECT/PING readiness checks, not by
 // invented domain tables.
 
+// Platform Prisma configuration (M2 adds identity tables).
+//
+// Prisma owns ONLY platform PostgreSQL tables. It must never manage the
+// external DRM database, its tables, or its migrations, and platform code
+// must never use DRM database credentials.
+//
+// M2 identity models (User, AuthSession, RefreshToken) are the minimum
+// needed for cookie authentication, server sessions, refresh rotation and
+// role authorization. Wallet/catalog/purchase models arrive with their own
+// milestones, migrations, and acceptance tests.
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -19,4 +30,61 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+/// Exactly two platform roles. A native enum rejects any third role at the
+/// database level; application code whitelists the same two values.
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  phone        String   @unique
+  displayName  String
+  passwordHash String
+  role         Role     @default(STUDENT)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  sessions     AuthSession[]
+
+  @@index([role])
+}
+
+/// One row per login (session family). All refresh generations of the same
+/// login share this row; revoking it invalidates every token of the family
+/// immediately, without waiting for access-token expiry.
+model AuthSession {
+  id                String         @id @default(uuid())
+  userId            String
+  user              User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  csrfHash          String?
+  absoluteExpiresAt DateTime
+  lastUsedAt        DateTime       @default(now())
+  createdAt         DateTime       @default(now())
+  revokedAt         DateTime?
+  revokeReason      String?
+  refreshTokens     RefreshToken[]
+
+  @@index([userId])
+  @@index([absoluteExpiresAt])
+}
+
+/// One row per issued refresh credential. Only the SHA-256 digest of the
+/// 256-bit secret is stored — raw refresh tokens never touch the database.
+/// Rotation consumes the old row and inserts a new one inside a single
+/// transaction: a credential succeeds at most once, and presenting an
+/// already-consumed credential proves reuse and revokes the family.
+model RefreshToken {
+  id         String    @id @default(uuid())
+  sessionId  String
+  session    AuthSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  consumed   Boolean   @default(false)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([sessionId])
 }

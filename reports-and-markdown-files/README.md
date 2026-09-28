@@ -1,6 +1,6 @@
 # Education platform documentation
 
-Baseline updated: 2026-09-27 after owner D01-D12 answers and follow-ups. Confirmed decisions are recorded; remaining detailed policies are marked pending. The Docker foundation handoff is prepared; no application implementation was performed in this update.
+Baseline updated: 2026-09-28 after M2 acceptance. The Docker foundation remains accepted at revision `fce352f`; cookie identity, STUDENT/ADMIN authorization, the one-time admin bootstrap, and the Arabic-default bilingual shell are implemented and independently verified. Remaining detailed business policies are marked pending, and M3 is not yet authorized.
 
 ## Authority and evidence
 
@@ -31,5 +31,7 @@ Where sources conflict, record the conflict and ask the owner. Neither existing 
 | [test-and-review-plan.md](test-and-review-plan.md) | Independent verification and capacity qualification |
 | [decisions.md](decisions.md) | Questions, blocked work, and decision recording |
 | [open-code-worker-prompt.md](open-code-worker-prompt.md) | Bounded M1 Docker foundation implementation prompt |
+| [m2-open-code-worker-prompt.md](m2-open-code-worker-prompt.md) | Bounded M2 identity and bilingual shell implementation prompt |
+| [m2-implementation-report.md](m2-implementation-report.md) | M2 implementation, correction, Docker verification and independent acceptance evidence |
 
-Only Markdown documentation was created during this assessment. No application code, existing deployment definitions, original documents, or DRM migrations were changed. No production readiness or 10,000-user capability is certified.
+M1 and M2 are accepted. The original design sources and external DRM package remain unchanged. No production readiness or 10,000-user capability is certified.

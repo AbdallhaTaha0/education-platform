@@ -13,6 +13,7 @@ export const LOG_REDACT_PATHS = [
   'req.headers["proxy-authorization"]',
   'req.headers["x-api-key"]',
   'req.headers["x-client-secret"]',
+  'req.headers["x-csrf-token"]',
   'res.headers["set-cookie"]',
 ] as const;
 

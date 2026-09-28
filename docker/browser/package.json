@@ -1,0 +1,16 @@
+{
+  "name": "@education-platform/browser-tests",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Containerized browser assertions for M2 identity flows (drives Chromium through Nginx).",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node run.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "^24.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
