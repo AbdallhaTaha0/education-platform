@@ -40,7 +40,9 @@ education-platform/
 ```
 
 Services (dev project): `postgres`, `redis`, `migrate` (one-shot),
-`server` (same-image replicas), `client`, `nginx` (sole published port).
+`server` (same-image replicas, node liveness probe), `client` (wget static
+probe), `nginx` (sole published port, dual-path probe, waits for healthy
+server + client).
 Internal DNS names: `postgres:5432`, `redis:6379`, `server:3000`,
 `client:8080`. Nginx strips the `/api` prefix (`/api/health/live` ->
 backend `/health/live`); `/` proxies to the frontend.
@@ -57,9 +59,9 @@ Prisma 6.19.3 (`@prisma/client` 6.19.3, classic `schema.prisma` +
 `pg` 8.23.0, `ioredis` 5.11.1, `helmet` 8.3.0, `cors` 2.8.6,
 `pino` 9.14.0, `pino-http` 10.5.0, `dotenv` 16.6.1, `supertest` 7.3.0.
 
-Built image IDs (final): server `066ea9eda9cf` (765MB), migrate
-`825a30004e53` (758MB), client `0ff5fdd71913` (73.9MB), nginx `edb704578a39`
-(73.7MB); test variants `b35dc26c1615` / `8f274317a811`.
+Built image IDs (final, after 2026-09-28 corrections): server `907d48eb202a`
+(794MB), migrate `9db8b3047e6c` (758MB), client `0ff5fdd71913` (73.9MB),
+nginx `edb704578a39` (73.7MB); test variants `a3abcc7dcfb7` / `f84980f48f5a`.
 
 ## 3. Commands (repository root)
 
@@ -150,9 +152,12 @@ Never run `prisma migrate reset`, `down -v` (dev), or touch DRM data.
 | 11 | TypeScript checks pass in containers (client via build `tsc -b`; server `typecheck` in test image) | PASS |
 | 12 | No privileged config in browser assets (`grep` dist for connection strings/secret names; scan of `/health/ready` body) | PASS |
 | 13 | External DRM unchanged (clean status, HEAD `6135bf5…`, 132 files, combined SHA256 identical before/after) | PASS |
-| 14 | Unit 13/13 + integration 5/5 on real postgres/redis in isolated project | PASS |
+| 14 | Unit 15/15 (incl. 2 log-redaction regressions) + integration 5/5 on real postgres/redis in isolated project | PASS |
 | 15 | Graceful shutdown (SIGTERM → connections closed, exit, 0.8s) | PASS |
 | 16 | Non-root runtimes (`app` for server/migrate/test, `nginx` for client/proxy) | PASS |
+| 17 | Sensitive headers redacted in Docker logs (5 dummy secrets sent, 0 leaked, `[Redacted]` markers present) | PASS |
+| 18 | PrismaClient constructs + disconnects inside final runtime image `edu-platform-server:0.1.0-m1` | PASS |
+| 19 | server/client/nginx report `healthy` via in-image healthchecks; nginx waits for healthy server + client | PASS |
 
 Screenshots: `reports-and-markdown-files/m1-evidence/m1-ar-desktop.png`
 (Arabic RTL), `m1-en-desktop.png` (English LTR, mirrored nav),
@@ -164,11 +169,11 @@ Screenshots: `reports-and-markdown-files/m1-evidence/m1-ar-desktop.png`
 
 - Docker Desktop service was initially stopped on this host; started
   locally to run verification (no repo impact).
-- Server runtime image is 765MB, dominated by `node:22-bookworm-slim` +
+- Server runtime image is 794MB, dominated by `node:22-bookworm-slim` +
   production deps including multi-platform Prisma engine binaries
   (`typescript`/`prisma` present in prod `node_modules` only as transitive
   deps of `@prisma/client` 6.19.3 — verified via `npm ls`, not a leak).
-  Slimmed ~33% during this milestone (`COPY --chown` instead of `chown
+  Slimmed during this milestone (`COPY --chown` instead of `chown
   -R` layers); further engine-target trimming deferred.
 - No automated browser harness is committed in M1; browser evidence was
   produced with headless system Chrome + throwaway `puppeteer-core` in
@@ -180,3 +185,30 @@ Screenshots: `reports-and-markdown-files/m1-evidence/m1-ar-desktop.png`
 - Conflict reporting (per owner instruction): none found — `design.md`
   tokens/typography/spacing/RTL rules were followed as specified; no
   `design.md` edits were made.
+
+## 11. Corrections applied 2026-09-28 (review follow-up)
+
+1. **Log redaction** (`server/src/logger.ts`, `server/src/app.ts`,
+   `server/tests/unit/logging.test.ts`): Pino redaction paths cover
+   `req.headers.authorization`, `req.headers.cookie`,
+   `req.headers.proxy-authorization`, `req.headers.x-api-key`,
+   `req.headers.x-client-secret`, and `res.headers.set-cookie`
+   (censor `[Redacted]`). `AppTunables.logger` allows log capture in
+   tests. Regression test sends unique dummy values through the real
+   middleware and asserts none appear in serialized output while
+   `[Redacted]` does. Docker proof: 5 dummy secrets sent via Nginx,
+   0 values in `server` logs (the PowerShell client dropped the raw
+   `Cookie` header itself; cookie + set-cookie paths are proven by the
+   committed regression test).
+2. **PrismaClient in runtime** (`server/Dockerfile`): runtime stage now
+   copies the generated client at `node_modules/.prisma/client` from the
+   build stage (in addition to `@prisma/client`). Build smoke replaced
+   require-only with `new PrismaClient()` + `$disconnect()` (dummy URL,
+   never connects). Verified inside final `edu-platform-server:0.1.0-m1`
+   as user `app`: `RUNTIME-PRISMA-CONSTRUCT-OK`.
+3. **Healthchecks** (`docker/compose.dev.yml`): `server` probes
+   `127.0.0.1:3000/health/live` via the in-image node runtime;
+   `client` probes `/` via busybox `wget`; `nginx` probes both `/` and
+   `/api/health/live` via busybox `wget`. `nginx` now waits for
+   `service_healthy` server + client. No extra packages installed.
+   `up -d --wait` reports all five dev services `healthy`.

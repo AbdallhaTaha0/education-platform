@@ -37,8 +37,14 @@ COPY --chown=app:app server/package.json server/package-lock.json ./
 COPY --chown=app:app --from=prod-deps /srv/server/node_modules ./node_modules
 COPY --chown=app:app --from=build /srv/server/dist ./dist
 # Generated Prisma Client (identical lockfile/platform in both stages).
+# Both locations are required: @prisma/client re-exports the generated client
+# that `prisma generate` writes under node_modules/.prisma/client.
 COPY --chown=app:app --from=build /srv/server/node_modules/@prisma/client ./node_modules/@prisma/client
-RUN node -e "require('@prisma/client')"
+COPY --chown=app:app --from=build /srv/server/node_modules/.prisma ./node_modules/.prisma
+# Smoke: PrismaClient must be CONSTRUCTIBLE in the final runtime image
+# (require-only is insufficient). Never connects: dummy URL + disconnect.
+RUN DATABASE_URL=postgresql://127.0.0.1:5432/prisma_smoke \
+  node -e 'const {PrismaClient}=require("@prisma/client"); const c=new PrismaClient(); c.$disconnect().then(()=>console.log("prisma client smoke ok"));'
 USER app
 EXPOSE 3000
 CMD ["node", "dist/index.js"]

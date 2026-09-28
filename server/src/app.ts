@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import pinoHttp from 'pino-http';
 import type { Pool } from 'pg';
 import type Redis from 'ioredis';
+import type { Logger } from 'pino';
 import { getLogger } from './logger.js';
 import type { ServerConfig } from './config.js';
 import { checkPostgres } from './infra/postgres.js';
@@ -22,6 +23,8 @@ export interface AppTunables {
   /** Override dependency checks (used by unit tests to avoid real I/O). */
   checkPostgresFn?: () => ReturnType<typeof checkPostgres>;
   checkRedisFn?: () => ReturnType<typeof checkRedis>;
+  /** Override the request logger (used by unit tests to capture log output). */
+  logger?: Logger;
 }
 
 /**
@@ -38,7 +41,7 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
   app.use(requestIdMiddleware);
   app.use(
     pinoHttp({
-      logger: getLogger(),
+      logger: tunables.logger ?? getLogger(),
       genReqId: (req) => (req as unknown as { requestId?: string }).requestId ?? 'unknown',
       customLogLevel: (_req, res, err) => {
         if (err !== undefined || res.statusCode >= 500) return 'error';
