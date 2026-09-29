@@ -51,4 +51,19 @@ Manager acceptance 2026-09-28: the owner-authorized DRM permanent-deletion prere
 
 Manager acceptance 2026-09-29: M3 and the bounded D20 upload-recovery/job-status prerequisites passed independent source review and Docker reproduction from the then-uncommitted trees. Platform unit tests passed 76/76, PostgreSQL/Redis integration tests 110/110, Chromium assertions 58/58, and typecheck passed. DRM processing passed 7/7, upload recovery 38/38 twice, deletion 44/44, and unit tests 48/48. The upload-URL contract blocker is lifted; no evidence-backed M3 code defect remains. Acceptance covers the locally verified implementation only. Live Cloudflare R2 and real external DRM upload/deletion verification remain blocked, so this does not certify production readiness or capacity. Following explicit owner authorization, local DRM (`5293917`) and platform checkpoints were created; nothing was pushed or deployed, and no PR or development-volume removal occurred.
 
+Manager acceptance 2026-09-29: M4 at platform checkpoint `03e51eb` passed
+independent source review and fresh Docker reproduction with nested DRM
+`5293917` clean and unchanged. The focused financial/review/retention suite
+passed 42/42 three consecutive times, the full server matrix passed 91 unit
+and 152 PostgreSQL/Redis integration tests, typecheck and the client production
+build passed, and Chromium passed 81/81 through Nginx. The exact concurrent
+spending race yielded one 201, three 402 responses, one debit and a reconciled
+40000-piastres balance. Six migrations applied from empty state; the persisted
+development database upgraded from two to six migrations with 4 users and 5
+sessions preserved across restart. Migration failure blocked server startup,
+runtime/secret/redaction checks passed, and the dev stack remains healthy.
+Dependency audit findings remain recorded in `m4-implementation-report.md`.
+Live Cloudflare R2 and real external DRM upload/deletion verification remain
+blocked; M4 acceptance does not certify production readiness or capacity.
+
 Future answers must record owner/date, approved policy, affected documents and acceptance checks. Do not quietly promote recommendations to approved requirements.

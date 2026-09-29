@@ -2,24 +2,26 @@
 
 Date: 2026-09-29. Scope: Milestone 4 (WP4 + D22 theme) only. M1 accepted at
 `fce352f`, M2 at `b8080a8`, M3 + DRM prerequisites accepted 2026-09-29 per
-decisions.md. No commit, push, deployment, production-readiness, or capacity
-claim. No live R2 evidence. All changes left uncommitted for independent
-manager review.
+decisions.md. The implementation checkpoint was committed and pushed at
+`03e51eb`; the 2026-09-29 manager verification changes in this report and the
+refreshed M4 screenshots remain uncommitted. No deployment,
+production-readiness, capacity, or live R2 claim is made.
 
 ## 1. Starting revisions and repository status
 
 | Repository | Starting revision | Ending revision | Working tree |
 | --- | --- | --- | --- |
-| Platform (`education-platform`, branch `main`) | `d04f3ee` (docs: approve M4 wallet and UI policies; ahead of `origin/main` `bad064f` by local checkpoints, never pushed) | `d04f3ee`, unchanged | M4 work only, uncommitted (see §2) |
-| Nested DRM (`education-drm-service/`, branch `main`) | `5293917` (ahead of `origin/main` `6e1e01c` by local commit, never pushed) | `5293917`, unchanged | Clean — **not edited in this assignment** |
+| Platform (`education-platform`, branch `main`) | `03e51eb` (`origin/main` matched) | `03e51eb`, unchanged | Manager evidence/report refresh only, uncommitted |
+| Nested DRM (`education-drm-service/`, branch `main`) | `5293917` (`origin/main` matched) | `5293917`, unchanged | Clean — **not edited in this assignment** |
 | Platform gitlink | `5293917` | `5293917` | Matches nested HEAD |
 
-- Docker Engine `29.6.2`, Compose `v5.3.1`.
-- Dev stack (`docker-*`) and test stack (`education-platform-test-*`) healthy
-  before, during (except deliberate restarts), and after the work.
+- Docker Desktop `4.93.0`, Engine `29.8.1`, Compose `v5.5.1`.
+- The inherited dev stack was healthy on M2 images. It was upgraded in place
+  to M4 without deleting volumes, then restarted; all five services returned
+  healthy and `/`, `/api/health/live`, and `/api/health/ready` returned 200.
 - `.env` ignored and never overwritten. No paid services provisioned.
 
-## 2. Every changed path
+## 2. M4 implementation paths in checkpoint `03e51eb`
 
 Server (new `server/src/modules/wallet/`, all ≤155 lines):
 
@@ -193,25 +195,30 @@ in new server code (narrow test-helper casts only, matching repo convention).
 
 ## 12. Exact Docker evidence and regression counts
 
-Images (`:0.4.0-m4`): server-test `c566f5a0d`, migrate-test `5f5bcfbdb`,
-client `d013f1e72`, browser `39b7c146a`, server `e7cae80f392` (M3 build;
-dev server rebuilt to `0.4.0-m4` for the upgrade check), nginx `a30cc5c308d`,
-drm-fixture `6fd1a39af`.
+Final image IDs (`:0.4.0-m4`): server `1bd6e2fa9413`, migrate
+`21c1c275f5bf`, client `e61f8a4ecf84`, nginx `33401da0da04`, browser
+`972b752ec149`, DRM fixture `9a13ba4d92e8`, server-test `86d7e496af31`, and
+migrate-test `3184ea8b5c9f`.
 
 | Suite | Result |
 |---|---|
 | Unit (16 files: M3 76 + wallet 15) | **91/91 PASS** |
-| Integration (24 files: M3 110 + wallet 30) | **140/140 PASS** (one transient 139/140, green on 3 consecutive reruns; recorded, unidentified) |
+| Focused M4 correction suite (5 files) | **42/42 PASS**, three consecutive runs |
+| Integration (25 files) | **152/152 PASS** |
 | Browser through Nginx (M3 58 + M4 23) | **81/81 PASS** |
 | Typecheck (`tsc --noEmit` app + tests) | exit 0 |
-| Fresh M1→M4 migration (disposable) | 5 applied, PASS (in-suite) |
-| Dev M3→M4 upgrade (normal restart, no `-v`) | 5 rows, data preserved, `/health/ready` 200 |
-| Migration failure (bad URL) | exit 1 |
-| `git diff --check` | clean (CRLF notices only) |
-| Server audit | 4 high (`deepmerge-ts→prisma`, no fix) — unchanged from M3 |
-| Client audit | 1 high (`postcss`, pinned; build-time only) — unchanged from M3 |
-| Bundle secret scan | 0 hits |
-| Runtime server image | uid 999, no tests/src, no secret env, redaction present |
+| Client production build/typecheck | PASS, 77 modules |
+| Fresh M1→M4 migration (disposable) | 6 applied, PASS |
+| Dev M2→M4 upgrade (normal recreate, no `-v`) | migrations 2→6; 4 users and 5 sessions preserved |
+| Restart persistence | 4 users, 5 sessions and 6 migrations preserved; all services healthy |
+| Compose migration-failure gate | migrate exit 1; server remained `Created` and never started |
+| Server production dependency audit | 4 high; 0 critical/moderate/low |
+| Client production dependency audit | 0 vulnerabilities |
+| Browser harness production dependency audit | 3 high; 0 critical/moderate/low |
+| Full dependency audit (including development tools) | server 1 critical/5 high/3 moderate; client 1 high; browser 3 high |
+| Secret scans | tracked files 0, server history 0, dev logs 0, client bundle 0 |
+| Live redaction probe | HTTP 200; 5 dummy secrets absent; 5 `[Redacted]` markers |
+| Runtime server image | uid 999; no tests/src/vitest/tsx; Prisma construction PASS; no secret env |
 
 Browser M4 row (23 new): dark default + AA 15.43, toggle, light + AA 13.14,
 reload persistence, sign-in, balance, proof input, submit, zero-credit,
@@ -219,10 +226,13 @@ proof 403, queue shows request, dialog focus/approve/Escape, exact 60000
 credit, plan available, trusted price, receipt, exact debit, 2× mobile
 overflow, storage prefs, bundle secrets.
 
-Two environment incidents (not code defects, zero code changes to resolve):
-stale-container `ALLOWED_ORIGINS` 403 and missing `PAYMENT_CHANNELS` wiring
-(the latter required adding the `${PAYMENT_CHANNELS:-}` mapping to
-`compose.dev.yml` server env — counted as an M4 infra fix).
+Manager reproduction encountered two isolated-browser configuration errors,
+neither an application defect: the first fixture used obsolete payment-channel
+field names and correctly failed closed; the second allowed localhost rather
+than Chromium's `http://nginx:8080` origin and correctly returned 403. After
+using the documented schema and exact browser origin, the unchanged build
+passed 81/81. The earlier implementation report's transient 139/140 run did
+not recur in three focused runs or the final 152-test integration run.
 
 ## 13. Security, secret, dependency, and migration evidence
 
@@ -232,11 +242,21 @@ Auth/ownership/role/CSRF/origin boundaries covered by integration + browser
 values). Audits sanitized (no base64/bytes; verified by assertion).
 `PAYMENT_CHANNELS` malformed/duplicate/unknown entries fail startup closed;
 absent = explicit 503. Migrations additive only; dev volumes never `down -v`.
+The exact 100000-piastres race produced one 201, three 402 responses, zero
+500s, one -60000 ledger debit, one purchase/subscription, and a final cached
+and reconciled balance of 40000. Concurrent identical purchase retries
+converged on one purchase and debit. Current dependency-audit findings are
+reported in §12 and remain an explicit follow-up risk; no unrelated major
+dependency upgrade was folded into M4.
 
 ## 14. Runtime-image evidence
 
-Server runtime uid 999, no `tests/`/`src/`, no secret env; client Nginx serves
-only built assets; redaction (`[Redacted]`) present in logging paths.
+Server runtime uid 999, no `tests/`/`src/`, no `vitest`/`tsx`, no secret env,
+and `PrismaClient` constructed and disconnected successfully in the final
+image. Client Nginx serves only built assets. A live request through Nginx
+exercised authorization, cookie, proxy-authorization, API-key and client-secret
+headers: none of five dummy values appeared in logs and five `[Redacted]`
+markers did.
 
 ## 15. Responsive and accessibility evidence
 
@@ -265,15 +285,17 @@ service. No refunds/reversals exist by design (D21). No capacity claim.
    Do not `migrate reset` or `down -v` dev. Full schema revert needs a
    pre-M4 backup (owner recovery objectives; none taken here).
 4. Verify `/health/ready` and M3 suites (76/110/58).
-5. Nothing was committed or pushed; discard the worktree to abandon M4.
+5. Revert only the uncommitted manager report/evidence refresh to abandon this
+   review. Checkpoint `03e51eb` and DRM `5293917` already exist on their remotes.
 
 ## 18. Handoff
 
-M4 implementation uncommitted at platform HEAD `d04f3ee` (nested `5293917`
-untouched), no push/deploy/PR, no dev-volume removal, disposable projects
-removed. Two evidence-backed defects were found and fixed during the work
-(stale pre-lock wallet read → proven overspend; insecure-context
-`crypto.getRandomValues` crash); both are covered by deterministic
-regressions. M4 is **not** declared accepted — the manager reviews the diff
-and reproduces the financial, browser, migration, retention, theme, and
-security tests before acceptance.
+Manager verification completed at platform HEAD `03e51eb` with nested DRM
+`5293917` clean and untouched. The checkpoint required no further production
+code correction: the focused suite passed 42/42 three times, then the full
+91-unit/152-integration/81-browser matrix passed. The dev stack was upgraded
+and restarted without data loss or volume deletion. Only this report and the
+refreshed M4 dark/light evidence remain uncommitted; no deployment or PR was
+created. Milestone 4 is accepted for this verified scope. The manager evidence
+and acceptance documents are committed and pushed under the owner's standing
+post-acceptance rule; this does not remove the external blocker in §16.

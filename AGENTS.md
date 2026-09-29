@@ -10,6 +10,12 @@ education-drm-service/ is an independently deployed external dependency. Platfor
 
 Confirmed scope: recorded programming courses; admin-set fixed subscription duration; student-submitted manual recharge requests verified/approved by admins in EGP; Arabic primary and English secondary with both content translations mandatory; authentication/session tokens in cookies, never local storage; stop access on subscription expiry. External DRM owns video processing, security and watermarks. No live classes.
 
-Milestone 1 is accepted at revision fce352f and Milestone 2 at revision b8080a8. Follow the assigned milestone's scope. Development and verification must use Docker. A DRM defect is authorization to repair that package only when the owner's explicit DRM-maintenance prompt assigns it; that permission does not merge DRM persistence or internals into the platform backend.
+Milestone 1 is accepted at revision fce352f, Milestone 2 at revision b8080a8,
+Milestone 3 at revision d520dd7, and Milestone 4 at code checkpoint 03e51eb.
+The accepted nested DRM recovery checkpoint is 5293917. Follow the assigned
+milestone's scope. Development and verification must use Docker. A DRM defect
+is authorization to repair that package only when the owner's explicit
+DRM-maintenance prompt assigns it; that permission does not merge DRM
+persistence or internals into the platform backend.
 
 Use reports-and-markdown-files/design.md as the current UI specification. The earlier generated Stitch pages are not an implementation source. Keep visual tokens easy to revise when the owner reviews colors.
