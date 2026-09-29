@@ -26,6 +26,8 @@ x-common-env: &common-env
   SERVICE_VERSION: ${SERVICE_VERSION:-0.4.0-m4}
   READY_TIMEOUT_MS: ${READY_TIMEOUT_MS:-2000}
 
+name: education-platform
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -208,4 +210,8 @@ volumes:
   # restarts. Destroy ONLY deliberately: `... down -v` (non-destructive
   # rollback never uses -v; see m1-implementation-report.md).
   pgdata:
+    # Preserve the accepted development database created before the stack had
+    # an explicit Compose project name.
+    name: docker_pgdata
   redisdata:
+    name: docker_redisdata
