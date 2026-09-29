@@ -38,6 +38,38 @@ export function ConfirmDialog({ open, title, body, confirmLabel, cancelLabel, on
   );
 }
 
+interface DialogProps {
+  open: boolean;
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+}
+
+/** Generic accessible dialog shell with initial focus and Escape-to-close. */
+export function Dialog({ open, title, onClose, children }: DialogProps): JSX.Element | null {
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (open) titleRef.current?.focus();
+  }, [open ]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ink/40 p-4" role="dialog" aria-modal="true" aria-label={title}>
+      <div className="w-full max-w-lg rounded-card border border-border bg-surface p-6 shadow-rest">
+        <h2 ref={titleRef} tabIndex={-1} className="mb-2 text-xl font-bold">{title}</h2>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export function StatusBadge({ text, tone }: { text: string; tone: 'success' | 'pending' | 'error' | 'info'; label?: string }): JSX.Element {
   const tones = {
     success: 'border-success-fg bg-success-bg text-success-fg',

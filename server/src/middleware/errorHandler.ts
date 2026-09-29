@@ -42,6 +42,28 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     res.status(err.status).json(body);
     return;
   }
+  // Body-parser client errors (oversize or malformed JSON) are caller faults,
+  // not internal failures: answer 413/400 with a frontend-safe category.
+  // M4 proof uploads use the app-level route-aware 8 MiB parser; every other
+  // JSON route retains the global 256 KiB ceiling.
+  if (typeof err === 'object' && err !== null && 'type' in err) {
+    const bodyType = (err as { type?: unknown }).type;
+    const bodyStatus = (err as { status?: unknown }).status;
+    if (bodyType === 'entity.too.large' && bodyStatus === 413) {
+      const body: ApiErrorBody = {
+        error: { code: 'VALIDATION_ERROR', message: 'Request body is too large.', requestId: req.requestId ?? 'unknown' },
+      };
+      res.status(413).json(body);
+      return;
+    }
+    if (bodyType === 'entity.parse.failed' && bodyStatus === 400) {
+      const body: ApiErrorBody = {
+        error: { code: 'VALIDATION_ERROR', message: 'Malformed JSON body.', requestId: req.requestId ?? 'unknown' },
+      };
+      res.status(400).json(body);
+      return;
+    }
+  }
   // Full details stay in server logs; callers receive a safe generic message.
   getLogger().error({ err, requestId: req.requestId, path: req.path }, 'unhandled request error');
   const body: ApiErrorBody = {

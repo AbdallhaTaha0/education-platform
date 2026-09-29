@@ -50,6 +50,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   sessions     AuthSession[]
+  wallet       Wallet?
+  rechargeRequests RechargeRequest[]
+  purchases    Purchase[]
+  subscriptions Subscription[]
 
   @@index([role])
 }
@@ -259,6 +263,139 @@ model CatalogDeletionAsset {
 
   @@index([operationId])
   @@index([drmDeletionId])
+}
+
+/// M4 manual-funding channel. Receiving identifiers are runtime config,
+/// never code. Reference uniqueness is scoped per channel (D21).
+enum RechargeChannel {
+  INSTAPAY
+  BANK_TRANSFER
+  MOBILE_WALLET
+}
+
+/// M4 recharge review state. Rejection is terminal and immutable;
+/// resubmission creates a new request (D21).
+enum RechargeStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// M4 ledger entry kind. The ledger is append-only; refunds, reversals and
+/// correction credits do not exist in M4 (D21).
+enum LedgerEntryType {
+  CREDIT_RECHARGE
+  DEBIT_PURCHASE
+}
+
+/// M4 student EGP wallet. balancePiastres is a cache updated in the same
+/// transaction as ledger writes and must reconcile exactly with entries.
+/// All money is integer piastres (minor units); floats are forbidden.
+model Wallet {
+  id               String              @id @default(uuid())
+  userId           String              @unique
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balancePiastres  Int                 @default(0)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  entries          WalletLedgerEntry[]
+}
+
+/// M4 append-only auditable ledger. Exactly-once per source is enforced by
+/// the [refType, refId] unique constraint in addition to service checks.
+model WalletLedgerEntry {
+  id              String           @id @default(uuid())
+  walletId        String
+  wallet          Wallet           @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  amountPiastres  Int
+  entryType       LedgerEntryType
+  refType         String
+  refId           String
+  createdAt       DateTime         @default(now())
+
+  @@unique([refType, refId])
+  @@index([walletId])
+}
+
+/// M4 manual recharge request. Pending requests never create credit.
+/// Approval credits once and never auto-purchases. Proof bytes live in
+/// RechargeProof; this row keeps metadata visible to the owning student.
+model RechargeRequest {
+  id               String          @id @default(uuid())
+  studentId        String
+  student          User            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  amountPiastres   Int
+  channel          RechargeChannel
+  referenceNorm    String
+  senderName       String
+  senderPhone      String
+  transferDate     DateTime
+  proofFilename    String
+  proofMime        String
+  proofSize        Int
+  proofHash        String
+  status           RechargeStatus  @default(PENDING)
+  reviewerId       String?
+  reviewedAt       DateTime?
+  rejectReason     String?
+  /// Student-owned idempotency key: retries return the same request.
+  idempotencyKey   String
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  proof            RechargeProof?
+
+  @@unique([channel, referenceNorm])
+  @@unique([studentId, idempotencyKey])
+  @@index([studentId, status])
+  @@index([status])
+}
+
+/// M4 private proof storage, separated from request/audit metadata.
+/// bytes is cleared (NULL) by the retention job 180 days after review;
+/// metadata + sanitized audit trail are retained. Never served to students.
+model RechargeProof {
+  requestId String   @id
+  request   RechargeRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  bytes     Bytes?
+  mime      String
+  size      Int
+  hash      String
+  cleanedAt DateTime?
+  createdAt DateTime @default(now())
+}
+
+/// M4 purchase snapshot. planId/courseId/price/duration are historical
+/// truth copied at purchase time (plain strings/ints, no FKs): later plan
+/// edits or deletions never rewrite an existing purchase (D14/D04).
+model Purchase {
+  id              String   @id @default(uuid())
+  studentId       String
+  student         User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  planId          String
+  courseId        String
+  pricePiastres   Int
+  durationDays    Int
+  /// Student-owned idempotency key: retries return the same purchase.
+  idempotencyKey  String
+  createdAt       DateTime @default(now())
+
+  @@unique([studentId, idempotencyKey])
+  @@index([studentId])
+}
+
+/// M4 course entitlement. Active renewal extends from the current expiry;
+/// expired renewal starts immediately (backend time, integer days, D04).
+model Subscription {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId   String
+  purchaseId String   @unique
+  startsAt   DateTime
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([studentId, courseId])
 }
 
 /// Sanitized audit trail. metadata is JSON but must never contain cookies,

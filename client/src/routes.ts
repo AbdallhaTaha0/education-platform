@@ -7,7 +7,12 @@ export type Route =
   | 'courses'
   | 'course-detail'
   | 'admin-catalog'
-  | 'admin-course';
+  | 'admin-course'
+  | 'wallet'
+  | 'wallet-recharge'
+  | 'purchases'
+  | 'purchase'
+  | 'admin-recharge';
 
 export function routeFromHash(): Route {
   const hash = window.location.hash;
@@ -15,11 +20,22 @@ export function routeFromHash(): Route {
   if (hash === '#/login') return 'login';
   if (hash === '#/account') return 'account';
   if (hash === '#/admin') return 'admin';
+  if (hash.startsWith('#/purchase/')) return 'purchase';
+  if (hash === '#/purchases') return 'purchases';
+  if (hash === '#/wallet/recharge') return 'wallet-recharge';
+  if (hash === '#/wallet') return 'wallet';
+  if (hash === '#/admin/recharge') return 'admin-recharge';
   if (hash.startsWith('#/courses/')) return 'course-detail';
   if (hash === '#/courses') return 'courses';
   if (hash.startsWith('#/admin/courses/')) return 'admin-course';
   if (hash === '#/admin/catalog') return 'admin-catalog';
   return 'home';
+}
+
+export function planIdFromHash(): string {
+  const hash = window.location.hash;
+  if (hash.startsWith('#/purchase/')) return decodeURIComponent(hash.slice('#/purchase/'.length));
+  return '';
 }
 
 export function slugFromHash(): string {

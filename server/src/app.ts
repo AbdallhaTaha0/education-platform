@@ -15,6 +15,7 @@ import { requestIdMiddleware } from './middleware/requestId.js';
 import { createHealthRouter } from './routes/health.js';
 import { createIdentityModule } from './modules/identity/index.js';
 import { createCatalogModule } from './modules/catalog/index.js';
+import { createWalletModule } from './modules/wallet/index.js';
 import type { DrmClient } from './modules/catalog/drmClient.js';
 import { createDrmClient } from './modules/catalog/drmClient.js';
 import type { Clock } from './modules/identity/tokens.js';
@@ -63,7 +64,17 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
   );
   app.use(helmet());
   app.use(cors({ origin: false }));
-  app.use(express.json({ limit: '256kb' }));
+  // Proof submission is the only JSON route allowed above the global 256 KiB
+  // ceiling. Select the parser before any body has been consumed; mounting a
+  // second parser inside the wallet router would be too late.
+  const standardJson = express.json({ limit: '256kb' });
+  const proofJson = express.json({ limit: '8mb' });
+  app.use((req, res, next) => {
+    const parser = req.method === 'POST' && req.path === '/wallet/recharge-requests'
+      ? proofJson
+      : standardJson;
+    parser(req, res, next);
+  });
 
   const startedAt = Date.now();
 
@@ -113,6 +124,14 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
   app.use('/catalog', catalog.publicRouter);
   // Admin hierarchy mounts under /admin (guards inside the router).
   app.use('/admin', catalog.adminRouter);
+
+  // Wallet, manual recharge, and purchase (M4) — same app, own module.
+  const wallet = createWalletModule({ prisma: deps.prisma, config: deps.config });
+  app.set('wallet', { prisma: deps.prisma, config: deps.config });
+  // Authenticated student endpoints (guards inside the router).
+  app.use('/wallet', wallet.studentRouter);
+  // Admin review endpoints (guards inside the router).
+  app.use('/admin', wallet.adminRouter);
 
   app.use(
     '/health',

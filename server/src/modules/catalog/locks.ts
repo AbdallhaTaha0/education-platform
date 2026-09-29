@@ -6,6 +6,12 @@ export async function lockCourseRow(tx: TxClient, courseId: string): Promise<voi
   await tx.$executeRaw(Prisma.sql`SELECT id FROM "Course" WHERE id = ${courseId} FOR UPDATE`);
 }
 
+/** Shared course lock for purchase reads. Concurrent buyers may proceed, while
+ * M3 lifecycle/plan/deletion writers (FOR UPDATE) must wait. */
+export async function lockCourseRowShared(tx: TxClient, courseId: string): Promise<void> {
+  await tx.$executeRaw(Prisma.sql`SELECT id FROM "Course" WHERE id = ${courseId} FOR SHARE`);
+}
+
 /** Transactional advisory lock for deletion coordination. */
 export function deletionAdvisoryKey(targetType: string, targetId: string): string {
   return `catalog-deletion:${targetType}:${targetId}`;

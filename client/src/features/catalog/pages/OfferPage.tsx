@@ -45,8 +45,14 @@ export function OfferPage({ slug, onBack }: { slug: string; onBack: () => void }
               <h1 className="text-3xl font-bold">{lang === 'ar' ? course.titleAr : course.titleEn}</h1>
               <p className="mt-2">{lang === 'ar' ? course.descriptionAr : course.descriptionEn}</p>
               {course.plans.map((p) => (
-                <div key={p.id} className="mt-3">
+                <div key={p.id} className="mt-3 flex flex-wrap items-center gap-3">
                   <PriceDisplay current={p.currentPricePiastres} previous={p.previousPricePiastres} durationDays={p.durationDays} />
+                  <a
+                    className="inline-flex min-h-[44px] items-center justify-center rounded-control bg-primary px-6 font-semibold text-white no-underline hover:bg-primary-hover"
+                    href={`#/purchase/${encodeURIComponent(p.id)}`}
+                  >
+                    {t.subscribeAction}
+                  </a>
                 </div>
               ))}
               <p className="mt-4 text-muted">{lang === 'ar' ? 'لا تعرض قوائم الدروس قبل الاشتراك.' : 'Lesson lists require a subscription.'}</p>

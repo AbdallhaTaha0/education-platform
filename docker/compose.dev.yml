@@ -23,7 +23,7 @@
 x-common-env: &common-env
   NODE_ENV: ${NODE_ENV:-development}
   LOG_LEVEL: ${LOG_LEVEL:-info}
-  SERVICE_VERSION: ${SERVICE_VERSION:-0.3.0-m3}
+  SERVICE_VERSION: ${SERVICE_VERSION:-0.4.0-m4}
   READY_TIMEOUT_MS: ${READY_TIMEOUT_MS:-2000}
 
 services:
@@ -60,7 +60,7 @@ services:
       context: ..
       dockerfile: server/Dockerfile
       target: migrate
-    image: edu-platform-migrate:0.3.0-m3
+    image: edu-platform-migrate:0.4.0-m4
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-education_platform}
     depends_on:
@@ -73,7 +73,7 @@ services:
       context: ..
       dockerfile: server/Dockerfile
       target: runtime
-    image: edu-platform-server:0.3.0-m3
+    image: edu-platform-server:0.4.0-m4
     environment:
       <<: *common-env
       PORT: 3000
@@ -96,6 +96,11 @@ services:
       DRM_CLIENT_SECRET: ${DRM_CLIENT_SECRET:-}
       DRM_REQUEST_TIMEOUT_MS: ${DRM_REQUEST_TIMEOUT_MS:-5000}
       DRM_MAX_RETRIES: ${DRM_MAX_RETRIES:-2}
+      # M4 manual funding (server-only deployment config): JSON array of
+      # approved receiving channels. Unset = explicitly unconfigured (M4
+      # endpoints answer 503 PAYMENT_UNCONFIGURED). Never commit real
+      # receiving identifiers; tests use fixture values.
+      PAYMENT_CHANNELS: ${PAYMENT_CHANNELS:-}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -115,7 +120,7 @@ services:
     build:
       context: ..
       dockerfile: client/Dockerfile
-    image: edu-platform-client:0.3.0-m3
+    image: edu-platform-client:0.4.0-m4
     depends_on:
       - server
     # Static-file probe via the busybox wget shipped in the image.
@@ -130,7 +135,7 @@ services:
     build:
       context: ..
       dockerfile: docker/nginx/Dockerfile
-    image: edu-platform-nginx:0.3.0-m3
+    image: edu-platform-nginx:0.4.0-m4
     ports:
       # Host port is overridable so isolated projects (browser tests) can run
       # beside development: NGINX_PORT=8081 docker compose -p other ...
@@ -157,7 +162,7 @@ services:
     build:
       context: ..
       dockerfile: docker/drm-fixture/Dockerfile
-    image: edu-platform-drm-fixture:0.3.0-m3
+    image: edu-platform-drm-fixture:0.4.0-m4
     profiles: ["browser"]
     environment:
       PORT: 8090
@@ -182,7 +187,7 @@ services:
     build:
       context: ..
       dockerfile: docker/browser/Dockerfile
-    image: edu-platform-browser:0.3.0-m3
+    image: edu-platform-browser:0.4.0-m4
     profiles: ["browser"]
     environment:
       BASE_URL: http://nginx:8080

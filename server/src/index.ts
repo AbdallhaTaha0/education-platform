@@ -9,6 +9,7 @@ import { getPrisma, closePrisma } from './infra/prisma.js';
 import { describeDrmConnection } from './infra/drm.js';
 import { createDrmClient } from './modules/catalog/drmClient.js';
 import { startDeletionReconciler } from './modules/catalog/deletion/reconciler.js';
+import { startProofCleanupScheduler } from './modules/wallet/cleanup/scheduler.js';
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ async function main(): Promise<void> {
   // Durable deletion resume: pending operations survive restarts via PostgreSQL.
   // Cross-replica ownership uses a token-checked Redis lease per operation.
   const reconciler = startDeletionReconciler(prisma, config, createDrmClient, redisClient, 15000);
+  const proofCleanup = startProofCleanupScheduler(prisma);
   const server: Server = await new Promise((resolve, reject) => {
     const listener = app.listen(config.port, () => resolve(listener));
     listener.on('error', reject);
@@ -60,6 +62,7 @@ async function main(): Promise<void> {
       void (async () => {
         try {
           reconciler.stop();
+          proofCleanup.stop();
           await Promise.all([closePostgres(postgresPool), closeRedis(redisClient), closePrisma()]);
           logger.info('connections closed; exiting');
           clearTimeout(force);

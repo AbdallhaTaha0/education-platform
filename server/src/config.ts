@@ -16,6 +16,24 @@ export const DRM_RETRIES_DEFAULT = 2;
 export const DRM_RETRIES_MIN = 0;
 export const DRM_RETRIES_MAX = 3;
 
+/** M4 approved manual-funding channel identifier. */
+export type PaymentChannelId = 'INSTAPAY' | 'BANK_TRANSFER' | 'MOBILE_WALLET';
+
+export const PAYMENT_CHANNEL_IDS: PaymentChannelId[] = ['INSTAPAY', 'BANK_TRANSFER', 'MOBILE_WALLET'];
+
+/**
+ * M4 receiving-channel configuration. Values are deployment configuration
+ * (receiving identifiers + localized student instructions), never code.
+ * Absent/empty means payments are explicitly UNCONFIGURED: submission and
+ * instruction endpoints fail with a safe category instead of guessing.
+ */
+export interface PaymentChannelConfig {
+  channel: PaymentChannelId;
+  accountLabel: string;
+  instructionsAr: string;
+  instructionsEn: string;
+}
+
 export interface ServerConfig {
   nodeEnv: string;
   port: number;
@@ -44,6 +62,8 @@ export interface ServerConfig {
   /** Secure cookie flag. Production requires explicit true. */
   cookieSecure: boolean;
   argon2: Argon2Params;
+  /** M4 manual-funding channels. Empty array = explicitly unconfigured. */
+  paymentChannels: PaymentChannelConfig[];
 }
 
 function parsePort(raw: string | undefined): number {
@@ -115,6 +135,51 @@ function parseOrigins(raw: string): string[] {
     }
   }
   return origins;
+}
+
+function parsePaymentChannels(env: NodeJS.ProcessEnv): PaymentChannelConfig[] {
+  const raw = optionalEnv(env, 'PAYMENT_CHANNELS');
+  // Absent configuration is an explicit unconfigured state, not a startup
+  // error: M4 endpoints report PAYMENT_UNCONFIGURED instead of guessing
+  // receiving identifiers. Malformed configuration fails startup closed.
+  if (raw === undefined) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error('Invalid PAYMENT_CHANNELS (must be a JSON array).');
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0 || parsed.length > 3) {
+    throw new Error('Invalid PAYMENT_CHANNELS (expected a JSON array of 1-3 channels).');
+  }
+  const seen = new Set<string>();
+  return parsed.map((entry: unknown, index: number) => {
+    const where = `PAYMENT_CHANNELS[${index}]`;
+    if (typeof entry !== 'object' || entry === null) {
+      throw new Error(`Invalid ${where} (expected an object).`);
+    }
+    const { channel, accountLabel, instructionsAr, instructionsEn } = entry as Record<string, unknown>;
+    if (channel !== 'INSTAPAY' && channel !== 'BANK_TRANSFER' && channel !== 'MOBILE_WALLET') {
+      throw new Error(`Invalid ${where}.channel (expected INSTAPAY, BANK_TRANSFER or MOBILE_WALLET).`);
+    }
+    if (seen.has(channel)) throw new Error(`Invalid ${where}.channel (duplicate channel ${channel}).`);
+    seen.add(channel);
+    for (const [field, value, max] of [
+      ['accountLabel', accountLabel, 120],
+      ['instructionsAr', instructionsAr, 2000],
+      ['instructionsEn', instructionsEn, 2000],
+    ] as const) {
+      if (typeof value !== 'string' || value.trim().length === 0 || value.length > max) {
+        throw new Error(`Invalid ${where}.${field} (expected 1-${max} chars).`);
+      }
+    }
+    return {
+      channel,
+      accountLabel: (accountLabel as string).trim(),
+      instructionsAr: (instructionsAr as string).trim(),
+      instructionsEn: (instructionsEn as string).trim(),
+    };
+  });
 }
 
 function parseIdentifierValue(raw: string | undefined, name: string): string {
@@ -230,7 +295,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     redisUrl,
     logLevel: env['LOG_LEVEL'] ?? 'info',
     serviceName: 'education-platform-server',
-    serviceVersion: env['SERVICE_VERSION'] ?? '0.3.0-m3',
+    serviceVersion: env['SERVICE_VERSION'] ?? '0.4.0-m4',
     readyTimeoutMs: parsePositiveInt(env['READY_TIMEOUT_MS'], 2000, 'READY_TIMEOUT_MS'),
     drmBaseUrl,
     drmClientId,
@@ -244,6 +309,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     allowedOrigins: parseOrigins(requiredEnv(env, 'ALLOWED_ORIGINS', 'exact approved origins for identity requests')),
     cookieSecure: cookieSecureRaw === 'true',
     argon2,
+    paymentChannels: parsePaymentChannels(env),
   };
 }
 

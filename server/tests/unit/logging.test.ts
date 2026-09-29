@@ -64,6 +64,7 @@ const config: ServerConfig = {
   allowedOrigins: ['http://localhost:8080'],
   cookieSecure: false,
   argon2: { memoryKb: 8192, timeCost: 2, parallelism: 1 },
+  paymentChannels: [],
 };
 
 describe('sensitive header redaction', () => {

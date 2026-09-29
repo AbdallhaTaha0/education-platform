@@ -154,7 +154,7 @@ async function main() {
     const storedValues = [...Object.values(store.ls), ...Object.values(store.ss)].join('\n');
     const cookieValues = [access && access.value, refresh && refresh.value].filter(Boolean).join('\n');
     const leaks = cookieValues.split('\n').filter((v) => v && storedValues.includes(v));
-    check('localStorage holds only the language preference', Object.keys(store.ls).every((k) => k === 'edu-platform-lang'), JSON.stringify(Object.keys(store.ls)));
+    check('localStorage holds only namespaced non-sensitive prefs', Object.keys(store.ls).every((k) => k === 'edu-platform-lang' || k === 'edu-platform-theme'), JSON.stringify(Object.keys(store.ls)));
     check('sessionStorage empty', Object.keys(store.ss).length === 0);
     check('IndexedDB empty', Array.isArray(store.idb) && store.idb.length === 0, JSON.stringify(store.idb));
     check('no cookie values in web storage', leaks.length === 0);
@@ -590,10 +590,184 @@ async function main() {
     check('deletion retry completes', true);
     await shot(page, 'm3-deletion-ar.png');
 
+    // 19. M4 wallet, purchase, and theme journeys (Arabic UI).
+    const themeState = () => page.evaluate(() => ({
+      theme: document.documentElement.dataset.theme || '',
+      stored: (() => { try { return window.localStorage.getItem('edu-platform-theme'); } catch { return null; } })(),
+    }));
+    const contrastRatio = () => page.evaluate(() => {
+      const parse = (s) => {
+        const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(s || '');
+        return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : [0, 0, 0];
+      };
+      const lum = ([r, g, b]) => {
+        const f = (v) => {
+          const c = v / 255;
+          return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+        };
+        return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+      };
+      const css = getComputedStyle(document.body);
+      const l1 = lum(parse(css.color));
+      const l2 = lum(parse(css.backgroundColor));
+      const [hi, lo] = l1 > l2 ? [l1, l2] : [l2, l1];
+      return (hi + 0.05) / (lo + 0.05);
+    });
+    const themeToggle = () => page.evaluate(() => {
+      const btn = document.querySelector('header button[aria-label]');
+      if (!btn) return false;
+      btn.click();
+      return true;
+    });
+
+    // 19a. Dark is the default; toggle to light persists without flash.
+    await page.goto(`${BASE_URL}/#/wallet`, { waitUntil: 'networkidle0', timeout: 60000 });
+    await new Promise((r) => setTimeout(r, 800));
+    let theme = await themeState();
+    check('dark theme is the default', theme.theme === 'dark', theme.theme);
+    check('dark body contrast meets AA', (await contrastRatio()) >= 4.5, String(await contrastRatio()));
+    await shot(page, 'm4-wallet-dark-ar.png');
+    check('theme toggle present', await themeToggle());
+    await new Promise((r) => setTimeout(r, 500));
+    theme = await themeState();
+    check('light theme applies and persists', theme.theme === 'light' && theme.stored === 'light', `${theme.theme}/${theme.stored}`);
+    check('light body contrast meets AA', (await contrastRatio()) >= 4.5, String(await contrastRatio()));
+    await shot(page, 'm4-wallet-light-ar.png');
+    await page.reload({ waitUntil: 'networkidle0', timeout: 60000 });
+    theme = await themeState();
+    check('light theme survives reload without flash', theme.theme === 'light', theme.theme);
+    await themeToggle();
+    await new Promise((r) => setTimeout(r, 300));
+
+    // 19b. Student wallet journey in an isolated context.
+    const studentCtx = await browser.createBrowserContext();
+    const spage = await studentCtx.newPage();
+    await spage.setViewport({ width: 1440, height: 900 });
+    await spage.goto(`${BASE_URL}/#/login`, { waitUntil: 'networkidle0', timeout: 60000 });
+    await spage.type('#login-id', email);
+    await spage.type('#login-password', password);
+    await Promise.all([
+      spage.click('.form-card form button[type="submit"]'),
+      spage.waitForFunction(() => window.location.hash === '#/account', { timeout: 15000 }),
+    ]);
+    check('student signs in for wallet journey', true);
+    await spage.goto(`${BASE_URL}/#/wallet`, { waitUntil: 'networkidle0', timeout: 60000 });
+    await new Promise((r) => setTimeout(r, 1000));
+    const walletText = await spage.evaluate(() => document.body.textContent);
+    check('wallet shows balance', /ج\.م|EGP/.test(walletText));
+    await spage.goto(`${BASE_URL}/#/wallet/recharge`, { waitUntil: 'networkidle0', timeout: 60000 });
+    await new Promise((r) => setTimeout(r, 800));
+    const rechargeRef = uniq('m4ref');
+    await spage.type('#rch-amount', '600');
+    await spage.waitForFunction(() => !!document.querySelector('#rch-channel option[value="INSTAPAY"]'), { timeout: 15000 });
+    await spage.select('#rch-channel', 'INSTAPAY');
+    await spage.type('#rch-reference', rechargeRef);
+    await spage.type('#rch-sender', 'طالب متصفح');
+    await spage.type('#rch-phone', '01512345678');
+    await spage.evaluate(() => {
+      const input = document.querySelector('#rch-date');
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+      setter.call(input, '2026-09-20');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const proofInputs = await spage.$$('#rch-proof');
+    check('proof file input present', proofInputs.length === 1, String(proofInputs.length));
+    await proofInputs[0].uploadFile('/srv/browser/fixtures/receipt.jpg');
+    await spage.evaluate(() => {
+      const btns = [...document.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'إرسال الطلب');
+      btns[0].click();
+    });
+    await spage.waitForFunction(() => document.body.textContent.includes('تم إرسال الطلب'), { timeout: 30000 });
+    check('recharge request submits without auto-credit language', true);
+    const noCredit = await spage.evaluate(async (base) => {
+      const res = await fetch(`${base}/api/wallet`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      return (await res.json()).data.balancePiastres;
+    }, BASE_URL);
+    check('pending request creates zero credit', noCredit === 0, String(noCredit));
+
+    // 19c. Student cannot open proof bytes (admin-only endpoint).
+    const proofProbe = await spage.evaluate(async (base) => {
+      const list = await fetch(`${base}/api/wallet/recharge-requests`, { credentials: 'include', headers: { Accept: 'application/json' } }).then((r) => r.json());
+      const id = list.data.requests[0].id;
+      const proof = await fetch(`${base}/api/admin/recharge-requests/${id}/proof`, { credentials: 'include' });
+      return { status: proof.status, id };
+    }, BASE_URL);
+    check('student proof download denied', proofProbe.status === 403, String(proofProbe.status));
+
+    // 19d. Admin reviews and approves via UI dialog (main admin page).
+    await page.goto(`${BASE_URL}/#/admin/recharge`, { waitUntil: 'networkidle0', timeout: 60000 });
+    await new Promise((r) => setTimeout(r, 1200));
+    const queueHas = await page.evaluate((ref) => document.body.textContent.includes(ref.toUpperCase()), rechargeRef);
+    check('admin queue shows the request', queueHas, rechargeRef);
+    await page.evaluate(() => {
+      const btns = [...document.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'مراجعة');
+      btns[0].click();
+    });
+    await page.waitForFunction(() => !!document.querySelector('[role="dialog"]'), { timeout: 15000 });
+    const dialogFocus = await page.evaluate(() => !!document.querySelector('[role="dialog"]')?.contains(document.activeElement));
+    check('review dialog takes focus', dialogFocus);
+    await page.evaluate(() => {
+      const dlg = document.querySelector('[role="dialog"]');
+      const box = [...dlg.querySelectorAll('input[type="checkbox"]')][0];
+      if (box && !box.checked) box.click();
+    });
+    await page.evaluate(() => {
+      const btns = [...document.querySelectorAll('[role="dialog"] button')].filter((b) => b.textContent.trim() === 'تأكيد المراجعة');
+      btns[0].click();
+    });
+    await page.waitForFunction(() => document.body.textContent.includes('تم القبول وإضافة الرصيد'), { timeout: 30000 });
+    check('admin approval credits via dialog', true);
+    await page.keyboard.press('Escape');
+    await new Promise((r) => setTimeout(r, 400));
+    const dialogClosed = await page.evaluate(() => !document.querySelector('[role="dialog"]'));
+    check('dialog closes on Escape', dialogClosed);
+    const credited = await spage.evaluate(async (base) => {
+      const res = await fetch(`${base}/api/wallet`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      return (await res.json()).data.balancePiastres;
+    }, BASE_URL);
+    check('wallet credited exactly 600 EGP', credited === 60000, String(credited));
+
+    // 19e. Student purchases the workflow course plan explicitly.
+    const buyPlanId = await page.evaluate(async (base, cid) => {
+      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      const course = (await res.json()).data.course;
+      return course.plans.length > 0 ? course.plans[0].id : '';
+    }, BASE_URL, courseId);
+    check('workflow plan available for purchase', buyPlanId !== '');
+    await spage.goto(`${BASE_URL}/#/purchase/${buyPlanId}`, { waitUntil: 'networkidle0', timeout: 60000 });
+    await new Promise((r) => setTimeout(r, 1200));
+    const reviewText = await spage.evaluate(() => document.body.textContent);
+    check('purchase review shows trusted price', /600/.test(reviewText) && /ج\.م|EGP/.test(reviewText));
+    await spage.evaluate(() => {
+      const btns = [...document.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'تأكيد الشراء');
+      btns[0].click();
+    });
+    await spage.waitForFunction(() => document.body.textContent.includes('إيصال الشراء'), { timeout: 30000 });
+    check('explicit purchase yields a receipt', true);
+    await shot(spage, 'm4-receipt-ar.png');
+    const afterBuy = await spage.evaluate(async (base) => {
+      const res = await fetch(`${base}/api/wallet`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      return (await res.json()).data.balancePiastres;
+    }, BASE_URL);
+    check('balance debited exactly once', afterBuy === 0, String(afterBuy));
+
+    // 19f. 390px wallet/recharge/purchase without overflow.
+    const mob4 = await studentCtx.newPage();
+    await mob4.setViewport({ width: 390, height: 844, isMobile: true });
+    for (const [label, hash] of [['wallet', '#/wallet'], ['recharge', '#/wallet/recharge']]) {
+      await mob4.goto(`${BASE_URL}/${hash}`, { waitUntil: 'networkidle0', timeout: 60000 });
+      await new Promise((r) => setTimeout(r, 800));
+      const overflow = await mob4.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+      check(`mobile ${label} no overflow`, overflow <= 1, `overflow=${overflow}`);
+    }
+    await mob4.close();
+    await spage.close();
+    await studentCtx.close();
+
     // 18. No auth/DRM material in storage or bundles.
     const store2 = await storageAudit(page);
     const lsKeys = Object.keys(store2.ls);
-    check('browser storage holds only language', lsKeys.every((k) => k === 'edu-platform-lang'), JSON.stringify(lsKeys));
+    check('browser storage holds only namespaced prefs', lsKeys.every((k) => k === 'edu-platform-lang' || k === 'edu-platform-theme'), JSON.stringify(lsKeys));
     const bundleLeak = await page.evaluate(async (base) => {
       const res = await fetch(`${base}/`, { credentials: 'include' });
       const html = await res.text();

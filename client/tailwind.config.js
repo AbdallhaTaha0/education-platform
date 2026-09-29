@@ -8,16 +8,18 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: { DEFAULT: '#0F766E', hover: '#115E59' },
-        ink: '#142D4E',
-        canvas: '#F7F9FC',
-        surface: '#FFFFFF',
-        muted: '#526176',
-        border: '#DCE3EC',
-        accent: '#F2B84B',
-        success: { fg: '#166534', bg: '#DCFCE7' },
-        pending: { fg: '#92400E', bg: '#FEF3C7' },
-        error: { fg: '#B91C1C', bg: '#FEE2E2' },
+        primary: { DEFAULT: 'var(--color-primary)', hover: 'var(--color-primary-hover)', strong: 'var(--color-primary-strong)' },
+        ink: 'var(--color-ink)',
+        canvas: 'var(--color-bg)',
+        surface: 'var(--color-surface)',
+        elevated: 'var(--color-elevated)',
+        muted: 'var(--color-muted)',
+        border: 'var(--color-border)',
+        accent: 'var(--color-accent)',
+        focus: 'var(--color-focus)',
+        success: { fg: 'var(--color-success-fg)', bg: 'var(--color-success-bg)' },
+        pending: { fg: 'var(--color-pending-fg)', bg: 'var(--color-pending-bg)' },
+        error: { fg: 'var(--color-error-fg)', bg: 'var(--color-error-bg)' },
       },
       fontFamily: {
         arabic: ['"Noto Sans Arabic"', '"Segoe UI"', 'Tahoma', 'Arial', 'sans-serif'],

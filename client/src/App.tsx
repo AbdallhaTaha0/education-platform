@@ -2,14 +2,20 @@ import { useCallback, useEffect, useState } from 'react';
 import { AuthProvider } from './auth';
 import { Container } from './components/ui/Card';
 import { useLang } from './i18n';
+import { ThemeProvider } from './theme';
 import { Header } from './components/layout/Header';
-import { adminCourseIdFromHash, routeFromHash, slugFromHash, type Route } from './routes';
+import { adminCourseIdFromHash, planIdFromHash, routeFromHash, slugFromHash, type Route } from './routes';
 import { AccountScreen, AdminScreen, LoginScreen, RegisterScreen } from './screens';
 import { PublicCatalogPage } from './features/catalog/pages/PublicCatalogPage';
 import { OfferPage } from './features/catalog/pages/OfferPage';
 import { AdminListPage } from './features/catalog/pages/AdminListPage';
 import { AdminDetailPage } from './features/catalog/pages/AdminDetailPage';
 import { HomePage } from './features/home/pages/HomePage';
+import { WalletPage } from './features/wallet/pages/WalletPage';
+import { RechargePage } from './features/wallet/pages/RechargePage';
+import { AdminRechargePage } from './features/wallet/pages/AdminRechargePage';
+import { PurchasePage } from './features/purchase/pages/PurchasePage';
+import { PurchaseHistoryPage } from './features/purchase/pages/PurchaseHistoryPage';
 
 function Shell(): JSX.Element {
   const { t, setLang } = useLang();
@@ -72,6 +78,11 @@ function Shell(): JSX.Element {
           </section>
         </main>
       ) : null}
+      {route === 'wallet' ? <WalletPage go={go} /> : null}
+      {route === 'wallet-recharge' ? <RechargePage go={go} /> : null}
+      {route === 'purchases' ? <PurchaseHistoryPage /> : null}
+      {route === 'purchase' ? <PurchasePage planId={planIdFromHash()} go={go} /> : null}
+      {route === 'admin-recharge' ? <AdminRechargePage /> : null}
       <footer className="mt-12 border-t border-border py-6 text-sm text-muted">
         <Container>
           <p>{t.footer}</p>
@@ -83,8 +94,10 @@ function Shell(): JSX.Element {
 
 export default function App(): JSX.Element {
   return (
-    <AuthProvider>
-      <Shell />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <Shell />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

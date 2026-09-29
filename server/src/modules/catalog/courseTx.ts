@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { ApiError } from '../identity/errors.js';
-import { lockCourseRow } from './locks.js';
+import { lockCourseRow, lockCourseRowShared } from './locks.js';
 import type { TxClient } from './types.js';
 import { assertUuid } from './validation.js';
 
@@ -17,6 +17,16 @@ export async function withCourseLock<T>(prisma: PrismaClient, courseId: string, 
   assertUuid(courseId, 'courseId');
   return prisma.$transaction(async (tx) => {
     await lockCourseRow(tx, courseId);
+    return fn(tx);
+  });
+}
+
+/** Purchase-side counterpart: shared locks allow concurrent buyers but block
+ * archive, plan mutation and deletion until the purchase snapshot commits. */
+export async function withCourseReadLock<T>(prisma: PrismaClient, courseId: string, fn: (tx: TxClient) => Promise<T>): Promise<T> {
+  assertUuid(courseId, 'courseId');
+  return prisma.$transaction(async (tx) => {
+    await lockCourseRowShared(tx, courseId);
     return fn(tx);
   });
 }
