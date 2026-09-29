@@ -12,16 +12,17 @@
 // by the m1_init migration and by real SELECT/PING readiness checks, not by
 // invented domain tables.
 
-// Platform Prisma configuration (M2 adds identity tables).
+// Platform Prisma configuration (M2 identity + M3 catalog).
 //
 // Prisma owns ONLY platform PostgreSQL tables. It must never manage the
 // external DRM database, its tables, or its migrations, and platform code
 // must never use DRM database credentials.
 //
-// M2 identity models (User, AuthSession, RefreshToken) are the minimum
-// needed for cookie authentication, server sessions, refresh rotation and
-// role authorization. Wallet/catalog/purchase models arrive with their own
-// milestones, migrations, and acceptance tests.
+// M2 identity models (User, AuthSession, RefreshToken) provide cookie
+// authentication. M3 adds the bilingual catalog (Course → Sections →
+// Lessons), SubscriptionPlan with exact EGP piastres + fixed days, one
+// opaque MediaMapping per lesson, durable CatalogDeletion* evidence, and
+// AuditEvent. Wallet/purchase/subscription models arrive in later milestones.
 
 generator client {
   provider = "prisma-client-js"
@@ -87,4 +88,192 @@ model RefreshToken {
   createdAt  DateTime  @default(now())
 
   @@index([sessionId])
+}
+
+/// M3 catalog lifecycle. Only PUBLISHED with no pending deletion is public.
+/// ARCHIVED stores priorStatus to restore deterministically after revalidation.
+enum CourseStatus {
+  DRAFT
+  PROCESSING
+  READY
+  PUBLISHED
+  ARCHIVED
+}
+
+/// Local media lifecycle. Maps from DRM states:
+/// UPLOADED → UPLOAD_PENDING; PROCESSING/TRANCODING/PACKAGING → PROCESSING;
+/// READY → READY; FAILED → FAILED; DELETING → DELETION_PENDING;
+/// DELETE_FAILED → DELETION_FAILED. UNREGISTERED is the pre-registration
+/// placeholder (no row exists yet in practice; kept for state-matrix tests).
+enum MediaState {
+  UNREGISTERED
+  UPLOAD_PENDING
+  PROCESSING
+  READY
+  FAILED
+  DELETION_PENDING
+  DELETION_FAILED
+}
+
+/// Durable platform deletion operation state.
+enum CatalogDeletionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+/// Permanent-deletion target type snapshot.
+enum CatalogDeletionTarget {
+  COURSE
+  SECTION
+  LESSON
+}
+
+model Course {
+  id                  String       @id @default(uuid())
+  slug                String       @unique
+  titleAr             String
+  titleEn             String
+  descriptionAr       String
+  descriptionEn       String
+  status              CourseStatus @default(DRAFT)
+  priorStatus         CourseStatus?
+  publishedAt         DateTime?
+  archivedAt          DateTime?
+  deletionRequestedAt DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  sections            CourseSection[]
+  plans               SubscriptionPlan[]
+
+  @@index([status])
+  @@index([deletionRequestedAt])
+}
+
+model CourseSection {
+  id        String   @id @default(uuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  titleAr   String
+  titleEn   String
+  position  Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lessons   Lesson[]
+
+  @@unique([courseId, position])
+  @@index([courseId, position])
+}
+
+model Lesson {
+  id        String        @id @default(uuid())
+  sectionId String
+  section   CourseSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  titleAr   String
+  titleEn   String
+  position  Int
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  media     MediaMapping?
+
+  @@unique([sectionId, position])
+  @@index([sectionId, position])
+}
+
+/// Exact EGP prices in piastres (integer only, no floats) + fixed days.
+/// previousPricePiastres null disables the visual offer; when present it
+/// must be strictly greater than currentPricePiastres. durationDays 1–3650.
+model SubscriptionPlan {
+  id                    String   @id @default(uuid())
+  courseId              String
+  course                Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  currentPricePiastres  Int
+  previousPricePiastres Int?
+  durationDays          Int
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@index([courseId])
+}
+
+/// One opaque external DRM mapping per lesson. Never persists signed upload
+/// URLs, storage keys, client secrets, or DRM internals. errorCategory is a
+/// safe token (e.g. TIMEOUT/NETWORK/SERVER/VALIDATION), never raw bodies.
+model MediaMapping {
+  id                String     @id @default(uuid())
+  lessonId          String     @unique
+  lesson            Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  externalAssetId   String     @unique
+  assetId           String?    @unique
+  status            MediaState @default(UPLOAD_PENDING)
+  idempotencyKey    String     @unique
+  uploadCompletedAt DateTime?
+  lastSyncedAt      DateTime?
+  errorCategory     String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@index([status])
+  @@index([assetId])
+}
+
+/// Durable catalog deletion operation. No FK to Course/Section/Lesson so
+/// evidence survives after target rows are gone; targetId is a snapshot.
+model CatalogDeletionOperation {
+  id            String                  @id @default(uuid())
+  targetType    CatalogDeletionTarget
+  targetId      String
+  /// Owning course for course-scoped active-operation guard + visibility
+  /// recovery. NULL only for legacy evidence whose target is already gone.
+  courseId      String?
+  requestedBy   String
+  status        CatalogDeletionStatus   @default(PENDING)
+  errorCategory String?
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  completedAt   DateTime?
+  assets        CatalogDeletionAsset[]
+
+  @@index([targetType, targetId])
+  @@index([status])
+  @@index([courseId])
+}
+
+/// Per-asset deletion evidence snapshot. drmDeletionId is the DRM
+/// media-deletions operation id; lastState is the last observed DRM state.
+model CatalogDeletionAsset {
+  id             String                    @id @default(uuid())
+  operationId    String
+  operation      CatalogDeletionOperation  @relation(fields: [operationId], references: [id], onDelete: Cascade)
+  mappingId      String
+  drmAssetId     String?
+  externalAssetId String
+  drmDeletionId  String?
+  lastState      String?
+  attemptCount   Int                       @default(0)
+  lastCheckedAt  DateTime?
+  errorCategory  String?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+
+  @@index([operationId])
+  @@index([drmDeletionId])
+}
+
+/// Sanitized audit trail. metadata is JSON but must never contain cookies,
+/// auth headers, secrets, signed URLs, credentials, storage keys, or raw
+/// external bodies — enforced in service code + tests.
+model AuditEvent {
+  id         String   @id @default(uuid())
+  actorUserId String
+  action     String
+  entityType String
+  entityId   String
+  createdAt  DateTime @default(now())
+  metadata   Json?
+
+  @@index([actorUserId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
 }

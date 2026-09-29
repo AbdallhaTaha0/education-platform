@@ -17,4 +17,4 @@ Start operational and security checks in each milestone, not only M7. M1 does no
 
 ## Next step
 
-M1 is accepted at revision `fce352f`. M2 identity and bilingual shell are accepted after independent Docker verification on 2026-09-28. M3 catalog/media work remains unauthorized until the owner starts that milestone; no milestone authorizes edits inside the external DRM package.
+M1 is accepted at revision `fce352f`. M2 identity and bilingual shell are accepted after independent Docker verification on 2026-09-28. M3 catalog/media work and the explicitly authorized bounded DRM recovery/job-status prerequisites were independently accepted for their locally verified scope on 2026-09-29. Live R2/real-DRM verification remains blocked, and no general milestone authorizes unrelated edits inside the external DRM package.

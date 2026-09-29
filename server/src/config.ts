@@ -9,6 +9,13 @@
 import type { Argon2Params } from './modules/identity/password.js';
 import { ARGON2_MAXIMUMS, ARGON2_MINIMUMS, PRODUCTION_ARGON2 } from './modules/identity/password.js';
 
+export const DRM_TIMEOUT_DEFAULT_MS = 5000;
+export const DRM_TIMEOUT_MIN_MS = 250;
+export const DRM_TIMEOUT_MAX_MS = 30000;
+export const DRM_RETRIES_DEFAULT = 2;
+export const DRM_RETRIES_MIN = 0;
+export const DRM_RETRIES_MAX = 3;
+
 export interface ServerConfig {
   nodeEnv: string;
   port: number;
@@ -23,6 +30,9 @@ export interface ServerConfig {
   drmBaseUrl?: string;
   drmClientId?: string;
   drmClientSecret?: string;
+  /** Bounded DRM HTTP timeout (ms) and retry budget (M3). */
+  drmRequestTimeoutMs: number;
+  drmMaxRetries: number;
   /** Identity/auth settings below. Production fails closed on any weakness. */
   isProduction: boolean;
   /** Strong server-only access-token signing secret (min 32 chars). */
@@ -49,6 +59,21 @@ function parsePositiveInt(raw: string | undefined, fallback: number, name: strin
   const value = Number(raw);
   if (!Number.isInteger(value) || value <= 0) {
     throw new Error(`Invalid ${name} (expected positive integer ms): ${JSON.stringify(raw)}`);
+  }
+  return value;
+}
+
+function parseBoundedInt(
+  raw: string | undefined,
+  fallback: number,
+  min: number,
+  max: number,
+  name: string,
+): number {
+  if (raw === undefined || raw === '') return fallback;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < min || value > max) {
+    throw new Error(`Invalid ${name} (expected integer ${min}–${max}): ${JSON.stringify(raw)}`);
   }
   return value;
 }
@@ -157,6 +182,47 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
       `Invalid Argon2 cost (maximum ${ARGON2_MAXIMUMS.memoryKb}/${ARGON2_MAXIMUMS.timeCost}/${ARGON2_MAXIMUMS.parallelism} memory-KiB/time/parallelism).`,
     );
   }
+  const drmBaseUrl = optionalEnv(env, 'DRM_BASE_URL');
+  const drmClientId = optionalEnv(env, 'DRM_CLIENT_ID');
+  const drmClientSecret = optionalEnv(env, 'DRM_CLIENT_SECRET');
+  const drmConfiguredCount = [drmBaseUrl, drmClientId, drmClientSecret].filter((v) => v !== undefined).length;
+  // All-or-none: partial DRM configuration fails startup in every env.
+  if (drmConfiguredCount > 0 && drmConfiguredCount < 3) {
+    throw new Error(
+      'Invalid DRM configuration (DRM_BASE_URL, DRM_CLIENT_ID and DRM_CLIENT_SECRET are all-or-none).',
+    );
+  }
+  const drmRequestTimeoutMs = parseBoundedInt(
+    env['DRM_REQUEST_TIMEOUT_MS'],
+    DRM_TIMEOUT_DEFAULT_MS,
+    DRM_TIMEOUT_MIN_MS,
+    DRM_TIMEOUT_MAX_MS,
+    'DRM_REQUEST_TIMEOUT_MS',
+  );
+  const drmMaxRetries = parseBoundedInt(
+    env['DRM_MAX_RETRIES'],
+    DRM_RETRIES_DEFAULT,
+    DRM_RETRIES_MIN,
+    DRM_RETRIES_MAX,
+    'DRM_MAX_RETRIES',
+  );
+  if (drmConfiguredCount === 3) {
+    let drmUrl: URL;
+    try {
+      drmUrl = new URL(drmBaseUrl as string);
+    } catch {
+      throw new Error('Invalid DRM_BASE_URL (must be a parseable HTTP/HTTPS URL).');
+    }
+    if (drmUrl.protocol !== 'http:' && drmUrl.protocol !== 'https:') {
+      throw new Error('Invalid DRM_BASE_URL (must be an HTTP/HTTPS URL).');
+    }
+    if (isProduction && drmUrl.protocol !== 'https:') {
+      throw new Error('Invalid DRM_BASE_URL (production requires an HTTPS base URL).');
+    }
+  }
+  if (isProduction && drmConfiguredCount === 0) {
+    throw new Error('Invalid DRM configuration (production requires DRM_BASE_URL, DRM_CLIENT_ID and DRM_CLIENT_SECRET).');
+  }
   return {
     nodeEnv,
     port: parsePort(env['PORT']),
@@ -164,11 +230,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     redisUrl,
     logLevel: env['LOG_LEVEL'] ?? 'info',
     serviceName: 'education-platform-server',
-    serviceVersion: env['SERVICE_VERSION'] ?? '0.2.0-m2',
+    serviceVersion: env['SERVICE_VERSION'] ?? '0.3.0-m3',
     readyTimeoutMs: parsePositiveInt(env['READY_TIMEOUT_MS'], 2000, 'READY_TIMEOUT_MS'),
-    drmBaseUrl: optionalEnv(env, 'DRM_BASE_URL'),
-    drmClientId: optionalEnv(env, 'DRM_CLIENT_ID'),
-    drmClientSecret: optionalEnv(env, 'DRM_CLIENT_SECRET'),
+    drmBaseUrl,
+    drmClientId,
+    drmClientSecret,
+    drmRequestTimeoutMs,
+    drmMaxRetries,
     isProduction,
     jwtSecret,
     authIssuer: parseIdentifierValue(env['AUTH_ISSUER'], 'AUTH_ISSUER'),

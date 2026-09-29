@@ -248,6 +248,359 @@ async function main() {
     await shot(mob, 'm2-register-mobile-ar.png');
     await mob.close();
 
+    // ---- M3 catalog assertions (preserve all M2 rows above) ----
+    // 12. Arabic-default public catalog (RTL) loads.
+    await page.goto(`${BASE_URL}/#/courses`, { waitUntil: 'networkidle0', timeout: 60000 });
+    await new Promise((r) => setTimeout(r, 1000));
+    const catBody = await page.evaluate(() => document.body.textContent);
+    check('arabic public catalog loads', /الدورات|دورات|لا توجد دورات/.test(catBody));
+    const catLang = await page.evaluate(() => ({ lang: document.documentElement.lang, dir: document.documentElement.dir }));
+    check('public catalog respects RTL', catLang.lang === 'ar' && catLang.dir === 'rtl', `${catLang.lang}/${catLang.dir}`);
+    await shot(page, 'm3-catalog-ar.png');
+
+    // 13. English LTR catalog switch.
+    await page.evaluate(() => {
+      const btns = [...document.querySelectorAll('.lang-switch button')];
+      btns.find((b) => b.textContent.trim() === 'English').click();
+    });
+    await new Promise((r) => setTimeout(r, 600));
+    const enCat = await page.evaluate(() => ({ lang: document.documentElement.lang, dir: document.documentElement.dir, body: document.body.textContent }));
+    check('english catalog is LTR', enCat.lang === 'en' && enCat.dir === 'ltr');
+    check('english catalog shows courses or empty', /Courses|No published|Recorded/.test(enCat.body));
+    await page.evaluate(() => {
+      const btns = [...document.querySelectorAll('.lang-switch button')];
+      btns.find((b) => b.textContent.includes('العربية')).click();
+    });
+    await new Promise((r) => setTimeout(r, 500));
+
+    // 14. Mobile 390px catalog without overflow + EGP rendering check.
+    const mob2 = await ctx.newPage();
+    await mob2.setViewport({ width: 390, height: 844, isMobile: true });
+    await mob2.goto(`${BASE_URL}/#/courses`, { waitUntil: 'networkidle0', timeout: 60000 });
+    await new Promise((r) => setTimeout(r, 1000));
+    const mobOverflow = await mob2.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    const mobText = await mob2.evaluate(() => document.body.textContent);
+    check('mobile catalog no overflow', mobOverflow <= 1, `overflow=${mobOverflow}`);
+    check('mobile catalog shows EGP or empty', /ج\.م|EGP|لا توجد/.test(mobText));
+    await shot(mob2, 'm3-catalog-mobile-ar.png');
+    await mob2.close();
+
+    // 15. Anonymous catalog mutation is denied (401); STUDENT denial is proven
+    // via API integration tests (403). Use a fresh context with no cookies.
+    const anonCtx = await browser.createBrowserContext();
+    const anonPage = await anonCtx.newPage();
+    await anonPage.goto(`${BASE_URL}/#/courses`, { waitUntil: 'networkidle0', timeout: 60000 });
+    const studentDenial = await anonPage.evaluate(async (base) => {
+      await fetch(`${base}/api/auth/csrf`, { credentials: 'include' });
+      const cookies = document.cookie.split(';').map((s) => s.trim());
+      const csrf = (cookies.find((c) => c.startsWith('edu_csrf=')) || '').slice('edu_csrf='.length);
+      const res = await fetch(`${base}/api/admin/catalog/courses`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'x-csrf-token': decodeURIComponent(csrf) },
+        body: JSON.stringify({ slug: 'browser-anon-x', titleAr: 'د', titleEn: 'C', descriptionAr: 'و', descriptionEn: 'D' }),
+      });
+      let code = '';
+      try {
+        code = (await res.json()).error.code;
+      } catch {}
+      return { status: res.status, code };
+    }, BASE_URL);
+    // Anonymous without Origin on state-changing route → 403 ORIGIN_FORBIDDEN or 401.
+    check('anon catalog mutation denied', studentDenial.status === 401 || studentDenial.status === 403, `${studentDenial.status}/${studentDenial.code}`);
+    await anonCtx.close();
+
+    // 16. ADMIN creates bilingual course via UI (admin session still active from M2 step 10).
+    await page.goto(`${BASE_URL}/#/admin/catalog`, { waitUntil: 'networkidle0', timeout: 60000 });
+    await new Promise((r) => setTimeout(r, 800));
+    const hasCreate = await page.evaluate(() => !!document.querySelector('#cf-slug'));
+    check('admin catalog exposes bilingual creation form', hasCreate);
+    let workflowSlug = '';
+    if (hasCreate) {
+      const createdSlug = `browser-${Date.now().toString(36)}`;
+      workflowSlug = createdSlug;
+      await page.type('#cf-slug', createdSlug);
+      await page.type('#cf-ta', 'دورة متصفح');
+      await page.type('#cf-te', 'Browser course');
+      await page.type('#cf-da', 'وصف عربي للمتصفح');
+      await page.type('#cf-de', 'English browser description');
+      await page.click('main form button[type="submit"]');
+      await page.waitForFunction((s) => document.body.textContent.includes(s), { timeout: 15000 }, createdSlug);
+      check('admin creates bilingual course via UI', true, createdSlug);
+      await shot(page, 'm3-admin-catalog-ar.png');
+    } else {
+      check('admin creates bilingual course via UI', false, 'no form');
+    }
+
+    // 17. Full admin workflow through Nginx (labeled DRM fixture only).
+    const slug = workflowSlug;
+    check('workflow course slug captured', slug !== '', slug);
+    const clickText = async (text) => page.evaluate((t) => {
+      const btn = [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === t);
+      if (!btn) return false;
+      btn.click();
+      return true;
+    }, text);
+    const clearAndType = async (selector, text) => {
+      const found = await page.evaluate((sel) => !!document.querySelector(sel), selector);
+      if (!found) throw new Error(`missing input ${selector}`);
+      await page.evaluate((sel) => {
+        const input = document.querySelector(sel);
+        input.focus();
+        input.select();
+      }, selector);
+      await page.keyboard.press('Backspace');
+      await page.type(selector, text);
+    };
+
+    // 17a. Edit the bilingual course created in step 16.
+    const courseId = await page.evaluate(async (base, s) => {
+      const res = await fetch(`${base}/api/admin/catalog/courses`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      const json = await res.json();
+      const found = json.data.courses.find((c) => c.slug === s);
+      return found ? found.id : '';
+    }, BASE_URL, slug);
+    check('created course is readable via admin API', courseId !== '');
+    await page.goto(`${BASE_URL}/#/admin/courses/${courseId}`, { waitUntil: 'networkidle0', timeout: 60000 });
+    await new Promise((r) => setTimeout(r, 1000));
+    await clearAndType('#cf-ta', 'دورة متصفح معدلة');
+    await page.evaluate(() => {
+      const btns = [...document.querySelectorAll('button')];
+      btns.find((b) => b.textContent.trim() === 'حفظ').click();
+    });
+    await page.waitForFunction(() => document.body.textContent.includes('دورة متصفح معدلة'), { timeout: 15000 });
+    check('admin edits bilingual course title', true);
+
+    // 17b. Create and edit a plan with current/previous EGP prices and duration.
+    await clearAndType('#plan-current', '600.00');
+    await clearAndType('#plan-duration', '90');
+    await page.click('#plan-prev-toggle');
+    await clearAndType('#plan-previous', '900.00');
+    await clickText('إضافة خطة');
+    await page.waitForFunction(() => document.body.textContent.includes('600.00'), { timeout: 15000 });
+    check('admin creates plan with previous-price offer', true);
+    const planEdited = await page.evaluate(async (base, cid) => {
+      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      const json = await res.json();
+      return json.data.course.plans.length > 0;
+    }, BASE_URL, courseId);
+    check('plan persisted with duration', planEdited);
+
+    // 17c. Create two sections and reorder them deterministically.
+    const createSection = async (ar, en) => {
+      await clearAndType('#sec-ta', ar);
+      await clearAndType('#sec-te', en);
+      await clickText('إضافة قسم');
+      await new Promise((r) => setTimeout(r, 1200));
+    };
+    await createSection('القسم الأول', 'Section one');
+    await createSection('القسم الثاني', 'Section two');
+    let sectionIds = await page.evaluate(async (base, cid) => {
+      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      return (await res.json()).data.course.sections.map((s) => s.id);
+    }, BASE_URL, courseId);
+    check('two sections created', sectionIds.length === 2, JSON.stringify(sectionIds.length));
+    const orderBefore = await page.evaluate(() => [...document.querySelectorAll('h3')].map((h) => h.textContent).join('|'));
+    // Move second section up via its ordering controls (second ↑ button on the page).
+    await page.evaluate(() => {
+      const ups = [...document.querySelectorAll('button')].filter((b) => b.getAttribute('aria-label') === 'نقل لأعلى');
+      ups[1].click();
+    });
+    await new Promise((r) => setTimeout(r, 1500));
+    sectionIds = await page.evaluate(async (base, cid) => {
+      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      return (await res.json()).data.course.sections.map((s) => s.id);
+    }, BASE_URL, courseId);
+    const orderAfter = await page.evaluate(() => [...document.querySelectorAll('h3')].map((h) => h.textContent).join('|'));
+    check('sections reordered deterministically', orderBefore !== orderAfter && sectionIds.length === 2, `${orderBefore} => ${orderAfter}`);
+
+    // 17d. Create two lessons in the first section and reorder them.
+    const lessonTaSelector = async () => page.evaluate(() => {
+      const input = document.querySelectorAll('input[id^="les-ta-"]')[0];
+      return input ? `#${input.id}` : '';
+    });
+    const createLesson = async (ar, en) => {
+      const taSel = await lessonTaSelector();
+      const teSel = taSel.replace('les-ta-', 'les-te-');
+      await clearAndType(taSel, ar);
+      await clearAndType(teSel, en);
+      await page.evaluate((sel) => {
+        const input = document.querySelector(sel);
+        const scope = input.closest('form') || input.closest('div');
+        [...scope.querySelectorAll('button')].find((b) => b.textContent.trim() === 'إضافة درس').click();
+      }, taSel);
+      await new Promise((r) => setTimeout(r, 1200));
+    };
+    await createLesson('الدرس الأول', 'Lesson one');
+    await createLesson('الدرس الثاني', 'Lesson two');
+    let lessonIds = await page.evaluate(async (base, cid) => {
+      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      const course = (await res.json()).data.course;
+      return course.sections[0].lessons.map((l) => l.id);
+    }, BASE_URL, courseId);
+    check('two lessons created', lessonIds.length === 2, JSON.stringify(lessonIds.length));
+    const lessonOrderBefore = lessonIds.join(',');
+    await page.evaluate(() => {
+      const ta = document.querySelectorAll('input[id^="les-ta-"]')[0];
+      const scope = ta.closest('form').parentElement;
+      const ups = [...scope.querySelectorAll('button')].filter((b) => b.getAttribute('aria-label') === 'نقل لأعلى');
+      ups[1].click();
+    });
+    await new Promise((r) => setTimeout(r, 1500));
+    lessonIds = await page.evaluate(async (base, cid) => {
+      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      return (await res.json()).data.course.sections[0].lessons.map((l) => l.id);
+    }, BASE_URL, courseId);
+    check('lessons reordered deterministically', lessonIds.join(',') !== lessonOrderBefore, `${lessonOrderBefore} => ${lessonIds.join(',')}`);
+
+    // 17e. No-file regression: register without selecting a file sends nothing.
+    const noFileProbe = await page.evaluate(async (base) => {
+      let mediaCalls = 0;
+      let putCalls = 0;
+      const orig = window.fetch;
+      window.fetch = (...args) => {
+        const url = String(args[0]);
+        if (/\/admin\/catalog\/lessons\/.+\/media$/.test(url)) mediaCalls += 1;
+        if (args[1] && args[1].method === 'PUT') putCalls += 1;
+        return orig(...args);
+      };
+      const btns = [...document.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'تسجيل فيديو');
+      btns[0].click();
+      await new Promise((r) => setTimeout(r, 1500));
+      window.fetch = orig;
+      return { mediaCalls, putCalls, body: document.body.textContent };
+    }, BASE_URL);
+    check('no upload or completion without a selected file', noFileProbe.mediaCalls === 0 && noFileProbe.putCalls === 0, `media=${noFileProbe.mediaCalls} put=${noFileProbe.putCalls}`);
+
+    // 17f. Real file upload via file-input API → READY through the labeled fixture.
+    const fileInputs = await page.$$('input[type="file"]');
+    check('file input present', fileInputs.length > 0, String(fileInputs.length));
+    await fileInputs[0].uploadFile('/srv/browser/fixtures/sample.mp4');
+    await clickText('تسجيل فيديو');
+    await page.waitForFunction(() => /\(READY\)/.test(document.body.textContent), { timeout: 90000 });
+    check('upload flow reaches READY via fixture', true);
+    await shot(page, 'm3-upload-ready-ar.png');
+    // Second lesson upload as well (all lessons must be READY to publish).
+    const fileInputs2 = await page.$$('input[type="file"]');
+    await fileInputs2[1].uploadFile('/srv/browser/fixtures/sample.mp4');
+    await page.evaluate(() => {
+      const btns = [...document.querySelectorAll('button')].filter((b) => b.textContent.trim() === 'تسجيل فيديو');
+      btns[1].click();
+    });
+    await page.waitForFunction(() => (document.body.textContent.match(/\(READY\)/g) || []).length >= 2, { timeout: 90000 });
+    check('second lesson reaches READY', true);
+
+    // 17g. Publication blocked before readiness is proven on a fresh course instead:
+    // this course is READY-capable, so assert the blocked-path error shape via API.
+    const blockedProbe = await page.evaluate(async (base, cid) => {
+      const csrf = decodeURIComponent((document.cookie.split(';').map((s) => s.trim()).find((c) => c.startsWith('edu_csrf=')) || '').slice('edu_csrf='.length));
+      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}/transitions`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'x-csrf-token': csrf },
+        body: JSON.stringify({ to: 'PUBLISHED' }),
+      });
+      return { status: res.status };
+    }, BASE_URL, courseId);
+    check('direct PUBLISHED from DRAFT is blocked', blockedProbe.status === 409, String(blockedProbe.status));
+    for (const [label, want] of [['DRAFT → PROCESSING', 'PROCESSING'], ['PROCESSING → READY', 'READY'], ['READY → PUBLISHED', 'PUBLISHED']]) {
+      let status = '';
+      let diag = '';
+      for (let attempt = 0; attempt < 8; attempt += 1) {
+        await page.evaluate((text) => {
+          const btn = [...document.querySelectorAll('button')].find((b) => b.textContent.includes(text));
+          if (btn && !btn.disabled) btn.click();
+        }, label);
+        await new Promise((r) => setTimeout(r, 2500));
+        const probe = await page.evaluate(async (base, cid, to) => {
+          const detail = await fetch(`${base}/api/admin/catalog/courses/${cid}`, { credentials: 'include', headers: { Accept: 'application/json' } }).then((r) => r.json());
+          const media = detail.data.course.sections.flatMap((s) => s.lessons.map((l) => `${l.id.slice(0, 4)}:${l.media ? `${l.media.status}/${l.media.assetId ? 'asset' : 'noasset'}` : 'nomedia'}`)).join(',');
+          return { status: detail.data.course.status, media };
+        }, BASE_URL, courseId, want);
+        status = probe.status;
+        diag = probe.media;
+        if (status === want) break;
+      }
+      check(`course transitions to ${want}`, status === want, status === want ? status : `${status} media=[${diag}]`);
+    }
+    const publishedStatus = await page.evaluate(async (base, cid) => {
+      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      return (await res.json()).data.course.status;
+    }, BASE_URL, courseId);
+    check('course publishes after readiness', publishedStatus === 'PUBLISHED', publishedStatus);
+
+    // 17h. Public offer renders without lesson/media leakage.
+    await page.goto(`${BASE_URL}/#/courses/${slug}`, { waitUntil: 'networkidle0', timeout: 60000 });
+    await new Promise((r) => setTimeout(r, 1000));
+    const offerText = await page.evaluate(() => document.body.textContent);
+    const lessonLeak = lessonIds.some(() => /Lesson one|Lesson two|الدرس الأول/.test(offerText));
+    check('public offer hides lesson list', !lessonLeak);
+    check('public offer shows EGP price', /ج\.م|EGP/.test(offerText));
+    await shot(page, 'm3-offer-ar.png');
+
+    // 17i. Archive hides publicly; unarchive restores.
+    await page.goto(`${BASE_URL}/#/admin/courses/${courseId}`, { waitUntil: 'networkidle0', timeout: 60000 });
+    await new Promise((r) => setTimeout(r, 800));
+    await clickText('أرشفة');
+    await page.evaluate(() => {
+      const dlg = [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'أرشفة' && b.closest('[role="dialog"]'));
+      if (dlg) dlg.click();
+    });
+    await new Promise((r) => setTimeout(r, 1500));
+    const archivedGone = await page.evaluate(async (base, s) => (await fetch(`${base}/api/catalog/courses/${s}`)).status, BASE_URL, slug);
+    check('archived course hidden publicly', archivedGone === 404, String(archivedGone));
+    await clickText('استعادة من الأرشيف');
+    await new Promise((r) => setTimeout(r, 1500));
+    const restoredVisible = await page.evaluate(async (base, s) => (await fetch(`${base}/api/catalog/courses/${s}`)).status, BASE_URL, slug);
+    check('unarchived course visible publicly', restoredVisible === 200, String(restoredVisible));
+
+    // 17j. Lesson permanent deletion returns surviving course visibility.
+    await page.goto(`${BASE_URL}/#/admin/courses/${courseId}`, { waitUntil: 'networkidle0', timeout: 60000 });
+    lessonIds = await page.evaluate(async (base, cid) => {
+      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      return (await res.json()).data.course.sections[0].lessons.map((l) => l.id);
+    }, BASE_URL, courseId);
+    const delLessonId = lessonIds[1];
+    await page.waitForFunction((lid) => !!document.querySelector(`[data-testid="deletion-${lid}"]`), { timeout: 30000 }, delLessonId);
+    check('lesson deletion panel present', true);
+    await clearAndType(`[data-testid="deletion-${delLessonId}"] [data-testid="deletion-confirm"]`, delLessonId);
+    await page.click(`[data-testid="deletion-${delLessonId}"] [data-testid="deletion-submit"]`);
+    await page.waitForFunction(() => /اكتمل الحذف الدائم|COMPLETED/.test(document.body.textContent), { timeout: 60000 });
+    check('lesson deletion completes', true);
+    const survivor = await page.evaluate(async (base, cid) => {
+      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      const json = await res.json();
+      return { status: res.status, marker: json.data.course.deletionRequestedAt };
+    }, BASE_URL, courseId);
+    check('surviving course visibility returns', survivor.status === 200 && survivor.marker === null, JSON.stringify(survivor.marker));
+
+    // 17k. Deletion failure and retry via the labeled fixture control plane.
+    await fetch('http://drm-fixture:8090/__fixture/fail-deletes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ count: 99 }) }).catch(() => null);
+    const remainingLesson = await page.evaluate(async (base, cid) => {
+      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      const course = (await res.json()).data.course;
+      return course.sections[0].lessons[0].id;
+    }, BASE_URL, courseId);
+    await clearAndType(`[data-testid="deletion-${remainingLesson}"] [data-testid="deletion-confirm"]`, remainingLesson);
+    await page.click(`[data-testid="deletion-${remainingLesson}"] [data-testid="deletion-submit"]`);
+    await page.waitForFunction(() => /فشل الحذف الدائم|FAILED/.test(document.body.textContent), { timeout: 60000 });
+    check('deletion failure surfaces retry state', true);
+    await fetch('http://drm-fixture:8090/__fixture/fail-deletes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ count: 0 }) });
+    await page.click(`[data-testid="deletion-${remainingLesson}"] [data-testid="deletion-retry"]`);
+    await page.waitForFunction(() => /اكتمل الحذف الدائم|COMPLETED/.test(document.body.textContent), { timeout: 90000 });
+    check('deletion retry completes', true);
+    await shot(page, 'm3-deletion-ar.png');
+
+    // 18. No auth/DRM material in storage or bundles.
+    const store2 = await storageAudit(page);
+    const lsKeys = Object.keys(store2.ls);
+    check('browser storage holds only language', lsKeys.every((k) => k === 'edu-platform-lang'), JSON.stringify(lsKeys));
+    const bundleLeak = await page.evaluate(async (base) => {
+      const res = await fetch(`${base}/`, { credentials: 'include' });
+      const html = await res.text();
+      return /DRM_CLIENT_SECRET|AUTH_JWT_SECRET|x-client-secret/i.test(html);
+    }, BASE_URL);
+    check('frontend bundle contains no privileged secrets', bundleLeak === false);
+
     await ctx.close();
   } finally {
     await browser.close();

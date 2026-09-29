@@ -14,6 +14,9 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { createHealthRouter } from './routes/health.js';
 import { createIdentityModule } from './modules/identity/index.js';
+import { createCatalogModule } from './modules/catalog/index.js';
+import type { DrmClient } from './modules/catalog/drmClient.js';
+import { createDrmClient } from './modules/catalog/drmClient.js';
 import type { Clock } from './modules/identity/tokens.js';
 
 export interface AppDependencies {
@@ -31,13 +34,15 @@ export interface AppTunables {
   logger?: Logger;
   /** Override the clock (used by tests to simulate token/session expiry). */
   clock?: Clock;
+  /** Override the DRM client factory (contract tests inject a fixture). */
+  drmFactory?: (cfg: ServerConfig) => DrmClient | null;
 }
 
 /**
  * Application factory (no listening sockets here; see index.ts).
- * Identity (M2) is an internal module mounted below; catalog, wallet,
- * purchases and learning arrive as further internal modules in their own
- * milestones — never as separate services.
+ * Identity (M2) and catalog/administration (M3) are internal modules of this
+ * single Express application — never separate services. Wallet, purchases
+ * and learning arrive as further internal modules in their own milestones.
  */
 export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Express {
   const app = express();
@@ -89,6 +94,25 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
   });
   app.use('/auth', identity.authRouter);
   app.use('/admin', identity.adminRouter);
+
+  // Catalog/administration (M3) is an internal module of the same app.
+  const catalog = createCatalogModule({
+    prisma: deps.prisma,
+    redis: deps.redisClient,
+    config: deps.config,
+    ...(tunables.clock ? { clock: tunables.clock } : {}),
+    ...(tunables.drmFactory ? { drmFactory: tunables.drmFactory } : { drmFactory: createDrmClient }),
+  });
+  app.set('catalog', {
+    prisma: deps.prisma,
+    redis: deps.redisClient,
+    config: deps.config,
+    drmFactory: tunables.drmFactory ?? createDrmClient,
+  });
+  // Public discovery (no auth) — only published offers.
+  app.use('/catalog', catalog.publicRouter);
+  // Admin hierarchy mounts under /admin (guards inside the router).
+  app.use('/admin', catalog.adminRouter);
 
   app.use(
     '/health',

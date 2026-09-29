@@ -18,6 +18,8 @@ describe('loadConfig', () => {
     expect(config.logLevel).toBe('info');
     expect(config.readyTimeoutMs).toBe(2000);
     expect(config.drmBaseUrl).toBeUndefined();
+    expect(config.drmRequestTimeoutMs).toBe(5000);
+    expect(config.drmMaxRetries).toBe(2);
   });
 
   it('accepts explicit valid values including optional DRM settings', () => {
@@ -28,6 +30,8 @@ describe('loadConfig', () => {
       COOKIE_SECURE: 'true',
       READY_TIMEOUT_MS: '1500',
       DRM_BASE_URL: 'https://drm.example.internal',
+      DRM_CLIENT_ID: 'test-client-01',
+      DRM_CLIENT_SECRET: 'test-secret-that-is-long-enough-0123456789',
     });
     expect(config.port).toBe(4000);
     expect(config.readyTimeoutMs).toBe(1500);
@@ -36,6 +40,38 @@ describe('loadConfig', () => {
     expect(config.cookieSecure).toBe(true);
     expect(config.jwtSecret).toBe(baseEnv.AUTH_JWT_SECRET);
     expect(config.allowedOrigins).toEqual(['http://localhost:8080']);
+  });
+
+  it('rejects partial DRM configuration (all-or-none)', () => {
+    expect(() => loadConfig({ ...baseEnv, DRM_BASE_URL: 'https://drm.example.internal' })).toThrow(/DRM/);
+    expect(() => loadConfig({ ...baseEnv, DRM_CLIENT_ID: 'abc12345' })).toThrow(/DRM/);
+    expect(() =>
+      loadConfig({ ...baseEnv, DRM_BASE_URL: 'https://x.example', DRM_CLIENT_ID: 'abc12345' }),
+    ).toThrow(/DRM/);
+  });
+
+  it('rejects out-of-range DRM timeout/retry bounds', () => {
+    expect(() => loadConfig({ ...baseEnv, DRM_REQUEST_TIMEOUT_MS: '10' })).toThrow(/DRM_REQUEST_TIMEOUT_MS/);
+    expect(() => loadConfig({ ...baseEnv, DRM_REQUEST_TIMEOUT_MS: '99999' })).toThrow(/DRM_REQUEST_TIMEOUT_MS/);
+    expect(() => loadConfig({ ...baseEnv, DRM_MAX_RETRIES: '-1' })).toThrow(/DRM_MAX_RETRIES/);
+    expect(() => loadConfig({ ...baseEnv, DRM_MAX_RETRIES: '9' })).toThrow(/DRM_MAX_RETRIES/);
+    const ok = loadConfig({ ...baseEnv, DRM_REQUEST_TIMEOUT_MS: '250', DRM_MAX_RETRIES: '0' });
+    expect(ok.drmRequestTimeoutMs).toBe(250);
+    expect(ok.drmMaxRetries).toBe(0);
+  });
+
+  it('requires HTTPS DRM URL and full credentials in production', () => {
+    expect(() =>
+      loadConfig({
+        ...baseEnv,
+        NODE_ENV: 'production',
+        COOKIE_SECURE: 'true',
+        DRM_BASE_URL: 'http://drm.example.internal',
+        DRM_CLIENT_ID: 'test-client-01',
+        DRM_CLIENT_SECRET: 'test-secret-that-is-long-enough-0123456789',
+      }),
+    ).toThrow(/HTTPS/);
+    expect(() => loadConfig({ ...baseEnv, NODE_ENV: 'production', COOKIE_SECURE: 'true' })).toThrow(/DRM/);
   });
 
   it('rejects missing required platform dependencies', () => {

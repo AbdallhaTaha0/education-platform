@@ -1,8 +1,8 @@
 {
   "name": "@education-platform/browser-tests",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "Containerized browser assertions for M2 identity flows (drives Chromium through Nginx).",
+  "description": "Containerized browser assertions for M3 catalog + M2 identity (Chromium through Nginx).",
   "type": "commonjs",
   "scripts": {
     "test": "node run.mjs"

@@ -1,8 +1,8 @@
 {
   "name": "@education-platform/server",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "Modular Express/TypeScript backend (M2: health + cookie identity module). One application image; replicas share it behind Nginx.",
+  "description": "Modular Express/TypeScript backend (M3: catalog + DRM adapter). One application image; replicas share it behind Nginx.",
   "type": "commonjs",
   "scripts": {
     "build": "prisma generate && tsc -p tsconfig.json",

@@ -1,0 +1,13 @@
+{
+  "name": "@education-platform/drm-fixture",
+  "version": "0.3.0",
+  "private": true,
+  "description": "TEST-ONLY labeled DRM HTTP contract fixture for browser verification. NEVER packaged into production runtime images. NOT real DRM or R2 evidence.",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

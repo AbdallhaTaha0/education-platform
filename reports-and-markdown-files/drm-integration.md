@@ -6,6 +6,8 @@ Confirmed platform boundary: API-only; platform code never queries DRM persisten
 
 Platform admin authorization precedes application-authenticated POST /v1/media. Existing request fields include externalAssetId, title, contentType, securityTier and optional idempotencyKey. Response provides internal assetId and a presigned upload URL. Upload the original using the prescribed URL/content type; call POST /v1/media/:assetId/complete with the internal ID and inspect GET /v1/admin/media/:assetId/status.
 
+Owner-approved recovery clarification (D20, 2026-09-29): if the original registration succeeds externally but its response or the platform result write is lost, repeating the same idempotent registration must preserve the existing DRM asset and issue a fresh short-lived upload URL while that asset remains `UPLOADED`. It must not create a replacement asset, expose storage keys, persist signed URLs, or issue an upload URL after completion/processing/deletion has begun. This capability is authorized as a separate bounded DRM prerequisite and is not accepted until independently verified.
+
 Persist platform lesson-to-media mapping and readiness in platform PostgreSQL. Do not mark playable based on upload completion alone. Until actual events are verified, use the supported status API with bounded polling/reconciliation. Do not implement webhook emitters inside DRM. Validate returned upload destinations and browser reachability without exposing server credentials.
 
 Cloudflare R2 through external DRM is confirmed. Local configuration/substitute is pending; this adapter must not change the external package's storage internals.

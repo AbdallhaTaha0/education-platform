@@ -18,6 +18,8 @@ Updated for external DRM, manual EGP approval, recorded courses and cookie authe
 
 Mocked external contracts support platform development but do not establish video security or production playback. External failures are reported with request/response evidence and redacted credentials, not patched inside DRM.
 
+For D20 upload recovery, independently verify through disposable DRM Docker services that a lost registration response followed by the same idempotent request returns the same asset ID and a newly issued usable URL only while the asset is `UPLOADED`. Verify tenant isolation, concurrent retries, URL expiry, rejection after processing/deletion, no signed-URL persistence/logging, and preservation of all existing upload/deletion/playback suites. Platform fixture behavior must match the accepted external contract exactly after the prerequisite is accepted.
+
 ## 10,000-user qualification
 
 Confirmed: recorded courses only, no live-class load. Still agree simultaneous-viewer/browsing mix, devices, bitrate distribution, duration, region/network conditions, bursts and sustained-run duration. Set latency/error/startup/rebuffer and recovery budgets before running.

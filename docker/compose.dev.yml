@@ -1,4 +1,4 @@
-# Local development stack (M2 identity + bilingual shell).
+# Local development stack (M3 catalog + DRM adapter).
 #
 # Usage (repository root). --env-file is required because Compose otherwise
 # reads docker/.env instead of the ignored root .env that holds the local
@@ -23,7 +23,7 @@
 x-common-env: &common-env
   NODE_ENV: ${NODE_ENV:-development}
   LOG_LEVEL: ${LOG_LEVEL:-info}
-  SERVICE_VERSION: ${SERVICE_VERSION:-0.2.0-m2}
+  SERVICE_VERSION: ${SERVICE_VERSION:-0.3.0-m3}
   READY_TIMEOUT_MS: ${READY_TIMEOUT_MS:-2000}
 
 services:
@@ -60,7 +60,7 @@ services:
       context: ..
       dockerfile: server/Dockerfile
       target: migrate
-    image: edu-platform-migrate:0.2.0-m2
+    image: edu-platform-migrate:0.3.0-m3
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-education_platform}
     depends_on:
@@ -73,7 +73,7 @@ services:
       context: ..
       dockerfile: server/Dockerfile
       target: runtime
-    image: edu-platform-server:0.2.0-m2
+    image: edu-platform-server:0.3.0-m3
     environment:
       <<: *common-env
       PORT: 3000
@@ -89,10 +89,13 @@ services:
       # Local Docker HTTP explicitly disables Secure cookies. Production
       # builds fail closed unless COOKIE_SECURE=true.
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
-      # Optional external DRM (M1: unset is fine; readiness never gates on it).
+      # External DRM adapter (M3): all-or-none; unset is fine for non-media work.
+      # Readiness never gates on DRM. DRM-dependent mutations fail closed 503.
       DRM_BASE_URL: ${DRM_BASE_URL:-}
       DRM_CLIENT_ID: ${DRM_CLIENT_ID:-}
       DRM_CLIENT_SECRET: ${DRM_CLIENT_SECRET:-}
+      DRM_REQUEST_TIMEOUT_MS: ${DRM_REQUEST_TIMEOUT_MS:-5000}
+      DRM_MAX_RETRIES: ${DRM_MAX_RETRIES:-2}
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -112,7 +115,7 @@ services:
     build:
       context: ..
       dockerfile: client/Dockerfile
-    image: edu-platform-client:0.2.0-m2
+    image: edu-platform-client:0.3.0-m3
     depends_on:
       - server
     # Static-file probe via the busybox wget shipped in the image.
@@ -127,7 +130,7 @@ services:
     build:
       context: ..
       dockerfile: docker/nginx/Dockerfile
-    image: edu-platform-nginx:0.2.0-m2
+    image: edu-platform-nginx:0.3.0-m3
     ports:
       # Host port is overridable so isolated projects (browser tests) can run
       # beside development: NGINX_PORT=8081 docker compose -p other ...
@@ -146,16 +149,40 @@ services:
       retries: 3
       start_period: 15s
 
-  # Containerized M2 browser harness (test-only profile, never started by
+  # Explicitly labeled DRM HTTP contract fixture (TEST-ONLY browser profile).
+  # NEVER packaged into production runtime images; NOT real DRM/R2 evidence.
+  # Browser projects point the platform server at it via
+  # DRM_BASE_URL=http://drm-fixture:8090 + the fixture test credentials below.
+  drm-fixture:
+    build:
+      context: ..
+      dockerfile: docker/drm-fixture/Dockerfile
+    image: edu-platform-drm-fixture:0.3.0-m3
+    profiles: ["browser"]
+    environment:
+      PORT: 8090
+      FIXTURE_CLIENT_ID: ${DRM_CLIENT_ID:-fixture-client}
+      FIXTURE_CLIENT_SECRET: ${DRM_CLIENT_SECRET:-fixture-secret-that-is-long-enough-0123456789}
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8090/v1/media',{method:'POST',headers:{'Content-Type':'application/json','X-Client-Id':'x','X-Client-Secret':'y'},body:'{}'}).then(()=>process.exit(0)).catch(()=>process.exit(1))\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: "no"
+
+  # Containerized M3 browser harness (test-only profile, never started by
   # default). Runs Chromium assertions through Nginx against an isolated
   # project, e.g.:
+  #   DRM_BASE_URL=http://drm-fixture:8090 DRM_CLIENT_ID=fixture-client DRM_CLIENT_SECRET=fixture-secret-that-is-long-enough-0123456789 \
+  #     docker compose -p education-platform-browser -f docker/compose.dev.yml --profile browser up -d --wait
   #   docker compose -p education-platform-browser -f docker/compose.dev.yml --profile browser run --rm browser
   # Bootstrap admin credentials arrive via environment (never committed).
   browser:
     build:
       context: ..
       dockerfile: docker/browser/Dockerfile
-    image: edu-platform-browser:0.2.0-m2
+    image: edu-platform-browser:0.3.0-m3
     profiles: ["browser"]
     environment:
       BASE_URL: http://nginx:8080
@@ -164,7 +191,8 @@ services:
       ADMIN_PHONE: ${BROWSER_ADMIN_PHONE:-}
       ADMIN_PASSWORD: ${BROWSER_ADMIN_PASSWORD:-}
     volumes:
-      - ../reports-and-markdown-files/m2-evidence:/srv/browser/evidence
+      - ../reports-and-markdown-files/m3-evidence:/srv/browser/evidence
+      - ../docker/browser/fixtures:/srv/browser/fixtures:ro
     depends_on:
       nginx:
         condition: service_healthy

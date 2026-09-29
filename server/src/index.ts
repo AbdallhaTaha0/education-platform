@@ -7,6 +7,8 @@ import { createPostgresPool, closePostgres } from './infra/postgres.js';
 import { createRedisClient, closeRedis } from './infra/redis.js';
 import { getPrisma, closePrisma } from './infra/prisma.js';
 import { describeDrmConnection } from './infra/drm.js';
+import { createDrmClient } from './modules/catalog/drmClient.js';
+import { startDeletionReconciler } from './modules/catalog/deletion/reconciler.js';
 
 dotenv.config();
 
@@ -22,6 +24,9 @@ async function main(): Promise<void> {
   const prisma = getPrisma();
 
   const app = createApp({ config, postgresPool, redisClient, prisma });
+  // Durable deletion resume: pending operations survive restarts via PostgreSQL.
+  // Cross-replica ownership uses a token-checked Redis lease per operation.
+  const reconciler = startDeletionReconciler(prisma, config, createDrmClient, redisClient, 15000);
   const server: Server = await new Promise((resolve, reject) => {
     const listener = app.listen(config.port, () => resolve(listener));
     listener.on('error', reject);
@@ -54,6 +59,7 @@ async function main(): Promise<void> {
       if (err) logger.error({ err }, 'http server close error');
       void (async () => {
         try {
+          reconciler.stop();
           await Promise.all([closePostgres(postgresPool), closeRedis(redisClient), closePrisma()]);
           logger.info('connections closed; exiting');
           clearTimeout(force);

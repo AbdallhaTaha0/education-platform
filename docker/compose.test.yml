@@ -42,7 +42,7 @@ services:
       context: ..
       dockerfile: server/Dockerfile
       target: migrate
-    image: edu-platform-migrate-test:0.2.0-m2
+    image: edu-platform-migrate-test:0.3.0-m3
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_test
     depends_on:
@@ -55,12 +55,14 @@ services:
       context: ..
       dockerfile: server/Dockerfile
       target: test
-    image: edu-platform-server-test:0.2.0-m2
+    image: edu-platform-server-test:0.3.0-m3
     environment:
       NODE_ENV: test
       LOG_LEVEL: warn
-      SERVICE_VERSION: 0.2.0-m2-test
+      SERVICE_VERSION: 0.3.0-m3-test
       READY_TIMEOUT_MS: 2000
+      DRM_REQUEST_TIMEOUT_MS: 1000
+      DRM_MAX_RETRIES: 2
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_test
       REDIS_URL: redis://redis:6379
       # Isolated test-only secrets. Distinct from every other environment;

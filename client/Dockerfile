@@ -9,7 +9,7 @@ FROM ${NODE_IMAGE} AS build
 WORKDIR /srv/client
 COPY client/package.json client/package-lock.json ./
 RUN npm ci
-COPY client/index.html client/vite.config.ts client/tsconfig.json ./
+COPY client/index.html client/vite.config.ts client/tsconfig.json client/postcss.config.js client/tailwind.config.js ./
 COPY client/nginx.conf ./nginx.conf
 COPY client/src ./src
 RUN npm run build

@@ -1,6 +1,6 @@
 # Education platform documentation
 
-Baseline updated: 2026-09-28 after acceptance of the DRM permanent-deletion prerequisite at nested revision `6e1e01c`. The Docker foundation remains accepted at revision `fce352f`; cookie identity, STUDENT/ADMIN authorization, the one-time admin bootstrap, and the Arabic-default bilingual shell are implemented and independently verified. The external DRM package now provides the accepted permanent media-deletion contract required by M3. Remaining detailed business policies stay marked pending.
+Baseline updated: 2026-09-29 after independent local acceptance of M3 and the bounded DRM upload-recovery/job-status prerequisites. The Docker foundation remains accepted at revision `fce352f`, M2 at `b8080a8`, the DRM permanent-deletion baseline at nested revision `6e1e01c`, and the accepted DRM recovery/job-status checkpoint is local commit `5293917`. Catalog administration, Tailwind feature structure, external DRM integration, and retry-safe upload recovery are independently verified. Live Cloudflare R2 and real external DRM upload/deletion verification remain blocked, so no production-readiness or capacity claim is made. Remaining detailed business policies stay marked pending.
 
 ## Authority and evidence
 
@@ -35,5 +35,11 @@ Where sources conflict, record the conflict and ask the owner. Neither existing 
 | [m2-implementation-report.md](m2-implementation-report.md) | M2 implementation, correction, Docker verification and independent acceptance evidence |
 | [drm-media-deletion-open-code-worker-prompt.md](drm-media-deletion-open-code-worker-prompt.md) | Owner-authorized DRM prerequisite prompt for durable permanent media deletion before M3 |
 | [drm-media-deletion-implementation-report.md](drm-media-deletion-implementation-report.md) | Accepted DRM deletion implementation and independent Docker evidence |
+| [drm-upload-url-recovery-open-code-worker-prompt.md](drm-upload-url-recovery-open-code-worker-prompt.md) | Owner-authorized bounded DRM prerequisite for retry-safe upload URL recovery before M3 acceptance |
+| [drm-upload-url-recovery-implementation-report.md](drm-upload-url-recovery-implementation-report.md) | Implemented and independently verified upload-URL recovery evidence |
+| [drm-job-status-correction-implementation-report.md](drm-job-status-correction-implementation-report.md) | Bounded PostgreSQL job-status correction and worker-to-READY verification |
+| [m3-final-review-open-code-worker-prompt.md](m3-final-review-open-code-worker-prompt.md) | Bounded independent final review prompt for M3 |
+| [m3-implementation-report.md](m3-implementation-report.md) | M3 implementation, corrections, Docker evidence, blockers, and manager ruling |
+| [m4-open-code-worker-prompt.md](m4-open-code-worker-prompt.md) | Bounded M4 wallet/recharge/purchase prompt with a Tailwind UI/UX improvement workstream and mandatory policy gate |
 
-M1, M2, and the bounded DRM permanent-deletion prerequisite are accepted. The original design sources remain unchanged. Live Cloudflare R2 verification is blocked pending credentials; no production readiness or 10,000-user capability is certified.
+M1, M2, the bounded DRM permanent-deletion prerequisite, M3, and the bounded upload-recovery/job-status prerequisites are accepted for their independently verified local scope. The latest DRM prerequisite is committed locally as `5293917`, and the platform M3 checkpoint is local only; neither repository was pushed. The original design sources remain unchanged. Live Cloudflare R2 and real external DRM upload/deletion verification are blocked pending credentials and configuration; no production readiness or 10,000-user capability is certified.
