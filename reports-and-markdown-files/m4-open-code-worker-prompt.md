@@ -6,7 +6,7 @@ This is a bounded platform assignment: manual EGP recharge, wallet accounting,
 transactional course purchase/subscription creation, and a deliberate UI/UX
 improvement pass for the affected student/admin journeys.
 
-## Mandatory onboarding and decision gate
+## Mandatory onboarding and approved policy
 
 Before changing anything, read `AGENTS.md` and all documents linked from
 `reports-and-markdown-files/README.md`, especially `agent.md`, `rules.md`,
@@ -15,20 +15,28 @@ Before changing anything, read `AGENTS.md` and all documents linked from
 report. Record the platform branch/HEAD/origin, nested DRM branch/HEAD/origin,
 gitlink, worktree status, Docker versions, and development-stack health.
 
-Do not start implementation until the owner/manager has recorded explicit
-answers for these policy-dependent points:
+Implement only the policy approved in D04, D05, D14, D21 and D22:
 
-1. accepted manual transfer channels and the student instructions shown for each;
-2. mandatory recharge fields (amount, transfer reference, proof file and any sender details), proof file types/size/retention, and who may view/download it;
-3. transfer-reference uniqueness scope and normalization;
-4. admin rejection reasons, whether correction/resubmission creates a new request, and whether rejected proof is retained;
-5. reversal/refund policy, including who may perform it and required audit evidence;
-6. early renewal behavior for an already active subscription.
+1. channels are InstaPay, bank transfer and mobile wallet; receiving identifiers
+   and localized student instructions are validated runtime configuration, never
+   hard-coded or committed;
+2. required fields are integer-minor-unit EGP amount, channel, normalized
+   reference, sender name/phone, transfer date, and a JPG/PNG/PDF proof up to
+   5 MiB;
+3. a normalized reference is globally unique within its channel;
+4. only ADMIN may open/download proof; the student sees filename, request status
+   and scheduled deletion date; remove proof bytes 180 days after approval or
+   rejection while retaining sanitized audit metadata;
+5. rejection requires a reason, becomes immutable, and resubmission creates a
+   new request;
+6. refunds, reversals and correction credits are excluded from M4;
+7. plan duration is integer days; purchased price/duration are snapshotted;
+   later plan edits affect future purchases only; active renewal extends from
+   the current expiry and an expired subscription starts immediately.
 
-Unanswered policy is not permission to invent behavior. If any answer is
-missing, stop after a read-only onboarding report and list the exact blockers.
-The duration unit is already confirmed as integer days and begins immediately
-at successful purchase.
+Unanswered details are not permission to invent policy. Runtime destination
+values may be absent in source control: implement an explicit unconfigured state
+and use non-sensitive fixture values in Docker tests.
 
 ## Repository and architecture boundaries
 
@@ -61,6 +69,17 @@ Tailwind entry directives, semantic tokens, font/base rules, and unavoidable
 global accessibility behavior. Do not add page-specific ordinary CSS, inline
 style systems, CDN Tailwind, or a second component framework. Reuse the
 semantic tokens in `tailwind.config.js` and `design.md`.
+
+Implement the approved theme direction from D22: dark mode is the polished
+default, with an accessible light alternative and an explicit keyboard-
+accessible theme control. Persist only a namespaced non-sensitive theme
+preference; auth/session data remains forbidden in browser storage. Apply the
+theme before first paint to prevent a flash. Express the navy/teal/amber palette
+through CSS-variable semantic tokens consumed by Tailwind (`canvas`, `surface`,
+`elevated`, `text`, `muted`, `border`, `primary`, `accent`, `focus`, and status
+roles). Do not scatter raw color utilities through pages. Both themes must meet
+WCAG AA contrast and preserve visible focus, charts/status meaning and Arabic/
+English readability.
 
 No production source file may become a god file. Target at most 200 lines per
 production file; split pages into focused components, hooks, API clients,
@@ -113,6 +132,13 @@ journeys with consistent shared patterns. Improve existing shared shell/UI
 components only where the change benefits M4 and preserves M1–M3 behavior; do
 not perform an unrelated visual rewrite.
 
+The visual approach should feel like a credible modern programming-learning
+product: deep navy layered surfaces, clear content hierarchy, readable code-
+adjacent typography, restrained teal actions and amber highlights, consistent
+cards/tables/forms, and generous spacing. Avoid pure-black expanses, neon glow,
+gratuitous gradients, excessive glass effects, tiny dense controls and generic
+admin-template clutter.
+
 Required student experience:
 
 - a wallet summary with available balance and clear EGP/ج.م formatting;
@@ -138,6 +164,9 @@ Quality requirements for every affected route/state:
 
 - Arabic is primary RTL; English is complete LTR. Localize labels, validation,
   statuses, dialogs, empty states, errors, success feedback, and dates/money;
+- dark and light themes render every route/state consistently, without flash,
+  unreadable muted text, invisible borders, incorrect browser form colors or
+  status colors that lose meaning;
 - support 390px without horizontal overflow and desktop up to the documented
   content width; use logical-direction Tailwind utilities;
 - one primary `<main>` and one meaningful `<h1>` per route, keyboard-complete
@@ -166,6 +195,15 @@ database transaction open across file/object-storage or other network I/O.
 Uploads need an intent/finalization design that does not produce credited money
 from incomplete or failed proof handling.
 
+Proof persistence must remain private and replica-safe. Do not write proofs to
+container-local files and do not introduce a new storage service without owner
+approval. Within the approved platform stack, store the bounded proof bytes in
+a dedicated PostgreSQL relation separated from request/audit metadata, after
+streaming size limits, extension/MIME/signature validation and hashing. Serve
+only through an authenticated ADMIN endpoint with safe content headers. Use an
+idempotent replica-safe cleanup job to clear bytes after the 180-day deadline
+while preserving the approved metadata and audit trail.
+
 ## Docker verification and evidence
 
 Development and verification must run through Docker. Add unit, real
@@ -182,7 +220,9 @@ accepted earlier tests. At minimum prove:
   unpaid entitlement;
 - later plan edits do not rewrite purchase snapshots;
 - Arabic/English parity, 390px no-overflow, keyboard/dialog focus, no-file and
-  invalid-file proof cases, all state screens, and no auth/secrets in storage or bundles;
+  invalid-file proof cases, all state screens, dark/light screenshots, theme
+  persistence/no-flash, automated contrast checks where practical, and no auth/
+  secrets in storage or bundles;
 - fresh migrations, M3→M4 upgrade with data preserved, migration-failure gate,
   restart health, non-root/minimal runtime images, secret scans, dependency
   audits, and `git diff --check`.

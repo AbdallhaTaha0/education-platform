@@ -6,9 +6,9 @@ Updated from owner decisions; unresolved details remain in decisions.md.
 | --- | --- | --- |
 | R01 | Arabic primary, English secondary; both content translations mandatory | RTL/LTR UI, localized errors/forms, mandatory bilingual publication validation |
 | R02 | STUDENT and ADMIN only | Server role matrix; student admin requests denied |
-| R03 | Programming courses with admin-defined fixed-duration plans | Catalog price/duration and purchase term validation |
-| R04 | Manual EGP funding: student submits, admin verifies receipt and approves | No credit before approval; duplicate/concurrent approvals credit once |
-| R05 | Wallet purchase creates course subscription | Atomic debit/purchase/access; no overspending/double charge |
+| R03 | Programming courses with admin-defined integer-day plans; purchase snapshots price/duration, active renewal extends from current expiry, and expired purchase starts immediately | Catalog price/duration, immutable purchased terms and renewal-date validation |
+| R04 | Manual EGP funding through configured InstaPay, bank-transfer or mobile-wallet instructions: student submits approved fields and bounded proof; admin verifies receipt and approves | No credit before approval; channel-scoped global reference uniqueness; duplicate/concurrent approvals credit once; admin-only proof access and 180-day proof deletion |
+| R05 | Explicit wallet purchase creates or renews a course subscription; recharge approval never auto-purchases | Atomic debit/purchase/access; idempotent retry; no overspending/double charge; later plan edits do not rewrite purchases |
 | R06 | Dashboard and lesson/segment listing after subscription | Entitlement enforced on listing, content and playback APIs |
 | R07 | Admin content, prices, promotions, uploads/downloads/removal | Audited actions; retention and external capabilities clarified before destructive work |
 | R08 | Platform uses the independently deployed DRM through APIs only; DRM internals never become platform persistence. The owner may separately authorize bounded maintenance within their DRM package. | Upload/status/playback/termination/deletion integration; credentials remain server-side; no cross-database access |
@@ -35,4 +35,4 @@ Create bilingual course content, order video lessons, set EGP price and fixed du
 
 ## Unapproved additions
 
-No live teaching, automated payment gateway, automatic recurring billing, exams, certificates, parent role, native mobile application or dubbed-video requirement is implied. Notification/chat release scope, retention, refund, duration-unit and detailed identity policies remain open.
+No live teaching, automated payment gateway, automatic recurring billing, exams, certificates, parent role, native mobile application or dubbed-video requirement is implied. Notification/chat release scope, unrelated media retention, and any future refund/reversal implementation policy remain open. M4 explicitly excludes refunds and reversals; its integer-day duration and renewal rules are confirmed.

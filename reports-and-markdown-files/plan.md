@@ -13,7 +13,7 @@ Updated after owner clarification. No schedule or capacity guarantee is implied.
 | M6 Confirmed realtime/notifications | Only owner-confirmed diagram capabilities; no live classes | Relevant cross-replica/job authorization and retry checks |
 | M7 Production qualification | Recorded-course load, hardened deployment, restore/rollback and alerts | Approved capacity/recovery gates and no critical unresolved external dependency failures |
 
-Start operational and security checks in each milestone, not only M7. M1 does not need guessed payment providers, full business schemas or commercial DRM internals. M4 requires remaining financial/duration-unit details before dependent implementation. M5 verifies external behavior and reports blockers without repairing DRM.
+Start operational and security checks in each milestone, not only M7. M1 does not need guessed payment providers, full business schemas or commercial DRM internals. M4 financial, proof-retention, purchase-snapshot and renewal policies are confirmed in D04, D05, D14 and D21. M5 verifies external behavior and reports blockers without repairing DRM.
 
 ## Next step
 

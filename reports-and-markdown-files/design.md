@@ -1,6 +1,6 @@
 # Education Platform — Design v1
 
-Status: initial Stitch concept for owner review; colors, typography and branding are provisional. This is a UI design specification, not production React code or completed backend integration.
+Status: initial Stitch concept plus the owner's M4 dark-theme clarification. Branding remains provisional. This is a UI design specification, not production React code or completed backend integration.
 
 ## Project
 Stitch project: Education Platform — Arabic-first UI v1
@@ -26,6 +26,42 @@ Create a focused, warm, credible learning experience: generous whitespace, stron
 | Pending | #92400E on #FEF3C7 | Awaiting review |
 | Error | #B91C1C on #FEE2E2 | Failed/rejected/expired |
 Use semantic tokens so owner color changes apply globally. Never rely on color alone for state. Contrast must be verified on final export, not assumed.
+
+## M4 theme and visual direction
+
+Dark mode is the default experience. Keep an accessible light alternative and
+an explicit theme control; persist only the non-sensitive UI preference (never
+auth/session data) and apply it before first paint to avoid a theme flash.
+
+Use a calm, modern developer-learning aesthetic: deep navy rather than pure
+black, crisp teal actions, restrained amber highlights, layered surfaces,
+strong typography and generous spacing. Avoid neon gradients, excessive glow,
+glass effects that reduce legibility, decorative dashboard clutter and color-
+only status communication.
+
+Dark semantic palette:
+
+| Token | Value | Usage |
+| --- | --- | --- |
+| Canvas | `#08111F` | Main application background |
+| Surface | `#0F1B2D` | Cards, forms and sidebars |
+| Elevated | `#16243A` | Dialogs, menus and selected panels |
+| Primary | `#2DD4BF` | Primary actions and selected navigation |
+| Primary hover | `#5EEAD4` | Hover/focus emphasis |
+| Text | `#F8FAFC` | Primary text and headings |
+| Muted text | `#A8B3C7` | Supporting copy |
+| Border | `#2A3A52` | Inputs, separators and card edges |
+| Accent | `#FBBF24` | Small learning/payment highlights |
+| Focus | `#67E8F9` | Keyboard focus ring |
+| Success | `#6EE7B7` on `#0B3B2E` | Approved/active |
+| Pending | `#FCD34D` on `#3B2F0B` | Awaiting review |
+| Error | `#FDA4AF` on `#4C1822` | Failed/rejected/expired |
+
+The light theme uses the existing semantic roles with a softer `#F4F7FB`
+canvas, white surfaces, `#0F172A` text, teal primary actions and slate borders.
+Both themes must meet WCAG AA contrast for normal text and controls. Define
+theme values once as CSS variables consumed by Tailwind semantic utilities;
+do not scatter raw palette classes through feature pages.
 
 ## Typography and bilingual layout
 Arabic font: Noto Sans Arabic or equivalent readable Arabic family; Latin: Inter. Arabic body 16px with 1.75 line height; Latin body 16px/1.5. Headings 32–48px desktop and 26–32px mobile. Labels 14px minimum where possible. No letter spacing on Arabic.
@@ -53,7 +89,7 @@ Code-themed course artwork; no video-security infrastructure jargon in student s
 ## Interaction rules
 Student: choose offer -> insufficient funds -> submit recharge -> pending verification -> admin approval -> wallet credited -> explicit purchase -> active course -> lessons -> expiry/renewal required.
 Admin: verify actual transfer receipt independently -> approve request once -> audit credit. Proof alone must never imply automatic credit.
-Course metadata and purchased terms must be clear. Sample duration unit and numbers are illustrative, not a business-policy decision. No credit-card checkout, automatic payment gateway, instructor role, live teaching or certificates.
+Course metadata and purchased terms must be clear. Production plan duration is an integer number of days; sample numbers remain illustrative. No credit-card checkout, automatic payment gateway, instructor role, live teaching or certificates.
 Video originals are handled through external DRM; platform stores identifiers/readiness. DRM/R2/security internals are not exposed as student UI choices.
 Authentication screens use the confirmed policy: registration collects both email and phone; login accepts either identifier plus password. Public registration never offers a role selector. Password recovery and identifier-verification screens remain deferred until a delivery channel is approved.
 Pending/rejected empty/error states should be documented even where only the primary screen is rendered.

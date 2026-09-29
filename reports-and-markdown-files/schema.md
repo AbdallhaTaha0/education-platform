@@ -14,7 +14,7 @@ DRAFT model updated with confirmed decisions; not executable Prisma or migration
 | RechargeRequest | Student request, amount, transfer reference/proof, review state, reviewer and review time | Evidence fields, deduplication scope, rejection/resubmission |
 | WalletEntry | Durable EGP credit/debit and source reference | Reversal/refund policy |
 | Purchase | Student/plan and trusted purchase terms | Renewal/cancellation rules |
-| Enrollment / Entitlement | User/course access and fixed validity interval | Starts at purchase; early renewal semantics pending |
+| Enrollment / Entitlement | User/course access and fixed validity interval | First/expired purchase starts immediately; active renewal extends from current expiry; purchased terms are snapshotted |
 | MediaMapping | Lesson to external application/asset IDs and observed readiness | Permanent removal uses the accepted external delete operation and retained status reference |
 | PlaybackReference | External session reference bound to student/entitlement | Retention and termination reconciliation |
 | LessonProgress | Student lesson progress | Completion definition |
@@ -26,7 +26,7 @@ DRAFT model updated with confirmed decisions; not executable Prisma or migration
 - Admin approval of a pending recharge, its wallet credit and its audit evidence commit atomically. Unique source reference prevents a request credit from appearing twice; actual transfer duplicate detection requires agreed reference rules.
 - Wallet debit, purchase and entitlement commit atomically under concurrency-safe balance checks. Stable idempotency keys reject mismatched retries.
 - Snapshot trusted price/duration at purchase as a proposed protection against later plan edits. Do not hard-code 30 days or assume lifetime access.
-- Subscription validity uses server time and persisted start/end timestamps; determine timezone and duration arithmetic once duration units are confirmed; start is successful purchase.
+- Subscription validity uses server time and persisted start/end timestamps with confirmed integer-day duration. First/expired purchase starts at successful purchase; active renewal anchors at the current expiry. Later plan edits do not rewrite the purchased snapshot.
 - Both translations are mandatory at publication. Schema representation (paired fields or translation table) remains an implementation design choice to document; it does not imply translated video tracks.
 - Plan duration is a positive bounded integer number of days. Optional previous-price display is valid only when enabled and strictly higher than the current price.
 - Archive is reversible. Never claim permanent deletion or delete only platform rows while external video objects remain; complete deletion must coordinate through a supported external DRM API and fail safely on partial errors.

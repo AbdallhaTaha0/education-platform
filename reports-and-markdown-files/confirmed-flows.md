@@ -1,20 +1,20 @@
 # Confirmed product flows and pending details
 
-Source: owner D01-D12 answers and follow-ups, 2026-09-27. Proposed implementation controls are distinguished from remaining business choices.
+Source: owner decisions D01-D21 and follow-ups through 2026-09-29. Proposed implementation controls are distinguished from remaining business choices.
 
 ## Manual EGP recharge
 
-1. Student submits a recharge request with the agreed transfer reference/proof and EGP amount.
+1. Student chooses InstaPay, bank transfer or mobile wallet and submits the EGP amount, channel, normalized transfer reference, sender name/phone, transfer date, and a JPG/PNG/PDF proof up to 5 MiB. Destination identifiers and instructions come from validated deployment configuration and are never hard-coded.
 2. Request remains pending and wallet balance is unchanged.
 3. Admin verifies actual receipt through the approved manual channel.
 4. Admin approves the request; platform credits once and records request, amount, reviewer, time and audit evidence.
 5. Student can use the credited wallet to purchase a course. Approval itself does not authorize an unrequested automatic purchase.
 
-Proposed states: PENDING, APPROVED, REJECTED. Rejection reasons, resubmission and corrections require policy confirmation. Concurrent/repeated approval must be idempotent. Never let a student mark a request approved, set credited amount authoritatively or reuse proof to obtain duplicate funds.
+States are PENDING, APPROVED and REJECTED. A normalized reference is unique across the platform within its transfer channel. Rejection requires an admin reason, is immutable, and resubmission creates a new request. Concurrent/repeated approval must be idempotent. Never let a student mark a request approved, set credited amount authoritatively or reuse proof to obtain duplicate funds. Only ADMIN may open/download proof; the submitting student sees filename, status and scheduled deletion date. Proof bytes are removed 180 days after approval/rejection while sanitized audit metadata remains. Refunds, reversals and correction credits are excluded from M4 pending a later approved policy.
 
 ## Purchase and access
 
-Public course offers include EGP price and admin-configured duration. Backend validates price and balance, then atomically debits and creates the purchase/access record. Insufficient balance cannot grant access. Duration begins immediately at successful purchase. Duration units and early renewal rules remain pending; do not infer them.
+Public course offers include EGP price and an integer-day admin-configured duration. Backend validates trusted price and balance, then atomically debits and creates the purchase/access record. Insufficient balance cannot grant access. Price and duration are snapshotted so later plan edits affect only future purchases. A first or expired subscription starts immediately at successful purchase; early renewal of an active subscription extends from its existing expiry. No recurring billing, refund or reversal is implied.
 
 Subscribed students see course segments/lessons and can request playback. Expired students see unsubscribed / needs renewal. Backend denies protected listings and new playback after expiry; active playback is stopped using frontend state and the external termination API. Test external enforcement, including direct renewal, and report any unsupported behavior.
 

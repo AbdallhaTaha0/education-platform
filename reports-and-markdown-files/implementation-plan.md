@@ -32,9 +32,9 @@ Acceptance: admin-only mutation, deterministic ordering, bilingual completeness,
 
 ## WP4: Manual recharge and purchase
 
-Implement student funding requests with agreed reference/proof fields. Admin independently verifies receipt before approval. An approval transaction must atomically move a pending request to approved, record the wallet credit and audit the actor, so concurrent approvals cannot duplicate money. Submitted screenshots are not automatic proof of receipt. No automated gateway in release one.
+Implement student funding requests for configured InstaPay, bank-transfer and mobile-wallet destinations with amount, channel, normalized reference, sender name/phone, transfer date and bounded JPG/PNG/PDF proof. Only admins may open/download proof. Admin independently verifies receipt before approval. An approval transaction must atomically move a pending request to approved, record the wallet credit and audit the actor, so concurrent approvals cannot duplicate money. Submitted proof is not automatic evidence of receipt. Remove proof bytes 180 days after a decision while retaining sanitized audit metadata. No automated gateway in release one.
 
-Purchase uses trusted server price/duration, concurrency-safe wallet balance validation, atomic debit/purchase/entitlement and idempotency. Proposed integrity policy: snapshot purchased price/duration so later plan edits do not silently rewrite purchases. Start duration at successful purchase; finalize units and renewal rules before date arithmetic. Rejection/resubmission and reversals need their own approved policies.
+Purchase uses trusted server price/duration, concurrency-safe wallet balance validation, atomic debit/purchase/entitlement and idempotency. Snapshot purchased price/duration so later plan edits affect only future purchases. A first or expired subscription starts at successful purchase; active renewal extends from its current expiry. Rejection requires a reason and a new request for resubmission. Refunds, reversals and correction credits are excluded from M4.
 
 Acceptance: duplicate/concurrent approval, unauthorized approval, simultaneous spending, retries and rollback; exact EGP reconciliation and no unpaid access.
 

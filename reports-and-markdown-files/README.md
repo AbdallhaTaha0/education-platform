@@ -40,6 +40,6 @@ Where sources conflict, record the conflict and ask the owner. Neither existing 
 | [drm-job-status-correction-implementation-report.md](drm-job-status-correction-implementation-report.md) | Bounded PostgreSQL job-status correction and worker-to-READY verification |
 | [m3-final-review-open-code-worker-prompt.md](m3-final-review-open-code-worker-prompt.md) | Bounded independent final review prompt for M3 |
 | [m3-implementation-report.md](m3-implementation-report.md) | M3 implementation, corrections, Docker evidence, blockers, and manager ruling |
-| [m4-open-code-worker-prompt.md](m4-open-code-worker-prompt.md) | Bounded M4 wallet/recharge/purchase prompt with a Tailwind UI/UX improvement workstream and mandatory policy gate |
+| [m4-open-code-worker-prompt.md](m4-open-code-worker-prompt.md) | Executable M4 wallet/recharge/purchase prompt with approved policies and a Tailwind dark-mode UI/UX improvement workstream |
 
 M1, M2, the bounded DRM permanent-deletion prerequisite, M3, and the bounded upload-recovery/job-status prerequisites are accepted for their independently verified local scope. The latest DRM prerequisite is committed locally as `5293917`, and the platform M3 checkpoint is local only; neither repository was pushed. The original design sources remain unchanged. Live Cloudflare R2 and real external DRM upload/deletion verification are blocked pending credentials and configuration; no production readiness or 10,000-user capability is certified.
