@@ -114,6 +114,9 @@ export function toWatermarkPresentation(
   expiresAt: string | null;
 } | null {
   if (watermark === null) return null;
+  // The real DRM returns { payload, signature }; legacy contract fixtures
+  // used a flat policy. Read the policy only and project its safe fields.
+  watermark = isRecord(watermark['payload']) ? watermark['payload'] : watermark;
   const type = typeof watermark['type'] === 'string' ? (watermark['type'] as string).slice(0, 32) : 'MASKED';
   const identity =
     typeof watermark['maskedIdentity'] === 'string'
@@ -132,6 +135,9 @@ export function toWatermarkPresentation(
       });
     }
   }
-  const expiresAt = typeof watermark['expiresAt'] === 'string' ? watermark['expiresAt'] : null;
+  const expiry = watermark['expiresAt'];
+  const expiresAt = typeof expiry === 'string' ? expiry :
+    typeof expiry === 'number' && Number.isFinite(expiry) && expiry >= 0 && expiry <= 8.64e12
+      ? new Date(expiry * 1000).toISOString() : null;
   return { type, maskedIdentity: identity, positions, expiresAt };
 }

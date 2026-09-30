@@ -83,6 +83,57 @@ export class PlatformClient {
     return this.call('POST', '/api/auth/login', { body: { identifier, password } });
   }
 
+  async register(payload) {
+    await this.bootstrapCsrf();
+    return this.call('POST', '/api/auth/register', { body: payload });
+  }
+
+  async logout() {
+    return this.call('POST', '/api/auth/logout', { body: {} });
+  }
+
+  async createPlan(courseId, payload) {
+    return this.call('POST', `/api/admin/catalog/courses/${courseId}/plans`, { body: payload });
+  }
+
+  async transitionCourse(courseId, to) {
+    return this.call('POST', `/api/admin/catalog/courses/${courseId}/transitions`, { body: { to } });
+  }
+
+  async submitRecharge(payload) {
+    return this.call('POST', '/api/wallet/recharge-requests', { body: payload });
+  }
+
+  async reviewRecharge(requestId, payload) {
+    return this.call('POST', `/api/admin/recharge-requests/${requestId}/review`, { body: payload });
+  }
+
+  async walletBalance() {
+    return this.call('GET', '/api/wallet/', { withCsrf: false });
+  }
+
+  async purchase(payload) {
+    return this.call('POST', '/api/wallet/purchases', { body: payload });
+  }
+
+  async outline(courseRef) {
+    return this.call('GET', `/api/learning/courses/${encodeURIComponent(courseRef)}/outline`, { withCsrf: false });
+  }
+
+  async requestPlayback(courseRef, lessonId, deviceId) {
+    return this.call('POST', `/api/learning/courses/${encodeURIComponent(courseRef)}/lessons/${encodeURIComponent(lessonId)}/playback`, {
+      body: { deviceId },
+    });
+  }
+
+  async endPlayback(referenceId) {
+    return this.call('POST', `/api/learning/playback/${encodeURIComponent(referenceId)}/end`, { body: {} });
+  }
+
+  async renewPlayback(referenceId) {
+    return this.call('POST', `/api/learning/playback/${encodeURIComponent(referenceId)}/renew`, { body: {} });
+  }
+
   async createCourse(payload) {
     return this.call('POST', '/api/admin/catalog/courses', { body: payload });
   }

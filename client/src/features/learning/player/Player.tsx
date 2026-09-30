@@ -16,6 +16,8 @@ import { INITIAL_PLAYER_STATE, reducePlayerState, shouldFlushProgress } from './
 import { authHeaders, clear as clearSession, isExpired, setSession } from './session';
 import { emeKeyForProvider, isUnsupportedProvider } from './eme';
 import { PlayerOverlay, WatermarkOverlay, phaseLabel, type PlayerLabels } from './PlayerChrome';
+import { protectedRequestUrl } from './requests';
+import { awaitsEncryptionInitData } from './errors';
 import type { PlaybackGrant, PlayerState } from '../types/models';
 
 type MediaPlayerClass = ReturnType<ReturnType<typeof dashjs.MediaPlayer>['create']>;
@@ -33,6 +35,7 @@ export interface PlayerProps {
   onEnded?: () => void;
   onError?: (code: string) => void;
   onExpire?: () => void;
+  onRetry?: () => void;
 }
 
 const PROGRESS_INTERVAL_MS = 10_000;
@@ -47,13 +50,31 @@ export function DashLessonPlayer({
   onEnded,
   onError,
   onExpire,
+  onRetry,
 }: PlayerProps): JSX.Element {
+  const frameRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playerRef = useRef<MediaPlayerClass | null>(null);
   const lastFlush = useRef(0);
   const resumeApplied = useRef(false);
   const [state, setState] = useState<PlayerState>(INITIAL_PLAYER_STATE);
   const [canPlay, setCanPlay] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+
+  useEffect(() => {
+    const changed = () => setFullscreen(document.fullscreenElement === frameRef.current);
+    document.addEventListener('fullscreenchange', changed);
+    return () => document.removeEventListener('fullscreenchange', changed);
+  }, []);
+
+  const toggleFullscreen = useCallback(async () => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    try {
+      if (document.fullscreenElement === frame) await document.exitFullscreen();
+      else await frame.requestFullscreen();
+    } catch { /* Unsupported fullscreen leaves the ordinary player usable. */ }
+  }, []);
 
   // The reducer needs the current phase, so it is read through a ref to keep
   // every effect stable instead of re-subscribing on each state change.
@@ -126,6 +147,17 @@ export function DashLessonPlayer({
     return () => clearTimeout(timer);
   }, [grant.tokenExpiresAt, dispatch]);
 
+  // A license request made after renewal must use the rotated bearer too.
+  // Updating protection data leaves the existing DASH/EME instance intact.
+  useEffect(() => {
+    const keySystem = emeKeyForProvider(grant.drmProvider);
+    if (keySystem && playerRef.current) {
+      playerRef.current.setProtectionData({ [keySystem]: {
+        serverURL: grant.licenseUrl, httpRequestHeaders: { 'Content-Type': 'application/octet-stream', ...authHeaders() },
+      } });
+    }
+  }, [grant.playbackToken, grant.licenseUrl, grant.drmProvider]);
+
   // Entitlement loss stops playback and discards credentials immediately.
   useEffect(() => {
     if (!entitlementLost) return;
@@ -149,9 +181,10 @@ export function DashLessonPlayer({
     // Every manifest, segment and license request carries the transient bearer
     // token, read from memory at request time so a refreshed grant is used.
     const interceptor: Interceptor = async (request: InterceptedRequest) => {
+      const url = protectedRequestUrl(request.url, grant.manifestUrl, grant.licenseUrl);
       const headers = authHeaders();
-      if (Object.keys(headers).length === 0) return request;
-      return { ...request, headers: { ...(request.headers ?? {}), ...headers } };
+      if (Object.keys(headers).length === 0) return { ...request, url };
+      return { ...request, url, headers: { ...(request.headers ?? {}), ...headers } };
     };
     // A player that cannot initialise (no EME support, an unusable manifest, a
     // browser-specific dash.js failure) must degrade to an error state. Letting
@@ -171,11 +204,16 @@ export function DashLessonPlayer({
           serverURL: grant.licenseUrl,
           // The license request is authorized with the same transient token.
           // It is read at call time, never captured into storage.
-          httpRequestHeaders: authHeaders(),
+          httpRequestHeaders: { 'Content-Type': 'application/octet-stream', ...authHeaders() },
         },
       });
       player.updateSettings({
+        debug: { logLevel: 0 },
         streaming: {
+          // Keep player preferences in memory; browser storage is reserved for
+          // the site's language/theme and the non-credential tab device id.
+          lastBitrateCachingInfo: { enabled: false },
+          lastMediaSettingsCachingInfo: { enabled: false },
           retryAttempts: { MPD: 2, MediaSegment: 2 },
           buffer: { fastSwitchEnabled: true },
         },
@@ -199,8 +237,13 @@ export function DashLessonPlayer({
       // media element errors. Without this the viewer is left staring at a blank
       // player with no explanation and no way forward, so both the fatal and the
       // media error paths settle in the same visible error state.
-      player.on(dashjs.MediaPlayer.events.ERROR, (event: { error?: string }) => {
-        const code = typeof event?.error === 'string' && event.error !== '' ? 'STREAM_SETUP_ERROR' : 'PLAYBACK_ERROR';
+      player.on(dashjs.MediaPlayer.events.ERROR, (event: { error?: unknown }) => {
+        const detail = event.error;
+        if (awaitsEncryptionInitData(detail)) return;
+        const numeric = detail && typeof detail === 'object' && 'code' in detail ? detail.code : null;
+        // Keep diagnostics useful without forwarding raw URLs or license data.
+        const code = typeof numeric === 'number' && Number.isSafeInteger(numeric)
+          ? `DASH_${numeric}` : 'STREAM_SETUP_ERROR';
         dispatch({ type: 'FAILED', code });
         onErrorRef.current?.(code);
       });
@@ -283,7 +326,8 @@ export function DashLessonPlayer({
   return (
     <div className="w-full">
       <div
-        className="relative aspect-video w-full overflow-hidden rounded-card border border-border bg-ink"
+        ref={frameRef}
+        className="relative aspect-video w-full overflow-hidden rounded-card border border-border learning-video-surface learning-video-frame"
         // The platform-side reference id is a non-secret row identifier, already
         // visible in the API response the browser received. The playback bearer
         // token is NEVER placed in the DOM.
@@ -295,6 +339,7 @@ export function DashLessonPlayer({
           }}
           className="h-full w-full"
           controls
+          controlsList="nofullscreen"
           playsInline
           preload="metadata"
           aria-label={labels.playerLabel}
@@ -306,6 +351,13 @@ export function DashLessonPlayer({
           onEnded={handleEnded}
         />
         <PlayerOverlay phase={state.phase} labels={labels} code={state.errorCode} canPlay={canPlay} />
+        {document.fullscreenEnabled ? (
+          <button type="button" data-testid="player-fullscreen" aria-pressed={fullscreen}
+            className="absolute end-3 top-3 z-30 min-h-[44px] rounded-control bg-black/80 px-3 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+            onClick={() => void toggleFullscreen()}>
+            {fullscreen ? labels.exitFullscreen : labels.fullscreen}
+          </button>
+        ) : null}
         {/* Watermark last: it must stay visible over every state overlay. */}
         <WatermarkOverlay grant={grant} />
       </div>
@@ -313,11 +365,18 @@ export function DashLessonPlayer({
         <button
           type="button"
           className="min-h-[44px] rounded-control border border-border px-4 py-2 font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+          data-testid="player-toggle-playback"
           onClick={toggle}
           disabled={state.phase === 'expired' || state.phase === 'error'}
         >
           {state.phase === 'playing' ? labels.pause : state.phase === 'paused' ? labels.resume : labels.play}
         </button>
+        {state.phase === 'error' && onRetry ? (
+          <button type="button" data-testid="player-retry" onClick={onRetry}
+            className="min-h-[44px] rounded-control border border-border px-4 py-2 font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
+            {labels.retry}
+          </button>
+        ) : null}
         <span aria-live="polite" className="text-sm text-muted">
           {phaseLabel(state.phase, labels)}
         </span>

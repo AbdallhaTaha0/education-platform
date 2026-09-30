@@ -75,7 +75,8 @@ export function CourseLearningPage({ courseSlug, onRenew }: CourseLearningPagePr
       sections.flatMap((s) => s.lessons).find((l) => l.playable && !l.completed) ??
       sections.flatMap((s) => s.lessons).find((l) => l.playable) ??
       null;
-    setSelectedLessonId(firstPlayable?.lessonId ?? null);
+    setSelectedLessonId((current) => sections.some(s => s.lessons.some(l => l.lessonId === current && l.playable))
+      ? current : firstPlayable?.lessonId ?? null);
   }, [sections]);
 
   // Losing entitlement must tear the player down and drop the credential. The
@@ -129,7 +130,8 @@ export function CourseLearningPage({ courseSlug, onRenew }: CourseLearningPagePr
     );
   }
 
-  if (errorCode === 'SUBSCRIPTION_EXPIRED' || errorCode === 'SUBSCRIPTION_REQUIRED') {
+  if (errorCode === 'SUBSCRIPTION_EXPIRED' || errorCode === 'SUBSCRIPTION_REQUIRED' ||
+      playback.errorCode === 'PLAYBACK_SESSION_EXPIRED' || playback.errorCode === 'SUBSCRIPTION_EXPIRED') {
     return (
       <Container id="main">
         <main className="py-8">
@@ -182,6 +184,7 @@ export function CourseLearningPage({ courseSlug, onRenew }: CourseLearningPagePr
                 grant={playback.grant}
                 entitlementLost={entitlementLost}
                 labels={playerLabels(t)}
+                onRetry={() => void playback.start(selectedLesson.lessonId)}
                 onProgress={(position, duration, completed) =>
                   playback.reportProgress(position, duration, completed)
                 }
@@ -202,7 +205,7 @@ export function CourseLearningPage({ courseSlug, onRenew }: CourseLearningPagePr
             ) : (
               <div
                 data-testid="player-placeholder"
-                className="flex aspect-video w-full items-center justify-center rounded-card border border-border bg-ink text-sm text-white"
+                className="flex aspect-video w-full items-center justify-center rounded-card border border-border learning-video-surface text-sm text-white"
               >
                 {t('learningSelectLesson')}
               </div>
@@ -257,6 +260,8 @@ function playerLabels(t: Translate): {
   retry: string;
   playerLabel: string;
   unsupported: string;
+  fullscreen: string;
+  exitFullscreen: string;
 } {
   return {
     loading: t('playerLoading'),
@@ -272,5 +277,7 @@ function playerLabels(t: Translate): {
     retry: t('retry'),
     playerLabel: t('playerLabel'),
     unsupported: t('playerUnsupported'),
+    fullscreen: t('playerFullscreen'),
+    exitFullscreen: t('playerExitFullscreen'),
   };
 }

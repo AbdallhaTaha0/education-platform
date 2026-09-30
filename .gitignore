@@ -21,3 +21,4 @@ Thumbs.db
 
 # Docker / volumes (never commit local database data)
 docker/volumes/
+docker/browser/evidence/

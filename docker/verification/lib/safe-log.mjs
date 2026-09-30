@@ -59,11 +59,16 @@ const FORBIDDEN_KEY_PATTERNS = [
   /uploadkey/i,
 ];
 
-let failures = 0;
-let blocked = 0;
-let checks = 0;
+import { writeSync } from 'node:fs';
+
 const skipList = [];
 let sensitiveValues = [];
+/**
+ * Authoritative record of every counted check, in emission order. Summaries
+ * are DERIVED from this ledger (never from independent counters) so a
+ * summary can never disagree with the records it summarizes.
+ */
+const ledger = [];
 
 function configureSensitiveValues(values) {
   sensitiveValues = [...new Set(values.filter((value) => typeof value === 'string' && value.length > 0))];
@@ -109,7 +114,10 @@ function sanitizeRecord(record) {
 
 function emit(record, stream = process.stdout) {
   const safe = sanitizeRecord(record);
-  stream.write(`${JSON.stringify(safe)}\n`);
+  // Synchronous writes keep evidence order stable across stdout/stderr when
+  // both are captured (e.g. `docker logs`), so no record can be reordered
+  // past the summary or lost to an async flush.
+  writeSync(stream.fd ?? 1, `${JSON.stringify(safe)}\n`);
 }
 
 function step(name) {
@@ -121,19 +129,17 @@ function info(fields) {
 }
 
 function recordOk(name, fields = {}) {
-  checks += 1;
+  ledger.push({ step: name, ok: true, blocked: false });
   emit({ step: name, ok: true, ...fields });
 }
 
 function recordFail(name, fields = {}) {
-  checks += 1;
-  failures += 1;
+  ledger.push({ step: name, ok: false, blocked: false });
   emit({ step: name, ok: false, ...fields }, process.stderr);
 }
 
 function recordBlocked(name, fields = {}) {
-  checks += 1;
-  blocked += 1;
+  ledger.push({ step: name, ok: false, blocked: true });
   emit({ step: name, ok: false, state: 'BLOCKED', ...fields }, process.stderr);
 }
 
@@ -155,14 +161,21 @@ function expect(name, condition, fields = {}) {
   return false;
 }
 
+function tally() {
+  const failed = ledger.filter((r) => r.ok === false && !r.blocked).length;
+  const blocked = ledger.filter((r) => r.blocked).length;
+  return { checks: ledger.length, failures: failed, failed, blocked };
+}
+
 function summary() {
+  const { checks, failed, blocked } = tally();
   process.stdout.write(
-    `${JSON.stringify({ step: 'summary', checks, failed: failures, blocked, skipped: skipList.length })}\n`,
+    `${JSON.stringify({ step: 'summary', checks, failed, blocked, skipped: skipList.length })}\n`,
   );
   for (const item of skipList) {
     emit({ step: 'skipped', ...item }, process.stderr);
   }
-  const outcome = verdictFor({ failures, blocked });
+  const outcome = verdictFor(tally());
   if (outcome.exitCode !== 0) {
     const verdict = outcome.verdict;
     process.stderr.write(`${JSON.stringify({ step: 'result', verdict })}\n`);
@@ -178,7 +191,8 @@ function verdictFor(counts) {
 }
 
 function outcomeCounts() {
-  return { failures, blocked };
+  const { failed, blocked } = tally();
+  return { failures: failed, blocked };
 }
 
 function safeErrorCategory(error) {

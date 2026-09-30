@@ -8,6 +8,7 @@ ARG NGINX_IMAGE=nginxinc/nginx-unprivileged:1.27-alpine
 FROM ${NODE_IMAGE} AS build
 WORKDIR /srv/client
 COPY client/package.json client/package-lock.json ./
+COPY client/scripts ./scripts
 RUN npm ci
 COPY client/index.html client/vite.config.ts client/tsconfig.json client/postcss.config.js client/tailwind.config.js ./
 COPY client/nginx.conf ./nginx.conf
@@ -19,6 +20,7 @@ RUN npm run build
 FROM ${NODE_IMAGE} AS test
 WORKDIR /srv/client
 COPY client/package.json client/package-lock.json ./
+COPY client/scripts ./scripts
 RUN npm ci
 COPY client/index.html client/vite.config.ts client/vitest.config.ts client/tsconfig.json client/postcss.config.js client/tailwind.config.js ./
 COPY client/src ./src

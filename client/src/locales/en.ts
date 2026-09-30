@@ -264,6 +264,8 @@ export const en = {
   playerPause: 'Pause',
   playerResume: 'Resume',
   playerLabel: 'Lesson video player',
+  playerFullscreen: 'Full screen',
+  playerExitFullscreen: 'Exit full screen',
   playerUnsupported: 'The protection provider is not supported in this browser.',
 } as const;
 

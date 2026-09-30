@@ -63,8 +63,12 @@ import {
 import { r2Smoke, r2ControlCleanup, r2ControlPresent } from './stages/r2-smoke.mjs';
 import { corsProof } from './stages/cors.mjs';
 import { drmLifecycle } from './stages/drm-lifecycle.mjs';
+import { tenantIsolation } from './stages/tenant-isolation.mjs';
+import { tokenExpiry } from './stages/token-expiry.mjs';
+import { subscriptionExpiry } from './stages/subscription-expiry.mjs';
 import { negativeCases } from './stages/negative.mjs';
 import { platformLifecycle } from './stages/platform-lifecycle.mjs';
+import { platformRs256 } from './stages/platform-rs256.mjs';
 import { legacyCleanup } from './stages/legacy-cleanup.mjs';
 import { selfTest } from './stages/selftest.mjs';
 
@@ -76,8 +80,12 @@ const STAGES = [
   'r2-smoke',
   'cors',
   'drm-lifecycle',
+  'tenant-isolation',
+  'token-expiry',
+  'subscription-expiry',
   'negative',
   'platform',
+  'platform-rs256',
   'r2-cleanup',
   'legacy-cleanup',
 ];
@@ -277,8 +285,23 @@ async function main() {
           }
           break;
         }
+        case 'tenant-isolation': {
+          await tenantIsolation(ctx);
+          break;
+        }
+        case 'token-expiry': {
+          await tokenExpiry(ctx);
+          break;
+        }
+        case 'subscription-expiry': {
+          await subscriptionExpiry(ctx);
+          break;
+        }
         case 'platform':
           await platformLifecycle(ctx);
+          break;
+        case 'platform-rs256':
+          await platformRs256(ctx);
           break;
         case 'legacy-cleanup':
           await legacyCleanup(ctx);

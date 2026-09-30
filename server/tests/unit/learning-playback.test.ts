@@ -199,6 +199,17 @@ describe('DRM playback response validation', () => {
 });
 
 describe('watermark presentation', () => {
+  it('projects the real signed DRM payload without exposing signature or trace fields', () => {
+    const out = toWatermarkPresentation({ payload: {
+      maskedIdentity: 'ab***yz', sessionRef: 'private-session', assetRef: 'private-asset',
+      traceCode: 'private-trace', issuedAt: 1700000000, expiresAt: 1700003600,
+      positions: [{ x: 10, y: 20, intervalSeconds: 25 }],
+    }, signature: 'private-signature' });
+    expect(out).toEqual({ type: 'MASKED', maskedIdentity: 'ab***yz',
+      positions: [{ x: 10, y: 20 }], expiresAt: '2023-11-14T23:13:20.000Z' });
+    expect(JSON.stringify(out)).not.toContain('private-');
+    expect(JSON.stringify(out)).not.toContain('intervalSeconds');
+  });
   it('exposes only renderable fields and never the signature or trace code', () => {
     const out = toWatermarkPresentation({
       type: 'MASKED',

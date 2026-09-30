@@ -19,3 +19,5 @@ DRM-maintenance prompt assigns it; that permission does not merge DRM
 persistence or internals into the platform backend.
 
 Use reports-and-markdown-files/design.md as the current UI specification. The earlier generated Stitch pages are not an implementation source. Keep visual tokens easy to revise when the owner reviews colors.
+
+On 2026-10-01 the owner explicitly assigned the bounded recorded-video DRM packaging repair: emit a static, finite-duration DASH manifest using Shaka Packager, add affected processing regressions, and verify real-browser playback. This permits only that worker/test maintenance; the external API-only architecture and persistence boundary remain unchanged. See reports-and-markdown-files/drm-recorded-manifest-repair-proposal.md.

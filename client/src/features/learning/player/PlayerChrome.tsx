@@ -21,6 +21,8 @@ export interface PlayerLabels {
   retry: string;
   playerLabel: string;
   unsupported: string;
+  fullscreen: string;
+  exitFullscreen: string;
 }
 
 export function phaseLabel(phase: PlayerPhase, labels: PlayerLabels): string {
@@ -105,7 +107,7 @@ export function PlayerOverlay({
       <div
         data-testid="player-state"
         data-phase={phase}
-        className="absolute inset-0 flex items-center justify-center bg-ink/80 px-4 text-center text-sm font-bold text-white"
+        className="absolute inset-0 flex items-center justify-center learning-video-overlay px-4 text-center text-sm font-bold text-white"
       >
         {phase === 'ended' ? labels.ended : labels.expired}
       </div>
@@ -117,7 +119,7 @@ export function PlayerOverlay({
         data-testid="player-state"
         data-phase="error"
         data-code={code ?? 'UNKNOWN'}
-        className="absolute inset-0 flex items-center justify-center bg-ink/80 px-4 text-center text-sm font-bold text-white"
+        className="absolute inset-0 flex items-center justify-center learning-video-overlay px-4 text-center text-sm font-bold text-white"
       >
         {code === 'UNSUPPORTED_PROVIDER' ? labels.unsupported : labels.error}
       </div>
@@ -128,7 +130,7 @@ export function PlayerOverlay({
       <div
         data-testid="player-state"
         data-phase="loading"
-        className="absolute inset-0 flex items-center justify-center bg-ink/60 px-4 text-center text-sm text-white"
+        className="absolute inset-0 flex items-center justify-center learning-video-overlay px-4 text-center text-sm text-white"
       >
         {labels.loading}
       </div>
@@ -139,7 +141,7 @@ export function PlayerOverlay({
       <div
         data-testid="player-state"
         data-phase="ready"
-        className="absolute inset-0 flex items-center justify-center bg-ink/60 px-4 text-center text-sm text-white"
+        className="absolute inset-0 flex items-center justify-center learning-video-overlay px-4 text-center text-sm text-white"
       >
         {labels.ready}
       </div>

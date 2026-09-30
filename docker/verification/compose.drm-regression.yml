@@ -1,0 +1,14 @@
+# Test-only. Serving images are the already built, unchanged DRM revision.
+services:
+  api:
+    image: education-drm-service-api:0.5.0-m5-verify
+  worker:
+    image: education-drm-service-worker:0.5.0-m5-verify
+  migrate:
+    image: education-drm-service-migrate:0.5.0-m5-verify
+  test-runner:
+    image: drm-verification-test-runner:m5-final
+  recovery-runner:
+    image: drm-verification-test-runner:m5-final
+  processing-runner:
+    image: drm-verification-test-runner:m5-final

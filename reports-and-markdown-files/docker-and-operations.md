@@ -1,5 +1,7 @@
 # Docker and operations plan
 
+Current local verification status (2026-10-01): see [manager continuation review](m5-manager-continuation-review.md) and [the bounded recorded-manifest repair](drm-recorded-manifest-repair-proposal.md). The owner-authorized static recorded-manifest repair and 65-check real-browser journey passed; closure changes await owner acceptance. The verification stack at the approved localhost port 8082 is healthy, uses isolated volumes, and the API TTL has been restored to 300 seconds. No production release is approved.
+
 Platform development, tests and deployment use Docker. External DRM remains unchanged and is consumed through its API.
 
 | Service | Requirement |

@@ -1,5 +1,7 @@
 # External DRM integration contract
 
+Current local verification status (2026-10-01): see [manager continuation review](m5-manager-continuation-review.md) and [the bounded recorded-manifest repair](drm-recorded-manifest-repair-proposal.md). The owner-authorized static recorded-manifest repair and 65-check real-browser journey passed; closure changes await owner acceptance. The verification stack at the approved localhost port 8082 is healthy, uses isolated volumes, and the API TTL has been restored to 300 seconds. No production release is approved.
+
 Confirmed platform boundary: API-only; platform code never queries DRM persistence. On 2026-09-28 the owner separately authorized bounded maintenance inside education-drm-service to add missing permanent media deletion. That work remains an independent DRM package change and does not alter the platform integration boundary.
 
 ## Upload
@@ -36,7 +38,7 @@ The prior source review found incomplete commercial licensing and possible playb
 
 ## Permanent media deletion prerequisite
 
-The bounded DRM prerequisite is accepted. The API now exposes an application-scoped asynchronous media-deletion contract and safe status endpoint. Acceptance verified immediate playback denial, active-session revocation, source and packaged-prefix cleanup, personalized variants, cascading secret/material cleanup, retained non-secret operation/audit evidence, retry and reconciliation, and prefixes containing more than 1,000 objects. The platform may integrate this API in M3, while live Cloudflare R2 verification remains blocked until credentials are supplied.
+The bounded DRM prerequisite is accepted. The API now exposes an application-scoped asynchronous media-deletion contract and safe status endpoint. Acceptance verified immediate playback denial, active-session revocation, source and packaged-prefix cleanup, personalized variants, cascading secret/material cleanup, retained non-secret operation/audit evidence, retry and reconciliation, and prefixes containing more than 1,000 objects. At that prerequisite checkpoint, live Cloudflare R2 verification was blocked by unavailable credentials. Later lifecycle evidence and the current manager continuation are recorded separately; that historical blocker does not describe the current local configuration.
 
 ## 2026-09-30 — renewal contract, test-fixture parity and the watermark boundary
 

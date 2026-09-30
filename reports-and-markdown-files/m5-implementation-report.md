@@ -1,3 +1,5 @@
+> Current continuation status (2026-10-01): see [M5 manager continuation review](m5-manager-continuation-review.md). The older revisions, counts and verdicts below are historical evidence. M5 code is committed at `b04d84f`, with nested DRM at `015392b`; the subsequent closure changes remain uncommitted. Production release is not approved.
+
 # M5 implementation report — protected learning, DASH/EME playback, progress, and expiry
 
 Date: 2026-09-30. Scope: Milestone 5 only, plus the owner-assigned M5

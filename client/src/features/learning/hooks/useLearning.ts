@@ -116,7 +116,6 @@ export function usePlayback(courseRef: string): PlaybackController {
   // Mirrors of the live values, so the end/renew callbacks stay stable and do
   // not re-subscribe on every render.
   const grantRef = useRef<PlaybackGrant | null>(null);
-  grantRef.current = grant;
 
   /**
    * End the external session. Always a best-effort keepalive: local credential
@@ -171,6 +170,7 @@ export function usePlayback(courseRef: string): PlaybackController {
         if (held === null) return;
         try {
           const renewal = await learningApi.renewPlayback(held.referenceId);
+          if (grantRef.current?.referenceId !== held.referenceId) return;
           const tokenExpiresAtMs = Date.parse(renewal.tokenExpiresAt);
           const sessionExpiresAtMs = Date.parse(renewal.sessionExpiresAt);
           if (!renewSession(renewal.playbackToken, tokenExpiresAtMs, sessionExpiresAtMs)) {
@@ -178,22 +178,21 @@ export function usePlayback(courseRef: string): PlaybackController {
           }
           // Update the in-memory credential only. No reload, no persistence, and
           // the DASH/EME instance is left completely untouched.
-          setGrant((prev) =>
-            prev === null
-              ? prev
-              : {
-                  ...prev,
-                  playbackToken: renewal.playbackToken,
-                  tokenExpiresAt: renewal.tokenExpiresAt,
-                  sessionExpiresAt: renewal.sessionExpiresAt,
-                },
-          );
+          // A late response must not resurrect an ended or switched session.
+          if (grantRef.current?.referenceId !== held.referenceId) return;
+          const next = { ...held, playbackToken: renewal.playbackToken,
+            tokenExpiresAt: renewal.tokenExpiresAt, sessionExpiresAt: renewal.sessionExpiresAt };
+          grantRef.current = next;
+          setGrant(next);
           setErrorCode(null);
           scheduleRenewal();
-        } catch {
+        } catch (err) {
           // Renewal refused or failed: stop playback, drop the credential, and
           // end the session so the DRM does not keep it alive.
-          void end();
+          if (grantRef.current?.referenceId !== held.referenceId) return;
+          const code = err instanceof LearningApiError ? err.code : 'UNKNOWN';
+          await end();
+          setErrorCode(code);
         }
       })();
     }, wait);

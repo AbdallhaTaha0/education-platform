@@ -1,0 +1,17 @@
+# Isolated M5 verification override for the `education-platform-rs256`
+# disposable project (M5 closure, package 01 follow-up).
+#
+# Portable and credential-free: only image tags, no environment values, no
+# secrets, no ports, no volumes. Pass as an extra -f flag AFTER
+# docker/compose.dev.yml, or use docker/verification/rs256-project.mjs which
+# supplies the project name, explicit disposable volumes, port and guard.
+#
+# Tags are intentionally distinct from development (:0.4.0-m4) so verification
+# builds never overwrite development images.
+services:
+  server:
+    image: edu-platform-server:0.5.0-m5-rs256verify
+  migrate:
+    image: edu-platform-migrate:0.5.0-m5-rs256verify
+  client:
+    image: edu-platform-client:0.5.0-m5-rs256verify

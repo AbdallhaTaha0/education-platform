@@ -1,5 +1,7 @@
 # Education platform documentation
 
+Current review (2026-10-01): [M5 manager continuation](m5-manager-continuation-review.md) records the recovered OpenCode work, new fixes, fresh Docker evidence and remaining gates. Platform M5 implementation is committed at `b04d84f`; closure work is uncommitted. The baseline paragraphs below describe earlier evidence, not current acceptance.
+
 Baseline updated: 2026-09-30 after the owner-authorized M5 DRM security
 correction and fresh live lifecycle verification (all uncommitted). The Docker foundation
 remains accepted at revision `fce352f`, M2 at `b8080a8`, M3 at `d520dd7`, the
@@ -38,6 +40,9 @@ Where sources conflict, record the conflict and ask the owner. Neither existing 
 
 | File | Purpose |
 | --- | --- |
+| [drm-recorded-manifest-repair-proposal.md](drm-recorded-manifest-repair-proposal.md) | Exact static-manifest prerequisite, reproduction and bounded owner assignment |
+| [m5-manager-continuation-review.md](m5-manager-continuation-review.md) | Recovered work, independent verification, current blockers and bounded next steps |
+| [m5-closure-work-packages/README.md](m5-closure-work-packages/README.md) | Sequential closure packages 01–09 and worker contract |
 | [agent.md](agent.md) | Manager, worker, and reviewer responsibilities |
 | [rules.md](rules.md) | Non-negotiable constraints and engineering review rules |
 | [discovery-report.md](discovery-report.md) | Repository findings and concrete gaps |

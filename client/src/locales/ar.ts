@@ -262,6 +262,8 @@ export const ar = {
   playerPause: 'إيقاف مؤقت',
   playerResume: 'استئناف',
   playerLabel: 'مشغل فيديو الدرس',
+  playerFullscreen: 'ملء الشاشة',
+  playerExitFullscreen: 'الخروج من ملء الشاشة',
   playerUnsupported: 'مزود الحماية غير مدعوم في هذا المتصفح.',
   navDashboard: 'لوحة التعلم',
 } as const;

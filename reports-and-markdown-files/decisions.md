@@ -85,3 +85,7 @@ Live Cloudflare R2 and real external DRM upload/deletion verification remain
 blocked; M4 acceptance does not certify production readiness or capacity.
 
 Future answers must record owner/date, approved policy, affected documents and acceptance checks. Do not quietly promote recommendations to approved requirements.
+
+## D24 — recorded-video manifest repair (2026-10-01, CONFIRMED)
+
+The owner explicitly approved the prepared bounded DRM packaging repair after reproduction showed a dynamic MPD for recorded courses. Add `--generate_static_live_mpd` in the independent worker, add affected processing regression coverage, rebuild in Docker and verify real-browser playback. No existing media is automatically regenerated, no license enforcement changes, and no platform access to DRM persistence is authorized. The original architecture remains unchanged.

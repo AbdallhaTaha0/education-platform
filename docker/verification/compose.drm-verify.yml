@@ -1,0 +1,22 @@
+# DRM verification-image override (M5 closure).
+#
+# Portable and credential-free: only image tags, no environment values, no
+# secrets. Pass as an extra -f flag AFTER the DRM Compose file to build
+# verification images without overwriting development tags
+# (education-drm-service-api/worker/migrate:latest):
+#
+#   docker compose --env-file education-drm-service/.env
+#     -f education-drm-service/docker/docker-compose.yml
+#     -f docker/verification/compose.drm-verify.yml
+#     build api worker migrate
+#
+# The ignored DRM .env supplies interpolation defaults only; no value is
+# printed by the build. Never start the DRM stack from these images in this
+# task; inspect them with transient --rm runs only.
+services:
+  api:
+    image: education-drm-service-api:0.5.0-m5-verify
+  worker:
+    image: education-drm-service-worker:0.5.0-m5-verify
+  migrate:
+    image: education-drm-service-migrate:0.5.0-m5-verify

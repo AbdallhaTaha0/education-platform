@@ -395,3 +395,8 @@ html[data-theme="light"] .hero-grid::before {
     transition: none !important;
   }
 }
+
+/* Video surfaces keep white controls readable in either site theme. */
+.learning-video-surface { background: var(--player-background, #000000); }
+.learning-video-frame:fullscreen { width: 100vw; height: 100vh; aspect-ratio: auto; border: 0; border-radius: 0; }
+.learning-video-overlay { background: var(--player-overlay-background, rgb(0 0 0 / 80%)); }
