@@ -54,6 +54,8 @@ model User {
   rechargeRequests RechargeRequest[]
   purchases    Purchase[]
   subscriptions Subscription[]
+  lessonProgress LessonProgress[]
+  playbackReferences PlaybackReference[]
 
   @@index([role])
 }
@@ -180,6 +182,8 @@ model Lesson {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   media     MediaMapping?
+  progress  LessonProgress[]
+  playbackReferences PlaybackReference[]
 
   @@unique([sectionId, position])
   @@index([sectionId, position])
@@ -413,4 +417,91 @@ model AuditEvent {
   @@index([actorUserId])
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+/// M5 protected learning. Learning progress and playback references are
+/// durable platform records; they are NEVER an authorization input. Access is
+/// always decided by the subscription entitlement at backend time.
+enum PlaybackSessionStatus {
+  ACTIVE
+  ENDED
+  TERMINATED
+  TERMINATION_FAILED
+}
+
+enum TerminationStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  NOT_REQUIRED
+}
+
+/// Why an active DRM session still needs a termination call.
+enum PlaybackEndReason {
+  /// The viewer closed or finished the lesson normally.
+  VIEWER_END
+  /// The subscription lapsed while the session was open.
+  SUBSCRIPTION_EXPIRED
+}
+
+/// Minimal per-student learning progress (M5). A stored position or completion
+/// record never grants access. Values are seconds, finite and non-negative.
+model LessonProgress {
+  id              String    @id @default(uuid())
+  studentId       String
+  student         User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lessonId        String
+  lesson          Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  courseId        String
+  positionSeconds Float     @default(0)
+  durationSeconds Float?
+  completedAt     DateTime?
+  lastAccessedAt  DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([studentId, lessonId])
+  @@index([studentId, courseId])
+  @@index([studentId, lastAccessedAt])
+}
+
+/// Non-secret reference to an external DRM playback session.
+///
+/// The DRM playback bearer token is NEVER stored here, in any other platform
+/// table, in Redis, or in audit metadata. Only the opaque external session id
+/// and lifecycle timestamps are durable, so expiry reconciliation can request
+/// supported external termination after entitlement lapses.
+model PlaybackReference {
+  id                    String               @id @default(uuid())
+  studentId             String
+  student               User                 @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lessonId              String
+  lesson                Lesson               @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  courseId              String
+  externalSessionId     String               @unique
+  externalAssetId       String
+  provider              String
+  status                PlaybackSessionStatus @default(ACTIVE)
+  terminationStatus     TerminationStatus?
+  /**
+   * Why the platform still owes the DRM a termination call. A normal viewer end
+   * must still be confirmed by the dependency, so a failed confirmation is
+   * retried rather than forgotten; the reason decides whether a successful
+   * termination lands as ENDED (viewer finished) or TERMINATED (entitlement
+   * lapsed). Null means there is nothing outstanding.
+   */
+  pendingEndReason      PlaybackEndReason?
+  terminationAttempts   Int                  @default(0)
+  nextTerminationAt     DateTime?
+  lastErrorCategory     String?
+  tokenExpiresAt        DateTime
+  sessionExpiresAt      DateTime
+  endedAt               DateTime?
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  @@index([studentId, status])
+  @@index([status, nextTerminationAt])
+  @@index([studentId, courseId])
+  @@index([courseId, status])
 }

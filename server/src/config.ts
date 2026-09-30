@@ -6,6 +6,7 @@
  * or frontend bundles. Browser-safe settings live in client/.env* (VITE_*).
  */
 
+import { createPrivateKey } from 'node:crypto';
 import type { Argon2Params } from './modules/identity/password.js';
 import { ARGON2_MAXIMUMS, ARGON2_MINIMUMS, PRODUCTION_ARGON2 } from './modules/identity/password.js';
 
@@ -14,6 +15,10 @@ export const DRM_TIMEOUT_MIN_MS = 250;
 export const DRM_TIMEOUT_MAX_MS = 30000;
 export const DRM_RETRIES_DEFAULT = 2;
 export const DRM_RETRIES_MIN = 0;
+/** M5 assertion lifetime bounds; the ceiling is the external maximum. */
+export const DRM_ASSERTION_MAX_LIFETIME_DEFAULT_SEC = 120;
+export const DRM_ASSERTION_MAX_LIFETIME_MIN_SEC = 30;
+export const DRM_ASSERTION_MAX_LIFETIME_CEILING_SEC = 300;
 export const DRM_RETRIES_MAX = 3;
 
 /** M4 approved manual-funding channel identifier. */
@@ -64,6 +69,25 @@ export interface ServerConfig {
   argon2: Argon2Params;
   /** M4 manual-funding channels. Empty array = explicitly unconfigured. */
   paymentChannels: PaymentChannelConfig[];
+  /** M5 playback-assertion issuer; must equal the configured DRM expectation. */
+  drmAssertionIssuer?: string;
+  /** M5 playback-assertion audience. */
+  drmAssertionAudience?: string;
+  /** M5 playback-assertion algorithm. Real DRM uses RS256 + JWKS. */
+  drmAssertionAlgorithm?: 'HS256' | 'RS256';
+  /** Server-only signing key: RSA PKCS#8 PEM, or an explicit test-fixture HMAC secret. */
+  drmAssertionSigningKey?: string;
+  /** Public JWKS key identifier for RS256 assertions. */
+  drmAssertionKeyId?: string;
+  /** M5 assertion lifetime in seconds; never exceeds the DRM maximum. */
+  drmAssertionMaxLifetimeSec: number;
+  /**
+   * Browser-facing DRM origin. The DRM returns relative manifest/license
+   * paths, so the platform resolves and validates them against this origin
+   * before returning them to the player. Absent means the server-side base URL
+   * is used and the platform refuses to hand out cross-origin media URLs.
+   */
+  drmPublicBaseUrl?: string;
 }
 
 function parsePort(raw: string | undefined): number {
@@ -288,6 +312,88 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   if (isProduction && drmConfiguredCount === 0) {
     throw new Error('Invalid DRM configuration (production requires DRM_BASE_URL, DRM_CLIENT_ID and DRM_CLIENT_SECRET).');
   }
+
+  // ---- M5 playback-assertion and dependency-origin configuration ----
+  // The assertion identity must be present whenever DRM playback is possible,
+  // because the platform is the issuer of the signed assertion.
+  const drmAssertionIssuer = optionalEnv(env, 'DRM_ASSERTION_ISSUER');
+  const drmAssertionAudience = optionalEnv(env, 'DRM_ASSERTION_AUDIENCE');
+  const drmAssertionSecret = optionalEnv(env, 'DRM_ASSERTION_SECRET');
+  const drmAssertionPrivateKeyB64 = optionalEnv(env, 'DRM_ASSERTION_PRIVATE_KEY_B64');
+  const drmAssertionKeyId = optionalEnv(env, 'DRM_ASSERTION_KEY_ID');
+  const fixtureHs256 = env['DRM_ASSERTION_MODE'] === 'fixture-hs256';
+  let drmAssertionAlgorithm: 'HS256' | 'RS256' | undefined;
+  let drmAssertionSigningKey: string | undefined;
+  if (
+    drmConfiguredCount === 3 &&
+    (drmAssertionIssuer === undefined ||
+      drmAssertionAudience === undefined)
+  ) {
+    throw new Error(
+      'Invalid playback assertion configuration (DRM_ASSERTION_ISSUER and DRM_ASSERTION_AUDIENCE are required when DRM is configured).',
+    );
+  }
+  if (drmAssertionIssuer !== undefined) parseIdentifierValue(drmAssertionIssuer, 'DRM_ASSERTION_ISSUER');
+  if (drmAssertionAudience !== undefined) parseIdentifierValue(drmAssertionAudience, 'DRM_ASSERTION_AUDIENCE');
+  if (drmAssertionPrivateKeyB64 !== undefined || drmAssertionKeyId !== undefined) {
+    if (drmAssertionPrivateKeyB64 === undefined || drmAssertionKeyId === undefined || drmAssertionSecret !== undefined) {
+      throw new Error('Invalid DRM assertion key configuration (RSA key and key id must be complete and exclusive).');
+    }
+    if (!/^[A-Za-z0-9._-]{1,64}$/.test(drmAssertionKeyId)) {
+      throw new Error('Invalid DRM_ASSERTION_KEY_ID.');
+    }
+    try {
+      const pem = Buffer.from(drmAssertionPrivateKeyB64, 'base64').toString('utf8');
+      const key = createPrivateKey(pem);
+      if (key.asymmetricKeyType !== 'rsa' || (key.asymmetricKeyDetails?.modulusLength ?? 0) < 2048) {
+        throw new Error('RSA key must be at least 2048 bits');
+      }
+      drmAssertionAlgorithm = 'RS256';
+      drmAssertionSigningKey = pem;
+    } catch {
+      throw new Error('Invalid DRM_ASSERTION_PRIVATE_KEY_B64 (expected a base64 PKCS#8 RSA private key of at least 2048 bits).');
+    }
+  } else if (drmAssertionSecret !== undefined) {
+    if (drmAssertionSecret.length < 32) {
+      throw new Error('Invalid DRM_ASSERTION_SECRET (at least 32 characters are required).');
+    }
+    if (isProduction || (nodeEnv !== 'test' && !fixtureHs256)) {
+      throw new Error('DRM_ASSERTION_SECRET is test-fixture-only; real DRM requires RS256 configuration.');
+    }
+    drmAssertionAlgorithm = 'HS256';
+    drmAssertionSigningKey = drmAssertionSecret;
+  } else if (drmConfiguredCount === 3) {
+    throw new Error('Invalid playback assertion configuration (RS256 signing key is required for real DRM).');
+  }
+  // The external service enforces a 300 s maximum assertion lifetime (see
+  // drm-integration.md). The platform never mints anything longer.
+  const drmAssertionMaxLifetimeSec = parseBoundedInt(
+    env['DRM_ASSERTION_MAX_LIFETIME_SEC'],
+    DRM_ASSERTION_MAX_LIFETIME_DEFAULT_SEC,
+    DRM_ASSERTION_MAX_LIFETIME_MIN_SEC,
+    DRM_ASSERTION_MAX_LIFETIME_CEILING_SEC,
+    'DRM_ASSERTION_MAX_LIFETIME_SEC',
+  );
+  const drmPublicBaseUrlRaw = optionalEnv(env, 'DRM_PUBLIC_BASE_URL');
+  let drmPublicBaseUrl: string | undefined;
+  if (drmPublicBaseUrlRaw !== undefined) {
+    let publicUrl: URL;
+    try {
+      publicUrl = new URL(drmPublicBaseUrlRaw);
+    } catch {
+      throw new Error('Invalid DRM_PUBLIC_BASE_URL (must be a parseable HTTP/HTTPS URL).');
+    }
+    if (publicUrl.protocol !== 'http:' && publicUrl.protocol !== 'https:') {
+      throw new Error('Invalid DRM_PUBLIC_BASE_URL (must be an HTTP/HTTPS URL).');
+    }
+    if (isProduction && publicUrl.protocol !== 'https:') {
+      throw new Error('Invalid DRM_PUBLIC_BASE_URL (production requires HTTPS).');
+    }
+    if (publicUrl.username !== '' || publicUrl.password !== '') {
+      throw new Error('Invalid DRM_PUBLIC_BASE_URL (embedded credentials are forbidden).');
+    }
+    drmPublicBaseUrl = drmPublicBaseUrlRaw.replace(/\/+$/, '');
+  }
   return {
     nodeEnv,
     port: parsePort(env['PORT']),
@@ -310,6 +416,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     cookieSecure: cookieSecureRaw === 'true',
     argon2,
     paymentChannels: parsePaymentChannels(env),
+    ...(drmAssertionIssuer !== undefined ? { drmAssertionIssuer } : {}),
+    ...(drmAssertionAudience !== undefined ? { drmAssertionAudience } : {}),
+    ...(drmAssertionAlgorithm !== undefined ? { drmAssertionAlgorithm } : {}),
+    ...(drmAssertionSigningKey !== undefined ? { drmAssertionSigningKey } : {}),
+    ...(drmAssertionKeyId !== undefined ? { drmAssertionKeyId } : {}),
+    drmAssertionMaxLifetimeSec,
+    ...(drmPublicBaseUrl !== undefined ? { drmPublicBaseUrl } : {}),
   };
 }
 

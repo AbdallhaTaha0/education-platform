@@ -12,7 +12,9 @@ export type Route =
   | 'wallet-recharge'
   | 'purchases'
   | 'purchase'
-  | 'admin-recharge';
+  | 'admin-recharge'
+  | 'dashboard'
+  | 'learn';
 
 export function routeFromHash(): Route {
   const hash = window.location.hash;
@@ -24,6 +26,8 @@ export function routeFromHash(): Route {
   if (hash === '#/purchases') return 'purchases';
   if (hash === '#/wallet/recharge') return 'wallet-recharge';
   if (hash === '#/wallet') return 'wallet';
+  if (hash === '#/dashboard') return 'dashboard';
+  if (hash.startsWith('#/learn/')) return 'learn';
   if (hash === '#/admin/recharge') return 'admin-recharge';
   if (hash.startsWith('#/courses/')) return 'course-detail';
   if (hash === '#/courses') return 'courses';
@@ -47,5 +51,12 @@ export function slugFromHash(): string {
 export function adminCourseIdFromHash(): string {
   const hash = window.location.hash;
   if (hash.startsWith('#/admin/courses/')) return decodeURIComponent(hash.slice('#/admin/courses/'.length));
+  return '';
+}
+
+/** Course slug for the protected learning route (#/learn/:slug). */
+export function learnSlugFromHash(): string {
+  const hash = window.location.hash;
+  if (hash.startsWith('#/learn/')) return decodeURIComponent(hash.slice('#/learn/'.length));
   return '';
 }

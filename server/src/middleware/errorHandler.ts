@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { ApiError } from '../modules/identity/errors.js';
+import { LearningError } from '../modules/learning/errors.js';
 import { getLogger } from '../logger.js';
 
 export interface ApiErrorBody {
@@ -37,6 +38,19 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
         message: err.message,
         requestId: req.requestId ?? 'unknown',
         ...(err.details !== undefined ? { details: err.details } : {}),
+      },
+    };
+    res.status(err.status).json(body);
+    return;
+  }
+  // M5 learning categories are already frontend-safe: the message is a fixed
+  // English fallback and the code is the contract the client localizes.
+  if (err instanceof LearningError) {
+    const body: ApiErrorBody = {
+      error: {
+        code: err.code,
+        message: err.message,
+        requestId: req.requestId ?? 'unknown',
       },
     };
     res.status(err.status).json(body);

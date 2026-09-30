@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError, apiFetch, useAuth } from '../../../auth';
 import { Button } from '../../../components/ui/Button';
+import { BrandMark } from '../../../components/ui/BrandMark';
 import { Container } from '../../../components/ui/Card';
 import { Field, textInputClassName } from '../../../components/ui/Field';
 import { Notice } from '../../../components/ui/Notice';
@@ -57,6 +58,9 @@ export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element 
   return (
     <Container>
       <div className="form-card mx-auto max-w-[640px] rounded-card border border-border bg-surface p-6 shadow-rest">
+        <div className="mb-4">
+          <BrandMark size="md" />
+        </div>
         <h1 ref={titleRef} tabIndex={-1}>
           {t.registerTitle}
         </h1>

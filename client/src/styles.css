@@ -3,55 +3,105 @@
 @tailwind utilities;
 
 /* Minimal global stylesheet: Tailwind entry + font/base behavior + central
- * semantic design tokens (mirrors design.md provisional palette).
+ * semantic design tokens (FAYQ identity: forest / lime / amber / cream /
+ * charcoal, per the approved brand direction).
  * All component styling uses Tailwind utilities + reusable React components.
  */
-/* D22 theme direction: dark is the polished default; light is the accessible
- * alternative. Semantic roles (canvas/surface/elevated/text/muted/border/
- * primary/accent/focus/success/pending/error) are CSS variables consumed by
- * Tailwind, so both themes restyle every route consistently. Contrast targets
- * WCAG AA in both themes; status meaning never relies on color alone. */
+/* Dark is the polished default; light is the accessible alternative. Semantic
+ * roles are CSS variables consumed by Tailwind, so both themes restyle every
+ * route consistently. Contrast targets WCAG AA in both themes; status meaning
+ * never relies on color alone.
+ *
+ * Contrast rule: lime and amber always pair with forest (near-black) text,
+ * never white. Every text/background pair below was checked against 4.5:1
+ * (normal text) or 3:1 (large text, controls, focus). */
 :root {
-  --color-primary: #0f766e;
-  --color-primary-hover: #0d5f58;
-  --color-primary-strong: #5bc8be;
-  --color-ink: #e8edf4;
-  --color-bg: #0b1626;
-  --color-surface: #111f33;
-  --color-elevated: #182941;
-  --color-muted: #9fb0c6;
-  --color-border: #26374f;
-  --color-accent: #f2b84b;
-  --color-focus: #f2b84b;
-  --color-success-fg: #7ddba3;
-  --color-success-bg: #123626;
+  /* Brand primitives — never used directly in components; roles below consume them. */
+  --fayq-forest: #0f1f12;
+  --fayq-lime: #c9f24d;
+  --fayq-amber: #f7b500;
+  --fayq-cream: #f8f7ee;
+  --fayq-charcoal: #2e2e2e;
+
+  --color-primary: var(--fayq-lime);
+  --color-primary-hover: #b7e244;
+  --color-primary-pressed: #a5d237;
+  --color-primary-strong: var(--fayq-lime);
+  /* Text placed on primary/lime surfaces. Always forest, never white. */
+  --color-primary-ink: var(--fayq-forest);
+  --color-accent: var(--fayq-amber);
+  --color-accent-ink: var(--fayq-forest);
+
+  --color-ink: var(--fayq-cream);
+  --color-bg: #0b140e;
+  --color-surface: #12241a;
+  --color-elevated: #1a3123;
+  --color-interactive: #223a2b;
+  --color-muted: #b7c2b0;
+  --color-border: #2c4232;
+  --color-border-strong: #3e5a46;
+  --color-focus: var(--fayq-lime);
+
+  --color-success-fg: #8fe3a8;
+  --color-success-bg: #0e2a1a;
   --color-pending-fg: #f5cf7a;
   --color-pending-bg: #3a2c10;
-  --color-error-fg: #f3a3a3;
-  --color-error-bg: #431818;
+  --color-error-fg: #fda4af;
+  --color-error-bg: #4c1822;
+  --color-info-fg: #d9cfb4;
+  --color-info-bg: #2b2a1e;
+
+  /* Player chrome stays deep forest/near-black in both themes so the video
+   * frame, overlays and watermark render identically. */
+  --color-player: #060d09;
+  --color-player-text: #ffffff;
+  --color-scrim: rgb(6 13 9 / 0.62);
+
+  --shadow-rest: 0 1px 2px rgb(0 0 0 / 0.25), 0 6px 20px rgb(0 0 0 / 0.25);
+  --shadow-lift: 0 2px 6px rgb(0 0 0 / 0.3), 0 12px 32px rgb(0 0 0 / 0.3);
+
+  --font-display: "Plus Jakarta Sans", "Inter", "Segoe UI", Arial, sans-serif;
   --font-arabic: "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
   --font-latin: "Inter", "Segoe UI", Arial, sans-serif;
   color-scheme: dark;
 }
 
 html[data-theme="light"] {
-  --color-primary: #0f766e;
-  --color-primary-hover: #115e59;
-  --color-primary-strong: #0f766e;
-  --color-ink: #142d4e;
-  --color-bg: #f7f9fc;
-  --color-surface: #ffffff;
-  --color-elevated: #eef2f7;
-  --color-muted: #526176;
-  --color-border: #dce3ec;
-  --color-accent: #f2b84b;
-  --color-focus: #b97f0f;
+  --color-primary: var(--fayq-lime);
+  --color-primary-hover: #b7e244;
+  --color-primary-pressed: #a5d237;
+  --color-primary-strong: #365314;
+  --color-primary-ink: var(--fayq-forest);
+  /* Darkened amber: the brand amber with white text fails AA, so the light
+   * theme uses a deeper amber that keeps 4.5:1 on cream for text and accents. */
+  --color-accent: #8a5700;
+  --color-accent-ink: #ffffff;
+
+  --color-ink: var(--fayq-forest);
+  --color-bg: #f5f3e8;
+  --color-surface: #fffef9;
+  --color-elevated: #f2f6df;
+  --color-interactive: #e8eed3;
+  --color-muted: #4f5c50;
+  --color-border: #d2ccb6;
+  --color-border-strong: #929b7f;
+  --color-focus: var(--fayq-forest);
+
   --color-success-fg: #166534;
   --color-success-bg: #dcfce7;
   --color-pending-fg: #92400e;
   --color-pending-bg: #fef3c7;
   --color-error-fg: #b91c1c;
   --color-error-bg: #fee2e2;
+  --color-info-fg: #5b5340;
+  --color-info-bg: #efead8;
+
+  --color-player: #060d09;
+  --color-player-text: #ffffff;
+  --color-scrim: rgb(15 31 18 / 0.55);
+
+  --shadow-rest: 0 1px 2px rgb(15 31 18 / 0.08), 0 4px 16px rgb(15 31 18 / 0.08);
+  --shadow-lift: 0 2px 6px rgb(15 31 18 / 0.1), 0 12px 32px rgb(15 31 18 / 0.12);
   color-scheme: light;
 }
 
@@ -62,6 +112,8 @@ html {
 
 body {
   margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
   background: var(--color-bg);
   color: var(--color-ink);
   font-family: var(--font-arabic);
@@ -70,15 +122,73 @@ body {
   overflow-x: clip;
 }
 
+html[data-theme="light"] body {
+  background-image:
+    radial-gradient(circle at 8% 4%, rgb(201 242 77 / 0.11), transparent 24rem),
+    radial-gradient(circle at 92% 18%, rgb(247 181 0 / 0.07), transparent 28rem);
+  background-attachment: fixed;
+}
+
+::selection {
+  background: var(--fayq-lime);
+  color: var(--fayq-forest);
+}
+
+a,
+button,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a,
+button {
+  transition-property: color, background-color, border-color, box-shadow, transform;
+  transition-duration: 150ms;
+}
+
 html[lang="en"] body {
   font-family: var(--font-latin);
   line-height: 1.5;
+}
+
+/* Display face: Plus Jakarta Sans for Latin headings. Arabic keeps the highly
+ * readable Arabic family; Latin letter-spacing never applies to Arabic. */
+html[lang="en"] h1,
+html[lang="en"] h2,
+html[lang="en"] h3,
+html[lang="en"] .font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.01em;
 }
 
 html[lang="ar"] h1,
 html[lang="ar"] h2,
 html[lang="ar"] h3 {
   letter-spacing: 0;
+}
+
+/* Responsive type rhythm shared by every page header. */
+.page-title {
+  font-size: 1.875rem;
+  line-height: 1.25;
+  font-weight: 800;
+}
+@media (min-width: 768px) {
+  .page-title {
+    font-size: 2.25rem;
+  }
+}
+.section-title {
+  font-size: 1.375rem;
+  line-height: 1.3;
+  font-weight: 700;
+}
+@media (min-width: 768px) {
+  .section-title {
+    font-size: 1.625rem;
+  }
 }
 
 code {
@@ -122,6 +232,159 @@ html[data-theme="light"] textarea {
 .skip-link:focus {
   top: 8px;
   color: #fff;
+}
+
+.hero-grid {
+  background:
+    radial-gradient(circle at 15% 10%, rgb(201 242 77 / 0.12), transparent 28rem),
+    radial-gradient(circle at 82% 70%, rgb(247 181 0 / 0.1), transparent 24rem),
+    linear-gradient(145deg, var(--color-bg), var(--color-surface));
+}
+
+html[data-theme="light"] .hero-grid {
+  background:
+    radial-gradient(circle at 12% 12%, rgb(201 242 77 / 0.24), transparent 26rem),
+    radial-gradient(circle at 84% 76%, rgb(247 181 0 / 0.13), transparent 24rem),
+    linear-gradient(145deg, #fffef8, #eef3dd);
+}
+
+html[data-theme="light"] .hero-grid::before {
+  opacity: 0.09;
+  background-image:
+    linear-gradient(rgb(15 31 18 / 0.22) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(15 31 18 / 0.22) 1px, transparent 1px);
+}
+
+.hero-grid::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.08;
+  background-image:
+    linear-gradient(var(--fayq-lime) 1px, transparent 1px),
+    linear-gradient(90deg, var(--fayq-lime) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, black, transparent 85%);
+}
+
+.brand-banner {
+  border-bottom: 1px solid var(--color-border);
+  background:
+    linear-gradient(110deg, rgb(201 242 77 / 0.1), transparent 36%),
+    var(--color-elevated);
+}
+
+.code-scene {
+  position: relative;
+  isolation: isolate;
+  min-height: 390px;
+  display: grid;
+  place-items: center;
+}
+
+.code-scene__glow {
+  position: absolute;
+  z-index: -1;
+  width: 80%;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgb(201 242 77 / 0.2), rgb(247 181 0 / 0.08) 42%, transparent 70%);
+  filter: blur(12px);
+}
+
+.code-scene__panel {
+  width: min(100%, 490px);
+  overflow: hidden;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 18px;
+  background: #09120d;
+  box-shadow: var(--shadow-lift);
+  transform: perspective(900px) rotateY(-3deg) rotateX(1deg);
+}
+
+[dir='rtl'] .code-scene__panel {
+  transform: perspective(900px) rotateY(3deg) rotateX(1deg);
+}
+
+.code-scene__note {
+  position: absolute;
+  inset-inline-end: -0.5rem;
+  bottom: 1.5rem;
+  rotate: -3deg;
+  border: 1px solid rgb(247 181 0 / 0.55);
+  border-radius: 12px;
+  background: #17261c;
+  padding: 1rem 1.25rem;
+  color: var(--fayq-cream);
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.8;
+  box-shadow: var(--shadow-lift);
+}
+
+[dir='rtl'] .code-scene__note {
+  rotate: 3deg;
+}
+
+@media (max-width: 640px) {
+  .code-scene {
+    min-height: 310px;
+  }
+  .code-scene__panel {
+    transform: none;
+  }
+  [dir='rtl'] .code-scene__panel {
+    transform: none;
+  }
+  .code-scene__note {
+    inset-inline-end: 0;
+    bottom: 0;
+    font-size: 0.75rem;
+  }
+}
+
+/* M5 protected-playback watermark (Gate F).
+ * Presented above every player state — including the error, expired, ended and
+ * loading overlays — because a watermark that vanishes with a player error is
+ * not a watermark. `pointer-events: none` and `user-select: none` keep the
+ * native controls, keyboard focus and screen readers unaffected, so the label
+ * is visual only and is also hidden from assistive technology.
+ *
+ * Security boundary: this is a visible, privacy-conscious label over the
+ * player. It raises the cost of casual re-sharing and is not a forensic
+ * control; it cannot prevent screen capture or a camera. Forensically
+ * attributable watermarking remains the external DRM's responsibility
+ * (D07), and the trace code and signature are never sent to this client.
+ *
+ * Tokens, so the owner can revise the look centrally: opacity, colour and font
+ * size are CSS variables rather than scattered utility classes. */
+.learning-watermark {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  user-select: none;
+  z-index: 30;
+  /* Survives responsive resizing and a fullscreen transition: the layer is
+   * sized by the player frame, not by a fixed pixel box. */
+  contain: layout style;
+}
+
+.learning-watermark__label {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-latin), var(--font-arabic);
+  font-size: var(--watermark-font-size, 11px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  /* A subtle dark halo keeps the label legible over bright video frames in
+   * both themes without a background plate that would hide the content. */
+  color: var(--watermark-color, #ffffff);
+  text-shadow:
+    0 0 2px var(--watermark-halo, rgba(0, 0, 0, 0.85)),
+    0 0 6px var(--watermark-halo, rgba(0, 0, 0, 0.55));
+  opacity: var(--watermark-opacity, 0.5);
 }
 
 @media (prefers-reduced-motion: reduce) {

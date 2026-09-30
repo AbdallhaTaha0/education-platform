@@ -6,6 +6,9 @@
  */
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
 import { randomUUID } from 'node:crypto';
+import { DrmPlaybackFixture, type PlaybackFixtureOptions } from './drmPlaybackFixture.js';
+
+export type { PlaybackFixtureOptions };
 
 export type FixtureMode = 'healthy' | 'flaky-status' | 'delete-pending-then-complete';
 
@@ -31,10 +34,14 @@ export class DrmFixture {
   failNextRegistrations = 0;
   completeConflictOnce = false;
   delayMs = 0;
+  /**
+   * M5 playback surface. Populated by enablePlayback(); kept as a separate
+   * module so this file stays focused on the catalog contract.
+   */
+  playback: DrmPlaybackFixture | null = null;
 
   async start(): Promise<string> {
-    this.server = createServer((req: IncomingMessage, res: ServerResponse) => {
-      let data = '';
+    this.server = createServer((req: IncomingMessage, res: ServerResponse) => {      let data = '';
       req.on('data', (c) => {
         data += c;
       });
@@ -65,6 +72,29 @@ export class DrmFixture {
             return;
           }
           const url = req.url ?? '';
+          // M5 playback routes are delegated to the playback fixture, which
+          // runs after the application-credential check above.
+          if (this.playback !== null) {
+            const handled = this.playback.handle(
+              req.method ?? '',
+              url,
+              req.headers as Record<string, string | string[] | undefined>,
+              body as Record<string, unknown> | null,
+              (status, payload) => {
+                res.writeHead(status, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(payload));
+              },
+              (externalAssetId) => {
+                for (const [internalId, asset] of this.assets.entries()) {
+                  if (asset.externalAssetId === externalAssetId && asset.status === 'READY') {
+                    return { internalId };
+                  }
+                }
+                return null;
+              },
+            );
+            if (handled) return;
+          }
           // POST /v1/media
           if (url === '/v1/media' && req.method === 'POST') {
             if (this.failNextRegistrations > 0) {
@@ -220,6 +250,15 @@ export class DrmFixture {
     if (a) a.status = 'READY';
   }
 
+  /**
+   * Enable the M5 playback surface. Must be called after start() so the
+   * configured public origin matches the listening port.
+   */
+  enablePlayback(options: Omit<PlaybackFixtureOptions, 'publicBaseUrl'>): DrmPlaybackFixture {
+    this.playback = new DrmPlaybackFixture({ ...options, publicBaseUrl: this.url });
+    return this.playback;
+  }
+
   markFailed(internalId: string): void {
     const a = this.assets.get(internalId);
     if (a) a.status = 'FAILED';
@@ -235,6 +274,7 @@ export class DrmFixture {
     this.completeConflictOnce = false;
     this.delayMs = 0;
     this.mode = 'healthy';
+    this.playback?.reset();
   }
 
   async stop(): Promise<void> {

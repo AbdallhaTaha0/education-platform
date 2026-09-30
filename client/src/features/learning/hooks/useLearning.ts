@@ -1,0 +1,302 @@
+/** Learning hooks (M5). Each hook owns one responsibility and no globals. */
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { learningApi, LearningApiError } from '../api/client';
+import { clear as clearSession, renewSession } from '../player/session';
+import type {
+  DashboardPayload,
+  LessonProgressState,
+  OutlinePayload,
+  PlaybackGrant,
+} from '../types/models';
+
+export interface AsyncState<T> {
+  data: T | null;
+  loading: boolean;
+  errorCode: string | null;
+  reload: () => void;
+}
+
+function useAsync<T>(load: () => Promise<T>, deps: unknown[]): AsyncState<T> {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [nonce, setNonce] = useState(0);
+  const loadRef = useRef(load);
+  loadRef.current = load;
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setErrorCode(null);
+    loadRef
+      .current()
+      .then((value) => {
+        if (cancelled) return;
+        setData(value);
+        setLoading(false);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setErrorCode(err instanceof LearningApiError ? err.code : 'UNKNOWN');
+        setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...deps, nonce]);
+
+  const reload = useCallback(() => setNonce((n) => n + 1), []);
+  return { data, loading, errorCode, reload };
+}
+
+export function useDashboard(): AsyncState<DashboardPayload> {
+  return useAsync(() => learningApi.dashboard(), []);
+}
+
+export function useOutline(courseRef: string): AsyncState<OutlinePayload> {
+  return useAsync(() => learningApi.outline(courseRef), [courseRef]);
+}
+
+export function useLessonProgress(courseRef: string, lessonId: string | null): LessonProgressState | null {
+  const [state, setState] = useState<LessonProgressState | null>(null);
+  useEffect(() => {
+    if (lessonId === null) {
+      setState(null);
+      return;
+    }
+    let cancelled = false;
+    learningApi
+      .progress(courseRef, lessonId)
+      .then((value) => {
+        if (!cancelled) setState(value);
+      })
+      .catch(() => {
+        if (!cancelled) setState(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [courseRef, lessonId]);
+  return state;
+}
+
+export interface PlaybackController {
+  grant: PlaybackGrant | null;
+  requesting: boolean;
+  errorCode: string | null;
+  start: (lessonId: string) => Promise<void>;
+  end: () => Promise<void>;
+  reportProgress: (positionSeconds: number, durationSeconds: number | null, completed: boolean) => void;
+  /** Locally merged progress, so a write never needs an outline reload. */
+  progress: Record<string, LessonProgressState>;
+  release: () => void;
+  /** Ended externally without a local teardown: the reference is finished. */
+  markSessionEnded: (referenceId: string) => void;
+}
+
+/**
+ * Renew a token a little before it expires, so a viewer mid-lesson is not cut
+ * off mid-segment. The margin leaves room for one retry-free request.
+ */
+const RENEW_MARGIN_MS = 20_000;
+/** Never schedule further out than this; the timer is re-armed on each renewal. */
+const MAX_TIMER_MS = 2_147_483_647;
+
+export function usePlayback(courseRef: string): PlaybackController {
+  const [grant, setGrant] = useState<PlaybackGrant | null>(null);
+  const [requesting, setRequesting] = useState(false);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [progress, setProgress] = useState<Record<string, LessonProgressState>>({});
+  const pending = useRef<AbortController | null>(null);
+  const renewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The lesson currently loaded, so throttled progress writes target the right
+  // row. Never derived from the playback grant, which carries a DRM session id.
+  const activeLesson = useRef<string | null>(null);
+  // Mirrors of the live values, so the end/renew callbacks stay stable and do
+  // not re-subscribe on every render.
+  const grantRef = useRef<PlaybackGrant | null>(null);
+  grantRef.current = grant;
+
+  /**
+   * End the external session. Always a best-effort keepalive: local credential
+   * disposal happens first and never depends on the request succeeding, and the
+   * durable server reference guarantees a retry if the external revocation
+   * fails. Repeated calls are idempotent.
+   */
+  const end = useCallback(async (): Promise<void> => {
+    if (renewTimer.current !== null) {
+      clearTimeout(renewTimer.current);
+      renewTimer.current = null;
+    }
+    const current = grantRef.current;
+    // Drop the mirror immediately so no further write or renewal can act on a
+    // dead grant; the captured value below still carries the end request.
+    grantRef.current = null;
+    // Local teardown first and unconditionally.
+    clearSession();
+    setGrant(null);
+    if (current === null) return;
+    try {
+      await learningApi.endPlayback(current.referenceId);
+    } catch {
+      // Best effort only: the durable reference owns the guaranteed closure.
+    }
+  }, []);
+
+  const fail = useCallback((code: string) => {
+    clearSession();
+    setGrant(null);
+    setErrorCode(code);
+  }, []);
+
+  /**
+   * Renew before the token dies. On failure, playback stops and the session is
+   * ended so the external session cannot outlive the entitlement.
+   */
+  const scheduleRenewal = useCallback(() => {
+    if (renewTimer.current !== null) {
+      clearTimeout(renewTimer.current);
+      renewTimer.current = null;
+    }
+    const current = grantRef.current;
+    if (current === null) return;
+
+    const tokenExpiresAt = Date.parse(current.tokenExpiresAt);
+    if (!Number.isFinite(tokenExpiresAt)) return;
+    const wait = Math.min(Math.max(tokenExpiresAt - RENEW_MARGIN_MS - Date.now(), 1_000), MAX_TIMER_MS);
+    renewTimer.current = setTimeout(() => {
+      void (async () => {
+        const held = grantRef.current;
+        if (held === null) return;
+        try {
+          const renewal = await learningApi.renewPlayback(held.referenceId);
+          const tokenExpiresAtMs = Date.parse(renewal.tokenExpiresAt);
+          const sessionExpiresAtMs = Date.parse(renewal.sessionExpiresAt);
+          if (!renewSession(renewal.playbackToken, tokenExpiresAtMs, sessionExpiresAtMs)) {
+            throw new Error('no active session to renew');
+          }
+          // Update the in-memory credential only. No reload, no persistence, and
+          // the DASH/EME instance is left completely untouched.
+          setGrant((prev) =>
+            prev === null
+              ? prev
+              : {
+                  ...prev,
+                  playbackToken: renewal.playbackToken,
+                  tokenExpiresAt: renewal.tokenExpiresAt,
+                  sessionExpiresAt: renewal.sessionExpiresAt,
+                },
+          );
+          setErrorCode(null);
+          scheduleRenewal();
+        } catch {
+          // Renewal refused or failed: stop playback, drop the credential, and
+          // end the session so the DRM does not keep it alive.
+          void end();
+        }
+      })();
+    }, wait);
+  }, [end]);
+
+  useEffect(
+    () => () => {
+      pending.current?.abort();
+      if (renewTimer.current !== null) clearTimeout(renewTimer.current);
+      clearSession();
+    },
+    [],
+  );
+
+  const start = useCallback(
+    async (lessonId: string) => {
+      // A lesson change must close the previous external session first.
+      if (grantRef.current !== null) await end();
+      pending.current?.abort();
+      const controller = new AbortController();
+      pending.current = controller;
+      activeLesson.current = lessonId;
+      setRequesting(true);
+      setErrorCode(null);
+      try {
+        const next = await learningApi.startPlayback(courseRef, lessonId, deviceId());
+        if (controller.signal.aborted) {
+          clearSession();
+          return;
+        }
+        setGrant(next);
+        grantRef.current = next;
+        scheduleRenewal();
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        const code = err instanceof LearningApiError ? err.code : 'UNKNOWN';
+        fail(code);
+      } finally {
+        setRequesting(false);
+      }
+    },
+    [courseRef, end, fail, scheduleRenewal],
+  );
+
+  /**
+   * Throttled progress write.
+   *
+   * It deliberately does NOT reload the outline: an outline reload used to put
+   * the page into its loading state and unmount the player, so a routine ten
+   * second write interrupted playback. The response is merged into local state
+   * instead, and a failure leaves the player exactly as it was.
+   */
+  const reportProgress = useCallback(
+    (positionSeconds: number, durationSeconds: number | null, completed: boolean) => {
+      const lessonId = activeLesson.current;
+      if (grantRef.current === null || lessonId === null) return;
+      void learningApi
+        .recordProgress({ courseRef, lessonId, positionSeconds, durationSeconds, completed })
+        .then((saved) => {
+          setProgress((prev) => ({ ...prev, [saved.lessonId]: saved }));
+        })
+        .catch(() => {
+          // A failed write must never disturb playback; the next tick retries.
+        });
+    },
+    [courseRef],
+  );
+
+  const release = useCallback(() => {
+    if (renewTimer.current !== null) {
+      clearTimeout(renewTimer.current);
+      renewTimer.current = null;
+    }
+    clearSession();
+    activeLesson.current = null;
+    setGrant(null);
+    // Deliberately leaves grantRef.current intact: a lesson switch calls
+    // release() and then start(), and start() ends the previous session by
+    // reading that mirror. end() is the only path that clears it.
+  }, []);
+
+  /** Natural completion or an explicit stop: end the external session. */
+  const markSessionEnded = useCallback(
+    (referenceId: string) => {
+      const current = grantRef.current;
+      if (current === null || current.referenceId !== referenceId) return;
+      void end();
+    },
+    [end],
+  );
+
+  return useMemo(
+    () => ({ grant, requesting, errorCode, start, end, reportProgress, progress, release, markSessionEnded }),
+    [grant, requesting, errorCode, start, end, reportProgress, progress, release, markSessionEnded],
+  );
+}
+
+/** Stable per-browser device id. Not a credential; scoped to this tab. */
+function deviceId(): string {
+  const key = 'edu-learning-device';
+  const existing = window.sessionStorage.getItem(key);
+  if (existing !== null) return existing;
+  const generated = `web-${Math.random().toString(36).slice(2, 10)}`;
+  window.sessionStorage.setItem(key, generated);
+  return generated;
+}

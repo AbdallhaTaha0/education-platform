@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { adminGet, adminPost } from './catalog-helpers.js';
 import { registerStudent } from './identity-helpers.js';
-import { createWalletWorld, rechargeBody, studentGet, studentPost, type WalletWorld } from './wallet-helpers.js';
+import { createWalletWorld, rechargeBody, resetFinancialState, studentGet, studentPost, type WalletWorld } from './wallet-helpers.js';
 
 let world: WalletWorld;
 
@@ -25,6 +25,9 @@ function review(id: string, body: Record<string, unknown>) {
 
 describe('recharge review', () => {
   it('approval credits exactly once and never auto-purchases', async () => {
+    // The exact 60000 balance is this test's own precondition, not an accident
+    // of running before the other approvals in this file.
+    await resetFinancialState(world);
     const id = await submit(60000);
     const res = await review(id, { decision: 'APPROVE', receiptVerified: true });
     expect(res.status).toBe(200);

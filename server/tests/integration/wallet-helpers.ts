@@ -1,12 +1,10 @@
 import request from 'supertest';
 import type { Express } from 'express';
-import { bootstrapFirstAdmin } from '../../src/modules/identity/bootstrap.js';
 import {
+  createTestAdmin,
   createWorld,
   loginWith,
   registerStudent,
-  uniqueEmail,
-  uniquePhone,
   TEST_ORIGIN,
   uniqueIp,
   type IdentityWorld,
@@ -24,10 +22,15 @@ export interface WalletWorld extends IdentityWorld {
   studentUser: { id: string; email: string };
 }
 
-export async function createWalletWorld(configured = true): Promise<WalletWorld> {
-  const world = await createWorld(
-    configured ? ({ paymentChannels: [...TEST_CHANNELS] } as never) : ({ paymentChannels: [] } as never),
-  );
+/**
+ * Return the shared financial tables to their pre-test state.
+ *
+ * Balances, ledger entries, recharge requests, purchases and subscriptions are
+ * global to the disposable database, so a test that asserts an exact balance or
+ * an exact purchase count must establish that baseline itself instead of
+ * assuming it happens to run first.
+ */
+export async function resetFinancialState(world: IdentityWorld): Promise<void> {
   await world.prisma.walletLedgerEntry.deleteMany();
   await world.prisma.wallet.deleteMany();
   await world.prisma.rechargeProof.deleteMany();
@@ -35,12 +38,17 @@ export async function createWalletWorld(configured = true): Promise<WalletWorld>
   await world.prisma.purchase.deleteMany();
   await world.prisma.subscription.deleteMany();
   await world.prisma.auditEvent.deleteMany();
+}
 
-  await world.prisma.user.deleteMany({ where: { role: 'ADMIN' } });
-  const admin = await bootstrapFirstAdmin(
-    { displayName: 'Wallet Admin', email: uniqueEmail(), phone: uniquePhone(), password: 'wallet secret twelve words' },
-    { prisma: world.prisma, argon2: { memoryKb: 8192, timeCost: 2, parallelism: 1 } },
+export async function createWalletWorld(configured = true): Promise<WalletWorld> {
+  const world = await createWorld(
+    configured ? ({ paymentChannels: [...TEST_CHANNELS] } as never) : ({ paymentChannels: [] } as never),
   );
+  await resetFinancialState(world);
+
+  // The admin belongs to this world only; deleting every admin would revoke the
+  // session of any world still in use.
+  const admin = await createTestAdmin(world, 'Wallet Admin', 'wallet secret twelve words');
   const session = await loginWith(world.app, admin.email, 'wallet secret twelve words');
   const student = await registerStudent(world.app);
   const studentRow = await world.prisma.user.findUniqueOrThrow({ where: { email: student.user.email } });

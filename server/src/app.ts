@@ -16,9 +16,11 @@ import { createHealthRouter } from './routes/health.js';
 import { createIdentityModule } from './modules/identity/index.js';
 import { createCatalogModule } from './modules/catalog/index.js';
 import { createWalletModule } from './modules/wallet/index.js';
+import { createLearningModule } from './modules/learning/index.js';
 import type { DrmClient } from './modules/catalog/drmClient.js';
 import { createDrmClient } from './modules/catalog/drmClient.js';
 import type { Clock } from './modules/identity/tokens.js';
+import { createAssertionJwks } from './modules/learning/playback/assertion.js';
 
 export interface AppDependencies {
   config: ServerConfig;
@@ -41,9 +43,9 @@ export interface AppTunables {
 
 /**
  * Application factory (no listening sockets here; see index.ts).
- * Identity (M2) and catalog/administration (M3) are internal modules of this
- * single Express application — never separate services. Wallet, purchases
- * and learning arrive as further internal modules in their own milestones.
+ * Identity (M2), catalog/administration (M3), wallet/purchases (M4) and
+ * protected learning/playback (M5) are internal modules of this single Express
+ * application — never separate services.
  */
 export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Express {
   const app = express();
@@ -132,6 +134,30 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
   app.use('/wallet', wallet.studentRouter);
   // Admin review endpoints (guards inside the router).
   app.use('/admin', wallet.adminRouter);
+
+  // Protected learning, playback, progress and expiry (M5) — same app.
+  const learningDeps = {
+    prisma: deps.prisma,
+    redis: deps.redisClient,
+    config: deps.config,
+    drmFactory: tunables.drmFactory ?? createDrmClient,
+    ...(tunables.clock ? { clock: tunables.clock } : {}),
+  };
+  const learning = createLearningModule(learningDeps);
+  app.set('learning', learning.context);
+  app.use('/learning', learning.router);
+
+  // Public signing metadata for the independently deployed DRM verifier.
+  // Only the RSA public key is exposed; HS256 exists solely for labeled test fixtures.
+  app.get('/.well-known/jwks.json', (_req, res) => {
+    const jwks = createAssertionJwks(learning.context.playback.assertion);
+    if (jwks === null) {
+      res.status(404).json({ error: { code: 'not_found', message: 'JWKS is not configured.' } });
+      return;
+    }
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.status(200).json(jwks);
+  });
 
   app.use(
     '/health',

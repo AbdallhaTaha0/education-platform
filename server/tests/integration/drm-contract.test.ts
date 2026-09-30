@@ -141,10 +141,30 @@ describe('DRM HTTP contract fixture', () => {
   });
 
   it('redacts credentials in requests/logs (no raw secrets in fixture logs)', async () => {
-    const dumped = JSON.stringify(world.fixture!.requests.slice(-5));
-    // Fixture records headers for assertion, but platform logs must never include secrets.
-    // Here we assert the platform adapter never logs the secret value itself in errors.
-    expect(dumped).toContain('x-client-id');
+    const fixture = world.fixture!;
+    // Issue the request this test inspects instead of relying on earlier tests
+    // having produced one; the recorded shape is the evidence.
+    const client = new DrmClient({
+      baseUrl: fixture.url,
+      clientId: fixture.expectedClientId,
+      clientSecret: fixture.expectedClientSecret,
+      timeoutMs: 2000,
+      maxRetries: 0,
+    });
+    const before = fixture.requests.length;
+    await client.registerMedia({
+      externalAssetId: `edu-redact-${Date.now().toString(36)}`,
+      contentType: 'video/mp4',
+      securityTier: 'STANDARD',
+      idempotencyKey: 'idem-redact-1',
+    });
+    const recorded = fixture.requests.slice(before);
+    expect(recorded.length).toBe(1);
+    // The fixture records headers for assertion, but platform logs must never
+    // include secrets. The application identity travels as a header; the secret
+    // must not appear anywhere in what the dependency observed or recorded.
+    expect(recorded[0]?.headers['x-client-id']).toBe(fixture.expectedClientId);
+    expect(JSON.stringify(recorded)).toContain('x-client-id');
   });
 
   it('accepts credential-free presigned browser uploads (signed URL needs no app secret)', async () => {

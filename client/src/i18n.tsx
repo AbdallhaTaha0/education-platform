@@ -38,7 +38,6 @@ export function LanguageProvider({ children }: { children: ReactNode }): JSX.Ele
   useEffect(() => {
     document.documentElement.lang = lang;
     document.documentElement.dir = dir;
-    document.title = lang === 'ar' ? 'منصة التعلم | Learning Platform' : 'Learning Platform | منصة التعلم';
   }, [lang, dir]);
 
   const setLang = useCallback((next: Lang) => {
@@ -58,6 +57,12 @@ export function useLang(): LangContextValue {
   const ctx = useContext(LangContext);
   if (ctx === null) throw new Error('useLang must be used inside LanguageProvider');
   return ctx;
+}
+
+/** Key-based translate function for components that prefer t('key'). */
+export function useTranslate(): (key: keyof Strings) => string {
+  const { t } = useLang();
+  return useCallback((key: keyof Strings) => t[key] as string, [t]);
 }
 
 export function localizeCode(t: Strings, code: string | null | undefined): string {

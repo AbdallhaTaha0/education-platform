@@ -70,6 +70,12 @@ interface FetchOptions {
   idempotent: boolean;
 }
 
+/** Playback routes authenticate with the transient playback bearer token
+ * rather than the application credentials. */
+interface BearerFetchOptions extends FetchOptions {
+  bearer: string;
+}
+
 export class DrmClient {
   constructor(private readonly cfg: DrmAdapterConfig) {}
 
@@ -190,6 +196,121 @@ export class DrmClient {
     return validateDeletionStatusResponse(
       await this.request(`/v1/admin/media-deletions/${encodeURIComponent(deletionId)}`, { method: 'GET', idempotent: true }),
     );
+  }
+
+  // ---- Playback (M5) --------------------------------------------------
+  // The response is returned unvalidated here; the learning module applies the
+  // stricter frontend-safe schema so a DRM-side change cannot silently widen
+  // what the player receives.
+
+  /**
+   * Create an external playback session. Never auto-retried: the route is not
+   * idempotent and a retry could open a second external session.
+   */
+  async createPlaybackSession(input: {
+    externalUserId: string;
+    externalAssetId: string;
+    deviceId: string;
+    assertion: string;
+  }): Promise<unknown> {
+    return this.request('/v1/playback/sessions', {
+      method: 'POST',
+      body: input,
+      idempotent: false,
+    });
+  }
+
+  private async bearerRequest(path: string, opts: BearerFetchOptions): Promise<unknown> {
+    const url = `${this.cfg.baseUrl}${path}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.cfg.timeoutMs);
+    try {
+      const res = await fetch(url, {
+        method: opts.method,
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${opts.bearer}`,
+        },
+        body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        getLogger().warn(
+          sanitizeForLog({ drmPath: path, status: res.status, attempt: 0 }) as Record<string, unknown>,
+          'drm playback request failed',
+        );
+        throw new ApiError(res.status === 401 ? 401 : 502, 'DRM_PLAYBACK', 'External playback request failed.');
+      }
+      return this.parseJson(await this.readBoundedBody(res));
+    } catch (err) {
+      if (err instanceof ApiError) throw err;
+      const aborted = (err as { name?: string }).name === 'AbortError';
+      throw new ApiError(502, aborted ? 'DRM_TIMEOUT' : 'DRM_NETWORK', 'External playback request failed.');
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async playbackHeartbeat(sessionId: string, deviceId: string, bearer: string): Promise<unknown> {
+    return this.bearerRequest(`/v1/playback/sessions/${encodeURIComponent(sessionId)}/heartbeat`, {
+      method: 'POST',
+      body: { deviceId },
+      bearer,
+      idempotent: true,
+    });
+  }
+
+  async playbackEnd(sessionId: string, deviceId: string, bearer: string): Promise<unknown> {
+    return this.bearerRequest(`/v1/playback/sessions/${encodeURIComponent(sessionId)}/end`, {
+      method: 'POST',
+      body: { deviceId },
+      bearer,
+      idempotent: true,
+    });
+  }
+
+  async playbackRenew(sessionId: string, deviceId: string, bearer: string): Promise<unknown> {
+    return this.bearerRequest(`/v1/playback/sessions/${encodeURIComponent(sessionId)}/renew`, {
+      method: 'POST',
+      body: { deviceId },
+      bearer,
+      idempotent: true,
+    });
+  }
+
+  /**
+   * Platform-mediated renewal (M5 correction round).
+   *
+   * The playback bearer token is never held server-side, so the platform cannot
+   * call the bearer-protected `/renew`. It calls the service-to-service
+   * `/renew-admin` route with application credentials instead. A 404/410 there
+   * means the external session is already gone, which the caller treats as a
+   * closed session rather than a dependency failure.
+   */
+  async renewPlaybackSession(sessionId: string): Promise<unknown> {
+    return this.request(`/v1/playback/sessions/${encodeURIComponent(sessionId)}/renew-admin`, {
+      method: 'POST',
+      idempotent: true,
+    });
+  }
+
+  /**
+   * Ask the external service to terminate a session. Uses application
+   * credentials (the bearer token is not held server-side by design) and is
+   * treated as idempotent so the expiry reconciler can retry safely.
+   */
+  async revokePlaybackSession(sessionId: string, reason: string): Promise<{ status: string }> {
+    const body = await this.request(`/v1/playback/sessions/${encodeURIComponent(sessionId)}/revoke`, {
+      method: 'POST',
+      body: { reason },
+      idempotent: true,
+    });
+    if (typeof body === 'object' && body !== null) {
+      const status = (body as { status?: unknown }).status;
+      return { status: typeof status === 'string' ? status : 'unknown' };
+    }
+    return { status: 'unknown' };
   }
 }
 

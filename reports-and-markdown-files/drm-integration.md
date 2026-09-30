@@ -20,9 +20,9 @@ Cloudflare R2 through external DRM is confirmed. Local configuration/substitute 
 4. app is the DRM client_id; asset matches externalAssetId; sub identifies the platform student. Do not confuse internal asset UUID with external asset ID.
 5. Call POST /v1/playback/sessions server-side with application credentials. Do not forward browser-supplied credentials or trust browser-supplied course ownership.
 6. Return validated frontend-safe session data: playback ID/token, expirations, manifest/license URLs, provider and watermark policy. Never include the application secret or assertion signing key.
-7. Follow external player/session APIs for heartbeat, renewal, end and revoke. Existing session routes are /v1/playback/sessions/:id/{heartbeat,renew,end,revoke}; revoke requires application authentication.
+7. Follow external player/session APIs for heartbeat, renewal, end and revoke. Browser heartbeat/end/renew require a playback bearer plus the matching device id. Application-authenticated revoke and `renew-admin` are the platform's server-to-server routes and enforce tenant ownership.
 
-Existing assertion verification uses JWKS, configured issuer/audience and a maximum 300-second lifetime. Document the platform signing configuration without changing the external implementation. Current media/license routes require a playback bearer token. Keep this token transient and separate from platform authentication/session cookies; no long-term browser persistence.
+Assertion verification uses JWKS, configured issuer/audience and a maximum 300-second lifetime. The platform signs RS256 with a server-only PKCS#8 key and publishes only its public JWK at `/.well-known/jwks.json`; HS256 is fixture-only and forbidden in production. Current media/license routes require a playback bearer token. Keep this token transient and separate from platform authentication/session cookies; no long-term browser persistence.
 
 ## Subscription expiry
 
@@ -37,3 +37,56 @@ The prior source review found incomplete commercial licensing and possible playb
 ## Permanent media deletion prerequisite
 
 The bounded DRM prerequisite is accepted. The API now exposes an application-scoped asynchronous media-deletion contract and safe status endpoint. Acceptance verified immediate playback denial, active-session revocation, source and packaged-prefix cleanup, personalized variants, cascading secret/material cleanup, retained non-secret operation/audit evidence, retry and reconciliation, and prefixes containing more than 1,000 objects. The platform may integrate this API in M3, while live Cloudflare R2 verification remains blocked until credentials are supplied.
+
+## 2026-09-30 — renewal contract, test-fixture parity and the watermark boundary
+
+**Renewal has two distinct routes, and they must not be confused.** After the
+owner-authorized M5 security correction:
+
+- `POST /v1/playback/sessions/:id/renew` is the **browser** route. It requires the
+  transient playback bearer and a body `deviceId` that matches the device bound
+  into that token. A mismatch is `403 DEVICE_MISMATCH`.
+- `POST /v1/playback/sessions/:id/renew-admin` is the **platform** route. It is
+  authenticated with the application credentials, because the platform never
+  holds the playback bearer. It verifies that the session belongs to the calling
+  application (`403 APP_MISMATCH` otherwise) and refuses a non-active session.
+  Both routes return the renewed token, its expiry and the session expiry.
+- Heartbeat and end use the same strict device binding as browser renewal.
+
+**A labeled test double must implement the corrected contract.** During the
+gate-closure pass the platform browser suite failed to renew, and the cause was
+the fixture, not the platform: `docker/drm-fixture/server.js` still matched only
+`end|revoke|renew`, so the platform's `renew-admin` call reached a 404 that the
+platform correctly reported as "session gone". The fixture now implements
+`renew-admin` with the same tenant-ownership and status checks and records the
+owning application per session. Any future change to the renewal contract must
+update the browser fixture in the same change, or the browser suite silently
+measures a route that does not exist.
+
+## The browser watermark is a visible label, not protection
+
+The platform renders the DRM-supplied **masked** identity over protected
+playback. Verified in Chromium through Nginx: it is present during playback, in
+the error state, in a 390 px layout, and as a layer of the player frame so a
+fullscreen transition carries it; it is `aria-hidden`, takes no pointer events,
+does not block the native controls, and never contains an email address, phone
+number, student name, token, trace code or signature.
+
+Its boundary must be stated wherever it is discussed: a DOM/CSS overlay cannot
+survive screen capture, a camera or a re-encode. It raises the cost of casual
+re-sharing and identifies a session to whoever can see the screen. Forensically
+attributable watermarking remains the external DRM's responsibility (D07), and
+`playback/schemas.ts` continues to redact the trace code and signature so they
+never reach the browser.
+
+## End-to-end RS256 remains unproven against the real service
+
+The platform signs RS256 with a server-only PKCS#8 key and publishes only the
+derived public JWK at `/.well-known/jwks.json`; production refuses HS256, and
+startup fails closed on a non-RSA or sub-2048-bit key. All of that is covered by
+unit and fixture tests. It has **not** been exercised end to end against the
+running DRM, because neither side is configured for it: the platform's ignored
+`.env` carries no assertion issuer, audience, private key or key id, and the
+DRM's ignored `.env` has an empty `JWT_JWKS_URL`. Until both are supplied and a
+real request is proven, treat RS256 interoperability as a configuration
+prerequisite, not a proven capability.

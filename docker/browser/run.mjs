@@ -16,6 +16,7 @@ const path = (await import('node:path')).default;
 
 const BASE_URL = process.env.BASE_URL || 'http://nginx:8080';
 const EVIDENCE_DIR = process.env.EVIDENCE_DIR || null;
+const M5_EVIDENCE_DIR = process.env.M5_EVIDENCE_DIR || null;
 const ADMIN = {
   email: process.env.ADMIN_EMAIL || '',
   phone: process.env.ADMIN_PHONE || '',
@@ -30,10 +31,23 @@ function check(name, ok, detail) {
 }
 
 async function shot(page, name) {
-  if (!EVIDENCE_DIR) return;
+  await captureInto(EVIDENCE_DIR, page, name);
+}
+
+/**
+ * M5 screenshots go to their own directory so an M5 run can never overwrite the
+ * accepted M2-M4 evidence. Falls back to the main directory when unset.
+ */
+async function m5Shot(page, name) {
+  await captureInto(M5_EVIDENCE_DIR, page, name);
+}
+
+async function captureInto(dir, page, name) {
+  const target = dir || EVIDENCE_DIR;
+  if (!target) return;
   try {
-    fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, name) });
+    fs.mkdirSync(target, { recursive: true });
+    await page.screenshot({ path: path.join(target, name) });
   } catch {
     // Screenshots are evidence only.
   }
@@ -553,43 +567,6 @@ async function main() {
     const restoredVisible = await page.evaluate(async (base, s) => (await fetch(`${base}/api/catalog/courses/${s}`)).status, BASE_URL, slug);
     check('unarchived course visible publicly', restoredVisible === 200, String(restoredVisible));
 
-    // 17j. Lesson permanent deletion returns surviving course visibility.
-    await page.goto(`${BASE_URL}/#/admin/courses/${courseId}`, { waitUntil: 'networkidle0', timeout: 60000 });
-    lessonIds = await page.evaluate(async (base, cid) => {
-      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}`, { credentials: 'include', headers: { Accept: 'application/json' } });
-      return (await res.json()).data.course.sections[0].lessons.map((l) => l.id);
-    }, BASE_URL, courseId);
-    const delLessonId = lessonIds[1];
-    await page.waitForFunction((lid) => !!document.querySelector(`[data-testid="deletion-${lid}"]`), { timeout: 30000 }, delLessonId);
-    check('lesson deletion panel present', true);
-    await clearAndType(`[data-testid="deletion-${delLessonId}"] [data-testid="deletion-confirm"]`, delLessonId);
-    await page.click(`[data-testid="deletion-${delLessonId}"] [data-testid="deletion-submit"]`);
-    await page.waitForFunction(() => /اكتمل الحذف الدائم|COMPLETED/.test(document.body.textContent), { timeout: 60000 });
-    check('lesson deletion completes', true);
-    const survivor = await page.evaluate(async (base, cid) => {
-      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}`, { credentials: 'include', headers: { Accept: 'application/json' } });
-      const json = await res.json();
-      return { status: res.status, marker: json.data.course.deletionRequestedAt };
-    }, BASE_URL, courseId);
-    check('surviving course visibility returns', survivor.status === 200 && survivor.marker === null, JSON.stringify(survivor.marker));
-
-    // 17k. Deletion failure and retry via the labeled fixture control plane.
-    await fetch('http://drm-fixture:8090/__fixture/fail-deletes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ count: 99 }) }).catch(() => null);
-    const remainingLesson = await page.evaluate(async (base, cid) => {
-      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}`, { credentials: 'include', headers: { Accept: 'application/json' } });
-      const course = (await res.json()).data.course;
-      return course.sections[0].lessons[0].id;
-    }, BASE_URL, courseId);
-    await clearAndType(`[data-testid="deletion-${remainingLesson}"] [data-testid="deletion-confirm"]`, remainingLesson);
-    await page.click(`[data-testid="deletion-${remainingLesson}"] [data-testid="deletion-submit"]`);
-    await page.waitForFunction(() => /فشل الحذف الدائم|FAILED/.test(document.body.textContent), { timeout: 60000 });
-    check('deletion failure surfaces retry state', true);
-    await fetch('http://drm-fixture:8090/__fixture/fail-deletes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ count: 0 }) });
-    await page.click(`[data-testid="deletion-${remainingLesson}"] [data-testid="deletion-retry"]`);
-    await page.waitForFunction(() => /اكتمل الحذف الدائم|COMPLETED/.test(document.body.textContent), { timeout: 90000 });
-    check('deletion retry completes', true);
-    await shot(page, 'm3-deletion-ar.png');
-
     // 19. M4 wallet, purchase, and theme journeys (Arabic UI).
     const themeState = () => page.evaluate(() => ({
       theme: document.documentElement.dataset.theme || '',
@@ -751,6 +728,20 @@ async function main() {
     }, BASE_URL);
     check('balance debited exactly once', afterBuy === 0, String(afterBuy));
 
+    // ---- M5 protected learning (student already subscribed above) ----
+    // NOTE: 17j/17k (lesson permanent deletion) run AFTER this block, so the
+    // published workflow course still has a playable lesson here. Those M3 rows
+    // are unchanged; only their position in the run moved.
+    const m5 = await import('./m5-learning.mjs');
+    const courseSlug = await page.evaluate(async (base, cid) => {
+      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}`, {
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      return (await res.json()).data.course.slug;
+    }, BASE_URL, courseId);
+    await m5.runM5Learning({ check, shot: m5Shot, storageAudit, BASE_URL, spage, courseSlug });
+
     // 19f. 390px wallet/recharge/purchase without overflow.
     const mob4 = await studentCtx.newPage();
     await mob4.setViewport({ width: 390, height: 844, isMobile: true });
@@ -763,6 +754,43 @@ async function main() {
     await mob4.close();
     await spage.close();
     await studentCtx.close();
+
+    // 17j. Lesson permanent deletion returns surviving course visibility.
+    await page.goto(`${BASE_URL}/#/admin/courses/${courseId}`, { waitUntil: 'networkidle0', timeout: 60000 });
+    lessonIds = await page.evaluate(async (base, cid) => {
+      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      return (await res.json()).data.course.sections[0].lessons.map((l) => l.id);
+    }, BASE_URL, courseId);
+    const delLessonId = lessonIds[1];
+    await page.waitForFunction((lid) => !!document.querySelector(`[data-testid="deletion-${lid}"]`), { timeout: 30000 }, delLessonId);
+    check('lesson deletion panel present', true);
+    await clearAndType(`[data-testid="deletion-${delLessonId}"] [data-testid="deletion-confirm"]`, delLessonId);
+    await page.click(`[data-testid="deletion-${delLessonId}"] [data-testid="deletion-submit"]`);
+    await page.waitForFunction(() => /اكتمل الحذف الدائم|COMPLETED/.test(document.body.textContent), { timeout: 60000 });
+    check('lesson deletion completes', true);
+    const survivor = await page.evaluate(async (base, cid) => {
+      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      const json = await res.json();
+      return { status: res.status, marker: json.data.course.deletionRequestedAt };
+    }, BASE_URL, courseId);
+    check('surviving course visibility returns', survivor.status === 200 && survivor.marker === null, JSON.stringify(survivor.marker));
+
+    // 17k. Deletion failure and retry via the labeled fixture control plane.
+    await fetch('http://drm-fixture:8090/__fixture/fail-deletes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ count: 99 }) }).catch(() => null);
+    const remainingLesson = await page.evaluate(async (base, cid) => {
+      const res = await fetch(`${base}/api/admin/catalog/courses/${cid}`, { credentials: 'include', headers: { Accept: 'application/json' } });
+      const course = (await res.json()).data.course;
+      return course.sections[0].lessons[0].id;
+    }, BASE_URL, courseId);
+    await clearAndType(`[data-testid="deletion-${remainingLesson}"] [data-testid="deletion-confirm"]`, remainingLesson);
+    await page.click(`[data-testid="deletion-${remainingLesson}"] [data-testid="deletion-submit"]`);
+    await page.waitForFunction(() => /فشل الحذف الدائم|FAILED/.test(document.body.textContent), { timeout: 60000 });
+    check('deletion failure surfaces retry state', true);
+    await fetch('http://drm-fixture:8090/__fixture/fail-deletes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ count: 0 }) });
+    await page.click(`[data-testid="deletion-${remainingLesson}"] [data-testid="deletion-retry"]`);
+    await page.waitForFunction(() => /اكتمل الحذف الدائم|COMPLETED/.test(document.body.textContent), { timeout: 90000 });
+    check('deletion retry completes', true);
+    await shot(page, 'm3-deletion-ar.png');
 
     // 18. No auth/DRM material in storage or bundles.
     const store2 = await storageAudit(page);

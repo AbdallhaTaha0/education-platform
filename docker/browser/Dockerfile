@@ -11,7 +11,7 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 WORKDIR /srv/browser
 COPY docker/browser/package.json docker/browser/package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
-COPY docker/browser/run.mjs ./
+COPY docker/browser/run.mjs docker/browser/m5-learning.mjs ./
 RUN mkdir -p /srv/browser/evidence
 ENV BASE_URL=http://nginx:8080
 ENV EVIDENCE_DIR=/srv/browser/evidence

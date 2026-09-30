@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { adminPost } from './catalog-helpers.js';
 import { registerStudent } from './identity-helpers.js';
-import { createWalletWorld, rechargeBody, studentGet, studentPost, uniqueKey, type WalletWorld } from './wallet-helpers.js';
+import { createWalletWorld, rechargeBody, resetFinancialState, studentGet, studentPost, uniqueKey, type WalletWorld } from './wallet-helpers.js';
 import { Prisma } from '@prisma/client';
 
 let world: WalletWorld;
@@ -43,6 +43,9 @@ async function balance(): Promise<number> {
 
 describe('course purchase', () => {
   it('rejects insufficient funds without creating access', async () => {
+    // A zero balance and zero purchase/subscription rows are this test's own
+    // precondition, not an accident of running before the funding tests below.
+    await resetFinancialState(world);
     const { planId } = await publishedPlan(60000, 90);
     const res = await studentPost(world.app, '/wallet/purchases', world.studentJar, { planId, idempotencyKey: uniqueKey('poor') });
     expect(res.status).toBe(402);

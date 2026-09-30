@@ -98,6 +98,16 @@ services:
       DRM_CLIENT_SECRET: ${DRM_CLIENT_SECRET:-}
       DRM_REQUEST_TIMEOUT_MS: ${DRM_REQUEST_TIMEOUT_MS:-5000}
       DRM_MAX_RETRIES: ${DRM_MAX_RETRIES:-2}
+      # M5 playback assertion trust. Real DRM verifies RS256 through the
+      # platform's public JWKS endpoint. HS256 is test-fixture-only.
+      DRM_ASSERTION_ISSUER: ${DRM_ASSERTION_ISSUER:-}
+      DRM_ASSERTION_AUDIENCE: ${DRM_ASSERTION_AUDIENCE:-}
+      DRM_ASSERTION_PRIVATE_KEY_B64: ${DRM_ASSERTION_PRIVATE_KEY_B64:-}
+      DRM_ASSERTION_KEY_ID: ${DRM_ASSERTION_KEY_ID:-}
+      DRM_ASSERTION_MODE: ${DRM_ASSERTION_MODE:-}
+      DRM_ASSERTION_SECRET: ${DRM_ASSERTION_SECRET:-}
+      DRM_ASSERTION_MAX_LIFETIME_SEC: ${DRM_ASSERTION_MAX_LIFETIME_SEC:-120}
+      DRM_PUBLIC_BASE_URL: ${DRM_PUBLIC_BASE_URL:-}
       # M4 manual funding (server-only deployment config): JSON array of
       # approved receiving channels. Unset = explicitly unconfigured (M4
       # endpoints answer 503 PAYMENT_UNCONFIGURED). Never commit real
@@ -170,6 +180,10 @@ services:
       PORT: 8090
       FIXTURE_CLIENT_ID: ${DRM_CLIENT_ID:-fixture-client}
       FIXTURE_CLIENT_SECRET: ${DRM_CLIENT_SECRET:-fixture-secret-that-is-long-enough-0123456789}
+      # M5: the platform signs the playback assertion; the fixture verifies it.
+      FIXTURE_ASSERTION_ISSUER: ${DRM_ASSERTION_ISSUER:-}
+      FIXTURE_ASSERTION_AUDIENCE: ${DRM_ASSERTION_AUDIENCE:-}
+      FIXTURE_ASSERTION_SECRET: ${DRM_ASSERTION_SECRET:-}
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8090/v1/media',{method:'POST',headers:{'Content-Type':'application/json','X-Client-Id':'x','X-Client-Secret':'y'},body:'{}'}).then(()=>process.exit(0)).catch(()=>process.exit(1))\""]
       interval: 5s
@@ -178,12 +192,61 @@ services:
       start_period: 5s
     restart: "no"
 
-  # Containerized M3 browser harness (test-only profile, never started by
-  # default). Runs Chromium assertions through Nginx against an isolated
-  # project, e.g.:
-  #   DRM_BASE_URL=http://drm-fixture:8090 DRM_CLIENT_ID=fixture-client DRM_CLIENT_SECRET=fixture-secret-that-is-long-enough-0123456789 \
-  #     docker compose -p education-platform-browser -f docker/compose.dev.yml --profile browser up -d --wait
-  #   docker compose -p education-platform-browser -f docker/compose.dev.yml --profile browser run --rm browser
+  # Containerized M3/M4 browser harness (test-only profile, never started by
+  # default). Runs Chromium assertions through Nginx against a DISPOSABLE
+  # project.
+  #
+  # SAFETY: the pinned development volumes (docker_pgdata / docker_redisdata) are
+  # the DEFAULT for this file. Any `-p` invocation that omits PGDATA_NAME /
+  # REDISDATA_NAME therefore reuses development data, and a later `down -v`
+  # would delete it. On PowerShell set the overrides as SESSION variables ONCE,
+  # before the first command, so every following `config`, `up`, `run` and
+  # `down -v` in the same shell receives them. Prefix-style `VAR=value command`
+  # syntax does NOT exist in PowerShell and would silently leave the defaults
+  # in place.
+  #
+  #   # 1. Disposable session overrides (PowerShell session scope)
+  #   $env:PGDATA_NAME    = 'education-platform-browser_pgdata'
+  #   $env:REDISDATA_NAME = 'education-platform-browser_redisdata'
+  #   $env:NGINX_PORT     = '8081'
+  #   $env:ALLOWED_ORIGINS        = 'http://localhost:8081,http://nginx:8080'
+  #   $env:DRM_BASE_URL           = 'http://drm-fixture:8090'
+  #   $env:DRM_CLIENT_ID          = 'fixture-client'
+  #   $env:DRM_CLIENT_SECRET      = 'fixture-secret-that-is-long-enough-0123456789'
+  #   $env:DRM_ASSERTION_ISSUER   = 'http://localhost:8081'
+  #   $env:DRM_ASSERTION_AUDIENCE = 'edu-drm-fixture'
+  #   $env:DRM_ASSERTION_MODE     = 'fixture-hs256'
+  #   $env:DRM_ASSERTION_SECRET   = '<test-only value, at least 32 characters>'
+  #   $env:DRM_PUBLIC_BASE_URL    = 'http://localhost:8091'
+  #   $env:PAYMENT_CHANNELS       = '<test-only JSON array>'
+  #   $env:BROWSER_ADMIN_EMAIL    = '<test-only address>'
+  #   $env:BROWSER_ADMIN_PHONE    = '<test-only number>'
+  #   $env:BROWSER_ADMIN_PASSWORD = '<test-only password>'
+  #
+  #   # 2. Inspect the rendered names BEFORE creating anything
+  #   docker compose --env-file .env -p education-platform-browser -f docker/compose.dev.yml --profile browser config | Select-String 'name: (docker_|education-)'
+  #   #   must print education-platform-browser_pgdata and education-platform-browser_redisdata
+  #   #   and must NOT print docker_pgdata or docker_redisdata
+  #
+  #   # 3. Start the disposable stack
+  #   docker compose --env-file .env -p education-platform-browser -f docker/compose.dev.yml --profile browser up -d --wait
+  #
+  #   # 4. Bootstrap the throwaway admin (test-only values, never committed)
+  #   docker compose --env-file .env -p education-platform-browser -f docker/compose.dev.yml --profile browser run --rm --no-deps -e BOOTSTRAP_ADMIN_NAME='...' -e BOOTSTRAP_ADMIN_EMAIL="$env:BROWSER_ADMIN_EMAIL" -e BOOTSTRAP_ADMIN_PHONE="$env:BROWSER_ADMIN_PHONE" -e BOOTSTRAP_ADMIN_PASSWORD="$env:BROWSER_ADMIN_PASSWORD" server node dist/bootstrap.js
+  #
+  #   # 5. Run the browser assertions
+  #   docker compose --env-file .env -p education-platform-browser -f docker/compose.dev.yml --profile browser run --rm browser
+  #
+  #   # 6. Re-inspect the rendered names, then prove they are the disposable ones
+  #   #    immediately before `down -v`.
+  #   $rendered = docker compose --env-file .env -p education-platform-browser -f docker/compose.dev.yml --profile browser config | Select-String 'name: (docker_|education-)'
+  #   $rendered
+  #   if ($rendered -match 'docker_pgdata|docker_redisdata') { throw 'REFUSING down -v: a development volume name is resolved' }
+  #   if (-not ($rendered -match 'education-platform-browser_pgdata' -and $rendered -match 'education-platform-browser_redisdata')) { throw 'REFUSING down -v: disposable volume names not resolved' }
+  #   docker compose --env-file .env -p education-platform-browser -f docker/compose.dev.yml --profile browser down -v
+  #
+  #   # 7. Clear the session overrides so later commands cannot inherit them
+  #   'PGDATA_NAME','REDISDATA_NAME','NGINX_PORT','ALLOWED_ORIGINS','DRM_BASE_URL','DRM_CLIENT_ID','DRM_CLIENT_SECRET','DRM_ASSERTION_ISSUER','DRM_ASSERTION_AUDIENCE','DRM_ASSERTION_PRIVATE_KEY_B64','DRM_ASSERTION_KEY_ID','DRM_ASSERTION_MODE','DRM_ASSERTION_SECRET','DRM_PUBLIC_BASE_URL','PAYMENT_CHANNELS','BROWSER_ADMIN_EMAIL','BROWSER_ADMIN_PHONE','BROWSER_ADMIN_PASSWORD' | ForEach-Object { Remove-Item "Env:$_" -ErrorAction SilentlyContinue }
   # Bootstrap admin credentials arrive via environment (never committed).
   browser:
     build:
@@ -194,11 +257,13 @@ services:
     environment:
       BASE_URL: http://nginx:8080
       EVIDENCE_DIR: /srv/browser/evidence
+      M5_EVIDENCE_DIR: /srv/browser/m5-evidence
       ADMIN_EMAIL: ${BROWSER_ADMIN_EMAIL:-}
       ADMIN_PHONE: ${BROWSER_ADMIN_PHONE:-}
       ADMIN_PASSWORD: ${BROWSER_ADMIN_PASSWORD:-}
     volumes:
       - ../reports-and-markdown-files/m3-evidence:/srv/browser/evidence
+      - ../reports-and-markdown-files/m5-evidence:/srv/browser/m5-evidence
       - ../docker/browser/fixtures:/srv/browser/fixtures:ro
     depends_on:
       nginx:
@@ -209,9 +274,14 @@ volumes:
   # Persistent development data: survives `down` and normal container
   # restarts. Destroy ONLY deliberately: `... down -v` (non-destructive
   # rollback never uses -v; see m1-implementation-report.md).
+  # Volume names default to the accepted development volumes (docker_pgdata /
+  # docker_redisdata) so the pre-existing dev database is preserved when the
+  # stable project name `education-platform` is used. Disposable verification
+  # projects (browser, R2 lifecycle) MUST override PGDATA_NAME / REDISDATA_NAME
+  # to isolated names so `down -v` never deletes development data.
   pgdata:
     # Preserve the accepted development database created before the stack had
     # an explicit Compose project name.
-    name: docker_pgdata
+    name: ${PGDATA_NAME:-docker_pgdata}
   redisdata:
-    name: docker_redisdata
+    name: ${REDISDATA_NAME:-docker_redisdata}

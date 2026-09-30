@@ -13,6 +13,7 @@ import { createApp } from '../../src/app.js';
 import { loadConfig, type ServerConfig } from '../../src/config.js';
 import { createPostgresPool, closePostgres } from '../../src/infra/postgres.js';
 import { createRedisClient, closeRedis } from '../../src/infra/redis.js';
+import { hashPassword } from '../../src/modules/identity/password.js';
 import type { Clock } from '../../src/modules/identity/tokens.js';
 
 export const TEST_ORIGIN = 'http://localhost:8080';
@@ -107,6 +108,31 @@ export function uniqueIp(): string {
 }
 
 export const TEST_PASSWORD = 'correct horse battery staple m2';
+
+/**
+ * Create an ADMIN owned by exactly this world, without touching any other admin.
+ *
+ * The one-time bootstrap rule (D13) is a product invariant and stays covered by
+ * `identity-admin.test.ts`, which needs the admin-free table. Every other file
+ * only needs "a world that owns an admin". Reaching for the bootstrap path
+ * required a global `deleteMany({ role: 'ADMIN' })`, which silently destroyed
+ * the sessions of worlds that were still alive and made the suite depend on
+ * which file happened to run first. Inserting the row directly keeps each
+ * world independent.
+ */
+export async function createTestAdmin(
+  world: IdentityWorld,
+  displayName: string,
+  password: string,
+): Promise<{ id: string; email: string }> {
+  const email = uniqueEmail();
+  const phone = uniquePhone();
+  const passwordHash = await hashPassword(password, { memoryKb: 8192, timeCost: 2, parallelism: 1 });
+  const created = await world.prisma.user.create({
+    data: { email, phone, displayName, passwordHash, role: 'ADMIN' },
+  });
+  return { id: created.id, email };
+}
 
 /** Bootstrap a CSRF pair: GET /auth/csrf, keep cookie + token. */
 export async function csrfBootstrap(app: Express): Promise<{ jar: Jar; token: string }> {

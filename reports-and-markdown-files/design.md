@@ -1,6 +1,17 @@
 # Education Platform — Design v1
 
-Status: initial Stitch concept plus the owner's M4 dark-theme clarification. Branding remains provisional. This is a UI design specification, not production React code or completed backend integration.
+Status: the owner approved the FAYQ identity and supplied brand board on 2026-09-30. Earlier Stitch layouts remain historical references; the FAYQ system below governs current visual implementation. This is a UI specification, not a backend contract.
+
+## FAYQ owner-approved direction (2026-09-30)
+
+- Product name: `FAYQ` in both languages.
+- English slogan: `Learn It. Code It. Get It.`
+- Arabic slogan: `تعلمها. برمجها. حققها.`
+- Palette: Forest `#0F1F12`, Lime `#C9F24D`, Amber `#F7B500`, Cream `#F8F7EE`, Charcoal `#2E2E2E`.
+- Latin display face: Plus Jakarta Sans; Latin body/UI: Inter; Arabic: Noto Sans Arabic.
+- Personality: young, modern, supportive, motivating and trustworthy.
+
+The supplied brand board is visual direction, not a production background and not authorization for invented AI-assistant, certification, testimonial, rating or live-class features. Text remains accessible HTML. Dark remains the default with a complete warm-cream light theme. Lime and amber filled controls use forest/dark text.
 
 ## Project
 Stitch project: Education Platform — Arabic-first UI v1
@@ -8,7 +19,7 @@ Project ID: 12072480276288747342
 Review URL: https://stitch.withgoogle.com/projects/12072480276288747342
 
 ## Product and tone
-An Egyptian recorded-programming-course platform. Exactly student and admin roles. Arabic is primary, English secondary. Both content translations are mandatory. Use the neutral working name "منصة التعلم" / "Learning Platform"; this is placeholder branding, not a chosen business name.
+An Egyptian recorded-programming-course platform. Exactly student and admin roles. Arabic is primary, English secondary. Both content translations are mandatory. Use the approved product name `FAYQ`; the former neutral working name is retired from user-visible UI.
 Create a focused, warm, credible learning experience: generous whitespace, strong typography, clear next actions, purposeful code illustrations. Avoid childish school graphics, neon gradients, invented ratings/testimonials, fake certifications or exaggerated user statistics.
 
 ## Provisional visual tokens
@@ -27,14 +38,14 @@ Create a focused, warm, credible learning experience: generous whitespace, stron
 | Error | #B91C1C on #FEE2E2 | Failed/rejected/expired |
 Use semantic tokens so owner color changes apply globally. Never rely on color alone for state. Contrast must be verified on final export, not assumed.
 
-## M4 theme and visual direction
+## Current theme and visual direction
 
 Dark mode is the default experience. Keep an accessible light alternative and
 an explicit theme control; persist only the non-sensitive UI preference (never
 auth/session data) and apply it before first paint to avoid a theme flash.
 
-Use a calm, modern developer-learning aesthetic: deep navy rather than pure
-black, crisp teal actions, restrained amber highlights, layered surfaces,
+Use a calm, modern developer-learning aesthetic: deep forest rather than pure
+black, lime actions, restrained amber highlights, layered surfaces,
 strong typography and generous spacing. Avoid neon gradients, excessive glow,
 glass effects that reduce legibility, decorative dashboard clutter and color-
 only status communication.
@@ -43,22 +54,26 @@ Dark semantic palette:
 
 | Token | Value | Usage |
 | --- | --- | --- |
-| Canvas | `#08111F` | Main application background |
-| Surface | `#0F1B2D` | Cards, forms and sidebars |
-| Elevated | `#16243A` | Dialogs, menus and selected panels |
-| Primary | `#2DD4BF` | Primary actions and selected navigation |
-| Primary hover | `#5EEAD4` | Hover/focus emphasis |
-| Text | `#F8FAFC` | Primary text and headings |
-| Muted text | `#A8B3C7` | Supporting copy |
-| Border | `#2A3A52` | Inputs, separators and card edges |
-| Accent | `#FBBF24` | Small learning/payment highlights |
-| Focus | `#67E8F9` | Keyboard focus ring |
-| Success | `#6EE7B7` on `#0B3B2E` | Approved/active |
+| Canvas | `#0B140E` | Main application background |
+| Surface | `#12241A` | Cards, forms and sidebars |
+| Elevated | `#1A3123` | Dialogs, menus and selected panels |
+| Primary | `#C9F24D` | Primary actions and selected navigation |
+| Primary hover | `#B7E244` | Hover/focus emphasis |
+| Text | `#F8F7EE` | Primary text and headings |
+| Muted text | `#B7C2B0` | Supporting copy |
+| Border | `#2C4232` | Inputs, separators and card edges |
+| Accent | `#F7B500` | Small learning/payment highlights |
+| Focus | `#C9F24D` | Keyboard focus ring |
+| Success | `#8FE3A8` on `#0E2A1A` | Approved/active |
 | Pending | `#FCD34D` on `#3B2F0B` | Awaiting review |
 | Error | `#FDA4AF` on `#4C1822` | Failed/rejected/expired |
 
-The light theme uses the existing semantic roles with a softer `#F4F7FB`
-canvas, white surfaces, `#0F172A` text, teal primary actions and slate borders.
+The light theme is a first-class FAYQ experience, not a simple inversion. It
+uses a warm `#F5F3E8` canvas, `#FFFEF9` surfaces, forest `#0F1F12` text,
+dark-green `#365314` text accents, lime-filled actions with forest text, and
+warm neutral borders. Lime must not be used for normal text on cream or white;
+reserve it for filled actions, focus emphasis, decorative rules and dark
+surfaces.
 Both themes must meet WCAG AA contrast for normal text and controls. Define
 theme values once as CSS variables consumed by Tailwind semantic utilities;
 do not scatter raw palette classes through feature pages.

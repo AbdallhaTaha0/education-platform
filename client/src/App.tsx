@@ -2,9 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { AuthProvider } from './auth';
 import { Container } from './components/ui/Card';
 import { useLang } from './i18n';
+import { routeDocumentTitle } from './pageTitles';
 import { ThemeProvider } from './theme';
 import { Header } from './components/layout/Header';
-import { adminCourseIdFromHash, planIdFromHash, routeFromHash, slugFromHash, type Route } from './routes';
+import { adminCourseIdFromHash, learnSlugFromHash, planIdFromHash, routeFromHash, slugFromHash, type Route } from './routes';
 import { AccountScreen, AdminScreen, LoginScreen, RegisterScreen } from './screens';
 import { PublicCatalogPage } from './features/catalog/pages/PublicCatalogPage';
 import { OfferPage } from './features/catalog/pages/OfferPage';
@@ -16,9 +17,11 @@ import { RechargePage } from './features/wallet/pages/RechargePage';
 import { AdminRechargePage } from './features/wallet/pages/AdminRechargePage';
 import { PurchasePage } from './features/purchase/pages/PurchasePage';
 import { PurchaseHistoryPage } from './features/purchase/pages/PurchaseHistoryPage';
+import { DashboardPage } from './features/learning/pages/DashboardPage';
+import { CourseLearningPage } from './features/learning/pages/CourseLearningPage';
 
 function Shell(): JSX.Element {
-  const { t, setLang } = useLang();
+  const { lang, t, setLang } = useLang();
   const [route, setRoute] = useState<Route>(() => routeFromHash());
 
   useEffect(() => {
@@ -30,6 +33,12 @@ function Shell(): JSX.Element {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
+  // Document title follows the route and the language, always from the
+  // centralized FAYQ identity.
+  useEffect(() => {
+    document.title = routeDocumentTitle(lang, route, t);
+  }, [lang, route, t]);
+
   const go = useCallback((hash: string) => {
     if (window.location.hash === hash) {
       setRoute(routeFromHash());
@@ -40,7 +49,7 @@ function Shell(): JSX.Element {
   }, []);
 
   return (
-    <div id="top">
+    <div id="top" className="flex min-h-screen flex-col">
       <a className="skip-link" href="#main">
         {t.skipToContent}
       </a>
@@ -83,9 +92,19 @@ function Shell(): JSX.Element {
       {route === 'purchases' ? <PurchaseHistoryPage /> : null}
       {route === 'purchase' ? <PurchasePage planId={planIdFromHash()} go={go} /> : null}
       {route === 'admin-recharge' ? <AdminRechargePage /> : null}
-      <footer className="mt-12 border-t border-border py-6 text-sm text-muted">
+      {route === 'dashboard' ? (
+        <DashboardPage
+          onContinue={(slug) => go(`#/learn/${encodeURIComponent(slug)}`)}
+          onRenew={() => go('#/wallet')}
+          onBrowse={() => go('#/courses')}
+        />
+      ) : null}
+      {route === 'learn' ? (
+        <CourseLearningPage courseSlug={learnSlugFromHash()} onRenew={() => go('#/wallet')} />
+      ) : null}
+      <footer className="mt-auto border-t border-border bg-surface py-8 text-sm text-muted">
         <Container>
-          <p>{t.footer}</p>
+          <div className="flex flex-wrap items-center justify-between gap-3"><p className="font-semibold text-ink">{t.footer}</p><p dir="ltr">Learn It. Code It. <span className="font-bold text-primary-strong">Get It.</span></p></div>
         </Container>
       </footer>
     </div>

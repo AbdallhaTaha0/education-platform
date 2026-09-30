@@ -1,12 +1,11 @@
 import request from 'supertest';
 import type { Express } from 'express';
-import { bootstrapFirstAdmin } from '../../src/modules/identity/bootstrap.js';
 import {
+  createTestAdmin,
   createWorld,
   loginWith,
   registerStudent,
   uniqueEmail,
-  uniquePhone,
   TEST_ORIGIN,
   uniqueIp,
   type IdentityWorld,
@@ -17,43 +16,71 @@ export interface CatalogWorld extends IdentityWorld {
   adminJar: import('./identity-helpers.js').Jar;
   adminUser: { id: string; email: string };
   studentJar: import('./identity-helpers.js').Jar;
+  /** The student actually logged in as; the shared database holds other students. */
+  studentUser: { id: string; email: string };
   fixture?: DrmFixture;
 }
 
-export async function createCatalogWorld(withFixture = false): Promise<CatalogWorld> {
+export interface CatalogWorldOptions {
+  /**
+   * Clear the catalog tables this world will use (default `true`).
+   *
+   * A world created *while a sibling world is still in use* must pass `false`:
+   * the reset is global, so running it would delete the sibling's courses,
+   * media, plans and progress out from under it.
+   */
+  resetSharedState?: boolean;
+}
+
+export async function createCatalogWorld(
+  withFixture: DrmFixture | boolean = false,
+  extraOverrides: Record<string, unknown> = {},
+  options: CatalogWorldOptions = {},
+): Promise<CatalogWorld> {
   let fixture: DrmFixture | undefined;
   let overrides: Record<string, unknown> = {};
-  if (withFixture) {
+  // A pre-started fixture lets a caller enable extra routes (e.g. playback)
+  // and read its URL before the app config is frozen.
+  if (withFixture === true) {
     fixture = new DrmFixture();
-    const url = await fixture.start();
+  } else if (typeof withFixture === 'object') {
+    fixture = withFixture;
+  }
+  if (fixture !== undefined) {
+    if (fixture.url === '') await fixture.start();
     overrides = {
-      drmBaseUrl: url,
+      drmBaseUrl: fixture.url,
       drmClientId: fixture.expectedClientId,
       drmClientSecret: fixture.expectedClientSecret,
     };
   }
+  Object.assign(overrides, extraOverrides);
   const world = await createWorld(overrides as never);
-  // Ensure clean catalog state per world (tests share DB file-sequentially; clean explicitly).
-  await world.prisma.catalogDeletionAsset.deleteMany();
-  await world.prisma.catalogDeletionOperation.deleteMany();
-  await world.prisma.auditEvent.deleteMany();
-  await world.prisma.mediaMapping.deleteMany();
-  await world.prisma.subscriptionPlan.deleteMany();
-  await world.prisma.lesson.deleteMany();
-  await world.prisma.courseSection.deleteMany();
-  await world.prisma.course.deleteMany();
-
-  await world.prisma.user.deleteMany({ where: { role: 'ADMIN' } });
-  const admin = await bootstrapFirstAdmin(
-    { displayName: 'Catalog Admin', email: uniqueEmail(), phone: uniquePhone(), password: 'catalog secret twelve words' },
-    { prisma: world.prisma, argon2: { memoryKb: 8192, timeCost: 2, parallelism: 1 } },
-  );
+  if (options.resetSharedState !== false) {
+    // Integration files share one disposable database and run sequentially, so
+    // each world clears exactly what it is about to assert on.
+    await world.prisma.playbackReference.deleteMany();
+    await world.prisma.lessonProgress.deleteMany();
+    await world.prisma.catalogDeletionAsset.deleteMany();
+    await world.prisma.catalogDeletionOperation.deleteMany();
+    await world.prisma.auditEvent.deleteMany();
+    await world.prisma.mediaMapping.deleteMany();
+    await world.prisma.subscriptionPlan.deleteMany();
+    await world.prisma.lesson.deleteMany();
+    await world.prisma.courseSection.deleteMany();
+    await world.prisma.course.deleteMany();
+  }
+  // The admin belongs to this world only. Deleting every admin here would
+  // revoke the session of any world that is still in use.
+  const admin = await createTestAdmin(world, 'Catalog Admin', 'catalog secret twelve words');
   const session = await loginWith(world.app, admin.email, 'catalog secret twelve words');
   const student = await registerStudent(world.app);
+  const studentRow = await world.prisma.user.findUniqueOrThrow({ where: { email: student.user.email } });
   const out = world as CatalogWorld;
   (out as { adminJar: unknown }).adminJar = session.jar;
   (out as { adminUser: unknown }).adminUser = { id: admin.id, email: admin.email };
   (out as { studentJar: unknown }).studentJar = student.jar;
+  (out as { studentUser: unknown }).studentUser = { id: studentRow.id, email: studentRow.email };
   if (fixture) (out as { fixture: unknown }).fixture = fixture;
   return out;
 }

@@ -26,6 +26,24 @@ Updated 2026-09-29 from owner answers and follow-up responses. CONFIRMED is expl
 | D20 | CONFIRMED | On 2026-09-29 the owner authorized a separate bounded DRM maintenance change so retrying registration for the same existing `UPLOADED` asset can return a fresh presigned upload URL. | Preserve the same DRM asset and platform identifiers; do not create an orphan replacement asset, persist signed URLs, broaden DRM scope, or change the API-only platform boundary. M3 acceptance requires independent recovery verification. |
 | D21 | CONFIRMED | M4 manual-funding policy: a normalized transfer reference is globally unique within its channel; rejection requires a reason, is immutable and resubmission creates a new request; only ADMIN may open/download proof while the student sees filename/status/deletion date; refunds and reversals are excluded from M4. | Approval credits once but never auto-purchases. Corrections/refunds/reversals require a later owner-approved feature. Proof bytes expire 180 days after approval/rejection while sanitized audit metadata remains. |
 | D22 | CONFIRMED | M4 includes a site-wide UI/UX improvement with dark mode as the default visual experience, an accessible light alternative, and a refined navy/teal/amber semantic palette. | Implement through Tailwind semantic tokens and reusable components. Persist only the non-sensitive theme preference in browser storage; verify contrast, RTL/LTR parity, responsive behavior and no theme flash. |
+| D23 | CONFIRMED | On 2026-09-30 the owner explicitly authorized bounded DRM maintenance to fix the reviewed M5 playback security and platform assertion/renewal contract. | Limit changes to strict device binding, tenant-scoped service renewal, RS256/JWKS interoperability, and their regression tests. Preserve the independently deployed API-only boundary; no platform access to DRM persistence and no unrelated DRM rewrite. |
+
+## 2026-09-30 M5 gate-closure pass — items resolved and items still open
+
+Nothing in this table is a new owner decision. It records what the pass resolved
+under existing approved policy, and what remains genuinely undecided.
+
+| Item | Status | Basis |
+| --- | --- | --- |
+| Concurrent identical purchase retries must converge on one purchase and one debit | RESOLVED under existing policy | `rules.md` already requires "transactional, idempotent financial operations". The defect was that idempotency was re-checked before the wallet lock, so a loser re-decided affordability after the winner's debit and answered `402 INSUFFICIENT_FUNDS`. Fixed in the product; no new business policy was invented. |
+| Browser-route vs platform-route renewal | RESOLVED under D23 | Browser `renew` is bearer and device bound; platform `renew-admin` is application-credentialed and tenant scoped. The two must never be conflated, and a labeled test double must implement the corrected contract. |
+| Browser watermark content and presentation | RESOLVED from `design.md` | A subtle masked watermark over the 16:9 player, never a claim that it prevents screen capture. Implemented as a visible, privacy-conscious label only. |
+| Widevine as the production DRM | **OWNER DECISION REQUIRED** | All five `WIDEVINE_*` keys are empty. Widevine needs an external license provider, packaging keys, certificates and a commercial agreement. Until the owner decides, ClearKey is the only exercised path and it is not a production substitute. |
+| R2 CORS configuration | **OWNER ACTION REQUIRED** | Requires visibility into, or authority over, the bucket's CORS rules, plus an explicitly approved browser origin. |
+| Second DRM tenant | **OWNER ACTION REQUIRED** | A tenant can be created through the supported `POST /v1/applications` bootstrap, but the owner must approve creating and later removing a disposable tenant and its data. |
+| Production deployment shape | **OWNER DECISION REQUIRED** | No platform production Compose artifact exists. Hosting, replicas, secrets injection, TLS termination, DNS and monitoring are undecided. |
+| Capacity target | **OWNER DECISION REQUIRED** | `rules.md` records 10,000 concurrent users as the qualification target. No load test has been run, so nothing is claimed. If the intended target differs, the owner must say so. |
+| RPO, RTO, backup retention | **OWNER DECISION REQUIRED** | Unchanged from the Pre-M5 report. |
 
 ## Pending immediate follow-up
 

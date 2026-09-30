@@ -18,6 +18,7 @@ const config: ServerConfig = {
   readyTimeoutMs: 1000,
   drmRequestTimeoutMs: 1000,
   drmMaxRetries: 2,
+  drmAssertionMaxLifetimeSec: 120,
   isProduction: false,
   jwtSecret: 'test-secret-that-is-long-enough-32',
   authIssuer: 'edu-platform-test',

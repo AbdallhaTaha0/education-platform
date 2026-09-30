@@ -26,13 +26,22 @@ const BOOT_PASSWORD = 'bootstrap secret twelve words ok';
 
 beforeAll(async () => {
   world = await createWorld();
-  // Bootstrap demands zero pre-existing admins; students never interfere.
-  await world.prisma.user.deleteMany({ where: { role: 'ADMIN' } });
 });
 
 afterAll(async () => {
   await world.close();
 });
+
+/**
+ * Clear every admin so the one-time bootstrap precondition holds.
+ *
+ * This is the D13 invariant and it is genuinely global, so each test that needs
+ * an admin-free table establishes it itself. Relying on the file's `beforeAll`
+ * made the first test depend on being the first test in the file.
+ */
+async function clearAdmins(): Promise<void> {
+  await world.prisma.user.deleteMany({ where: { role: 'ADMIN' } });
+}
 
 function runCli(env: Record<string, string>): Promise<{ code: number; out: string }> {
   return new Promise((resolve) => {
@@ -49,6 +58,8 @@ function runCli(env: Record<string, string>): Promise<{ code: number; out: strin
 
 describe('first-admin bootstrap CLI', () => {
   it('creates the first admin once and refuses repeats without revealing the password', async () => {
+    // Bootstrap demands zero pre-existing admins; students never interfere.
+    await clearAdmins();
     const email = uniqueEmail();
     const phone = uniquePhone();
     const first = await runCli({
@@ -88,7 +99,7 @@ describe('first-admin bootstrap CLI', () => {
 
 describe('bootstrap concurrency and silence', () => {
   it('lets exactly one of two simultaneous bootstraps succeed', async () => {
-    await world.prisma.user.deleteMany({ where: { role: 'ADMIN' } });
+    await clearAdmins();
     const params = { memoryKb: 8192, timeCost: 2, parallelism: 1 };
     const attempt = () =>
       bootstrapFirstAdmin(
@@ -112,7 +123,7 @@ describe('bootstrap concurrency and silence', () => {
   });
 
   it('returns safe output containing neither password nor hash', async () => {
-    await world.prisma.user.deleteMany({ where: { role: 'ADMIN' } });
+    await clearAdmins();
     const created = await bootstrapFirstAdmin(
       { displayName: 'Quiet Admin', email: uniqueEmail(), phone: uniquePhone(), password: 'silent secret twelve words' },
       { prisma: world.prisma, argon2: { memoryKb: 8192, timeCost: 2, parallelism: 1 } },
@@ -127,7 +138,7 @@ describe('bootstrap concurrency and silence', () => {
 
 describe('admin creation endpoint', () => {
   it('lets an authenticated ADMIN create another ADMIN', async () => {
-    await world.prisma.user.deleteMany({ where: { role: 'ADMIN' } });
+    await clearAdmins();
     const admin = await bootstrapFirstAdmin(
       { displayName: 'Root Admin', email: uniqueEmail(), phone: uniquePhone(), password: 'root secret twelve words' },
       { prisma: world.prisma, argon2: { memoryKb: 8192, timeCost: 2, parallelism: 1 } },
@@ -172,7 +183,7 @@ describe('admin creation endpoint', () => {
   });
 
   it('rejects client-supplied roles and duplicate identifiers', async () => {
-    await world.prisma.user.deleteMany({ where: { role: 'ADMIN' } });
+    await clearAdmins();
     const admin = await bootstrapFirstAdmin(
       { displayName: 'Root Two', email: uniqueEmail(), phone: uniquePhone(), password: 'root two secret twelve' },
       { prisma: world.prisma, argon2: { memoryKb: 8192, timeCost: 2, parallelism: 1 } },

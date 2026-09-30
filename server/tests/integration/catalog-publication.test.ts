@@ -114,7 +114,9 @@ describe('catalog publication + lifecycle', () => {
   });
 
   it('fails closed with 503 when DRM unconfigured', async () => {
-    const plain = await createCatalogWorld(false);
+    // `resetSharedState: false`: this world is a sibling of the outer one, which
+    // is still in use. A reset here would delete the outer world's courses.
+    const plain = await createCatalogWorld(false, {}, { resetSharedState: false });
     try {
       const { lessonId } = await createFullDraft(plain, 'unconf');
       const reg = await adminPost(plain.app, `/admin/catalog/lessons/${lessonId}/media`, plain.adminJar, {

@@ -73,6 +73,21 @@ export async function purchaseCourse(prisma: PrismaClient, studentId: string, in
         throw new ApiError(404, 'NOT_FOUND', 'This plan is not available for purchase.');
       }
       const wallet = await lockWallet(tx, studentId);
+      // Re-check idempotency AFTER the wallet lock. Concurrent identical
+      // requests all pass the earlier read, then serialize on the wallet row;
+      // whoever commits first has already debited, so a loser that re-decided
+      // affordability here would deny itself with INSUFFICIENT_FUNDS for a
+      // purchase it is entitled to replay. The post-lock read observes the
+      // winner's committed row (READ COMMITTED takes a fresh snapshot per
+      // statement), so the retry converges on the same purchase.
+      const settled = await tx.purchase.findUnique({ where: { studentId_idempotencyKey: { studentId, idempotencyKey } } });
+      if (settled) {
+        if (settled.planId !== planId) {
+          throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Idempotency key was already used for a different plan.');
+        }
+        const sub = await tx.subscription.findUniqueOrThrow({ where: { purchaseId: settled.id } });
+        return { purchase: settled, subscription: sub };
+      }
       if (wallet.balancePiastres < plan.currentPricePiastres) {
         throw new ApiError(402, 'INSUFFICIENT_FUNDS', 'Wallet balance is insufficient for this plan.');
       }

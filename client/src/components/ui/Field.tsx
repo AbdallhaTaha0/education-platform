@@ -27,7 +27,7 @@ export function Field({ id, label, error, dir, hint, children }: FieldProps): JS
 }
 
 export function textInputClassName(invalid: boolean): string {
-  return `min-h-[44px] w-full rounded-control border bg-surface px-3 py-2 text-base text-ink ${
+  return `min-h-[48px] w-full rounded-control border bg-surface px-4 py-2.5 text-base text-ink shadow-inner transition-colors placeholder:text-muted/80 hover:border-border-strong focus:border-primary focus:outline-none ${
     invalid ? 'border-error-fg' : 'border-border'
   }`;
 }

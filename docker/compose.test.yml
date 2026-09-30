@@ -82,6 +82,16 @@ services:
         condition: service_healthy
     restart: "no"
 
+  # Client-side unit tests for the pure M5 learning logic (player state machine
+  # and the transient credential boundary). No database or redis required.
+  client-test:
+    build:
+      context: ..
+      dockerfile: client/Dockerfile
+      target: test
+    image: edu-platform-client-test:0.5.0-m5
+    restart: "no"
+
 volumes:
   # Disposable by design: the project prefix (-p education-platform-test)
   # keeps these separate from development volumes; `down -v` removes them.
