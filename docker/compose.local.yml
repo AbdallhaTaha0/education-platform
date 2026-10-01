@@ -1,0 +1,28 @@
+# Owner's persistent HTTP preview. Combine with compose.dev.yml.
+# External volumes keep existing data through container/image replacement.
+services:
+  migrate:
+    image: fayq-platform-migrate:0.8.0-local
+  server:
+    image: fayq-platform-server:0.8.0-local
+    environment:
+      NODE_ENV: development
+      SERVICE_VERSION: 0.8.0-local
+      ALLOWED_ORIGINS: http://localhost:8080
+      COOKIE_SECURE: 'false'
+      OWNER_PREVIEW: '1'
+      DRM_BASE_URL: http://host.docker.internal:3000
+      DRM_PUBLIC_BASE_URL: http://localhost:3000
+  client:
+    image: fayq-platform-client:0.8.0-local
+  nginx:
+    image: fayq-platform-nginx:0.8.0-local
+    ports: !override
+      - 127.0.0.1:8080:8080
+volumes:
+  pgdata:
+    name: ${LOCAL_PGDATA_NAME:?configure retained platform database volume}
+    external: true
+  redisdata:
+    name: ${LOCAL_REDISDATA_NAME:?configure retained platform cache volume}
+    external: true

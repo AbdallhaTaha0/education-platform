@@ -1,5 +1,7 @@
 # Education platform documentation
 
+Current local continuation (2026-10-01): the [fresh M7/M8 Docker review](local-m7-m8-refresh-review.md) reproduces 446 backend tests, 76 frontend tests plus two compatibility checks, 81 browser checks and the Railway candidate rehearsal. The rebuilt preview is http://localhost:8080; all existing local data volumes are preserved. The teammate's real-video preview described below is machine-local and was not transferred by Git. Deployment, commercial DRM, capacity qualification and recovery/monitoring are explicitly deferred by the owner. The [remaining-work plan](m7-m8-remaining-work-plan.md) is retained for a future assignment. No production deployment or milestone acceptance is inferred.
+
 Owner delivery authorization (2026-10-01): commit/push the completed M7 local preparation and M8 implementation, with [the teammate continuation prompt](m7-m8-teammate-handoff.md). This authorizes source delivery, not production deployment or automatic milestone acceptance. Historical reports preserve their original no-commit execution status.
 
 Current owner preview (2026-10-01): http://localhost:8080 preserves the existing test accounts and contains the owner's actual uploaded video, processed in R2 and verified playing. [Real-video report](m8-owner-real-video-report.md) records the interrupted-upload fix, 446 passing server tests and scoped Docker cleanup; [upload guide](video-upload-owner-guide.md) explains ADMIN publishing and R2 setup. The retained owner preview/DRM are intentional; production qualification remains open.

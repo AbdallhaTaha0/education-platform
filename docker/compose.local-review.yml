@@ -1,0 +1,13 @@
+# Disposable review only, never the owner preview's database or cache.
+services:
+  migrate:
+    image: fayq-platform-migrate:0.8.0-local
+  test:
+    image: fayq-review-server:0.8.0-local
+  client-test:
+    image: fayq-review-client:0.8.0-local
+  redis:
+    volumes:
+      - redis-review:/data
+volumes:
+  redis-review:

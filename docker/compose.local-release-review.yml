@@ -1,0 +1,8 @@
+# Combine with compose.m7-08.yml; new disposable project and fixture key only.
+services:
+  server:
+    image: fayq-platform-server:0.8.0-local
+  migrate:
+    image: fayq-platform-migrate:0.8.0-local
+  edge:
+    image: fayq-railway-edge:0.8.0-local-review

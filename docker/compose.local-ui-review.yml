@@ -1,0 +1,13 @@
+# Isolated UI review; synthetic fixtures never touch retained preview data.
+services:
+  server:
+    image: fayq-platform-server:0.8.0-local
+  migrate:
+    image: fayq-platform-migrate:0.8.0-local
+  client:
+    image: fayq-platform-client:0.8.0-local
+  redis:
+    volumes:
+      - redis-review:/data
+volumes:
+  redis-review:

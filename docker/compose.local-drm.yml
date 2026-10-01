@@ -1,0 +1,28 @@
+# Independently deployed external DRM, built without changing its sources.
+services:
+  postgres:
+    ports: !reset []
+  valkey:
+    ports: !reset []
+    volumes:
+      - retained-valkey:/data
+  api:
+    image: fayq-drm-api:0.8.0-local
+    ports: !override
+      - 127.0.0.1:3000:3000
+    environment:
+      CORS_ORIGIN: http://localhost:8080
+      JWT_JWKS_URL: http://host.docker.internal:8080/.well-known/jwks.json
+      PLAYBACK_ASSERTION_REQUIRED: 'true'
+      PLAYBACK_TOKEN_TTL: '300'
+  worker:
+    image: fayq-drm-worker:0.8.0-local
+  migrate:
+    image: fayq-drm-migrate:0.8.0-local
+volumes:
+  pgdata:
+    name: ${LOCAL_DRM_PGDATA_NAME:?configure retained DRM database volume}
+    external: true
+  retained-valkey:
+    name: ${LOCAL_DRM_REDISDATA_NAME:?configure retained DRM cache volume}
+    external: true
