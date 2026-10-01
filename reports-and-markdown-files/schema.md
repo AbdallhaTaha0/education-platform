@@ -1,5 +1,7 @@
 # Conceptual schema
 
+M8 current update, 2026-10-01: confirmed D27 is implemented as academic course fields, CoursePackage/PackageMember, immutable PackagePurchase/PackagePurchaseItem snapshots, and explicit AccessMode (DURATION/TERM_END/YEAR_END/UNTIL_REMOVAL). Subscription expiry is nullable only to represent indefinite access. Package grants retain a shared finite deadline. The older conceptual table below describes the pre-M8 baseline; the owner clarification at the end governs current access. Migrations 10 and 11 are additive; old purchases remain unchanged.
+
 DRAFT model updated with confirmed decisions; not executable Prisma or migration SQL. Prisma owns only platform tables.
 
 | Entity | Responsibility and confirmed fields/concepts | Pending details |
@@ -44,3 +46,11 @@ DRAFT model updated with confirmed decisions; not executable Prisma or migration
 ## External DRM
 
 Do not model DRM keys, internal sessions, migrations or watermark tables in Prisma. Platform references are opaque external IDs, with no cross-database foreign keys. Store video metadata/status/references in platform PostgreSQL; binary media goes through the external service to object storage.
+
+## Owner clarification — optional course expiry (2026-10-01)
+
+The owner explicitly clarified that a course may remain accessible after purchase without any expiry, until permanent removal by ADMIN. This supersedes the earlier mandatory-duration wording for M8 standalone offers. ADMIN chooses DURATION, TERM_END, YEAR_END or UNTIL_REMOVAL explicitly. UNTIL_REMOVAL stores a null expiry, not a fabricated distant date. Existing paid terms are immutable; later offer changes apply only to new purchases. Indefinite access dominates finite grants, produces no subscription-expiry notification and must not trigger expiry-based playback termination. Publication/archive/deletion protection and the external DRM API-only boundary still apply. Packages retain the previously approved one shared ADMIN-set deadline.
+
+The owner also confirmed: SECOND_SECONDARY has terms 1 and 2; packages may contain unpublished monthly courses with clear presale labels and no viewing before publication; overlapping ownership warns without blocking package purchase; repeat standalone purchases with a fixed deadline are permitted only when they add access. Existing indefinite access prevents redundant standalone payment. These answers resolve the corresponding pending owner questions; historical proposals remain historical.
+
+Acceptance: nullable-expiry migration preserves finite records; guarded offer creation/edit, one debit and idempotent replay; immutable indefinite purchase snapshot; indefinite entitlement despite expired finite rows; no expiry notice or termination; unpublished package purchase without content leakage; fixed-deadline extension/no-extension cases; bilingual admin/student access labels.

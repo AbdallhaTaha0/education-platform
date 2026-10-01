@@ -1,0 +1,14 @@
+# M7-07 verification-followup runtime override for the private delivery-browser
+# base. Pins server/migrate to freshly built images from the CURRENT checkout
+# and client to the reviewed M7-02 PostCSS image. No ports, no volumes, no
+# secrets. Use ONLY with project m7-07v-runtime:
+#   docker compose -p m7-07v-runtime \
+#     -f docker/verification/compose.m6-delivery-browser.yml \
+#     -f docker/verification/compose.m7-07v-runtime.yml config
+services:
+  migrate:
+    image: edu-platform-migrate:0.7.0-m7-07-verify
+  server:
+    image: edu-platform-server:0.7.0-m7-07-verify
+  client:
+    image: edu-platform-client:0.7.0-m7-02-postcss

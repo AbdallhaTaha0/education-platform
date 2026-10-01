@@ -1,0 +1,5 @@
+# Negative migration gate; isolated project only.
+services:
+  migrate:
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5999/education_platform

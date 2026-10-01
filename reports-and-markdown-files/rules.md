@@ -19,6 +19,8 @@
 
 ## Proposed engineering acceptance rules
 
+Owner-required prompt rule (2026-10-01): every execution/review prompt must explicitly require cleaning its Docker test environment at completion, failure or stop. Establish ownership from project labels and resolved mounts before removing test containers/networks/volumes/fixtures. Preserve unrelated data, existing previews, images needed for review and saved evidence. Record the final cleanup check; never use global Docker prune.
+
 These implement integrity and review expectations; any policy-dependent detail remains subject to decisions.md.
 
 - Validate authorization on the server for every sensitive operation; frontend visibility is not access control.

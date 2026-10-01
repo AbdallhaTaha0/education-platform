@@ -9,6 +9,7 @@ import { listMyPurchases, listMySubscriptions, purchaseCourse } from '../purchas
 import { getOwnRequest, listOwnRequests } from '../recharge/queries.js';
 import { submitRecharge } from '../recharge/service.js';
 import type { PurchaseInput, RechargeSubmitInput } from '../types.js';
+import { listPackagePurchases, packageReview, purchasePackage } from '../purchase/packages.js';
 
 export interface WalletStudentDeps {
   prisma: PrismaClient;
@@ -21,6 +22,15 @@ const authedWrite = [requireOrigin, requireAuth, requireSessionCsrf];
 /** Student wallet/recharge/purchase router. Balances/prices are never trusted from the client. */
 export function createWalletStudentRouter(deps: WalletStudentDeps) {
   const router = Router();
+  router.get('/packages/:id/review', ...authed, async (req, res, next) => {
+    try { res.json(ok(await packageReview(deps.prisma, authOf(req).userId, req.params.id as string))); } catch (err) { next(err); }
+  });
+  router.get('/package-purchases', ...authed, async (req, res, next) => {
+    try { res.json(ok({ purchases: await listPackagePurchases(deps.prisma, authOf(req).userId) })); } catch (err) { next(err); }
+  });
+  router.post('/package-purchases', ...authedWrite, rateLimit('wallet-package-purchase', { windowSec: 60, max: 20 }), async (req, res, next) => {
+    try { res.status(201).json(ok(await purchasePackage(deps.prisma, authOf(req).userId, req.body))); } catch (err) { next(err); }
+  });
 
   router.get('/', ...authed, async (req, res, next) => {
     try {

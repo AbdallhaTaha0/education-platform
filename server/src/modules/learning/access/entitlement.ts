@@ -2,8 +2,8 @@
  * Entitlement evaluation for protected learning (M5).
  *
  * The rule is deliberately small and pure so it can be exhaustively unit
- * tested: access requires a subscription row whose `expiresAt` is strictly in
- * the future at *backend* time. Progress rows and playback rows are never
+ * tested: access requires an indefinite subscription or a finite `expiresAt`
+ * strictly in the future at *backend* time. Progress rows and playback rows are never
  * consulted here, which is what makes progress incapable of granting access.
  *
  * The exact expiry instant is exclusive: at `expiresAt` the student is already
@@ -14,11 +14,11 @@ import type { EntitlementDecision } from '../types.js';
 export interface SubscriptionRow {
   courseId: string;
   startsAt: Date;
-  expiresAt: Date;
+  expiresAt: Date | null;
 }
 
 export type EntitlementResult =
-  | { allowed: true; expiresAt: Date }
+  | { allowed: true; expiresAt: Date | null }
   | { allowed: false; reason: 'SUBSCRIPTION_REQUIRED' | 'SUBSCRIPTION_EXPIRED'; expiresAt: Date | null };
 
 /**
@@ -37,9 +37,10 @@ export function evaluateEntitlement(
   if (forCourse.length === 0) {
     return { allowed: false, reason: 'SUBSCRIPTION_REQUIRED', expiresAt: null };
   }
+  if (forCourse.some(s => s.expiresAt === null)) return { allowed: true, expiresAt: null };
   // Effective access is the union of every purchase covering this course, so
   // the latest expiry wins (early renewal extends from the existing expiry).
-  const latest = forCourse.reduce<Date>((max, s) => (s.expiresAt > max ? s.expiresAt : max), forCourse[0]!.expiresAt);
+  const latest = forCourse.reduce<Date>((max, s) => (s.expiresAt! > max ? s.expiresAt! : max), forCourse[0]!.expiresAt!);
   // Strictly before expiresAt: the expiry instant itself is already expired.
   if (latest.getTime() <= nowMs) {
     return { allowed: false, reason: 'SUBSCRIPTION_EXPIRED', expiresAt: latest };

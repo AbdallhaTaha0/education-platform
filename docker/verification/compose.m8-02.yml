@@ -1,0 +1,8 @@
+# Disposable M8 UI verification; combine with compose.m6-delivery-browser.yml.
+services:
+  server:
+    image: edu-platform-server:0.7.0-m7-04-review
+  migrate:
+    image: edu-platform-migrate:0.7.0-m7-04-review
+  client:
+    image: edu-platform-client:0.8.0-m8-02

@@ -45,7 +45,7 @@ export function SubscriptionCard({
         <div className="min-w-0">
           <h3 className="truncate text-lg font-bold">{title}</h3>
           <p className="mt-1 text-sm text-muted">
-            {labels.expiresOn} {formatDate(item.expiresAt, lang)}
+            {item.expiresAt ? `${labels.expiresOn} ${formatDate(item.expiresAt, lang)} (${lang === 'ar' ? 'القاهرة' : 'Cairo'})` : (lang === 'ar' ? 'بدون انتهاء، حتى الحذف النهائي' : 'No expiry, until permanent removal')}
           </p>
         </div>
         <StatusBadge
@@ -73,7 +73,8 @@ export function SubscriptionCard({
         </p>
       </div>
       <div className="mt-4 flex flex-wrap gap-3">
-        {isActive && onContinue ? (
+        {isActive && item.availableForLearning === false ? <p className="text-sm text-muted">{lang === 'ar' ? 'المشاهدة غير متاحة حاليًا؛ ستظهر بعد نشر الكورس.' : 'Viewing is currently unavailable; it opens when the course is published.'}</p> : null}
+        {isActive && item.availableForLearning !== false && onContinue ? (
           <button
             type="button"
             className="min-h-[44px] rounded-control bg-primary px-4 py-2 font-bold text-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
@@ -207,7 +208,10 @@ export function formatDate(value: string, lang: 'ar' | 'en'): string {
   return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-US', {
     year: 'numeric',
     month: 'short',
-    day: 'numeric',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Africa/Cairo',
   }).format(date);
 }
 

@@ -1,0 +1,12 @@
+# Retained local owner testing preview. Not a production deployment.
+# Combine with compose.m6-delivery-browser.yml and compose.m8-final-browser.yml.
+services:
+  server:
+    environment:
+      ALLOWED_ORIGINS: http://localhost:8080
+      OWNER_PREVIEW: '1'
+      ARGON2_MEMORY_KB: 65536
+      ARGON2_TIME_COST: 3
+  nginx:
+    ports:
+      - 127.0.0.1:8080:8082

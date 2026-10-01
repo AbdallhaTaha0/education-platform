@@ -1,0 +1,5 @@
+services:
+  test:
+    image: edu-platform-server-test:0.8.0-owner-video
+  migrate:
+    image: edu-platform-migrate:0.8.0-m8-final

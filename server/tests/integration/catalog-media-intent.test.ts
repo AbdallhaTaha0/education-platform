@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { DrmClient } from '../../src/modules/catalog/drmClient.js';
 import { adminPost, createCatalogWorld, createFullDraft, type CatalogWorld } from './catalog-helpers.js';
 
@@ -14,6 +14,42 @@ afterAll(async () => {
 });
 
 describe('registration intent durability', () => {
+  it('reissues the URL for a recorded incomplete upload without replacing its asset; refuses after completion', async () => {
+    const { lessonId } = await createFullDraft(world, 'intent-recorded-retry');
+    const path = `/admin/catalog/lessons/${lessonId}/media`;
+    const body = { contentType: 'video/mp4', securityTier: 'STANDARD' };
+    expect((await adminPost(world.app, path, world.adminJar, body)).status).toBe(201);
+    const before = await world.prisma.mediaMapping.findUniqueOrThrow({ where: { lessonId } });
+    const count = world.fixture!.assets.size;
+    world.fixture!.reissuePendingUploadUrl = true;
+    try {
+      const retry = await adminPost(world.app, path, world.adminJar, body);
+      expect(retry.status).toBe(201);
+      expect(retry.body.data.uploadUrl).toContain('fixture-reissued');
+      const after = await world.prisma.mediaMapping.findUniqueOrThrow({ where: { lessonId } });
+      expect(after.id).toBe(before.id); expect(after.assetId).toBe(before.assetId);
+      expect(after.externalAssetId).toBe(before.externalAssetId); expect(after.idempotencyKey).toBe(before.idempotencyKey);
+      expect(world.fixture!.assets.size).toBe(count);
+      expect(JSON.stringify(after)).not.toContain('fixture-reissued');
+      expect((await adminPost(world.app, path + '/complete', world.adminJar, {})).status).toBe(200);
+      const denied = await adminPost(world.app, path, world.adminJar, body);
+      expect(denied.status).toBe(409); expect(denied.body.error.code).toBe('MEDIA_EXISTS');
+    } finally { world.fixture!.reissuePendingUploadUrl = false; }
+  });
+
+  it('refuses a different asset returned for a recorded upload retry', async () => {
+    const { lessonId } = await createFullDraft(world, 'intent-wrong-retry');
+    const path = `/admin/catalog/lessons/${lessonId}/media`;
+    const body = { contentType: 'video/mp4', securityTier: 'STANDARD' };
+    expect((await adminPost(world.app, path, world.adminJar, body)).status).toBe(201);
+    const before = await world.prisma.mediaMapping.findUniqueOrThrow({ where: { lessonId } });
+    const spy = vi.spyOn(DrmClient.prototype, 'registerMedia').mockResolvedValueOnce({ assetId: '00000000-0000-4000-8000-000000000099', status: 'UPLOADED', uploadUrl: world.fixture!.url + '/upload/wrong' });
+    try {
+      const retry = await adminPost(world.app, path, world.adminJar, body);
+      expect(retry.status).toBe(502); expect(retry.body.error.code).toBe('DRM_MALFORMED');
+      expect((await world.prisma.mediaMapping.findUniqueOrThrow({ where: { lessonId } })).assetId).toBe(before.assetId);
+    } finally { spy.mockRestore(); }
+  });
   it('idempotent repeat without uploadUrl fails safe with identifiers converged', async () => {
     const { lessonId } = await createFullDraft(world, 'intent-lost');
     const reg = await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media`, world.adminJar, { contentType: 'video/mp4', securityTier: 'STANDARD' });

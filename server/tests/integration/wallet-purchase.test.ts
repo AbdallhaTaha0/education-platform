@@ -69,7 +69,7 @@ describe('course purchase', () => {
     expect(purchase.pricePiastres).toBe(60000);
     expect(purchase.durationDays).toBe(90);
     const sub = await world.prisma.subscription.findUniqueOrThrow({ where: { purchaseId: purchase.id } });
-    const days = Math.round((sub.expiresAt.getTime() - sub.startsAt.getTime()) / 86_400_000);
+    const days = Math.round((sub.expiresAt!.getTime() - sub.startsAt.getTime()) / 86_400_000);
     expect(days).toBe(90);
 
     const debits = await world.prisma.walletLedgerEntry.findMany({ where: { refType: 'PURCHASE', refId: purchase.id } });

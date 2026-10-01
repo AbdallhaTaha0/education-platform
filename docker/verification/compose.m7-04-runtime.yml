@@ -1,0 +1,15 @@
+# M7-04 runtime-stack override for the private delivery-browser base. Pins the
+# serving server and migration job to the Vitest-remediated images (serving
+# layers unchanged from M7-03: CLI chain excluded, engine/argon2 preserved)
+# and the client to the reviewed M7-02 PostCSS image. No ports, no volumes,
+# no secrets here. Use ONLY with project m7-04-runtime:
+#   docker compose -p m7-04-runtime \
+#     -f docker/verification/compose.m6-delivery-browser.yml \
+#     -f docker/verification/compose.m7-04-runtime.yml config
+services:
+  migrate:
+    image: edu-platform-migrate:0.7.0-m7-04-tooling
+  server:
+    image: edu-platform-server:0.7.0-m7-04-tooling
+  client:
+    image: edu-platform-client:0.7.0-m7-02-postcss

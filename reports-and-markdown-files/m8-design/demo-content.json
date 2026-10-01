@@ -1,0 +1,11 @@
+{
+  "purpose": "M8 isolated design/demo content; not production pricing or media readiness",
+  "targetAudience": "secondary students aged 15–18",
+  "courses": [
+    {"slug":"m8-demo-python-first-project","titleAr":"بايثون: من أول سطر لأول مشروع","titleEn":"Python: your first line to your first project","descriptionAr":"افهم المتغيرات والشروط والحلقات، وابنِ لعبة أسئلة بسيطة.","descriptionEn":"Understand variables, conditions and loops. Build a small quiz game.","outcomeAr":"لعبة أسئلة بسيطة","outcomeEn":"A small quiz game","pricePiastres":60000,"durationDays":90},
+    {"slug":"m8-demo-first-website","titleAr":"ابنِ أول موقع ليك","titleEn":"Build your first website","descriptionAr":"تعلّم HTML وCSS خطوة بخطوة، وصمّم صفحة تعبر عنك.","descriptionEn":"Learn HTML and CSS step by step. Design a page that feels like you.","outcomeAr":"صفحة شخصية","outcomeEn":"A personal page","pricePiastres":45000,"durationDays":60},
+    {"slug":"m8-demo-ai-foundations","titleAr":"افهم الذكاء الاصطناعي","titleEn":"Understand artificial intelligence","descriptionAr":"اعرف معنى البيانات والنماذج، وافهم أمثلة من حياتك اليومية.","descriptionEn":"Explore data and models through examples from everyday life.","outcomeAr":"فهم المفاهيم الأساسية","outcomeEn":"Understand foundational concepts","pricePiastres":50000,"durationDays":60}
+  ],
+  "fixtureScenarios": ["empty catalog","published public offers","course translation missing","media processing","active subscription with partial progress","expired subscription","pending recharge","approved recharge","rejected recharge with reason","zero wallet balance","unread/read notifications"],
+  "constraints": ["All amounts and dates are illustrative","Outcomes are proposed metadata and must not be silently added to the production schema","No production seeding","No fake DRM-ready asset or protected-access bypass","No actual identities or bank destination values","No fake reviews or live student statistics"]
+}

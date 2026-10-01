@@ -16,7 +16,9 @@ export interface DashboardSubscription {
   slug: string;
   titleAr: string;
   titleEn: string;
-  expiresAt: string;
+  expiresAt: string | null;
+  availableForLearning: boolean;
+  academic?: { grade: string | null; academicYear: string | null; term: number | null; courseKind: string | null; teachingMonth: string | null };
   state: 'ACTIVE' | 'EXPIRED';
   percentComplete: number;
   totalLessons: number;
@@ -48,7 +50,7 @@ export async function loadDashboard(
   const courseIds = [...new Set(subscriptions.map((s) => s.courseId))];
   const courses = await prisma.course.findMany({
     where: { id: { in: courseIds } },
-    select: { id: true, slug: true, titleAr: true, titleEn: true },
+    select: { id: true, slug: true, titleAr: true, titleEn: true, grade: true, academicYear: true, term: true, courseKind: true, teachingMonth: true, status: true, deletionRequestedAt: true },
   });
   const courseById = new Map(courses.map((c) => [c.id, c]));
 
@@ -67,14 +69,16 @@ export async function loadDashboard(
     const decision = evaluateEntitlement(rows, courseId, nowMs);
     const head = rows[0];
     const course = courseById.get(courseId);
-    if (head === undefined || course === undefined || decision.expiresAt === null) continue;
+    if (head === undefined || course === undefined) continue;
     const progress = await courseProgress(prisma, studentId, courseId);
     const entry: DashboardSubscription = {
       courseId,
       slug: course.slug,
       titleAr: course.titleAr,
       titleEn: course.titleEn,
-      expiresAt: decision.expiresAt.toISOString(),
+      expiresAt: decision.expiresAt?.toISOString() ?? null,
+      availableForLearning: course.status === 'PUBLISHED' && course.deletionRequestedAt === null,
+      academic: { grade: course.grade, academicYear: course.academicYear, term: course.term, courseKind: course.courseKind, teachingMonth: course.teachingMonth },
       state: decision.allowed ? 'ACTIVE' : 'EXPIRED',
       percentComplete: progress.percentComplete,
       totalLessons: progress.totalLessons,
@@ -85,8 +89,8 @@ export async function loadDashboard(
     (decision.allowed ? active : expired).push(entry);
   }
 
-  active.sort((a, b) => (a.lastAccessedAt ?? a.expiresAt).localeCompare(b.lastAccessedAt ?? b.expiresAt));
-  expired.sort((a, b) => b.expiresAt.localeCompare(a.expiresAt));
+  active.sort((a, b) => (a.lastAccessedAt ?? a.expiresAt ?? '').localeCompare(b.lastAccessedAt ?? b.expiresAt ?? ''));
+  expired.sort((a, b) => (b.expiresAt ?? '').localeCompare(a.expiresAt ?? ''));
 
   return {
     active,

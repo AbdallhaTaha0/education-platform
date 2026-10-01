@@ -130,3 +130,6 @@ Create `reports-and-markdown-files/drm-media-deletion-implementation-report.md` 
 - remaining risks and rollback/recovery procedure.
 
 Do not claim production readiness or 10,000-user capacity. Do not commit or push. Leave the development platform stack and its data untouched. Stop after the report and final handoff so the manager can independently review the DRM changes.
+## Owner-required Docker test cleanup (2026-10-01)
+
+After completing the assigned work, or after failure/interruption/stop, clean up the Docker test environment you created. Before removal, verify the exact project labels, resolved container/network/volume names and every mount; target only this assignment's owned disposable test resources and fixtures. Remove owned test containers, networks and volumes, including any owned anonymous volumes identified from container mounts. Never use global prune or delete unrelated data, the existing previews, reusable images needed for review, or saved reports/evidence. If a test resource must remain temporarily for an active check, record its owner and reason, then clean it when that check ends. Report the final cleanup verification and any resources that could not safely be removed. Every future prompt must include this requirement.

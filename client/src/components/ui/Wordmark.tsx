@@ -1,70 +1,26 @@
-/**
- * FAYQ wordmark (single source of truth for brand markup).
- *
- * Variants: `full` (mark + name + tagline), `compact` (mark + name),
- * `monogram` (mark only). The SVG mark is decorative and hidden from assistive
- * technology; the product name stays real HTML text so it is never trapped in
- * a path, never reshaped, and never reversed in RTL (`dir="ltr"` is forced on
- * the Latin name in both languages).
- */
 import { useLang } from '../../i18n';
 import { PRODUCT_NAME, brandFor } from '../../brand';
-
 export type WordmarkVariant = 'full' | 'compact' | 'monogram';
-
+/** Editable reconstruction of the supplied board, not an original vector export. */
 export function FayqMark({ size = 40 }: { size?: number }): JSX.Element {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 48 48"
-      role="presentation"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <rect x="2" y="2" width="44" height="44" rx="12" fill="var(--fayq-forest)" />
-      <rect x="2" y="2" width="44" height="44" rx="12" fill="none" stroke="var(--fayq-lime)" strokeOpacity="0.35" strokeWidth="2" />
-      {/* Stylized Q: open ring in lime with an amber energy tail. */}
-      <path
-        d="M24 10a11 11 0 1 0 7.8 18.8"
-        fill="none"
-        stroke="var(--fayq-lime)"
-        strokeWidth="4.5"
-        strokeLinecap="round"
-      />
-      <line x1="29.5" y1="29.5" x2="37" y2="37" stroke="var(--fayq-lime)" strokeWidth="4.5" strokeLinecap="round" />
-      <circle cx="35.5" cy="12.5" r="3.4" fill="var(--fayq-amber)" />
-    </svg>
-  );
+  return <svg width={size} height={size} viewBox="0 0 90 96" aria-hidden="true" focusable="false">
+    <path d="M69 68a27 27 0 1 0-15 13" fill="none" stroke="var(--color-primary-strong)" strokeWidth="18" />
+    <path d="M48 49 87 86H61L34 57Z" fill="var(--fayq-lime)" />
+    <path d="m29 15-4-8m24 4V2m18 14 6-7" stroke="var(--fayq-amber)" strokeWidth="6" strokeLinecap="round" />
+  </svg>;
 }
-
-export interface WordmarkProps {
-  variant?: WordmarkVariant;
-  /** Tagline under the name in the `full` variant; defaults to the slogan. */
-  tagline?: string;
-  /** Rendered size of the mark in px. */
-  markSize?: number;
-}
-
+export interface WordmarkProps { variant?: WordmarkVariant; tagline?: string; markSize?: number }
 export function Wordmark({ variant = 'compact', tagline, markSize = 40 }: WordmarkProps): JSX.Element {
   const { lang } = useLang();
-  const brand = brandFor(lang);
-  if (variant === 'monogram') {
-    return <FayqMark size={markSize} />;
-  }
-  return (
-    <span className="inline-flex items-center gap-2.5" data-testid="fayq-wordmark">
-      <FayqMark size={markSize} />
-      <span className="flex flex-col leading-tight">
-        <strong dir="ltr" className="text-start font-display text-xl font-extrabold tracking-tight text-ink">
-          {PRODUCT_NAME}
-        </strong>
-        {variant === 'full' ? (
-          <small className="text-sm text-muted">{tagline ?? brand.tagline}</small>
-        ) : (
-          <small className="text-sm text-muted">{brand.sub}</small>
-        )}
-      </span>
-    </span>
-  );
+  if (variant === 'monogram') return <span role="img" aria-label={PRODUCT_NAME}><FayqMark size={markSize} /></span>;
+  return <span className="fayq-wordmark" data-testid="fayq-wordmark">
+    <span className="sr-only">{PRODUCT_NAME}</span>
+    <svg viewBox="0 0 272 100" width={markSize * 3.5} height={markSize * 1.3} aria-hidden="true" focusable="false" className="fayq-wordmark__letters">
+      <g fill="currentColor"><path d="M0 84V35L12 21H68L58 37H20V48H56L46 63H20V84Z" /><path fillRule="evenodd" d="M59 84 87 21H111L135 84H114L108 69H84L78 84ZM91 54H103L97 38Z" /><path d="M115 21H137L152 44 171 21H194L162 64 159 84H138L142 63Z" /></g>
+      <path d="M239 67a27 27 0 1 0-15 13" fill="none" stroke="var(--color-primary-strong)" strokeWidth="18" />
+      <path d="M218 50 260 86H235L204 57Z" fill="var(--fayq-lime)" />
+      <path d="m200 15-4-8m23 4V2m19 14 6-7" stroke="var(--fayq-amber)" strokeWidth="6" strokeLinecap="round" />
+    </svg>
+    {variant === 'full' ? <small>{tagline ?? brandFor(lang).tagline}</small> : null}
+  </span>;
 }

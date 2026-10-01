@@ -1,0 +1,15 @@
+# M7-03 runtime-stack override for the private delivery-browser base. Pins the
+# serving server and one-shot migration job to the newly built images (Prisma
+# CLI chain excluded from serving layers; migration keeps full tooling) and
+# the client to the reviewed M7-02 PostCSS image. No ports, no volumes, no
+# secrets here. Use ONLY with project m7-03-runtime:
+#   docker compose -p m7-03-runtime \
+#     -f docker/verification/compose.m6-delivery-browser.yml \
+#     -f docker/verification/compose.m7-03-runtime.yml config
+services:
+  migrate:
+    image: edu-platform-migrate:0.7.0-m7-03-runtime
+  server:
+    image: edu-platform-server:0.7.0-m7-03-runtime
+  client:
+    image: edu-platform-client:0.7.0-m7-02-postcss

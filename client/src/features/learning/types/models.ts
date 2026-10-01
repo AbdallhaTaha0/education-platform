@@ -7,7 +7,9 @@ export interface DashboardSubscription {
   slug: string;
   titleAr: string;
   titleEn: string;
-  expiresAt: string;
+  expiresAt: string | null;
+  availableForLearning?: boolean;
+  academic?: import('../../academic/model').Academic;
   state: SubscriptionState;
   percentComplete: number;
   totalLessons: number;

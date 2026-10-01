@@ -82,8 +82,9 @@ export function AdminListPage({ go }: { go: (h: string) => void }): JSX.Element 
         <Container>
           <h1 className="text-3xl font-bold">{t.adminCatalogTitle}</h1>
           <p className="mt-2 text-muted">{t.adminCatalogBody}</p>
+          <a href="#/admin/packages" className="footer-discovery inline-block my-4">{lang === 'ar' ? 'إدارة باقات الشهور' : 'Manage monthly packages'} →</a>
           {error !== null ? <Notice kind="error">{localizeCode(t, error)}</Notice> : null}
-          <CourseForm busy={busy} onSubmit={(v) => void submit(v)} />
+          <a href="#/admin/summary" className="footer-discovery inline-block mx-4">{lang === 'ar' ? 'ملخص المنصة' : 'Platform overview'}</a><CourseForm busy={busy} onSubmit={(v) => void submit(v)} />
           <h2 className="mt-6 text-2xl font-bold">
             {t.navCourses} ({courses.length})
           </h2>

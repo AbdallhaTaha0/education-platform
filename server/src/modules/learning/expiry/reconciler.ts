@@ -350,15 +350,15 @@ export async function detectCrossedSubscriptions(
       where: { courseId: { in: courseIds } },
       select: { studentId: true, courseId: true, expiresAt: true },
     });
-    const latest = new Map<string, Date>();
+    const latest = new Map<string, Date | null>();
     for (const sub of subscriptions) {
       const key = `${sub.studentId}:${sub.courseId}`;
       const current = latest.get(key);
-      if (current === undefined || sub.expiresAt > current) latest.set(key, sub.expiresAt);
+      if (current === undefined || sub.expiresAt === null || (current !== null && sub.expiresAt > current)) latest.set(key, sub.expiresAt);
     }
     for (const reference of active) {
       const expiry = latest.get(`${reference.studentId}:${reference.courseId}`);
-      if (expiry === undefined || expiry.getTime() <= nowMs) {
+      if (expiry === undefined || (expiry !== null && expiry.getTime() <= nowMs)) {
         await scheduleTermination(prisma, reference.id, nowMs);
         queued += 1;
       }

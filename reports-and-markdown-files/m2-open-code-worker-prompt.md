@@ -164,3 +164,6 @@ Create `reports-and-markdown-files/m2-implementation-report.md` containing:
 - known limitations and unresolved questions.
 
 Do not include the local development admin password in the report. Put the requested email, phone, and password only in your final response to the owner after verification. Then stop and wait for manager review. Do not implement M3, commit, push, deploy, delete development volumes, or claim production/10,000-user readiness.
+## Owner-required Docker test cleanup (2026-10-01)
+
+After completing the assigned work, or after failure/interruption/stop, clean up the Docker test environment you created. Before removal, verify the exact project labels, resolved container/network/volume names and every mount; target only this assignment's owned disposable test resources and fixtures. Remove owned test containers, networks and volumes, including any owned anonymous volumes identified from container mounts. Never use global prune or delete unrelated data, the existing previews, reusable images needed for review, or saved reports/evidence. If a test resource must remain temporarily for an active check, record its owner and reason, then clean it when that check ends. Report the final cleanup verification and any resources that could not safely be removed. Every future prompt must include this requirement.

@@ -4,9 +4,10 @@ import { audit } from '../audit.js';
 import { withCourseLock } from '../courseTx.js';
 import { nonBlankString, rejectUnknownFields, validateSlug, assertUuid } from '../validation.js';
 import type { PublicCourse } from '../types.js';
+import { academicPlacement, type AcademicPlacement } from '../academic.js';
 
-const CREATE_FIELDS = new Set(['slug', 'titleAr', 'titleEn', 'descriptionAr', 'descriptionEn']);
-const UPDATE_FIELDS = new Set(['slug', 'titleAr', 'titleEn', 'descriptionAr', 'descriptionEn']);
+const CREATE_FIELDS = new Set(['slug', 'titleAr', 'titleEn', 'descriptionAr', 'descriptionEn', 'academic']);
+const UPDATE_FIELDS = new Set(['slug', 'titleAr', 'titleEn', 'descriptionAr', 'descriptionEn', 'academic']);
 
 function toPublicCourse(row: {
   id: string;
@@ -16,7 +17,8 @@ function toPublicCourse(row: {
   descriptionAr: string;
   descriptionEn: string;
   publishedAt: Date | null;
-  plans: { id: string; currentPricePiastres: number; previousPricePiastres: number | null; durationDays: number }[];
+  grade: string | null; academicYear: string | null; term: number | null; courseKind: string | null; teachingMonth: string | null;
+  plans: { id: string; currentPricePiastres: number; previousPricePiastres: number | null; durationDays: number | null; accessMode: 'DURATION' | 'TERM_END' | 'YEAR_END' | 'UNTIL_REMOVAL'; accessEndsAt: Date | null }[];
 }): PublicCourse {
   return {
     id: row.id,
@@ -26,18 +28,38 @@ function toPublicCourse(row: {
     descriptionAr: row.descriptionAr,
     descriptionEn: row.descriptionEn,
     publishedAt: row.publishedAt?.toISOString() ?? null,
+    academic: { grade: row.grade, academicYear: row.academicYear, term: row.term, courseKind: row.courseKind, teachingMonth: row.teachingMonth },
     plans: row.plans.map((p) => ({
       id: p.id,
       currentPricePiastres: p.currentPricePiastres,
       previousPricePiastres: p.previousPricePiastres,
       durationDays: p.durationDays,
+      accessMode: p.accessMode,
+      accessEndsAt: p.accessEndsAt?.toISOString() ?? null,
     })),
   };
 }
 
-export async function listPublishedCourses(prisma: PrismaClient): Promise<PublicCourse[]> {
+export async function listPublishedCourses(prisma: PrismaClient, filters: Record<string, unknown> = {}): Promise<PublicCourse[]> {
+  rejectUnknownFields(filters, new Set(['grade', 'academicYear', 'term', 'courseKind', 'teachingMonth']));
+  const where: { grade?: string; academicYear?: string; term?: number; courseKind?: string; teachingMonth?: string } = {};
+  for (const field of ['grade', 'academicYear', 'courseKind', 'teachingMonth'] as const) {
+    if (filters[field] !== undefined) {
+      const value = filters[field];
+      if (typeof value !== 'string' || value.length > 20) throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid catalog filter.');
+      if (field === 'grade' && !['FIRST_SECONDARY', 'SECOND_SECONDARY'].includes(value)) throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid grade.');
+      if (field === 'courseKind' && !['MONTHLY_EXPLANATION', 'REVISION'].includes(value)) throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid course kind.');
+      if (field === 'academicYear' && !/^\d{4}\/\d{4}$/.test(value)) throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid academic year.');
+      if (field === 'teachingMonth' && !/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid teaching month.');
+      where[field] = value;
+    }
+  }
+  if (filters.term !== undefined) {
+    if (filters.term !== '1' && filters.term !== '2') throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid term.');
+    where.term = Number(filters.term);
+  }
   const rows = await prisma.course.findMany({
-    where: { status: 'PUBLISHED', deletionRequestedAt: null },
+    where: { status: 'PUBLISHED', deletionRequestedAt: null, ...where },
     orderBy: { createdAt: 'desc' },
     include: { plans: true },
   });
@@ -101,7 +123,7 @@ export async function createCourse(prisma: PrismaClient, actorId: string, raw: u
     throw new ApiError(409, 'SLUG_TAKEN', 'Slug is already taken.');
   }
   const created = await prisma.course.create({
-    data: { slug, titleAr, titleEn, descriptionAr, descriptionEn, status: 'DRAFT' },
+    data: { slug, titleAr, titleEn, descriptionAr, descriptionEn, status: 'DRAFT', ...(body.academic === undefined ? {} : academicPlacement(body.academic)) },
   });
   await audit(prisma, { actorUserId: actorId, action: 'COURSE_CREATED', entityType: 'Course', entityId: created.id, metadata: { slug } });
   return created;
@@ -111,7 +133,8 @@ export async function updateCourse(prisma: PrismaClient, actorId: string, course
   assertUuid(courseId, 'courseId');
   rejectUnknownFields(raw, UPDATE_FIELDS);
   const body = raw as Record<string, unknown>;
-  const data: { slug?: string; titleAr?: string; titleEn?: string; descriptionAr?: string; descriptionEn?: string } = {};
+  const data: Partial<AcademicPlacement> & { slug?: string; titleAr?: string; titleEn?: string; descriptionAr?: string; descriptionEn?: string } = {};
+  if (body.academic !== undefined) Object.assign(data, academicPlacement(body.academic));
   if (body['slug'] !== undefined) data.slug = validateSlug(body['slug']);
   if (body['titleAr'] !== undefined) data.titleAr = nonBlankString(body['titleAr'], 'titleAr', 300);
   if (body['titleEn'] !== undefined) data.titleEn = nonBlankString(body['titleEn'], 'titleEn', 300);
@@ -122,6 +145,13 @@ export async function updateCourse(prisma: PrismaClient, actorId: string, course
     const course = await tx.course.findUnique({ where: { id: courseId } });
     if (course === null) throw new ApiError(404, 'NOT_FOUND', 'Course not found.');
     ensureMutable(course, 'Course update');
+    if (body.academic !== undefined) {
+      const effective = { ...course, ...data };
+      const plans = await tx.subscriptionPlan.findMany({ where: { courseId } });
+      if (plans.some(p => ['TERM_END','YEAR_END'].includes(p.accessMode) && (!effective.academicYear || (p.accessMode === 'TERM_END' && !effective.term)))) {
+        throw new ApiError(409, 'VALIDATION_ERROR', 'Academic placement is required by an existing access plan.');
+      }
+    }
     try {
       const updated = await tx.course.update({ where: { id: courseId }, data });
       await audit(tx, { actorUserId: actorId, action: 'COURSE_UPDATED', entityType: 'Course', entityId: courseId, metadata: { fields: Object.keys(data) } });

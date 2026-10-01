@@ -1,0 +1,13 @@
+# Only disposable project m8-03-opencode, no host ports or existing volumes.
+# OpenCode continuation of the M8-03 backend package: fresh tags rebuilt from
+# the final source (prior 0.8.0-m8-03 images/evidence are a baseline, not proof).
+services:
+  migrate:
+    image: edu-platform-migrate:0.8.0-m8-03-opencode
+  test:
+    image: edu-platform-server-test:0.8.0-m8-03-opencode
+  redis:
+    volumes:
+      - redis-test:/data
+volumes:
+  redis-test:

@@ -16,7 +16,7 @@ export function BellIcon({ className = "h-5 w-5" }: { className?: string }): JSX
     </svg>
   );
 }
-export function NotificationEntry({ current }: { current: boolean }): JSX.Element {
+export function NotificationEntry({ current, compact = false }: { current: boolean; compact?: boolean }): JSX.Element {
   const { t, lang } = useLang();
   const { state } = useNotifications();
   const count = state.unreadCount;
@@ -35,7 +35,7 @@ export function NotificationEntry({ current }: { current: boolean }): JSX.Elemen
       className="inline-flex min-h-[44px] shrink-0 items-center gap-2 rounded-control px-3 py-2 text-sm font-bold text-muted no-underline hover:bg-interactive hover:text-ink aria-[current=page]:bg-interactive aria-[current=page]:text-primary-strong"
     >
       <BellIcon />
-      <span>{t.navNotifications}</span>
+      <span className={compact ? 'sr-only' : undefined}>{t.navNotifications}</span>
       {state.countError ? (
         <span aria-hidden="true" className="text-error-fg">
           !

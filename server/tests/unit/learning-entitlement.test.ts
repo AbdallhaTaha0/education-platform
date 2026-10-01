@@ -41,7 +41,7 @@ describe('entitlement boundary', () => {
     const rows = [sub(T0 + 1000), sub(T0 + 10 * day), sub(T0 - day)];
     const result = evaluateEntitlement(rows, 'course-1', T0);
     expect(result.allowed).toBe(true);
-    expect(result.allowed && result.expiresAt.getTime()).toBe(T0 + 10 * day);
+    expect(result.allowed && result.expiresAt!.getTime()).toBe(T0 + 10 * day);
   });
 
   it('an expired earlier row does not shorten an active later row', () => {
@@ -64,6 +64,13 @@ describe('entitlement boundary', () => {
     expect(isLearnableStatus('DRAFT')).toBe(false);
     expect(isLearnableStatus('PROCESSING')).toBe(false);
     expect(isLearnableStatus('ARCHIVED')).toBe(false);
+  });
+  it('indefinite access dominates finite expiry in either row order', () => {
+    const indefinite = { courseId: 'course-1', startsAt: new Date(T0), expiresAt: null };
+    for (const rows of [[sub(T0), indefinite], [indefinite, sub(T0)]]) {
+      expect(evaluateEntitlement(rows, 'course-1', T0 + 10000 * day)).toEqual({ allowed: true, expiresAt: null });
+    }
+    expect(evaluateEntitlement([indefinite], 'other-course', T0).allowed).toBe(false);
   });
 });
 

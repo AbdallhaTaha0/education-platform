@@ -6,6 +6,8 @@ Maintain the requirements, architecture traceability, decision register, milesto
 
 ## Open Code implementation worker
 
+Owner instruction, 2026-10-01: every worker/reviewer prompt must explicitly require cleanup of its Docker test environment after success, failure or a stop. Verify project labels and every mount first; remove only owned test containers, networks, volumes and fixtures, and report cleanup evidence. Preserve existing previews, unrelated projects, reusable images and report/test evidence. No global prune. This applies to all future prompts as well as the current M7/M8 assignments.
+
 Read the root AGENTS.md and documentation index first. Work only on the assigned milestone and approved decisions. Preserve existing changes and the nested DRM repository. Do not reinterpret the architecture to make implementation easier. Report an unresolved dependency with the precise question and affected files; continue independent authorized work.
 
 For each implementation assignment, provide: changed files, requirement IDs, migration and configuration impacts, Docker commands actually run, test results, failures, remaining blockers, and rollback instructions. A successful build does not establish correct payment handling, secure playback, or capacity.

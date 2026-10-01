@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 262 86" role="img" aria-labelledby="title">
+  <title id="title">FAYQ — reference-based vector concept</title>
+  <!-- Editable reconstruction for design review, not an extracted original logo. -->
+  <g fill="#f8f7ee">
+    <path d="M0 76V27L12 13H68L58 29H20V40H56L46 55H20V76Z"/>
+    <path fill-rule="evenodd" d="M59 76 87 13H111L135 76H114L108 61H84L78 76ZM91 46H103L97 30Z"/>
+    <path d="M115 13H137L152 36 171 13H194L162 56 159 76H138L142 55Z"/>
+  </g>
+  <path d="M235 57a25 25 0 1 0-13 13" fill="none" stroke="#c9f24d" stroke-width="16"/>
+  <path d="M211 43 250 76H228L200 49Z" fill="#c9f24d"/>
+  <path d="m203 5-2-4m17 1 1-5m13 14 4-4" transform="translate(0 6)" stroke="#f7b500" stroke-width="5" stroke-linecap="round"/>
+</svg>

@@ -12,6 +12,9 @@ export type Route =
   | 'wallet-recharge'
   | 'purchases'
   | 'purchase'
+  | 'package'
+  | 'admin-packages'
+  | 'admin-summary'
   | 'admin-recharge'
   | 'dashboard'
   | 'notifications'
@@ -23,6 +26,9 @@ export function routeFromHash(): Route {
   if (hash === '#/login') return 'login';
   if (hash === '#/account') return 'account';
   if (hash === '#/admin') return 'admin';
+  if (hash.startsWith('#/package/')) return 'package';
+  if (hash === '#/admin/packages') return 'admin-packages';
+  if (hash === '#/admin/summary') return 'admin-summary';
   if (hash.startsWith('#/purchase/')) return 'purchase';
   if (hash === '#/purchases') return 'purchases';
   if (hash === '#/wallet/recharge') return 'wallet-recharge';
@@ -42,6 +48,10 @@ export function planIdFromHash(): string {
   const hash = window.location.hash;
   if (hash.startsWith('#/purchase/')) return decodeURIComponent(hash.slice('#/purchase/'.length));
   return '';
+}
+
+export function packageIdFromHash(): string {
+  return window.location.hash.startsWith('#/package/') ? decodeURIComponent(window.location.hash.slice('#/package/'.length)) : '';
 }
 
 export function slugFromHash(): string {

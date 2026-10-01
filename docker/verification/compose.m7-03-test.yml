@@ -1,0 +1,12 @@
+# M7-03 test-stack override: pin migrate/test to the newly built images that
+# exclude the unused Prisma CLI chain from serving layers. The full
+# build/test/migration dependency assembly inside these images is unchanged
+# (Dockerfile build/test/migrate stages untouched). Use ONLY with project
+# m7-03-test:
+#   docker compose -p m7-03-test -f docker/compose.test.yml \
+#     -f docker/verification/compose.m7-03-test.yml config
+services:
+  migrate:
+    image: edu-platform-migrate:0.7.0-m7-03-runtime
+  test:
+    image: edu-platform-server-test:0.7.0-m7-03-runtime

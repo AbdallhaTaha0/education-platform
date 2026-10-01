@@ -58,7 +58,8 @@ export async function registerLessonMedia(
       const lesson = await tx.lesson.findUnique({ where: { id: lessonId }, include: { media: true, section: { include: { course: true } } } });
       if (lesson === null) throw new ApiError(404, 'NOT_FOUND', 'Lesson not found.');
       ensureStructuralAllowed(lesson.section.course);
-      if (lesson.media !== null && lesson.media.assetId !== null) {
+      if (lesson.media !== null && lesson.media.assetId !== null &&
+          (lesson.media.status !== 'UPLOAD_PENDING' || lesson.media.uploadCompletedAt !== null)) {
         throw new ApiError(409, 'MEDIA_EXISTS', 'Lesson already has a media mapping. Replacement is not supported.');
       }
       if (lesson.media !== null) return lesson.media as unknown as Intent;
@@ -79,7 +80,8 @@ export async function registerLessonMedia(
     if ((err as { code?: string }).code === 'P2002') {
       const existing = await prisma.mediaMapping.findUnique({ where: { lessonId } });
       if (existing === null) throw err;
-      if (existing.assetId !== null) {
+      if (existing.assetId !== null &&
+          (existing.status !== 'UPLOAD_PENDING' || existing.uploadCompletedAt !== null)) {
         throw new ApiError(409, 'MEDIA_EXISTS', 'Lesson already has a media mapping. Replacement is not supported.');
       }
       intent = existing as unknown as Intent;
@@ -105,6 +107,10 @@ export async function registerLessonMedia(
     });
     await audit(prisma, { actorUserId: actorId, action: 'MEDIA_REGISTER_FAILED', entityType: 'Lesson', entityId: lessonId, metadata: { errorCategory: code } });
     throw err;
+  }
+
+  if (intent.assetId !== null && registered.assetId !== intent.assetId) {
+    throw new ApiError(502, 'DRM_MALFORMED', 'Retry must return the same registered asset.');
   }
 
   // The accepted external contract omits `uploadUrl` on idempotent repeats.
@@ -140,7 +146,14 @@ export async function registerLessonMedia(
     const current = await tx.mediaMapping.findUnique({ where: { id: intent.id }, include: { lesson: { include: { section: { include: { course: true } } } } } });
     if (current === null) throw new ApiError(404, 'MEDIA_MISSING', 'Media mapping not found.');
     ensureStructuralAllowed(current.lesson.section.course);
-    if (current.assetId !== null) return current as unknown as Intent;
+    if (current.assetId !== null) {
+      if (current.assetId !== registered.assetId || current.status !== 'UPLOAD_PENDING' || current.uploadCompletedAt !== null) {
+        throw new ApiError(409, 'MEDIA_EXISTS', 'Upload already completed or media changed during retry.');
+      }
+      const recovered = await tx.mediaMapping.update({ where: { id: current.id }, data: { lastSyncedAt: new Date(), errorCategory: null } });
+      await audit(tx, { actorUserId: actorId, action: 'MEDIA_UPLOAD_URL_REISSUED', entityType: 'Lesson', entityId: lessonId, metadata: { externalAssetId: current.externalAssetId, status: current.status } });
+      return recovered as unknown as Intent;
+    }
     const updated = await tx.mediaMapping.update({
       where: { id: intent.id },
       data: { assetId: registered.assetId, status: 'UPLOAD_PENDING', lastSyncedAt: new Date(), errorCategory: null },

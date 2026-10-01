@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { AuthProvider } from './auth';
 import { Container } from './components/ui/Card';
 import { useLang } from './i18n';
 import { routeDocumentTitle } from './pageTitles';
 import { ThemeProvider } from './theme';
 import { Header } from './components/layout/Header';
-import { adminCourseIdFromHash, learnSlugFromHash, planIdFromHash, routeFromHash, slugFromHash, type Route } from './routes';
+import { adminCourseIdFromHash, learnSlugFromHash, planIdFromHash, packageIdFromHash, routeFromHash, slugFromHash, type Route } from './routes';
+import { PackagePage } from './features/academic/PackagePage';
+import { AdminPackagesPage } from './features/academic/AdminPackagesPage';
+import { AdminSummaryPage } from './features/academic/AdminSummaryPage';
 import { AccountScreen, AdminScreen, LoginScreen, RegisterScreen } from './screens';
 import { PublicCatalogPage } from './features/catalog/pages/PublicCatalogPage';
 import { OfferPage } from './features/catalog/pages/OfferPage';
@@ -18,7 +21,8 @@ import { AdminRechargePage } from './features/wallet/pages/AdminRechargePage';
 import { PurchasePage } from './features/purchase/pages/PurchasePage';
 import { PurchaseHistoryPage } from './features/purchase/pages/PurchaseHistoryPage';
 import { DashboardPage } from './features/learning/pages/DashboardPage';
-import { CourseLearningPage } from './features/learning/pages/CourseLearningPage';
+import { Loading } from './components/ui/Notice';
+const CourseLearningPage = lazy(() => import('./features/learning/pages/CourseLearningPage').then(module => ({ default: module.CourseLearningPage })));
 import { NotificationsProvider } from './features/notifications/context';
 import { NotificationsPage } from './features/notifications/pages/NotificationsPage';
 
@@ -51,8 +55,8 @@ function Shell(): JSX.Element {
   }, []);
 
   return (
-    <div id="top" className="flex min-h-screen flex-col">
-      <a className="skip-link" href="#main">
+    <div id="top" className="site-shell flex min-h-screen flex-col">
+      <a className="skip-link" href="#main" onClick={(event) => { event.preventDefault(); const main = document.getElementById('main'); if (main) { main.tabIndex = -1; main.focus(); main.scrollIntoView(); } }}>
         {t.skipToContent}
       </a>
       <Header onSwitch={setLang} route={route} />
@@ -60,6 +64,9 @@ function Shell(): JSX.Element {
       {route === 'courses' ? <PublicCatalogPage onSelect={(slug) => go(`#/courses/${encodeURIComponent(slug)}`)} /> : null}
       {route === 'course-detail' ? <OfferPage slug={slugFromHash()} onBack={() => go('#/courses')} /> : null}
       {route === 'admin-catalog' ? <AdminListPage go={go} /> : null}
+      {route === 'admin-packages' ? <AdminPackagesPage /> : null}
+      {route === 'admin-summary' ? <AdminSummaryPage /> : null}
+      {route === 'package' ? <PackagePage key={packageIdFromHash()} id={packageIdFromHash()} /> : null}
       {route === 'admin-course' ? <AdminDetailPage courseId={adminCourseIdFromHash()} /> : null}
       {route === 'register' ? (
         <main id="main">
@@ -92,7 +99,7 @@ function Shell(): JSX.Element {
       {route === 'wallet' ? <WalletPage go={go} /> : null}
       {route === 'wallet-recharge' ? <RechargePage go={go} /> : null}
       {route === 'purchases' ? <PurchaseHistoryPage /> : null}
-      {route === 'purchase' ? <PurchasePage planId={planIdFromHash()} go={go} /> : null}
+      {route === 'purchase' ? <PurchasePage key={planIdFromHash()} planId={planIdFromHash()} go={go} /> : null}
       {route === 'admin-recharge' ? <AdminRechargePage /> : null}
       {route === 'dashboard' ? (
         <DashboardPage
@@ -103,11 +110,11 @@ function Shell(): JSX.Element {
       ) : null}
       {route === 'notifications' ? <NotificationsPage /> : null}
       {route === 'learn' ? (
-        <CourseLearningPage courseSlug={learnSlugFromHash()} onRenew={() => go('#/wallet')} />
+        <Suspense fallback={<main id="main"><Container><Loading text={t.loading} /></Container></main>}><CourseLearningPage courseSlug={learnSlugFromHash()} onRenew={() => go('#/wallet')} /></Suspense>
       ) : null}
       <footer className="mt-auto border-t border-border bg-surface py-8 text-sm text-muted">
         <Container>
-          <div className="flex flex-wrap items-center justify-between gap-3"><p className="font-semibold text-ink">{t.footer}</p><p dir="ltr">Learn It. Code It. <span className="font-bold text-primary-strong">Get It.</span></p></div>
+          <div className="flex flex-wrap items-center justify-between gap-3"><p className="font-semibold text-ink">{t.footer}</p><a className="footer-discovery" href="#/courses">{t.navCourses} ↗</a><p>{t.slogan}</p></div>
         </Container>
       </footer>
     </div>

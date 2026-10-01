@@ -1,5 +1,13 @@
 # Education platform documentation
 
+Owner delivery authorization (2026-10-01): commit/push the completed M7 local preparation and M8 implementation, with [the teammate continuation prompt](m7-m8-teammate-handoff.md). This authorizes source delivery, not production deployment or automatic milestone acceptance. Historical reports preserve their original no-commit execution status.
+
+Current owner preview (2026-10-01): http://localhost:8080 preserves the existing test accounts and contains the owner's actual uploaded video, processed in R2 and verified playing. [Real-video report](m8-owner-real-video-report.md) records the interrupted-upload fix, 446 passing server tests and scoped Docker cleanup; [upload guide](video-upload-owner-guide.md) explains ADMIN publishing and R2 setup. The retained owner preview/DRM are intentional; production qualification remains open.
+
+Current M7 operations (2026-10-01): Railway selected and recovery choices delegated. [M7-08 local preparation](m7-08-railway-preparation-report.md) verifies the Railway edge, two production-mode replicas, transactional restore and outage monitoring; [the runbook](m7-railway-runbook.md) records remaining provider/DRM/capacity gates. Production qualification remains open.
+
+
+Current M8 completion (2026-10-01): the owner authorized direct completion and confirmed both grades' terms, presale package members, access-extending fixed-deadline repurchase and optional course expiry until permanent ADMIN removal. [The completion report](m8-04-completion-report.md) records the implemented academic/student/admin UI, final Docker tests, readonly preview and release limits. [M7-07 manager review](m7-07-manager-review.md) accepts the bounded override remediation, not production qualification. Older execution/planning entries below are historical. No M8 owner acceptance, commit/push or production deployment is inferred.
 Current handoff checkpoint (2026-10-01): the owner [accepted M6](m6-owner-acceptance.md) after [independent review](m6-independent-review-report.md) and authorized commit/push. The accepted milestone commit contains that acceptance record; the pre-M6 platform checkpoint is `4b949cc394636c2df928d0b7642122da61e5301c`. Independent DRM and the matching gitlink remain `bad0c1df9f5d5844fe365c402fcccfee33ab6906`. [The OpenCode package 01 prompt](m7-01-open-code-worker-prompt.md) assigns bounded M7 readiness preparation. Formal M5 owner acceptance remains unconfirmed; production and 10,000-user qualification are not approved or inferred. The execution/review paragraphs below preserve earlier checkpoints.
 
 Owner follow-up (2026-10-01): this agent is assigned to work directly while Docker is downloaded again. Package 01 is completed as a documentation/source-review package in the [notification contract](m6-notification-contract.md), with an explicitly same-agent [package report](m6-01-contracts-worker-report.md). No worker was dispatched. Application development/testing remain Docker-gated; M5 acceptance is still unconfirmed.
@@ -48,8 +56,38 @@ Where sources conflict, record the conflict and ask the owner. Neither existing 
 
 | File | Purpose |
 | --- | --- |
+| [m8-04-completion-report.md](m8-04-completion-report.md) | Final M8 implementation and Docker verification |
+| [m7-07-manager-review.md](m7-07-manager-review.md) | Bounded Prisma override manager review |
 | [m6-owner-acceptance.md](m6-owner-acceptance.md) | Explicit M6 acceptance and commit/push authority; separate release limits |
 | [m7-01-open-code-worker-prompt.md](m7-01-open-code-worker-prompt.md) | Short OpenCode package 01: readiness/dependency audit, then stop for manager review |
+| [m7-01-readiness-report.md](m7-01-readiness-report.md) | M7 package 01 Docker-isolated lockfile audit and production-readiness gaps; no acceptance claimed |
+| [m7-01-manager-review.md](m7-01-manager-review.md) | Reproduced audits, corrected Prisma serving-image exposure and historical DRM status; readiness package reviewed |
+| [m7-02-open-code-worker-prompt.md](m7-02-open-code-worker-prompt.md) | Detailed bounded PostCSS update, Docker/browser evidence and stop-for-review gate |
+| [m7-02-manager-review.md](m7-02-manager-review.md) | Independently reproduced PostCSS audit, 72 tests, 68 Chromium checks, screenshots and contrast negative control |
+| [m7-03-open-code-worker-prompt.md](m7-03-open-code-worker-prompt.md) | Bounded removal of unused Prisma CLI chain from serving image; preserve client engine and migration job |
+| [m7-03-runtime-dependencies-report.md](m7-03-runtime-dependencies-report.md) | M7 package 03 serving-image CLI-chain removal with runtime/migration/API evidence; no acceptance claimed |
+| [m7-03-manager-review.md](m7-03-manager-review.md) | Reproduced final-runtime/native/financial behavior, full server suites, audit scopes and migration-startup refusal |
+| [m7-04-open-code-worker-prompt.md](m7-04-open-code-worker-prompt.md) | Detailed server Vitest/Vite remediation, resolver prerequisite, unchanged runtime graph and review gate |
+| [m7-04-server-tooling-report.md](m7-04-server-tooling-report.md) | M7 package 04 server Vitest 4.1.11/Vite 6.4.3 remediation with suite/runtime/migration evidence; no acceptance claimed |
+| [m7-04-manager-review.md](m7-04-manager-review.md) | Independent server tooling review: unchanged runtime graph, 410 tests, financial/native flows and migration startup refusal |
+| [m7-05-client-tooling-report.md](m7-05-client-tooling-report.md) | Owner-assigned client Vitest update with same-agent Docker verification; independent review pending |
+| [m7-06-open-code-worker-prompt.md](m7-06-open-code-worker-prompt.md) | Bounded Prisma remediation assessment in disposable copies, before application dependency changes |
+| [m7-06-prisma-remediation-assessment.md](m7-06-prisma-remediation-assessment.md) | M7 package 06 Prisma assessment: tested deepmerge-ts 8.0.2 override recommendation with Docker evidence; no application change |
+| [m7-06-manager-review.md](m7-06-manager-review.md) | Independently reproduced one-node candidate, real config loading, 410 tests, native/financial behavior and migration refusal; exact-parent follow-on |
+| [m7-07-open-code-worker-prompt.md](m7-07-open-code-worker-prompt.md) | Detailed bounded application of the version-qualified Prisma merge override and full Docker regression, then stop for review |
+| [m7-07-prisma-override-report.md](m7-07-prisma-override-report.md) | M7 package 07 version-qualified deepmerge-ts 8.0.2 override with full suite/migration/runtime/audit evidence; no acceptance claimed |
+| [m7-07-verification-followup.md](m7-07-verification-followup.md) | Same-agent re-verification of the M7-07 override on the current tree (10 migrations, 171+263 tests); not independent review |
+| [m8-product-and-ui-plan.md](m8-product-and-ui-plan.md) | Draft student/admin feature and UI packages; summary reports first, with unapproved contracts explicit |
+| [m8-school-catalog-contract.md](m8-school-catalog-contract.md) | Confirmed school grades/monthly/revision courses, three-member packages and configurable duration/term/year access; remaining bundle rules explicit |
+| [m8-03a-academic-data-and-purchase-design.md](m8-03a-academic-data-and-purchase-design.md) | Source-reviewed candidate academic schema, three-item atomic purchase, migration/rollout and pending owner policies; no application change |
+| [m8-03-codex-stop-handoff.md](m8-03-codex-stop-handoff.md) | Owner-stopped backend implementation: preserved code, 434 same-agent tests, populated migration/native evidence and remaining review/UI gates |
+| [m8-03-open-code-continuation-prompt.md](m8-03-open-code-continuation-prompt.md) | Detailed OpenCode assignment to review/finish the existing M8 backend only, then stop for manager review |
+| [m8-03-backend-worker-report.md](m8-03-backend-worker-report.md) | M8-03 backend continuation: preserved M7/design work, 3 new regressions, 437 Docker tests, 10-migration and 9→10 upgrade evidence; stops for manager review |
+| [m8-design/README.md](m8-design/README.md) | FAYQ whole-site design review packet, mobile dock, logo concept, hero and isolated sample content |
+| [m8-design/website-redesign-brief.md](m8-design/website-redesign-brief.md) | Current route audit and audience-15–18 redesign architecture |
+| [m8-02-codex-redesign-prompt.md](m8-02-codex-redesign-prompt.md) | Historical first visual package prompt; later owner-assigned implementation is reported separately |
+| [m8-02-shell-landing-report.md](m8-02-shell-landing-report.md) | Implemented FAYQ youth landing and mobile shell; 72 client tests, 103 browser checks, isolated demo and review limits |
+| [m7-02-postcss-report.md](m7-02-postcss-report.md) | M7 package 02 PostCSS 8.4.49→8.5.28 update with Docker build/test/browser evidence; no acceptance claimed |
 | [m6-manager-plan.md](m6-manager-plan.md) | D25 scope, sequential direct implementation packages and review gates |
 | [m6-notification-contract.md](m6-notification-contract.md) | Approved notification behavior and engineering contracts |
 | [m6-02-backend-report.md](m6-02-backend-report.md) | Docker-verified private inbox storage/APIs and migration evidence |

@@ -3,25 +3,26 @@ import { ApiError } from '../../identity/errors.js';
 import { audit } from '../audit.js';
 import { courseIdForPlan, withCourseLock } from '../courseTx.js';
 import { ensureMutable } from '../courses/service.js';
-import { assertUuid, rejectUnknownFields, validateDurationDays, validatePricePair } from '../validation.js';
+import { assertUuid, rejectUnknownFields, validatePricePair } from '../validation.js';
+import { accessTerms } from '../academic.js';
 
-const CREATE_FIELDS = new Set(['currentPricePiastres', 'previousPricePiastres', 'durationDays']);
-const UPDATE_FIELDS = new Set(['currentPricePiastres', 'previousPricePiastres', 'durationDays']);
+const CREATE_FIELDS = new Set(['currentPricePiastres', 'previousPricePiastres', 'durationDays', 'accessMode', 'accessEndsAt']);
+const UPDATE_FIELDS = CREATE_FIELDS;
 
 export async function createPlan(prisma: PrismaClient, actorId: string, courseId: string, raw: unknown) {
   assertUuid(courseId, 'courseId');
   rejectUnknownFields(raw, CREATE_FIELDS);
   const body = raw as Record<string, unknown>;
   const { current, previous } = validatePricePair(body['currentPricePiastres'], body['previousPricePiastres']);
-  const durationDays = validateDurationDays(body['durationDays']);
   return withCourseLock(prisma, courseId, async (tx) => {
     const course = await tx.course.findUnique({ where: { id: courseId } });
     if (course === null) throw new ApiError(404, 'NOT_FOUND', 'Course not found.');
     ensureMutable(course, 'Plan change');
+    const terms = accessTerms(body, null, course);
     const created = await tx.subscriptionPlan.create({
-      data: { courseId, currentPricePiastres: current, previousPricePiastres: previous, durationDays },
+      data: { courseId, currentPricePiastres: current, previousPricePiastres: previous, ...terms },
     });
-    await audit(tx, { actorUserId: actorId, action: 'PLAN_CREATED', entityType: 'SubscriptionPlan', entityId: created.id, metadata: { courseId, currentPricePiastres: current, durationDays } });
+    await audit(tx, { actorUserId: actorId, action: 'PLAN_CREATED', entityType: 'SubscriptionPlan', entityId: created.id, metadata: { courseId, currentPricePiastres: current, accessMode: terms.accessMode } });
     return created;
   });
 }
@@ -36,14 +37,14 @@ export async function updatePlan(prisma: PrismaClient, actorId: string, planId: 
     if (plan === null) throw new ApiError(404, 'NOT_FOUND', 'Plan not found.');
     ensureMutable(plan.course, 'Plan change');
     const currentRaw = body['currentPricePiastres'] ?? plan.currentPricePiastres;
-    const previousRaw = body['previousPricePiastres'] ?? plan.previousPricePiastres;
+    const previousRaw = body['previousPricePiastres'] === undefined ? plan.previousPricePiastres : body['previousPricePiastres'];
     const { current, previous } = validatePricePair(currentRaw, previousRaw);
-    const durationDays = body['durationDays'] === undefined ? plan.durationDays : validateDurationDays(body['durationDays']);
+    const terms = accessTerms(body, plan, plan.course);
     const updated = await tx.subscriptionPlan.update({
       where: { id: planId },
-      data: { currentPricePiastres: current, previousPricePiastres: previous, durationDays },
+      data: { currentPricePiastres: current, previousPricePiastres: previous, ...terms },
     });
-    await audit(tx, { actorUserId: actorId, action: 'PLAN_UPDATED', entityType: 'SubscriptionPlan', entityId: planId, metadata: { currentPricePiastres: current, durationDays } });
+    await audit(tx, { actorUserId: actorId, action: 'PLAN_UPDATED', entityType: 'SubscriptionPlan', entityId: planId, metadata: { currentPricePiastres: current, accessMode: terms.accessMode } });
     return updated;
   });
 }

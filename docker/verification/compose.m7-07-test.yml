@@ -1,0 +1,11 @@
+# M7-07 test-stack override: pin migrate/test to the version-qualified-override
+# images (deepmerge-ts 8.0.2 scoped under @prisma/config@6.19.3, built from the
+# actual changed checkout). Serving-layer omissions from M7-03 preserved.
+# Use ONLY with project m7-07-test:
+#   docker compose -p m7-07-test -f docker/compose.test.yml \
+#     -f docker/verification/compose.m7-07-test.yml config
+services:
+  migrate:
+    image: edu-platform-migrate:0.7.0-m7-07-override
+  test:
+    image: edu-platform-server-test:0.7.0-m7-07-override

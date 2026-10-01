@@ -1,0 +1,15 @@
+# M7-06 candidate-stack override for the private delivery-browser base. Pins the
+# serving server and migration job to the disposable-override assessment images
+# and the client to the reviewed M7-02 PostCSS image. No ports, no volumes, no
+# secrets. Assessment only; the project lockfile is unchanged. Use ONLY with
+# project m7-06-cand-runtime:
+#   docker compose -p m7-06-cand-runtime \
+#     -f docker/verification/compose.m6-delivery-browser.yml \
+#     -f docker/verification/compose.m7-06-candidate-runtime.yml config
+services:
+  migrate:
+    image: edu-platform-migrate:0.7.0-m7-06-candidate
+  server:
+    image: edu-platform-server:0.7.0-m7-06-candidate
+  client:
+    image: edu-platform-client:0.7.0-m7-02-postcss

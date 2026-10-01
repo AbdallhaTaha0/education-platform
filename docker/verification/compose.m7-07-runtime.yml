@@ -1,0 +1,14 @@
+# M7-07 runtime-stack override for the private delivery-browser base. Pins the
+# serving server and migration job to the version-qualified-override images and
+# the client to the reviewed M7-02 PostCSS image. No ports, no volumes, no
+# secrets. Use ONLY with project m7-07-runtime:
+#   docker compose -p m7-07-runtime \
+#     -f docker/verification/compose.m6-delivery-browser.yml \
+#     -f docker/verification/compose.m7-07-runtime.yml config
+services:
+  migrate:
+    image: edu-platform-migrate:0.7.0-m7-07-override
+  server:
+    image: edu-platform-server:0.7.0-m7-07-override
+  client:
+    image: edu-platform-client:0.7.0-m7-02-postcss

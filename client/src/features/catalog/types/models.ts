@@ -2,7 +2,9 @@ export interface PublicPlan {
   id: string;
   currentPricePiastres: number;
   previousPricePiastres: number | null;
-  durationDays: number;
+  durationDays: number | null;
+  accessMode?: 'DURATION' | 'TERM_END' | 'YEAR_END' | 'UNTIL_REMOVAL';
+  accessEndsAt?: string | null;
 }
 
 export interface PublicCourse {
@@ -14,6 +16,7 @@ export interface PublicCourse {
   descriptionEn: string;
   publishedAt: string | null;
   plans: PublicPlan[];
+  academic?: import('../../academic/model').Academic;
 }
 
 export interface AdminCourseSummary {
@@ -25,13 +28,20 @@ export interface AdminCourseSummary {
   descriptionEn: string;
   status: string;
   deletionRequestedAt: string | null;
+  grade?: string | null;
+  academicYear?: string | null;
+  term?: number | null;
+  courseKind?: string | null;
+  teachingMonth?: string | null;
 }
 
 export interface AdminPlan {
   id: string;
   currentPricePiastres: number;
   previousPricePiastres: number | null;
-  durationDays: number;
+  durationDays: number | null;
+  accessMode?: 'DURATION' | 'TERM_END' | 'YEAR_END' | 'UNTIL_REMOVAL';
+  accessEndsAt?: string | null;
 }
 
 export interface AdminMedia {

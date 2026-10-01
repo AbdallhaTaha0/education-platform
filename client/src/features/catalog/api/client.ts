@@ -32,6 +32,7 @@ export async function createAdminCourse(input: {
   titleEn: string;
   descriptionAr: string;
   descriptionEn: string;
+  academic?: import('../../academic/model').Academic | null;
 }): Promise<void> {
   await apiFetch("/admin/catalog/courses", { method: "POST", retryOnAuth: false, body: input });
 }
@@ -45,7 +46,7 @@ export async function fetchAdminCourse(courseId: string): Promise<AdminCourseDet
 
 export async function patchAdminCourse(
   courseId: string,
-  input: { slug: string; titleAr: string; titleEn: string; descriptionAr: string; descriptionEn: string },
+  input: { slug: string; titleAr: string; titleEn: string; descriptionAr: string; descriptionEn: string; academic?: import('../../academic/model').Academic | null },
 ): Promise<void> {
   await apiFetch(`/admin/catalog/courses/${courseId}`, { method: "PATCH", retryOnAuth: false, body: input });
 }
@@ -76,7 +77,7 @@ export async function unarchiveCourse(courseId: string): Promise<void> {
 
 export async function createPlan(
   courseId: string,
-  input: { currentPricePiastres: number; previousPricePiastres: number | null; durationDays: number },
+  input: { currentPricePiastres: number; previousPricePiastres: number | null; durationDays: number | null; accessMode?: string; accessEndsAt?: string | null },
 ): Promise<void> {
   await apiFetch(`/admin/catalog/courses/${courseId}/plans`, {
     method: "POST",
@@ -87,7 +88,7 @@ export async function createPlan(
 
 export async function patchPlan(
   planId: string,
-  input: { currentPricePiastres: number; previousPricePiastres: number | null; durationDays: number },
+  input: { currentPricePiastres: number; previousPricePiastres: number | null; durationDays: number | null; accessMode?: string; accessEndsAt?: string | null },
 ): Promise<void> {
   await apiFetch(`/admin/catalog/plans/${planId}`, {
     method: "PATCH",

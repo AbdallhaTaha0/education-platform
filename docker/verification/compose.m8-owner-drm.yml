@@ -1,0 +1,19 @@
+# Local external DRM deployment for the explicitly requested real-video preview.
+# The external package is built unchanged and remains independently deployed.
+services:
+  postgres:
+    ports: !reset []
+  valkey:
+    ports: !reset []
+  api:
+    image: fayq-owner-drm-api:local
+    ports: !override
+      - 127.0.0.1:3000:3000
+    environment:
+      CORS_ORIGIN: http://localhost:8080
+      JWT_JWKS_URL: http://host.docker.internal:8080/.well-known/jwks.json
+      PLAYBACK_ASSERTION_REQUIRED: 'true'
+  worker:
+    image: fayq-owner-drm-worker:local
+  migrate:
+    image: fayq-owner-drm-migrate:local

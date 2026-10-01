@@ -74,6 +74,10 @@ export function AccountScreen({ go }: { go: (route: string) => void }): JSX.Elem
           {t.accountTitle}
         </h1>
         <Notice kind={message?.kind ?? 'success'}>{message?.text ?? null}</Notice>
+        <nav className="account-shortcuts" aria-label={lang === 'ar' ? 'اختصارات حسابك' : 'Your account shortcuts'}>
+          {person.role === 'STUDENT' ? <><a href="#/dashboard">{t.navDashboard}</a><a href="#/wallet">{t.navWallet}</a><a href="#/purchases">{lang === 'ar' ? 'مشترياتي' : 'My purchases'}</a></> : <><a href="#/admin/summary">{t.navAdmin}</a><a href="#/admin/packages">{lang === 'ar' ? 'الباقات' : 'Packages'}</a><a href="#/admin/catalog">{t.navCatalog}</a><a href="#/admin/recharge">{t.navRecharge}</a></>}
+          <a href="#/notifications">{t.navNotifications}</a><a href="#/courses">{t.navCourses}</a>
+        </nav>
         <dl className="mb-6 grid gap-3">
           <div className="grid grid-cols-[140px_1fr] gap-3 border-b border-border py-2 max-sm:grid-cols-1 max-sm:gap-1">
             <dt className="text-sm font-semibold text-muted">{t.fieldName}</dt>

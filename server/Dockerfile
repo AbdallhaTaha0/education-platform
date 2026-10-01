@@ -12,10 +12,14 @@ RUN apt-get update -y && apt-get install -y --no-install-recommends openssl \
   && rm -rf /var/lib/apt/lists/*
 RUN groupadd --system app && useradd --system --gid app --home-dir /srv/server app
 
-# Production-only dependencies.
+# Production-only dependencies. `--omit=optional` additionally excludes the unused
+# Prisma CLI chain (prisma, @prisma/config, deepmerge-ts: devOptional via the
+# @prisma/client optional peer) and workers-only pg-cloudflare, which the Node.js
+# serving runtime never loads. Lifecycle scripts stay enabled so kept native
+# packages (argon2) still build. Build/test/migration stages keep full installs.
 FROM base AS prod-deps
 COPY server/package.json server/package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci --omit=dev --omit=optional && npm cache clean --force
 
 # Full build (devDependencies + Prisma client generation + tsc + tests available).
 # NOTE: explicit --include=dev because the base stage sets NODE_ENV=production
@@ -41,10 +45,11 @@ COPY --chown=app:app --from=build /srv/server/dist ./dist
 # that `prisma generate` writes under node_modules/.prisma/client.
 COPY --chown=app:app --from=build /srv/server/node_modules/@prisma/client ./node_modules/@prisma/client
 COPY --chown=app:app --from=build /srv/server/node_modules/.prisma ./node_modules/.prisma
-# Smoke: PrismaClient must be CONSTRUCTIBLE in the final runtime image
-# (require-only is insufficient). Never connects: dummy URL + disconnect.
+# Smoke: the unused CLI chain must be absent from FINAL runtime while the generated
+# Prisma Client stays usable and argon2's native binding loads. PrismaClient must be
+# CONSTRUCTIBLE (require-only is insufficient). Never connects: dummy URL + disconnect.
 RUN DATABASE_URL=postgresql://127.0.0.1:5432/prisma_smoke \
-  node -e 'const {PrismaClient}=require("@prisma/client"); const c=new PrismaClient(); c.$disconnect().then(()=>console.log("prisma client smoke ok"));'
+  node -e 'const assert=require("assert");const fs=require("fs");for (const p of ["prisma","@prisma/config","deepmerge-ts"]) assert(!fs.existsSync("node_modules/"+p),p+" must be absent from serving runtime");const {PrismaClient}=require("@prisma/client");const c=new PrismaClient();c.$disconnect().then(()=>{require("argon2");console.log("runtime smoke ok: cli chain absent, prisma client usable, argon2 loads");});'
 USER app
 EXPOSE 3000
 CMD ["node", "dist/index.js"]

@@ -1,6 +1,10 @@
 # Education Platform — Design v1
 
+Owner academic clarification, 2026-10-01: [D27's academic catalog/access contract](m8-school-catalog-contract.md) governs subsequent M8 discovery and course editing. Lead with first/second secondary selection; first secondary has two terms; each teaching month is a course, revisions are distinct and three-month packages contain three specific courses. ADMIN-selectable access is duration-based or until term/year end; never label package membership as an automatic 90-day duration. Earlier generic demo courses are historical visual examples.
+
 Status: the owner approved the FAYQ identity and supplied brand board on 2026-09-30. Earlier Stitch layouts remain historical references; the FAYQ system below governs current visual implementation. This is a UI specification, not a backend contract.
+
+Owner clarification, 2026-10-01: the target audience is ages **15–18**. The owner requests a whole-site redesign, a floating mobile bottom dock like the supplied navigation reference, the FAYQ logo from the supplied board, and realistic dummy content for isolated testing/landing review. [The M8 redesign brief](m8-design/website-redesign-brief.md) specifies the new page structures and navigation direction while retaining the FAYQ brand and approved business contracts. Its [prototype](m8-design/preview.html) is review material, not implemented application behavior. This later direction governs the M8 redesign over older layout examples below; it does not approve decorative features from the board.
 
 ## FAYQ owner-approved direction (2026-09-30)
 
@@ -123,3 +127,11 @@ The owner will review and tune colors inside Stitch before final visual implemen
 - Admin bilingual requirements and review controls are understandable.
 - Placeholder data, brand and palette remain editable.
 - Designs are a first visual pass; production functionality and runtime/accessibility tests are not claimed.
+
+## Owner clarification — optional course expiry (2026-10-01)
+
+The owner explicitly clarified that a course may remain accessible after purchase without any expiry, until permanent removal by ADMIN. This supersedes the earlier mandatory-duration wording for M8 standalone offers. ADMIN chooses DURATION, TERM_END, YEAR_END or UNTIL_REMOVAL explicitly. UNTIL_REMOVAL stores a null expiry, not a fabricated distant date. Existing paid terms are immutable; later offer changes apply only to new purchases. Indefinite access dominates finite grants, produces no subscription-expiry notification and must not trigger expiry-based playback termination. Publication/archive/deletion protection and the external DRM API-only boundary still apply. Packages retain the previously approved one shared ADMIN-set deadline.
+
+The owner also confirmed: SECOND_SECONDARY has terms 1 and 2; packages may contain unpublished monthly courses with clear presale labels and no viewing before publication; overlapping ownership warns without blocking package purchase; repeat standalone purchases with a fixed deadline are permitted only when they add access. Existing indefinite access prevents redundant standalone payment. These answers resolve the corresponding pending owner questions; historical proposals remain historical.
+
+Acceptance: nullable-expiry migration preserves finite records; guarded offer creation/edit, one debit and idempotent replay; immutable indefinite purchase snapshot; indefinite entitlement despite expired finite rows; no expiry notice or termination; unpublished package purchase without content leakage; fixed-deadline extension/no-extension cases; bilingual admin/student access labels.

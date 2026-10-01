@@ -1,144 +1,51 @@
-import { useCallback, useEffect, useState } from 'react';
-import { fetchFoundationStatus, type HealthState } from '../../../api';
-import { Button } from '../../../components/ui/Button';
-import { Card, Container } from '../../../components/ui/Card';
+import { Container } from '../../../components/ui/Card';
 import { PublicCatalogSections } from '../../catalog/pages/PublicCatalogPage';
 import { useLang } from '../../../i18n';
-import { Wordmark } from '../../../components/ui/Wordmark';
-
-function FeatureIcon({ kind }: { kind: 'learn' | 'code' | 'ai' | 'progress' }): JSX.Element {
-  const paths = {
-    learn: <path d="M4 7.5 12 3l8 4.5-8 4.5-8-4.5Zm3 3.2V15c2.8 2 7.2 2 10 0v-4.3M20 8v6" />,
-    code: <path d="m8 7-4 5 4 5m8-10 4 5-4 5m-3-12-2 14" />,
-    ai: <path d="M9 4a3 3 0 0 0-3 3v1a3 3 0 0 0-2 3 3 3 0 0 0 2 3v1a3 3 0 0 0 3 3m6-14a3 3 0 0 1 3 3v1a3 3 0 0 1 2 3 3 3 0 0 1-2 3v1a3 3 0 0 1-3 3M9 4v14m6-14v14M9 8h3m-3 5h3m3-5h-3m3 5h-3" />,
-    progress: <path d="M5 19V9m5 10V5m5 14v-7m5 7V3" />,
-  } as const;
-  return <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[kind]}</svg>;
-}
-
-function StatusDot({ state }: { state: HealthState }): JSX.Element {
-  const colors = { loading: 'bg-pending-fg', up: 'bg-success-fg', down: 'bg-error-fg' } as const;
-  return <span className={`mt-1.5 h-4 w-4 flex-none rounded-full ${colors[state]}`} aria-hidden="true" />;
-}
+import heroSmall from '../../../assets/fayq-learning-640.webp';
+import heroLarge from '../../../assets/fayq-learning-1280.webp';
 
 export function HomePage({ onSelectCourse }: { onSelectCourse: (slug: string) => void }): JSX.Element {
   const { t, lang } = useLang();
-  const [live, setLive] = useState<HealthState>('loading');
-  const [ready, setReady] = useState<HealthState>('loading');
-  const [checking, setChecking] = useState(true);
-
-  const check = useCallback(async () => {
-    setChecking(true);
-    setLive('loading');
-    setReady('loading');
-    try {
-      const status = await fetchFoundationStatus();
-      setLive(status.live);
-      setReady(status.ready);
-    } catch {
-      setLive('down');
-      setReady('down');
-    } finally {
-      setChecking(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void check();
-  }, [check]);
-
-  return (
-    <main id="main">
-      <section className="hero-grid relative overflow-hidden border-b border-border py-14 md:py-20">
-        <Container>
-          <div className="grid items-center gap-10 lg:grid-cols-[1.08fr_.92fr]">
-            <div>
-              <div className="mb-6"><Wordmark variant="full" markSize={56} /></div>
-              <p className="mb-4 inline-flex rounded-full border border-primary/60 bg-primary/10 px-4 py-1.5 text-sm font-bold text-primary-strong">
-                {lang === 'ar' ? 'برمجة وذكاء اصطناعي لطلاب المرحلة الثانوية' : 'Programming & AI for secondary students'}
-              </p>
-              <h1 className="max-w-[14ch] text-4xl font-extrabold leading-[1.15] md:text-6xl">
-                {lang === 'ar' ? <>فهم حقيقي في <span className="text-primary-strong">البرمجة والذكاء الاصطناعي</span></> : <>Real understanding in <span className="text-primary-strong">Programming & AI</span></>}
-              </h1>
-              <p className="mt-5 max-w-[60ch] text-lg text-muted md:text-xl">
-                {lang === 'ar' ? 'نحوّل الموضوعات المعقدة إلى دروس واضحة وعملية تساعدك على الفهم والتطبيق وبناء مهارات حقيقية.' : 'We turn complex topics into clear, practical lessons that help you understand, apply, and build real skills.'}
-              </p>
-              <p className="mt-4 text-xl font-bold text-accent" data-testid="brand-slogan">{t.slogan}</p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <a className="inline-flex min-h-[48px] items-center justify-center gap-3 rounded-control bg-primary px-7 font-extrabold text-primary-ink no-underline shadow-lift transition-transform hover:-translate-y-0.5 hover:bg-primary-hover" href="#/courses">
-                  {lang === 'ar' ? 'ابدأ التعلم' : 'Start learning'} <span aria-hidden="true">→</span>
-                </a>
-                <a className="inline-flex min-h-[48px] items-center justify-center rounded-control border border-border-strong bg-surface px-7 font-bold text-ink no-underline hover:border-primary hover:bg-interactive" href="#how">
-                  {lang === 'ar' ? 'كيف تعمل FAYQ؟' : 'How FAYQ works'}
-                </a>
-              </div>
-            </div>
-            <div className="code-scene" aria-label={lang === 'ar' ? 'مسار تعلم البرمجة' : 'Programming learning path'}>
-              <div className="code-scene__glow" aria-hidden="true" />
-              <div className="code-scene__panel" dir="ltr">
-                <div className="flex items-center gap-2 border-b border-border px-5 py-3"><span className="h-2.5 w-2.5 rounded-full bg-error-fg" /><span className="h-2.5 w-2.5 rounded-full bg-amber" /><span className="h-2.5 w-2.5 rounded-full bg-primary" /><span className="ms-auto font-mono text-xs text-muted">python-basics.py</span></div>
-                <pre className="overflow-hidden p-6 text-sm leading-7 text-cream"><code><span className="text-lime">skills</span> = [<span className="text-amber">"understand"</span>,{`\n`}          <span className="text-amber">"practice"</span>,{`\n`}          <span className="text-amber">"build"</span>]{`\n\n`}for skill in skills:{`\n`}    <span className="text-lime">learn</span>(skill){`\n\n`}print(<span className="text-amber">"Hello, FAYQ!"</span>)</code></pre>
-              </div>
-              <div className="code-scene__note" aria-hidden="true">✓ Understand<br />✓ Practice<br />✓ Build<br />✓ Get ready</div>
-            </div>
-          </div>
-        </Container>
-      </section>
-      <section className="border-b border-border bg-surface py-10" aria-label={lang === 'ar' ? 'مزايا FAYQ' : 'FAYQ benefits'}>
-        <Container>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {([
-              ['learn', lang === 'ar' ? 'شرح واضح' : 'Clear explanations', lang === 'ar' ? 'لغة بسيطة وفهم حقيقي.' : 'Simple language, real understanding.'],
-              ['code', lang === 'ar' ? 'تطبيق عملي' : 'Practical practice', lang === 'ar' ? 'اكتب الكود وحل المشكلات.' : 'Write code and solve problems.'],
-              ['ai', lang === 'ar' ? 'جاهز للذكاء الاصطناعي' : 'AI ready', lang === 'ar' ? 'مهارات تبني بها مستقبلك.' : 'Build skills for the future.'],
-              ['progress', lang === 'ar' ? 'تقدم حقيقي' : 'Real progress', lang === 'ar' ? 'تابع تعلمك وشاهد نتائجك.' : 'Track learning and see results.'],
-            ] as const).map(([kind, title, body]) => (
-              <article key={kind} className="group rounded-card border border-border bg-canvas p-5 transition-colors hover:border-primary">
-                <span className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-control border border-primary/60 bg-primary/10 text-primary-strong"><FeatureIcon kind={kind} /></span>
-                <h2 className="text-lg font-bold">{title}</h2><p className="mt-1 text-sm text-muted">{body}</p>
-              </article>
-            ))}
-          </div>
-        </Container>
-      </section>
-      <PublicCatalogSections onSelect={onSelectCourse} compact />
-      <section id="how" className="py-12" aria-labelledby="how-title">
-        <Container>
-          <Card className="overflow-hidden border-border-strong bg-elevated md:p-8">
-            <div className="grid gap-8 md:grid-cols-[.8fr_1.2fr] md:items-center">
-              <div><p className="text-sm font-bold uppercase tracking-[.14em] text-primary-strong">{lang === 'ar' ? 'خطوات واضحة' : 'A clear path'}</p><h2 id="how-title" className="section-title mt-2">{lang === 'ar' ? 'من أول درس إلى مهارة حقيقية' : 'From the first lesson to a real skill'}</h2></div>
-              <ol className="grid gap-3 sm:grid-cols-3">
-                {(lang === 'ar' ? ['اختر دورتك', 'اشترك وتعلّم', 'تقدّم خطوة بخطوة'] : ['Choose a course', 'Subscribe and learn', 'Progress step by step']).map((step, index) => <li key={step} className="rounded-control border border-border bg-surface p-4"><span className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-primary font-extrabold text-primary-ink">{index + 1}</span><p className="font-bold">{step}</p></li>)}
-              </ol>
-            </div>
-          </Card>
-        </Container>
-      </section>
-      <section id="status" className="py-10" aria-labelledby="status-title" aria-live="polite">
-        <Container>
-          <h2 id="status-title" className="section-title">{t.statusTitle}</h2>
-          <p className="text-muted">{t.statusBody}</p>
-          <div className="mt-6 grid grid-cols-2 gap-6 max-sm:grid-cols-1">
-            <Card className="flex items-start gap-4">
-              <StatusDot state={live} />
-              <div>
-                <h3 className="text-lg">{t.liveLabel}</h3>
-                <p className="m-0">{live === 'loading' ? t.stateLoading : live === 'up' ? t.stateUp : t.stateDown}</p>
-              </div>
-            </Card>
-            <Card className="flex items-start gap-4">
-              <StatusDot state={ready} />
-              <div>
-                <h3 className="text-lg">{t.readyLabel}</h3>
-                <p className="m-0">{ready === 'loading' ? t.stateLoading : ready === 'up' ? t.stateUp : t.stateDown}</p>
-              </div>
-            </Card>
-          </div>
-          <div className="mt-6">
-            <Button variant="secondary" onClick={() => void check()} disabled={checking}>{t.retry}</Button>
-          </div>
-        </Container>
-      </section>
-    </main>
-  );
+  const c = (ar: string, en: string): string => lang === 'ar' ? ar : en;
+  const how = (): void => {
+    const title = document.getElementById('how-title');
+    title?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+    title?.focus({ preventScroll: true });
+  };
+  const benefits = [
+    [c('افهم الفكرة', 'Make it click'), c('شرح واضح يخلّي المفاهيم أقرب ليك.', 'Clear explanations that make concepts feel familiar.')],
+    [c('جرّب بنفسك', 'Try it yourself'), c('اكتب الكود وجرّب الأفكار على جهازك.', 'Write code and explore ideas on your own computer.')],
+    [c('كمّل على مهلك', 'Find your pace'), c('دروس مسجّلة وتقدّم محفوظ خلال اشتراكك.', 'Recorded lessons and saved progress during your subscription.')],
+  ];
+  const steps = [
+    [c('اختار دورتك', 'Find your course'), c('اختار صفك والترم، وراجع الشرح الشهري والمراجعات والباقات وشروط الوصول.', 'Choose your grade and term. Review monthly courses, revisions, packages and access terms.')],
+    [c('جهّز رصيدك', 'Fund your wallet'), c('لو محتاج رصيد، ابعت طلب شحن يدوي. الإدارة تراجع التحويل وتضيف الرصيد بعد الموافقة.', 'If you need funds, submit a manual recharge. An admin verifies the transfer and credits your wallet after approval.')],
+    [c('اشترك وابدأ', 'Purchase, then begin'), c('اشترِ الدورة من رصيدك. مدة الوصول تبدأ فور الشراء، وتقدر تجدّد عند انتهائها.', 'Purchase the course with your balance. Access starts immediately at purchase; you can renew when it ends.')],
+  ];
+  const faqs = [
+    [c('هل لازم أعرف برمجة قبل ما أبدأ؟', 'Do I need to know programming already?'), c('راجع وصف كل دورة واختار اللي يناسب مستواك. الدورات مختلفة؛ مش كل دورة للمبتدئين.', 'Read each course description and choose one that fits your level. Not every course is for beginners.')],
+    [c('الدروس مباشرة ولا مسجّلة؟', 'Are the lessons live or recorded?'), c('كل الدروس مسجّلة، تتعلّم منها في الوقت المناسب ليك خلال مدة اشتراكك.', 'All lessons are recorded. Learn at a time that suits you during your subscription.')],
+    [c('الاشتراك مدته قد إيه؟', 'How long does access last?'), c('شروط الوصول واضحة في كل عرض: مدة من الشراء، موعد محدد لنهاية الترم أو السنة، أو بدون انتهاء حتى الحذف النهائي للكورس. الباقات لها موعد انتهاء واحد موضح.', 'Each offer states its access terms: a duration from purchase, a fixed term or year deadline, or no expiry until permanent course removal. Packages show one shared deadline.')],
+    [c('إزاي أدفع وأبدأ؟', 'How do I pay and get started?'), c('ابعت طلب شحن بالمبلغ والإثبات من المحفظة. بعد مراجعة الإدارة وإضافة الرصيد، اشترِ الدورة بنفسك. الموافقة على الشحن لوحدها مش اشتراك.', 'Submit a recharge amount and proof from your wallet. After admin review and credit, purchase the course yourself. Recharge approval alone is not a subscription.')],
+  ];
+  return <main id="main" className="fayq-home">
+    <section className="youth-hero" aria-labelledby="hero-title"><Container><div className="youth-hero__grid">
+      <div className="youth-hero__copy"><p className="eyebrow">{c('مساحتك لفهم البرمجة', 'Your space to understand programming')}</p>
+        <h1 id="hero-title">{c('افهم الفكرة.', 'Understand it.')}<br />{c('اكتب الكود.', 'Code it.')}<br /><span>{c('ابنِ حاجة ليك.', 'Build something yours.')}</span></h1>
+        <p className="hero-description">{c('من أول سؤال لأول تجربة. دروس برمجة مسجّلة لأولى وثانية ثانوي، تساعدك تفهم وتطبّق خطوة بخطوة.', 'From your first question to your first experiment. Recorded programming lessons for first and second secondary students, with room to understand and practise.')}</p>
+        <div className="hero-actions"><a className="fayq-action" href="#/courses">{c('اكتشف الدورات', 'Explore courses')}<span aria-hidden="true">↗</span></a><button className="fayq-action fayq-action--quiet" type="button" onClick={how}>{c('إزاي أبدأ؟', 'How do I start?')}</button></div>
+        <p className="hero-slogan" data-testid="brand-slogan">{t.slogan}</p>
+      </div>
+      <div className="youth-hero__art"><img src={heroLarge} srcSet={`${heroSmall} 640w, ${heroLarge} 1280w`} sizes="(min-width: 1024px) 52vw, 100vw" width="1280" height="720" alt="" fetchPriority="high" /><div className="hero-art-note"><span aria-hidden="true">&lt;/&gt;</span><p>{c('الفهم هو البداية.', 'Understanding comes first.')}<strong>{c('والتجربة خطوتك الجاية.', 'Your next step is trying.')}</strong></p></div></div>
+    </div></Container></section>
+    <section className="benefit-strip" aria-label={c('ليه FAYQ؟', 'Why FAYQ?')}><Container><div className="benefit-strip__grid">{benefits.map(([title, body], n) => <article key={title}><span aria-hidden="true" className="benefit-number">0{n + 1}</span><div><h2>{title}</h2><p>{body}</p></div></article>)}</div></Container></section>
+    <PublicCatalogSections onSelect={onSelectCourse} compact />
+    <section className="build-story" aria-labelledby="build-title"><Container><div className="build-story__grid">
+      <div><p className="eyebrow">{c('فكرة صغيرة. بداية كبيرة.', 'A small idea. A great start.')}</p><h2 id="build-title">{c('خلّي أول تجربة', 'Make your first experiment')}<br /><span>{c('تشبهك.', 'feel like you.')}</span></h2><p>{c('جرّب تطبّق اللي اتعلّمته خارج الدرس: صفحة عن هوايتك، أو برنامج صغير يساعدك ترتّب يومك. اختار فكرة بسيطة وابنِ عليها.', 'Take what you learn beyond the lesson: a page about your hobby, or a small program to organise your day. Pick a simple idea and build on it.')}</p><p className="story-caption">{c('أفكار للتجربة على جهازك؛ المحتوى المتاح موضّح في وصف كل دورة.', 'Ideas to try on your computer; available content is described in each course offer.')}</p></div>
+      <div className="project-window" dir="ltr" aria-label={c('مثال توضيحي لفكرة صفحة شخصية', 'Illustrative personal-page idea')}><div className="project-window__bar"><span aria-hidden="true">● ● ●</span><span>my-first-page.html</span></div><div className="project-window__body"><span className="project-tag">&lt;hello, world /&gt;</span><h3>{c('دي فكرتي.', 'This is my idea.')}</h3><div className="project-lines" aria-hidden="true"><i /><i /><i /></div><span className="project-sticker" aria-hidden="true">✳</span><p>{c('مثال للتوضيح', 'Illustrative example')}</p></div></div>
+    </div></Container></section>
+    <section id="how" className="landing-section" aria-labelledby="how-title"><Container><p className="eyebrow">{c('خطوات واضحة', 'A clear path')}</p><h2 id="how-title" className="landing-title" tabIndex={-1}>{c('جاهز تبدأ؟ خطوة بخطوة.', 'Ready to begin? One step at a time.')}</h2><ol className="learning-steps">{steps.map(([title, body], n) => <li key={title}><span aria-hidden="true">0{n + 1}</span><h3>{title}</h3><p>{body}</p></li>)}</ol></Container></section>
+    <section className="landing-section landing-faq" aria-labelledby="faq-title"><Container><div className="faq-grid"><div><p className="eyebrow">{c('قبل ما تبدأ', 'Before you start')}</p><h2 id="faq-title" className="landing-title">{c('أسئلة في بالك؟', 'Questions on your mind?')}</h2></div><div>{faqs.map(([q, a]) => <details key={q}><summary>{q}</summary><p>{a}</p></details>)}</div></div></Container></section>
+    <section className="landing-section"><Container><div className="landing-final"><p className="eyebrow">{t.slogan}</p><h2>{c('أول خطوة مستنياك.', 'Your first step is waiting.')}</h2><a href="#/courses" className="fayq-action">{c('اختار دورتك', 'Find your course')}<span aria-hidden="true">↗</span></a></div></Container></section>
+  </main>;
 }

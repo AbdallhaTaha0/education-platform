@@ -18,11 +18,13 @@ function toPurchaseView(purchase: Record<string, unknown>, subscription: Record<
     courseId: purchase['courseId'],
     pricePiastres: purchase['pricePiastres'],
     durationDays: purchase['durationDays'],
+    accessMode: purchase['accessMode'],
+    accessEndsAt: purchase['accessEndsAt'] ? (purchase['accessEndsAt'] as Date).toISOString() : null,
     createdAt: (purchase['createdAt'] as Date).toISOString(),
     subscription: {
       id: subscription['id'],
       startsAt: (subscription['startsAt'] as Date).toISOString(),
-      expiresAt: (subscription['expiresAt'] as Date).toISOString(),
+      expiresAt: subscription['expiresAt'] ? (subscription['expiresAt'] as Date).toISOString() : null,
     },
   };
 }
@@ -37,6 +39,9 @@ export async function purchaseCourse(prisma: PrismaClient, studentId: string, in
   rejectUnknownFields(input, PURCHASE_FIELDS);
   const planId = assertNonEmptyString(input.planId, 'planId', 64);
   const idempotencyKey = assertIdempotencyKey(input.idempotencyKey);
+  if (await prisma.packagePurchase.findUnique({ where: { studentId_idempotencyKey: { studentId, idempotencyKey } } })) {
+    throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Idempotency key was used for a package purchase.');
+  }
 
   // Fast idempotent replay outside the write tx (confirmed inside too).
   const prior = await prisma.purchase.findUnique({ where: { studentId_idempotencyKey: { studentId, idempotencyKey } } });
@@ -73,6 +78,9 @@ export async function purchaseCourse(prisma: PrismaClient, studentId: string, in
         throw new ApiError(404, 'NOT_FOUND', 'This plan is not available for purchase.');
       }
       const wallet = await lockWallet(tx, studentId);
+      if (await tx.packagePurchase.findUnique({ where: { studentId_idempotencyKey: { studentId, idempotencyKey } } })) {
+        throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Idempotency key was used for a package purchase.');
+      }
       // Re-check idempotency AFTER the wallet lock. Concurrent identical
       // requests all pass the earlier read, then serialize on the wallet row;
       // whoever commits first has already debited, so a loser that re-decided
@@ -91,11 +99,25 @@ export async function purchaseCourse(prisma: PrismaClient, studentId: string, in
       if (wallet.balancePiastres < plan.currentPricePiastres) {
         throw new ApiError(402, 'INSUFFICIENT_FUNDS', 'Wallet balance is insufficient for this plan.');
       }
+      const now = new Date();
+      if (['TERM_END','YEAR_END'].includes(plan.accessMode) && (!plan.accessEndsAt || plan.accessEndsAt <= now)) {
+        throw new ApiError(409, 'OFFER_EXPIRED', 'The access deadline has passed.');
+      }
+      if (await tx.subscription.count({ where: { studentId, courseId: plan.course.id, expiresAt: null } })) {
+        throw new ApiError(409, 'NO_ACCESS_EXTENSION', 'Existing access has no expiry.');
+      }
+      if (['TERM_END','YEAR_END'].includes(plan.accessMode)) {
+        const existing = await tx.subscription.aggregate({ where: { studentId, courseId: plan.course.id }, _max: { expiresAt: true } });
+        if (existing._max.expiresAt && existing._max.expiresAt >= plan.accessEndsAt!) {
+          throw new ApiError(409, 'NO_ACCESS_EXTENSION', 'This offer does not add access beyond your existing expiry.');
+        }
+      }
       // Deterministic lock order: wallet → ledger → purchase → subscription.
       const purchase = await tx.purchase.create({
         data: {
           studentId, planId: plan.id, courseId: plan.course.id,
           pricePiastres: plan.currentPricePiastres, durationDays: plan.durationDays,
+          accessMode: plan.accessMode, accessEndsAt: plan.accessEndsAt,
           idempotencyKey,
         },
       });
@@ -103,16 +125,15 @@ export async function purchaseCourse(prisma: PrismaClient, studentId: string, in
       // Renewal math on backend time: extend from the latest expiry when it
       // still covers now, otherwise start immediately. One subscription row
       // per purchase (purchaseId unique); effective access is the union.
-      const now = new Date();
       const latest = await tx.subscription.findFirst({
         where: { studentId, courseId: plan.course.id },
         orderBy: { expiresAt: 'desc' },
       });
-      const base = latest && latest.expiresAt.getTime() > now.getTime() ? latest.expiresAt : now;
+      const base = plan.accessMode === 'DURATION' && latest?.expiresAt && latest.expiresAt.getTime() > now.getTime() ? latest.expiresAt : now;
       const subscription = await tx.subscription.create({
         data: {
           studentId, courseId: plan.course.id, purchaseId: purchase.id,
-          startsAt: base, expiresAt: new Date(base.getTime() + plan.durationDays * DAY_MS),
+          startsAt: base, expiresAt: plan.accessMode === 'DURATION' ? new Date(base.getTime() + plan.durationDays! * DAY_MS) : plan.accessEndsAt,
         },
       });
       await audit(tx, {
@@ -153,15 +174,16 @@ export async function listMyPurchases(prisma: PrismaClient, studentId: string) {
   const rows = await prisma.purchase.findMany({
     where: { studentId }, orderBy: { createdAt: 'desc' }, take: 100,
   });
-  const subs = await prisma.subscription.findMany({ where: { studentId }, orderBy: { createdAt: 'desc' }, take: 100 });
+  const subs = await prisma.subscription.findMany({ where: { studentId, purchaseId: { in: rows.map(p => p.id) } } });
   const byPurchase = new Map(subs.map((s) => [s.purchaseId, s]));
   return rows.map((p) => {
     const sub = byPurchase.get(p.id);
     return {
       id: p.id, planId: p.planId, courseId: p.courseId,
       pricePiastres: p.pricePiastres, durationDays: p.durationDays,
+      accessMode: p.accessMode, accessEndsAt: p.accessEndsAt?.toISOString() ?? null,
       createdAt: p.createdAt.toISOString(),
-      subscription: sub ? { id: sub.id, startsAt: sub.startsAt.toISOString(), expiresAt: sub.expiresAt.toISOString() } : null,
+      subscription: sub ? { id: sub.id, startsAt: sub.startsAt.toISOString(), expiresAt: sub.expiresAt?.toISOString() ?? null } : null,
     };
   });
 }
@@ -170,6 +192,7 @@ export async function listMySubscriptions(prisma: PrismaClient, studentId: strin
   const rows = await prisma.subscription.findMany({ where: { studentId }, orderBy: { expiresAt: 'desc' }, take: 100 });
   return rows.map((s) => ({
     id: s.id, courseId: s.courseId, purchaseId: s.purchaseId,
-    startsAt: s.startsAt.toISOString(), expiresAt: s.expiresAt.toISOString(),
+    packagePurchaseId: s.packagePurchaseId,
+    startsAt: s.startsAt.toISOString(), expiresAt: s.expiresAt?.toISOString() ?? null,
   }));
 }

@@ -87,3 +87,6 @@ Use this exact live-environment blocker:
 `BLOCKED — live Cloudflare R2 upload-URL recovery verification could not be performed because the required Cloudflare R2 endpoint and credentials were not supplied.`
 
 Do not claim production readiness, M3 acceptance, or 10,000-user capacity. Do not modify the platform's existing uncommitted M3 implementation. Stop after the report and handoff so the manager can independently inspect the actual DRM diff and reproduce critical Docker tests.
+## Owner-required Docker test cleanup (2026-10-01)
+
+After completing the assigned work, or after failure/interruption/stop, clean up the Docker test environment you created. Before removal, verify the exact project labels, resolved container/network/volume names and every mount; target only this assignment's owned disposable test resources and fixtures. Remove owned test containers, networks and volumes, including any owned anonymous volumes identified from container mounts. Never use global prune or delete unrelated data, the existing previews, reusable images needed for review, or saved reports/evidence. If a test resource must remain temporarily for an active check, record its owner and reason, then clean it when that check ends. Report the final cleanup verification and any resources that could not safely be removed. Every future prompt must include this requirement.

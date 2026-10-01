@@ -1,0 +1,11 @@
+# M7-06 candidate-stack override: pin migrate/test to the disposable-override
+# assessment images (deepmerge-ts 8.0.2 scoped under @prisma/config, built from
+# an untracked TEMP context — NOT the project manifests). Assessment only; the
+# project lockfile is unchanged. Use ONLY with project m7-06-cand-test:
+#   docker compose -p m7-06-cand-test -f docker/compose.test.yml \
+#     -f docker/verification/compose.m7-06-candidate-test.yml config
+services:
+  migrate:
+    image: edu-platform-migrate:0.7.0-m7-06-candidate
+  test:
+    image: edu-platform-server-test:0.7.0-m7-06-candidate

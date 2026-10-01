@@ -73,7 +73,8 @@ export function AdminDetailPage({ courseId }: { courseId: string }): JSX.Element
 
           <CourseForm
             busy={saving}
-            initial={{ slug: course.slug, titleAr: course.titleAr, titleEn: course.titleEn, descriptionAr: course.descriptionAr, descriptionEn: course.descriptionEn }}
+            key={course.id}
+            initial={{ slug: course.slug, titleAr: course.titleAr, titleEn: course.titleEn, descriptionAr: course.descriptionAr, descriptionEn: course.descriptionEn, academic: course.grade ? { grade: course.grade, academicYear: course.academicYear ?? null, term: course.term ?? null, courseKind: course.courseKind ?? null, teachingMonth: course.teachingMonth ?? null } : null }}
             onSubmit={(v) => void saveCourse(v)}
           />
 

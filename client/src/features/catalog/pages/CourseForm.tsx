@@ -3,6 +3,8 @@ import { useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
 import { Card } from '../../../components/ui/Card';
 import { Field, textInputClassName } from '../../../components/ui/Field';
+import { AcademicFields } from '../../academic/AcademicFields';
+import type { Academic } from '../../academic/model';
 
 export interface CourseFormValues {
   slug: string;
@@ -10,6 +12,7 @@ export interface CourseFormValues {
   titleEn: string;
   descriptionAr: string;
   descriptionEn: string;
+  academic?: Academic | null;
 }
 
 export function CourseForm({ busy, initial, onSubmit }: { busy: boolean; initial?: CourseFormValues; onSubmit: (v: CourseFormValues) => void }): JSX.Element {
@@ -19,11 +22,12 @@ export function CourseForm({ busy, initial, onSubmit }: { busy: boolean; initial
   const [titleEn, setTitleEn] = useState(initial?.titleEn ?? '');
   const [descAr, setDescAr] = useState(initial?.descriptionAr ?? '');
   const [descEn, setDescEn] = useState(initial?.descriptionEn ?? '');
+  const [academic, setAcademic] = useState<Academic | null>(initial?.academic ?? null);
 
   function submit(e: FormEvent): void {
     e.preventDefault();
     if (busy) return;
-    onSubmit({ slug, titleAr, titleEn, descriptionAr: descAr, descriptionEn: descEn });
+    onSubmit({ slug, titleAr, titleEn, descriptionAr: descAr, descriptionEn: descEn, academic });
     if (initial === undefined) {
       setSlug('');
       setTitleAr('');
@@ -52,6 +56,7 @@ export function CourseForm({ busy, initial, onSubmit }: { busy: boolean; initial
         <Field id="cf-de" label={t.fieldDescEn} dir="ltr">
           <textarea id="cf-de" dir="ltr" required className={textInputClassName(false)} value={descEn} onChange={(e) => setDescEn(e.target.value)} />
         </Field>
+        <AcademicFields value={academic} onChange={setAcademic} />
         <div className="mt-6 flex flex-wrap gap-3">
           <Button type="submit" disabled={busy}>
             {initial === undefined ? t.submitCreate : t.submitSave}

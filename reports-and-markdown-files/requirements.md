@@ -1,5 +1,6 @@
 # Requirements baseline
 
+Owner update, 2026-10-01 — **R18 academic catalog/access**: both first and second secondary have terms 1 and 2, monthly explanation courses and revisions. Packages contain three specified monthly courses, including unpublished members if clearly labeled unavailable for viewing, and one common ADMIN-set Cairo deadline. Overlap warns without blocking package purchase. Standalone offers explicitly use duration, term end, academic-year end or UNTIL_REMOVAL (no expiry until permanent ADMIN removal). Purchased terms remain immutable. Fixed-deadline repurchase must add access. See [confirmed D27](m8-school-catalog-contract.md). R03 is the historical finite-duration baseline and remains applicable to DURATION offers.
 Updated from owner decisions; unresolved details remain in decisions.md.
 
 | ID | Confirmed requirement | Acceptance evidence |
@@ -37,3 +38,11 @@ Create bilingual course content, order video lessons, set EGP price and fixed du
 ## Unapproved additions
 
 No live teaching, automated payment gateway, automatic recurring billing, exams, certificates, parent role, native mobile application or dubbed-video requirement is implied. D25 confirms only the R17 in-platform notification scope; chat, email and WhatsApp are deferred. Unrelated media retention and any future refund/reversal implementation policy remain open. M4 explicitly excludes refunds and reversals; its integer-day duration and renewal rules are confirmed.
+
+## Owner clarification — optional course expiry (2026-10-01)
+
+The owner explicitly clarified that a course may remain accessible after purchase without any expiry, until permanent removal by ADMIN. This supersedes the earlier mandatory-duration wording for M8 standalone offers. ADMIN chooses DURATION, TERM_END, YEAR_END or UNTIL_REMOVAL explicitly. UNTIL_REMOVAL stores a null expiry, not a fabricated distant date. Existing paid terms are immutable; later offer changes apply only to new purchases. Indefinite access dominates finite grants, produces no subscription-expiry notification and must not trigger expiry-based playback termination. Publication/archive/deletion protection and the external DRM API-only boundary still apply. Packages retain the previously approved one shared ADMIN-set deadline.
+
+The owner also confirmed: SECOND_SECONDARY has terms 1 and 2; packages may contain unpublished monthly courses with clear presale labels and no viewing before publication; overlapping ownership warns without blocking package purchase; repeat standalone purchases with a fixed deadline are permitted only when they add access. Existing indefinite access prevents redundant standalone payment. These answers resolve the corresponding pending owner questions; historical proposals remain historical.
+
+Acceptance: nullable-expiry migration preserves finite records; guarded offer creation/edit, one debit and idempotent replay; immutable indefinite purchase snapshot; indefinite entitlement despite expired finite rows; no expiry notice or termination; unpublished package purchase without content leakage; fixed-deadline extension/no-extension cases; bilingual admin/student access labels.

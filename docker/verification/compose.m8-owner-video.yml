@@ -1,0 +1,6 @@
+# Retained local owner video preview. Uses only the external DRM API.
+services:
+  server:
+    image: edu-platform-server:0.8.0-owner-video
+    env_file:
+      - ../browser/evidence/m8-owner-video/drm-connection.env.local

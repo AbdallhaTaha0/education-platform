@@ -53,6 +53,7 @@ model User {
   wallet       Wallet?
   rechargeRequests RechargeRequest[]
   purchases    Purchase[]
+  packagePurchases PackagePurchase[]
   subscriptions Subscription[]
   lessonProgress LessonProgress[]
   playbackReferences PlaybackReference[]
@@ -157,6 +158,14 @@ model Course {
   updatedAt           DateTime     @updatedAt
   sections            CourseSection[]
   plans               SubscriptionPlan[]
+  grade               String?
+  academicYear        String?
+  term                Int?
+  courseKind          String?
+  teachingMonth       String?
+  packageMembers      PackageMember[]
+
+  @@index([grade, academicYear, term, courseKind])
 
   @@index([status])
   @@index([deletionRequestedAt])
@@ -203,7 +212,9 @@ model SubscriptionPlan {
   course                Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   currentPricePiastres  Int
   previousPricePiastres Int?
-  durationDays          Int
+  durationDays          Int?
+  accessMode            AccessMode @default(DURATION)
+  accessEndsAt          DateTime?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -384,7 +395,9 @@ model Purchase {
   planId          String
   courseId        String
   pricePiastres   Int
-  durationDays    Int
+  durationDays    Int?
+  accessMode      AccessMode @default(DURATION)
+  accessEndsAt    DateTime?
   /// Student-owned idempotency key: retries return the same purchase.
   idempotencyKey  String
   createdAt       DateTime @default(now())
@@ -400,12 +413,77 @@ model Subscription {
   studentId  String
   student    User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
   courseId   String
-  purchaseId String   @unique
+  purchaseId String?   @unique
+  packagePurchaseId String?
+  packagePurchase PackagePurchase? @relation(fields: [packagePurchaseId], references: [id], onDelete: Cascade)
   startsAt   DateTime
-  expiresAt  DateTime
+  expiresAt  DateTime?
   createdAt  DateTime @default(now())
 
   @@index([studentId, courseId])
+  @@unique([packagePurchaseId, courseId])
+}
+
+enum AccessMode {
+  DURATION
+  TERM_END
+  YEAR_END
+  UNTIL_REMOVAL
+}
+
+model CoursePackage {
+  id String @id @default(uuid())
+  titleAr String
+  titleEn String
+  descriptionAr String
+  descriptionEn String
+  status String @default("DRAFT")
+  pricePiastres Int
+  endsAt DateTime
+  version Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  members PackageMember[]
+}
+
+model PackageMember {
+  packageId String
+  package CoursePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  courseId String
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  position Int
+  @@id([packageId, courseId])
+  @@unique([packageId, position])
+}
+
+// Historical snapshots intentionally have no live package/course foreign keys.
+model PackagePurchase {
+  id String @id @default(uuid())
+  studentId String
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  packageId String
+  version Int
+  titleAr String
+  titleEn String
+  pricePiastres Int
+  endsAt DateTime
+  idempotencyKey String
+  createdAt DateTime @default(now())
+  items PackagePurchaseItem[]
+  subscriptions Subscription[]
+  @@unique([studentId, idempotencyKey])
+  @@index([studentId, createdAt])
+}
+
+model PackagePurchaseItem {
+  purchaseId String
+  purchase PackagePurchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  courseId String
+  titleAr String
+  titleEn String
+  position Int
+  @@id([purchaseId, courseId])
+  @@unique([purchaseId, position])
 }
 
 /// Sanitized audit trail. metadata is JSON but must never contain cookies,

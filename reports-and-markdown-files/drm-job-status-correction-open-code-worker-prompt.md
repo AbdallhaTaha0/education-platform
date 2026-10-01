@@ -126,3 +126,6 @@ Use this exact blocker if credentials remain unavailable:
 `BLOCKED — live Cloudflare R2 upload, processing, and deletion verification could not be performed because the required Cloudflare R2 endpoint and credentials were not supplied.`
 
 Do not claim production readiness, M3 acceptance, or 10,000-user capacity. Stop after the report and handoff. Leave changes uncommitted so the independent manager can inspect the actual diff and reproduce the critical Docker tests.
+## Owner-required Docker test cleanup (2026-10-01)
+
+After completing the assigned work, or after failure/interruption/stop, clean up the Docker test environment you created. Before removal, verify the exact project labels, resolved container/network/volume names and every mount; target only this assignment's owned disposable test resources and fixtures. Remove owned test containers, networks and volumes, including any owned anonymous volumes identified from container mounts. Never use global prune or delete unrelated data, the existing previews, reusable images needed for review, or saved reports/evidence. If a test resource must remain temporarily for an active check, record its owner and reason, then clean it when that check ends. Report the final cleanup verification and any resources that could not safely be removed. Every future prompt must include this requirement.

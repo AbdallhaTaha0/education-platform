@@ -32,6 +32,7 @@ export class DrmFixture {
   failNextStatusCount = 0;
   failNextDeletes = 0;
   failNextRegistrations = 0;
+  reissuePendingUploadUrl = false;
   completeConflictOnce = false;
   delayMs = 0;
   /**
@@ -113,7 +114,8 @@ export class DrmFixture {
             for (const a of this.assets.values()) {
               if (a.externalAssetId === b['externalAssetId']) {
                 res.writeHead(202, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ assetId: a.internalId, status: a.status, idempotent: true }));
+                res.end(JSON.stringify({ assetId: a.internalId, status: a.status, idempotent: true,
+                  ...(this.reissuePendingUploadUrl && a.status === 'UPLOADED' ? { uploadUrl: `${this.url}/upload/${a.internalId}?sig=fixture-reissued` } : {}) }));
                 return;
               }
             }

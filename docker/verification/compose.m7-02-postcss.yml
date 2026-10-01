@@ -1,0 +1,12 @@
+# M7-02 client image override for the private delivery-browser base.
+# Used ONLY with project m7-02-postcss:
+#   docker compose -p m7-02-postcss \
+#     -f docker/verification/compose.m6-delivery-browser.yml \
+#     -f docker/verification/compose.m7-02-postcss.yml config
+# The base file already pins postgres/redis images and the verified
+# server/migrate tags, publishes no ports, and uses a project-scoped
+# pgdata volume. This override changes only the client image so the
+# browser reaches the newly built PostCSS-patched runtime.
+services:
+  client:
+    image: edu-platform-client:0.7.0-m7-02-postcss

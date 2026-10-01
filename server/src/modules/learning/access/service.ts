@@ -53,7 +53,7 @@ export interface ResolvedLesson extends LearningBinding {
 /** Resolve a course the student may learn, enforcing entitlement. */
 export async function resolveCourse(opts: ResolveOptions): Promise<ResolvedCourse> {
   const course = await findCourse(opts.prisma, opts.courseRef);
-  if (course === null || !isLearnableStatus(course.status)) {
+  if (course === null || course.deletionRequestedAt !== null || !isLearnableStatus(course.status)) {
     // A caller must not be able to distinguish "no such course" from
     // "not learnable", so both surface the same safe category.
     throw new LearningError('LESSON_NOT_FOUND');

@@ -1,5 +1,28 @@
 # Decision register
 
+## D28 — Railway and delegated recovery baseline (2026-10-01)
+
+Owner selected Railway; custom domain is undecided. Owner delegated recovery choices to the manager. Selected objectives: RPO at most 15 minutes, RTO at most four hours, Railway PostgreSQL PITR and separately protected daily logical exports retained 30 days. These are selected preparation requirements, not provider setup, measured guarantees, spend authorization or production acceptance. [Runbook](m7-railway-runbook.md) and [local evidence](m7-08-railway-preparation-report.md). External commercial DRM and capacity workload choices remain unanswered.
+
+
+## D27 — academic courses, three-member packages and optional expiry (2026-10-01, CONFIRMED)
+
+Initial coverage is first and second secondary, each with terms 1 and 2, monthly explanation courses and revision courses. Every package contains three specifically identified monthly courses with one common ADMIN-selected Cairo deadline, independent of standalone access. Unpublished package members are permitted with a clear warning and no viewing before publication. Active overlapping ownership warns without blocking package purchase or shortening earlier access; no overlap discounts or refunds are introduced.
+
+ADMIN chooses standalone access explicitly: DURATION, TERM_END, YEAR_END or UNTIL_REMOVAL. The last mode has no expiry until permanent ADMIN removal, as the owner clarified in Arabic on 2026-10-01. Omitted duration alone never implies indefinite access. ADMIN supplies real term/year deadlines; none are inferred. Cairo date/time and price/access terms are snapshotted at purchase; later offer changes affect new purchases only. Fixed-deadline repurchase is allowed only when it adds access; existing indefinite ownership prevents redundant standalone payment. Three included months do not mean 90-day validity. Publication/archive/removal protection, cookie authentication, manual recharge and external API-only DRM remain unchanged.
+
+Affected documents: [school catalog contract](m8-school-catalog-contract.md), R18, conceptual schema, design and M8 plan. Verification must cover one atomic debit/three package grants, warning-only overlap, unpublished content refusal, finite/indefinite unions, nullable migration preservation, expiry notification/session exclusions, immutable snapshots and no-extension refusal. These approvals do not accept the milestone or authorize production, a new role, live classes or DRM maintenance.
+
+## D26 — M8 audience and whole-site design direction (2026-10-01, CONFIRMED)
+
+Execution follow-up, 2026-10-01: the owner stated "you work on the M8", assigning direct Codex implementation. [M8-02](m8-02-shell-landing-report.md) implements the youth shell/landing with same-agent Docker evidence and isolated read-only sample content. No new saved-course/report schema, financial policy, communications channel, DRM maintenance, production authority or milestone acceptance is inferred.
+
+The owner selected new product features and UI improvements for both student/admin areas, with summary report screens first and CSV deferred. The owner then specified a **15–18-year-old** target audience, a mobile bottom-navigation design matching the supplied reference's structure, a complete website redesign using the FAYQ board/logo, and dummy data for testing/a realistic landing page. [The M8 plan](m8-product-and-ui-plan.md) and [redesign brief](m8-design/website-redesign-brief.md) record this direction.
+
+This confirms the audience, design/testing direction and reporting format. It does not confirm every proposed saved-course/search/report rule, add an age-verification field, enable AI-assistant/certificate/quiz/chat/payment features seen or implied in artwork, change money/access rules, or authorize production deployment/DRM maintenance. Implementation remains bounded and reviewed one package at a time. The draft Codex prompt has not been dispatched.
+
+Affected documents: design.md, the M8 plan and redesign brief/prompt/demo assets. Acceptance checks: reusable logo/source comparison; all existing routes accounted for; Arabic/English, RTL/LTR, dark/light, desktop/mobile; functional role-based dock and safe-area/focus/keyboard/fullscreen behavior; actual API-backed landing and isolated synthetic fixtures; preserved financial, cookie, entitlement and external-DRM contracts. The prototype provides design evidence only. Add the documentation-index links during integration after the concurrent worker's changes are reviewed.
+
 Updated 2026-09-29 from owner answers and follow-up responses. CONFIRMED is explicit owner direction; PARTIAL means remaining details are listed. Recommendations are not decisions.
 
 | ID | Status | Owner decision | Remaining detail / consequence |
@@ -116,3 +139,11 @@ Execution continuation, 2026-10-01: the owner restored Docker and repeatedly ins
 Review assignment, 2026-10-01: the owner answered "go for it" to the proposed separate-reviewer M6 review, repair/reverification of findings and subsequent owner acceptance. A separate reviewer is assigned [the review packet](m6-final-review-prompt.md). This authorizes review/reproduction and necessary fixes; it does not predeclare the findings/verdict or owner milestone acceptance. The implementing agent coordinates repairs and the reviewer verifies affected behavior independently. No production or DRM scope change is implied.
 
 Independent review completion, 2026-10-01: [the separate reviewer](m6-independent-review-report.md) records ACCEPTABLE FOR OWNER REVIEW after source inspection and fresh Docker reproduction: 40 focused server tests, 17 client tests, two added authority/renewal cases, both typechecks, 65 acceptance assertions, 22 runtime browser assertions and migration drills. No unresolved blocking application defect remains. An obscured Prisma migration diagnostic is addressed by an independently verified read-only troubleshooting query, preserving applied SQL/checksums. All owned disposable resources/private receipts were removed, the existing preview remains healthy and DRM remains unchanged. Owner M6 acceptance is still unrecorded; this independent verdict does not imply production approval or formal M5 acceptance.
+
+## Owner clarification — optional course expiry (2026-10-01)
+
+The owner explicitly clarified that a course may remain accessible after purchase without any expiry, until permanent removal by ADMIN. This supersedes the earlier mandatory-duration wording for M8 standalone offers. ADMIN chooses DURATION, TERM_END, YEAR_END or UNTIL_REMOVAL explicitly. UNTIL_REMOVAL stores a null expiry, not a fabricated distant date. Existing paid terms are immutable; later offer changes apply only to new purchases. Indefinite access dominates finite grants, produces no subscription-expiry notification and must not trigger expiry-based playback termination. Publication/archive/deletion protection and the external DRM API-only boundary still apply. Packages retain the previously approved one shared ADMIN-set deadline.
+
+The owner also confirmed: SECOND_SECONDARY has terms 1 and 2; packages may contain unpublished monthly courses with clear presale labels and no viewing before publication; overlapping ownership warns without blocking package purchase; repeat standalone purchases with a fixed deadline are permitted only when they add access. Existing indefinite access prevents redundant standalone payment. These answers resolve the corresponding pending owner questions; historical proposals remain historical.
+
+Acceptance: nullable-expiry migration preserves finite records; guarded offer creation/edit, one debit and idempotent replay; immutable indefinite purchase snapshot; indefinite entitlement despite expired finite rows; no expiry notice or termination; unpublished package purchase without content leakage; fixed-deadline extension/no-extension cases; bilingual admin/student access labels.

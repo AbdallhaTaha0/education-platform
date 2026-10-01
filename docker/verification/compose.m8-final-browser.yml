@@ -1,0 +1,13 @@
+# Combine with compose.m6-delivery-browser.yml using an isolated project.
+services:
+  server:
+    image: edu-platform-server:0.8.0-m8-final
+  migrate:
+    image: edu-platform-migrate:0.8.0-m8-final
+  client:
+    image: edu-platform-client:0.8.0-m8-final
+  redis:
+    volumes:
+      - redis-final:/data
+volumes:
+  redis-final:

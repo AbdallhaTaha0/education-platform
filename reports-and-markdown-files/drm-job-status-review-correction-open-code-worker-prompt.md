@@ -54,3 +54,6 @@ From a freshly rebuilt current test image and a disposable project, run:
 Report exact commands, counts, failures, and image IDs. Live R2 remains blocked and must not be represented by SeaweedFS.
 
 Stop after updating the relevant reports and handoff. Confirm no production file changed as part of this correction.
+## Owner-required Docker test cleanup (2026-10-01)
+
+After completing the assigned work, or after failure/interruption/stop, clean up the Docker test environment you created. Before removal, verify the exact project labels, resolved container/network/volume names and every mount; target only this assignment's owned disposable test resources and fixtures. Remove owned test containers, networks and volumes, including any owned anonymous volumes identified from container mounts. Never use global prune or delete unrelated data, the existing previews, reusable images needed for review, or saved reports/evidence. If a test resource must remain temporarily for an active check, record its owner and reason, then clean it when that check ends. Report the final cleanup verification and any resources that could not safely be removed. Every future prompt must include this requirement.

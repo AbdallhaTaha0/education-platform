@@ -1,0 +1,10 @@
+# M7-07 verification-followup stack override (same-agent re-verification).
+# Pins migrate/test to freshly built images from the CURRENT checkout (M7-07
+# override + concurrent M8 source). Use ONLY with project m7-07v-test:
+#   docker compose -p m7-07v-test -f docker/compose.test.yml \
+#     -f docker/verification/compose.m7-07v-test.yml config
+services:
+  migrate:
+    image: edu-platform-migrate:0.7.0-m7-07-verify
+  test:
+    image: edu-platform-server-test:0.7.0-m7-07-verify

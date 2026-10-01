@@ -173,9 +173,9 @@ export function CourseLearningPage({ courseSlug, onRenew }: CourseLearningPagePr
         <p className="mb-2 text-muted">{lang === 'ar' ? course.descriptionAr : course.descriptionEn}</p>
         {course.expiresAt !== null ? (
           <p data-testid="learning-expiry" className="mb-6 text-sm text-muted">
-            {labels.expiresOn} {formatDate(course.expiresAt, lang)}
+            {labels.expiresOn} {formatDate(course.expiresAt, lang)} ({lang === 'ar' ? 'القاهرة' : 'Cairo'})
           </p>
-        ) : null}
+        ) : <p data-testid="learning-expiry" className="mb-6 text-sm text-muted">{lang === 'ar' ? 'بدون انتهاء، حتى الحذف النهائي للكورس' : 'No expiry, until permanent course removal'}</p>}
 
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div>
