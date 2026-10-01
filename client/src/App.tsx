@@ -19,6 +19,8 @@ import { PurchasePage } from './features/purchase/pages/PurchasePage';
 import { PurchaseHistoryPage } from './features/purchase/pages/PurchaseHistoryPage';
 import { DashboardPage } from './features/learning/pages/DashboardPage';
 import { CourseLearningPage } from './features/learning/pages/CourseLearningPage';
+import { NotificationsProvider } from './features/notifications/context';
+import { NotificationsPage } from './features/notifications/pages/NotificationsPage';
 
 function Shell(): JSX.Element {
   const { lang, t, setLang } = useLang();
@@ -99,6 +101,7 @@ function Shell(): JSX.Element {
           onBrowse={() => go('#/courses')}
         />
       ) : null}
+      {route === 'notifications' ? <NotificationsPage /> : null}
       {route === 'learn' ? (
         <CourseLearningPage courseSlug={learnSlugFromHash()} onRenew={() => go('#/wallet')} />
       ) : null}
@@ -115,7 +118,7 @@ export default function App(): JSX.Element {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <Shell />
+        <NotificationsProvider><Shell /></NotificationsProvider>
       </AuthProvider>
     </ThemeProvider>
   );

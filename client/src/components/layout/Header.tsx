@@ -4,6 +4,7 @@ import { useTheme } from '../../theme';
 import { Container } from '../ui/Card';
 import type { Route } from '../../routes';
 import { Wordmark } from '../ui/Wordmark';
+import { NotificationEntry } from '../../features/notifications/components/NotificationEntry';
 
 function NavLink({ href, current, children }: { href: string; current: boolean; children: string }): JSX.Element {
   return (
@@ -46,6 +47,7 @@ export function Header({ onSwitch, route }: { onSwitch: (lang: Lang) => void; ro
                 <NavLink href="#/admin/recharge" current={route === 'admin-recharge'}>{t.navRecharge}</NavLink>
               </>
             ) : null}
+            {status === 'authenticated' ? <NotificationEntry current={route === 'notifications'} /> : null}
           </nav>
           <button
             type="button"

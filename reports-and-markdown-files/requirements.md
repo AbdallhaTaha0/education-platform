@@ -20,6 +20,7 @@ Updated from owner decisions; unresolved details remain in decisions.md.
 | R16 | First admin is created once through Docker; only an authenticated ADMIN can create later admins. Password recovery is excluded until a delivery channel is approved. | Bootstrap succeeds once and then refuses; student/admin authorization tests; local credentials handed to owner without committing them; no recovery endpoints or misleading UI |
 | R14 | Expiry stops access and shows unsubscribed / needs renewal | Backend time checks, active playback termination and renewal-required UI |
 | R15 | Cloudflare production object storage; Docker local environment | R2 through external DRM; local/staging contract verification |
+| R17 | D25: realtime in-platform notices for recharge decisions to the request owner, first course publication to all students, and effective subscription expiry to the affected student once per expiry after renewals; read/unread, mark-all-read, no dismissal, 180-day retention | Recipient-only HTTP/realtime authorization, committed-event uniqueness/recovery, renewal races, cross-replica/reconnect behavior, retention and bilingual accessible UI; specified in `m6-notification-contract.md`, not yet implemented |
 
 ## Identity journey
 
@@ -35,4 +36,4 @@ Create bilingual course content, order video lessons, set EGP price and fixed du
 
 ## Unapproved additions
 
-No live teaching, automated payment gateway, automatic recurring billing, exams, certificates, parent role, native mobile application or dubbed-video requirement is implied. Notification/chat release scope, unrelated media retention, and any future refund/reversal implementation policy remain open. M4 explicitly excludes refunds and reversals; its integer-day duration and renewal rules are confirmed.
+No live teaching, automated payment gateway, automatic recurring billing, exams, certificates, parent role, native mobile application or dubbed-video requirement is implied. D25 confirms only the R17 in-platform notification scope; chat, email and WhatsApp are deferred. Unrelated media retention and any future refund/reversal implementation policy remain open. M4 explicitly excludes refunds and reversals; its integer-day duration and renewal rules are confirmed.

@@ -11,6 +11,8 @@ import { createDrmClient } from './modules/catalog/drmClient.js';
 import { startDeletionReconciler } from './modules/catalog/deletion/reconciler.js';
 import { startProofCleanupScheduler } from './modules/wallet/cleanup/scheduler.js';
 import { startExpiryReconciler } from './modules/learning/index.js';
+import { attachNotificationRealtime } from './modules/notifications/realtime.js';
+import { startNotificationWorker } from './modules/notifications/delivery.js';
 
 dotenv.config();
 
@@ -42,6 +44,8 @@ async function main(): Promise<void> {
     const listener = app.listen(config.port, () => resolve(listener));
     listener.on('error', reject);
   });
+  const realtime = await attachNotificationRealtime(server, app.get('identity'));
+  const notificationWorker = startNotificationWorker(prisma, realtime.publish);
 
   logger.info(
     {
@@ -66,8 +70,8 @@ async function main(): Promise<void> {
     }, 10_000);
     force.unref?.();
 
-    server.close((err) => {
-      if (err) logger.error({ err }, 'http server close error');
+    void notificationWorker.stop().then(() => realtime.stop()).then(() => server.close((err) => {
+      if (err && (err as NodeJS.ErrnoException).code !== 'ERR_SERVER_NOT_RUNNING') logger.error({ err }, 'http server close error');
       void (async () => {
         try {
           reconciler.stop();
@@ -83,7 +87,7 @@ async function main(): Promise<void> {
           process.exit(1);
         }
       })();
-    });
+    })).catch(() => { logger.error('notification shutdown failed'); process.exit(1); });
   };
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));

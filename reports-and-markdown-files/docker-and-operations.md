@@ -21,6 +21,31 @@ For local real media integration, connect to the unchanged external DRM distribu
 
 ## Foundation acceptance
 
+M6 continuation on 2026-10-01: Docker was restored by the owner. The per-user CLI is under `$env:LOCALAPPDATA\Programs\DockerDesktop\resources\bin`; add that directory to the current orchestration shell's PATH. See `m6-local-handoff-review.md` for historical installation observations and the successful resumed smoke. Packages 02–04 implement private storage/APIs, the inbox and committed producers with Socket.IO/Redis delivery. See [the backend report](m6-02-backend-report.md), [the inbox report](m6-03-inbox-report.md) and [the delivery report](m6-04-delivery-report.md). Package 04 uses isolated projects `m6-delivery-test` (`compose.test.yml` plus `verification/compose.m6-delivery-test.yml`) and `m6-delivery-browser` (`verification/compose.m6-delivery-browser.yml`), without published ports. Its browser Nginx differs from the actual config only in internal listen port. Package 05 uses `verification/m6-acceptance-project.mjs` and disposable project `m6-acceptance` for two separate backend containers, real failover/database recovery, five dispatcher crash boundaries and concurrent retention; [the report](m6-05-acceptance-report.md) specifies additional test-only peer routing/provenance and checkpoint entrypoints. All inspected disposable stacks/volumes were removed after verification. The preview remains guarded by `rs256-project.mjs` at port 8082 with existing data preserved. The `/api/notifications/socket.io/` route forwards upgrades with a 75-second timeout; ordinary API timeout remains 15 seconds. [Independent review is complete](m6-independent-review-report.md), with verdict ACCEPTABLE FOR OWNER REVIEW; [owner M6 acceptance is recorded](m6-owner-acceptance.md); production capacity/deployment qualification remains open. No separate application, queue topology or public port is introduced.
+
+### M6 activation diagnostic
+
+The independent reviewer reproduced migration 9 refusing an ARCHIVED course with ambiguous publication history. Its deliberate SQL exception rolls back the activation changes and leaves the course unchanged. Prisma deploy can obscure that reason with `current transaction is aborted`; that text alone does not identify the original cause. Inspect the migration failure and the private database before attempting recovery. For the pre-migration schema, this read-only query identifies exactly the ambiguity guard's candidates:
+
+```sql
+SELECT c.id
+FROM "Course" c
+WHERE c.status = 'ARCHIVED'
+  AND c."priorStatus" IS NULL
+  AND c."publishedAt" IS NULL
+  AND NOT EXISTS (
+    SELECT 1 FROM "AuditEvent" a
+    WHERE a."entityId" = c.id AND a."entityType" = 'Course'
+      AND (a.action = 'COURSE_PUBLISHED'
+        OR (a.action = 'COURSE_UNARCHIVED'
+          AND a.metadata->>'restoredTo' = 'PUBLISHED'))
+  );
+```
+
+Run this only through the inspected project's PostgreSQL container/private administrative channel, using its configured database. An empty result requires investigating the actual migration error further; it does not justify marking a failed migration applied. For returned courses, review their original lifecycle evidence with the owner rather than guessing publication history. Preserve already applied migration SQL/checksums. Do not bypass the guard, reset source/financial data or blindly resolve/reapply a failed migration.
+
+### Existing foundation commands
+
 Provide documented clean build/start commands, separate logs, pinned dependencies, health/readiness, startup ordering, persistent development volumes and disposable test volumes. Basic platform startup should work without paid/live service credentials. Storage-specific and real-DRM tests must clearly state their external/local dependency requirements.
 
 Development volumes default to `docker_pgdata` / `docker_redisdata` to preserve the accepted database when the stable project `education-platform` is used. Every disposable verification project must set `PGDATA_NAME` / `REDISDATA_NAME` to isolated names so `down -v` never deletes development data. Never run `down -v` on `education-platform`, `education-drm-service`, or `education-drm-service-production`, and never run `down -v` before inspecting the resolved names.

@@ -56,6 +56,10 @@ model User {
   subscriptions Subscription[]
   lessonProgress LessonProgress[]
   playbackReferences PlaybackReference[]
+  notifications Notification[]
+  notificationAudience NotificationAudience[]
+  notificationInboxState NotificationInboxState?
+  notificationExpiries NotificationExpiryMarker[]
 
   @@index([role])
 }
@@ -146,6 +150,7 @@ model Course {
   status              CourseStatus @default(DRAFT)
   priorStatus         CourseStatus?
   publishedAt         DateTime?
+  firstPublicationAt  DateTime?
   archivedAt          DateTime?
   deletionRequestedAt DateTime?
   createdAt           DateTime     @default(now())
@@ -341,6 +346,7 @@ model RechargeRequest {
   status           RechargeStatus  @default(PENDING)
   reviewerId       String?
   reviewedAt       DateTime?
+  notificationRecordedAt DateTime?
   rejectReason     String?
   /// Student-owned idempotency key: retries return the same request.
   idempotencyKey   String
@@ -504,4 +510,106 @@ model PlaybackReference {
   @@index([status, nextTerminationAt])
   @@index([studentId, courseId])
   @@index([courseId, status])
+}
+
+/// M6 durable notification intent. Only platform references are stored;
+/// there are no credential, proof, free-text or external DRM payload fields.
+enum NotificationType {
+  RECHARGE_APPROVED
+  RECHARGE_REJECTED
+  COURSE_PUBLISHED
+  SUBSCRIPTION_EXPIRED
+}
+
+enum NotificationDeliveryStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model NotificationEvent {
+  id                String @id @default(uuid())
+  eventKey          String @unique
+  type              NotificationType
+  schemaVersion     Int @default(1)
+  courseId          String?
+  occurredAt        DateTime
+  recordedAt        DateTime @default(now())
+  expiresAt         DateTime
+  deliveryStatus    NotificationDeliveryStatus @default(PENDING)
+  nextAttemptAt     DateTime @default(now())
+  attemptCount      Int @default(0)
+  leaseToken        String?
+  leaseExpiresAt    DateTime?
+  fanoutCursor      String?
+  lastErrorCategory String?
+  audience          NotificationAudience[]
+
+  @@index([deliveryStatus, nextAttemptAt, id])
+  @@index([expiresAt])
+}
+
+/// Frozen recipients. A notice cannot exist without this owning audience row.
+model NotificationAudience {
+  eventId        String
+  event          NotificationEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  recipientId    String
+  recipient      User @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  materializedAt DateTime?
+  notification   Notification?
+
+  @@id([eventId, recipientId])
+  @@index([recipientId])
+}
+
+model Notification {
+  id                String @id @default(uuid())
+  eventId           String
+  recipientId       String
+  audience          NotificationAudience @relation(fields: [eventId, recipientId], references: [eventId, recipientId], onDelete: Cascade)
+  recipient         User @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  recipientSequence BigInt
+  createdAt         DateTime
+  occurredAt        DateTime
+  expiresAt         DateTime
+  readAt            DateTime?
+  signalPending     Boolean @default(true)
+  signalAttempts    Int @default(0)
+  nextSignalAt      DateTime @default(now())
+
+  @@unique([eventId, recipientId])
+  @@unique([recipientId, recipientSequence])
+  @@index([recipientId, readAt, expiresAt])
+  @@index([expiresAt])
+  @@index([signalPending, nextSignalAt, id])
+}
+
+/// Monotonic allocation and read-all fence; every inbox writer locks this row.
+model NotificationInboxState {
+  userId       String @id
+  user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastSequence BigInt @default(0)
+  revision     BigInt @default(0)
+  deliveredRevision BigInt @default(0)
+  signalLeaseToken String?
+  signalLeaseExpiresAt DateTime?
+  signalNextAttemptAt DateTime @default(now())
+  signalAttemptCount Int @default(0)
+  updatedAt    DateTime @updatedAt
+}
+
+/// Minimal durable boundary evidence; never a copy of notice content.
+model NotificationExpiryMarker {
+  studentId String
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId String
+  recordedExpiry DateTime
+  @@id([studentId, courseId])
+}
+
+/// Singleton activation fence: no historical notification backfill.
+model NotificationRollout {
+  id Int @id
+  installedAt DateTime
 }

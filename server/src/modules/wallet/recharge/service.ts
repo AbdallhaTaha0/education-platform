@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { recordRecharge } from '../../notifications/producers.js';
 import { Prisma } from '@prisma/client';
 import { ApiError } from '../../identity/errors.js';
 import { audit } from '../../catalog/audit.js';
@@ -182,6 +183,7 @@ export async function reviewRecharge(
         ? { amountPiastres: request.amountPiastres, channel: request.channel }
         : { channel: request.channel },
     });
+    await recordRecharge(tx, request.id);
     return request;
   });
   return toStudentView(outcome as unknown as Record<string, unknown>);

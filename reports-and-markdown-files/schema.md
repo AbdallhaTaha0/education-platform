@@ -19,6 +19,10 @@ DRAFT model updated with confirmed decisions; not executable Prisma or migration
 | PlaybackReference | External session reference bound to student/entitlement | Retention and termination reconciliation |
 | LessonProgress | Student lesson progress | Completion definition |
 | AuditEvent | Actor, action, target, time and outcome | Retention/redaction policy |
+| NotificationEvent / NotificationAudience | D25/R17 committed intent and frozen recipients; unique event key; four approved types; creation plus 180-day expiry; tokened event lease and atomic per-recipient progress | Package 04 supplies bounded producer/fanout/cleanup work; final restart/replica qualification remains pending |
+| Notification / NotificationInboxState | Recipient-owned read state; unique event/recipient and recipient/sequence; monotonic lastSequence/revision; safe presentation; coalesced durable deliveredRevision and tokened signal retry | HTTP APIs, bilingual inbox and minimal realtime signals implemented; recipient receipt is not inferred from signal publication |
+| NotificationRollout / NotificationExpiryMarker | Activation timestamp suppresses historical backfill; last effective expiry per student/course survives notice cleanup | Minimal source metadata, not retained message text; no FK into the removable course |
+| Course.firstPublicationAt / RechargeRequest.notificationRecordedAt | Immutable application source markers committed with the authoritative source transaction; existing source history baselined in migration | Prevent regenerated publication/recharge notices after retention cleanup; do not change money or catalog lifecycle policy |
 
 ## Proposed constraints for final schema review
 

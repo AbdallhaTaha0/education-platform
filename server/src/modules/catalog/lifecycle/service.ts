@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { ApiError } from '../../identity/errors.js';
 import { audit } from '../audit.js';
+import { recordFirstPublication } from '../../notifications/producers.js';
 import { withCourseLock } from '../courseTx.js';
 import type { CourseHierarchy } from '../types.js';
 import { assertUuid } from '../validation.js';
@@ -43,6 +44,7 @@ export async function requestTransition(prisma: PrismaClient, actorId: string, c
     validateReadyForPublish(hierarchy);
     const updated = await tx.course.update({ where: { id: courseId }, data: { status: 'PUBLISHED', publishedAt: new Date() } });
     await audit(tx, { actorUserId: actorId, action: 'COURSE_PUBLISHED', entityType: 'Course', entityId: courseId, metadata: { from: 'READY', to: 'PUBLISHED' } });
+    await recordFirstPublication(tx, courseId, updated.publishedAt!);
     return updated;
   });
 }

@@ -1,0 +1,7 @@
+# Image names unique to the M6 inbox checks; use with compose.test.yml and
+# project m6-inbox-test. No published ports or development volume names.
+services:
+  migrate:
+    image: edu-platform-migrate-test:0.6.0-m6-inbox
+  test:
+    image: edu-platform-server-test:0.6.0-m6-inbox

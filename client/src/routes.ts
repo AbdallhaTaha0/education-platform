@@ -14,6 +14,7 @@ export type Route =
   | 'purchase'
   | 'admin-recharge'
   | 'dashboard'
+  | 'notifications'
   | 'learn';
 
 export function routeFromHash(): Route {
@@ -27,6 +28,7 @@ export function routeFromHash(): Route {
   if (hash === '#/wallet/recharge') return 'wallet-recharge';
   if (hash === '#/wallet') return 'wallet';
   if (hash === '#/dashboard') return 'dashboard';
+  if (hash === '#/notifications') return 'notifications';
   if (hash.startsWith('#/learn/')) return 'learn';
   if (hash === '#/admin/recharge') return 'admin-recharge';
   if (hash.startsWith('#/courses/')) return 'course-detail';

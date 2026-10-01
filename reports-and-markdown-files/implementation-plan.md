@@ -48,7 +48,9 @@ Acceptance: real external upload-to-playback, token lifecycle, watermark observa
 
 ## WP6: Background and realtime
 
-No live classes. Implement only confirmed notification/realtime scope. Platform expiry/reconciliation jobs can use BullMQ/Redis after contracts are approved. Define idempotency, retries, failure visibility and replica coordination. Chat/email/WhatsApp release scope is pending.
+No live classes. D25/R17 now confirms realtime in-platform notices for recharge decisions, first publication and effective subscription expiry, with recipient-scoped read/unread/read-all and 180-day retention. Chat/email/WhatsApp are deferred. Follow `m6-manager-plan.md` and the package-01 `m6-notification-contract.md`; proposed engineering mechanisms remain subject to source/Docker review.
+
+Sequence the bounded packages: contracts; backend persistence/authorized APIs; bilingual inbox; committed producers and Socket.IO/Redis delivery inside the existing app; focused end-to-end/retry/replica verification. PostgreSQL intent and inbox form the durable authority; realtime signals trigger authorized refetch. Do not add a broker/service or BullMQ queue topology by implication. Preserve wallet transaction/idempotency and renewal semantics. The owner assigned direct work during Docker reinstallation and repeated that instruction after restoration. Packages 01–05 have bounded implementation/functional evidence; [package 05](m6-05-acceptance-report.md) passes 65 Docker replica/recovery/crash/retention assertions. The owner-authorized [independent review](m6-independent-review-report.md) now records ACCEPTABLE FOR OWNER REVIEW after fresh critical reproduction, including additional authority/renewal and migration diagnostics. [Owner M6 acceptance is recorded](m6-owner-acceptance.md); the next bounded work is [M7 readiness preparation](m7-01-open-code-worker-prompt.md). M5 acceptance is still unconfirmed and is not implied by continued independent M6 development.
 
 ## WP7: Qualification
 

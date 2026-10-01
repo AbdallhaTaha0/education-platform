@@ -1,5 +1,13 @@
 # Education platform documentation
 
+Current handoff checkpoint (2026-10-01): the owner [accepted M6](m6-owner-acceptance.md) after [independent review](m6-independent-review-report.md) and authorized commit/push. The accepted milestone commit contains that acceptance record; the pre-M6 platform checkpoint is `4b949cc394636c2df928d0b7642122da61e5301c`. Independent DRM and the matching gitlink remain `bad0c1df9f5d5844fe365c402fcccfee33ab6906`. [The OpenCode package 01 prompt](m7-01-open-code-worker-prompt.md) assigns bounded M7 readiness preparation. Formal M5 owner acceptance remains unconfirmed; production and 10,000-user qualification are not approved or inferred. The execution/review paragraphs below preserve earlier checkpoints.
+
+Owner follow-up (2026-10-01): this agent is assigned to work directly while Docker is downloaded again. Package 01 is completed as a documentation/source-review package in the [notification contract](m6-notification-contract.md), with an explicitly same-agent [package report](m6-01-contracts-worker-report.md). No worker was dispatched. Application development/testing remain Docker-gated; M5 acceptance is still unconfirmed.
+
+Docker-restored continuation (2026-10-01): the owner said Docker is ready and to work. Package 02 implements notification persistence and recipient-only HTTP APIs, with fresh Docker evidence in [the backend report](m6-02-backend-report.md). Package 03 adds the bilingual inbox in [the inbox report](m6-03-inbox-report.md). Package 04 adds committed producers, renewal-aware expiry, durable dispatch/cleanup and Socket.IO/Redis delivery; [the delivery report](m6-04-delivery-report.md) records 18 focused checks, 251 integration tests, 70 client tests, two compatibility tests and 22 final browser checks, including a real Redis restart. On the subsequent "next", [package 05](m6-05-acceptance-report.md) passes 65 Docker assertions across separately deployed replicas, backend failover, database recovery, five dispatcher crash boundaries and concurrent retention. These are direct implementation and same-agent verification. The subsequent [independent review](m6-independent-review-report.md) is complete; subsequent [owner M6 acceptance is recorded](m6-owner-acceptance.md). M5 acceptance has not been inferred.
+
+Owner-authorized independent review (2026-10-01): after the proposed separate-reviewer review/fix/acceptance sequence, the owner said "go for it". [The independent report](m6-independent-review-report.md) now records ACCEPTABLE FOR OWNER REVIEW: 40 focused server tests, 17 client tests, two added authority/renewal cases, both typechecks, 65 acceptance assertions, 22 additional runtime browser assertions, and populated/negative migration drills. A P3 obscured-migration diagnostic is addressed by independently verified read-only troubleshooting; no blocking application finding remains. The earlier preparation/implementation paragraphs are historical. The owner subsequently [accepted M6 and authorized commit/push](m6-owner-acceptance.md). Production approval is not inferred.
+
 Current review (2026-10-01): [M5 manager continuation](m5-manager-continuation-review.md) records the recovered OpenCode work, new fixes, fresh Docker evidence and remaining gates. Platform M5 implementation is committed at `b04d84f`; closure work is uncommitted. The baseline paragraphs below describe earlier evidence, not current acceptance.
 
 Baseline updated: 2026-09-30 after the owner-authorized M5 DRM security
@@ -40,6 +48,16 @@ Where sources conflict, record the conflict and ask the owner. Neither existing 
 
 | File | Purpose |
 | --- | --- |
+| [m6-owner-acceptance.md](m6-owner-acceptance.md) | Explicit M6 acceptance and commit/push authority; separate release limits |
+| [m7-01-open-code-worker-prompt.md](m7-01-open-code-worker-prompt.md) | Short OpenCode package 01: readiness/dependency audit, then stop for manager review |
+| [m6-manager-plan.md](m6-manager-plan.md) | D25 scope, sequential direct implementation packages and review gates |
+| [m6-notification-contract.md](m6-notification-contract.md) | Approved notification behavior and engineering contracts |
+| [m6-02-backend-report.md](m6-02-backend-report.md) | Docker-verified private inbox storage/APIs and migration evidence |
+| [m6-03-inbox-report.md](m6-03-inbox-report.md) | Bilingual inbox implementation, Docker tests, Chromium/screenshots and cleanup evidence |
+| [m6-04-delivery-report.md](m6-04-delivery-report.md) | Committed events, source markers, rollout migration, durable dispatch/cleanup, realtime and Redis recovery evidence |
+| [m6-05-acceptance-report.md](m6-05-acceptance-report.md) | 65 Docker replica/failover/database/crash/retention assertions, cleanup and final review limits |
+| [m6-final-review-prompt.md](m6-final-review-prompt.md) | Owner-authorized separate-reviewer assignment; acceptance remains distinct |
+| [m6-independent-review-report.md](m6-independent-review-report.md) | Completed independent source/Docker review, verified diagnostic guidance and ACCEPTABLE FOR OWNER REVIEW verdict |
 | [drm-recorded-manifest-repair-proposal.md](drm-recorded-manifest-repair-proposal.md) | Exact static-manifest prerequisite, reproduction and bounded owner assignment |
 | [m5-manager-continuation-review.md](m5-manager-continuation-review.md) | Recovered work, independent verification, current blockers and bounded next steps |
 | [m5-closure-work-packages/README.md](m5-closure-work-packages/README.md) | Sequential closure packages 01–09 and worker contract |

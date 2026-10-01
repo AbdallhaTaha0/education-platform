@@ -1,0 +1,5 @@
+services:
+  migrate:
+    image: edu-platform-migrate-test:0.6.0-m6-delivery
+  test:
+    image: edu-platform-server-test:0.6.0-m6-delivery

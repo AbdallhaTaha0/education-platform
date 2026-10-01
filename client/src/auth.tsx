@@ -151,6 +151,8 @@ interface AuthContextValue {
   reload: () => Promise<void>;
   logout: () => Promise<string | null>;
   logoutAll: () => Promise<string | null>;
+  /** A protected request has exhausted coordinated refresh and still failed authentication. */
+  invalidateSession: (code: string) => void;
 }
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
@@ -225,9 +227,16 @@ function AuthInner({ children }: { children: ReactNode }): JSX.Element {
     }
   }, []);
 
+  const invalidateSession = useCallback((code: string) => {
+    if (!mounted.current) return;
+    setUser(null);
+    setStatus('anonymous');
+    setLastAuthCode(code);
+  }, []);
+
   const value = useMemo(
-    () => ({ status, user, lastAuthCode, reload, logout, logoutAll }),
-    [status, user, lastAuthCode, reload, logout, logoutAll],
+    () => ({ status, user, lastAuthCode, reload, logout, logoutAll, invalidateSession }),
+    [status, user, lastAuthCode, reload, logout, logoutAll, invalidateSession],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

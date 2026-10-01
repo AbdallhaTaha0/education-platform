@@ -25,6 +25,7 @@ const KEYS: Record<Route, string | null> = {
   purchases: 'purchaseHistory',
   purchase: 'purchaseTitle',
   dashboard: 'navDashboard',
+  notifications: 'navNotifications',
   learn: 'learningTitle',
 };
 

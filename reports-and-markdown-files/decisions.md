@@ -89,3 +89,30 @@ Future answers must record owner/date, approved policy, affected documents and a
 ## D24 — recorded-video manifest repair (2026-10-01, CONFIRMED)
 
 The owner explicitly approved the prepared bounded DRM packaging repair after reproduction showed a dynamic MPD for recorded courses. Add `--generate_static_live_mpd` in the independent worker, add affected processing regression coverage, rebuild in Docker and verify real-browser playback. No existing media is automatically regenerated, no license enforcement changes, and no platform access to DRM persistence is authorized. The original architecture remains unchanged.
+
+## D25 — M6 realtime in-platform notifications (2026-10-01, CONFIRMED)
+
+Current milestone disposition: the owner [accepted M6 on 2026-10-01](m6-owner-acceptance.md) after the separate review and explicitly authorized commit/push and a teammate handoff. The execution/review notes below preserve their earlier states. This accepts local notification functionality; it does not approve production, certify capacity, formally accept M5 or expand DRM maintenance scope.
+
+The owner first answered "real time", then explicitly selected "Approve this proposed policy" for the following complete proposal:
+
+- In-platform notifications with realtime delivery; chat, email and WhatsApp are deferred.
+- Recharge approval/rejection goes to the requesting student.
+- First course publication goes to all students.
+- Subscription expiry goes to the affected student, once per expiry after accounting for renewals.
+- Read/unread state and mark-all-read; no dismissal.
+- Notifications are retained for 180 days.
+
+This approves notification policy only. Recharge approval still requires verified receipt, credits once, and never buys a subscription. Notifications do not grant access or change wallet/subscription terms. Both languages, cookie authentication, the two-role boundary, one Express application, PostgreSQL/Prisma, Nginx/Redis and external API-only DRM remain mandatory.
+
+Affected documents: this register, the documentation index, `m6-manager-plan.md`, the first contracts worker prompt and its future reviewed contract; subsequent bounded packages will update relevant requirements, implementation, operations and verification documentation. Existing pending notification wording describes the earlier baseline and is superseded only by this explicit scope. No password recovery, identifier verification or external delivery channel is authorized.
+
+Acceptance checks: recipient-only list/count/read/realtime access; no protected content or credential disclosure; committed-event production; duplicate/retry/crash recovery; renewal-aware expiry including students without playback references; durable reconnect recovery; cookie/session revocation; multiple backend replicas; bilingual, RTL/LTR, accessible dark/light UI; 180-day retention independent of financial/audit retention. Delivery framework and persistence contracts must be reviewed against the existing architecture before implementation. Formal M5 owner acceptance remains unconfirmed in this manager session.
+
+Execution follow-up, 2026-10-01: the owner stated that Docker is being downloaded again and explicitly asked this agent to work instead of OpenCode in the meantime. Direct contract preparation and source review are therefore assigned to this agent; no worker is dispatched. This changes the executor, not the approved notification policy, Docker requirement, DRM boundary, milestone acceptance or production authority.
+
+Execution continuation, 2026-10-01: the owner restored Docker and repeatedly instructed continuation/"next". Packages 01–05 now have direct bounded implementation/functional evidence, including [65 package-05 Docker replica/recovery/crash/retention assertions](m6-05-acceptance-report.md). [Independent final review is prepared](m6-final-review-prompt.md), not dispatched or performed. No additional notification policy, owner milestone acceptance, commit/push or production authorization is inferred.
+
+Review assignment, 2026-10-01: the owner answered "go for it" to the proposed separate-reviewer M6 review, repair/reverification of findings and subsequent owner acceptance. A separate reviewer is assigned [the review packet](m6-final-review-prompt.md). This authorizes review/reproduction and necessary fixes; it does not predeclare the findings/verdict or owner milestone acceptance. The implementing agent coordinates repairs and the reviewer verifies affected behavior independently. No production or DRM scope change is implied.
+
+Independent review completion, 2026-10-01: [the separate reviewer](m6-independent-review-report.md) records ACCEPTABLE FOR OWNER REVIEW after source inspection and fresh Docker reproduction: 40 focused server tests, 17 client tests, two added authority/renewal cases, both typechecks, 65 acceptance assertions, 22 runtime browser assertions and migration drills. No unresolved blocking application defect remains. An obscured Prisma migration diagnostic is addressed by an independently verified read-only troubleshooting query, preserving applied SQL/checksums. All owned disposable resources/private receipts were removed, the existing preview remains healthy and DRM remains unchanged. Owner M6 acceptance is still unrecorded; this independent verdict does not imply production approval or formal M5 acceptance.

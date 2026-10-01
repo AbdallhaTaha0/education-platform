@@ -1,0 +1,7 @@
+# Only for deterministic dispatcher crash checkpoints. Same application/image;
+# test entry point attaches real HTTP/realtime, but deliberately has no scheduler.
+services:
+  server:
+    command: ["node", "/verification/probe.cjs", "listener"]
+  server-b:
+    command: ["node", "/verification/probe.cjs", "listener"]

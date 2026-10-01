@@ -21,6 +21,7 @@ import type { DrmClient } from './modules/catalog/drmClient.js';
 import { createDrmClient } from './modules/catalog/drmClient.js';
 import type { Clock } from './modules/identity/tokens.js';
 import { createAssertionJwks } from './modules/learning/playback/assertion.js';
+import { createNotificationRouter } from './modules/notifications/index.js';
 
 export interface AppDependencies {
   config: ServerConfig;
@@ -146,6 +147,11 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
   const learning = createLearningModule(learningDeps);
   app.set('learning', learning.context);
   app.use('/learning', learning.router);
+
+  // M6 recipient-only inbox APIs, inside the same modular backend.
+  app.use('/notifications', createNotificationRouter({
+    prisma: deps.prisma, ...(tunables.clock ? { clock: tunables.clock } : {}),
+  }));
 
   // Public signing metadata for the independently deployed DRM verifier.
   // Only the RSA public key is exposed; HS256 exists solely for labeled test fixtures.
