@@ -22,6 +22,7 @@ import { scheduleTermination } from '../expiry/reconciler.js';
 import { evaluateEntitlement } from '../access/entitlement.js';
 import { toWatermarkPresentation, validatePlaybackSession, validateRenewal } from './schemas.js';
 import { resolveDependencyUrls } from './urls.js';
+import { assertLessonUnlocked } from '../../assessments/progression.js';
 
 export interface PlaybackDeps {
   prisma: PrismaClient;
@@ -121,7 +122,7 @@ export async function renewPlaybackToken(
 ): Promise<RenewalOutcome> {
   const reference = await deps.prisma.playbackReference.findFirst({
     where: { id: input.referenceId, studentId: input.studentId },
-    select: { id: true, status: true, externalSessionId: true, studentId: true, courseId: true },
+    select: { id: true, status: true, externalSessionId: true, studentId: true, courseId: true, lessonId: true },
   });
   if (reference === null) return { renewed: false, reason: 'NOT_RENEWABLE' };
   if (reference.status !== 'ACTIVE') return { renewed: false, reason: 'NOT_RENEWABLE' };
@@ -139,6 +140,7 @@ export async function renewPlaybackToken(
     await scheduleTermination(deps.prisma, reference.id, input.nowMs, 'SUBSCRIPTION_EXPIRED');
     return { renewed: false, reason: 'NOT_RENEWABLE' };
   }
+  await assertLessonUnlocked(deps.prisma, reference.studentId, reference.courseId, reference.lessonId);
 
   let raw: unknown;
   try {

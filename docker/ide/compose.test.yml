@@ -1,0 +1,12 @@
+# Combine only with ../compose.test.yml using project fayq-m9-test.
+# Every database volume is disposable and project-prefixed; no existing data.
+services:
+  test:
+    image: fayq-m9-server-test:0.9.0
+    environment:
+      NODE_ENV: test
+  migrate:
+    image: fayq-m9-server-test:0.9.0
+    command: ['npx', 'prisma', 'migrate', 'deploy']
+  client-test:
+    image: fayq-m9-client-test:0.9.0

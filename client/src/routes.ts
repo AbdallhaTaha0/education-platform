@@ -18,10 +18,16 @@ export type Route =
   | 'admin-recharge'
   | 'dashboard'
   | 'notifications'
-  | 'learn';
+  | 'learn'
+  | 'practice'
+  | 'assessment'
+  | 'admin-practice';
 
 export function routeFromHash(): Route {
   const hash = window.location.hash;
+  if (hash === '#/practice') return 'practice';
+  if (hash === '#/admin/practice') return 'admin-practice';
+  if (hash.startsWith('#/assessment/')) return 'assessment';
   if (hash === '#/register') return 'register';
   if (hash === '#/login') return 'login';
   if (hash === '#/account') return 'account';

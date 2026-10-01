@@ -19,6 +19,7 @@
     "@prisma/client": "^6.0.0",
     "@socket.io/redis-adapter": "8.3.0",
     "argon2": "^0.45.1",
+    "bullmq": "^5.58.5",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",
@@ -49,6 +50,7 @@
     "node": ">=20"
   },
   "overrides": {
+    "bullmq": { "uuid": "11.1.1" },
     "@prisma/config@6.19.3": {
       "deepmerge-ts": "8.0.2"
     }

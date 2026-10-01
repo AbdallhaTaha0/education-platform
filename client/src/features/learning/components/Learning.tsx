@@ -162,7 +162,7 @@ export function CourseOutline({
                       {lang === 'ar' ? lesson.titleAr : lesson.titleEn}
                     </span>
                     <span className="shrink-0 text-xs text-muted">
-                      {state === 'completed'
+                      {lesson.locked ? lang === 'ar' ? 'اجتز التقييمات المطلوبة' : 'Pass required assessments' : state === 'completed'
                         ? labels.completed
                         : state === 'current'
                           ? labels.resume

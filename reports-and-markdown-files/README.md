@@ -1,5 +1,17 @@
 # Education platform documentation
 
+M9 input/output problems (2026-10-02): [authoring guide](m9-input-output-guide.md) covers private reference solutions, generated/frozen hidden cases, `readline()` and `console.log()`. [Implementation and Docker evidence](m9-input-output-implementation-report.md) records the delivered flow and preserved local preview. New problems use this mode; existing quizzes remain intact.
+
+ADMIN JavaScript authoring: [typed check guide](m9-admin-check-authoring-guide.md) explains value types, function inputs and object/array builders.
+
+Owner testing follow-up: [M9 corrections](m9-testing-corrections-report.md) records private-by-default ADMIN source, console-output grading, active-course duplicate-charge prevention and paginated submission review. The updated M9 contract governs these corrections; historical renewal policies below are superseded only for standalone purchases.
+
+Latest M9 UI scope: JavaScript-only editing and a large console in the former preview position; HTML/CSS are deferred. See the owner follow-up in [the contract](m9-implementation-contract.md). Historical data and grading revisions are preserved.
+
+Current M9 implementation (2026-10-01): the owner explicitly authorized direct completion and approved [the implementation contract](m9-implementation-contract.md), including reusable HTML/CSS/JavaScript/DOM previews, coding/multiple-choice checking, allowance administration, drafts/retention and required/optional progression. [The implementation report](m9-implementation-report.md) records Docker verification, preserved data and the port-8080 preview; [schema/API](m9-schema-api.md) and [Docker runbook](m9-docker-runbook.md) describe the delivered contracts. The earlier [manager plan](m9-ide-assessments-manager-plan.md) and [architecture review](m9-architecture-and-capacity-review.md) remain historical proposals with supersession notes. No production deployment, 10,000-user certification, owner milestone acceptance or commit/push is inferred.
+
+M9 progression: ADMIN chooses **required or optional**; only published required assessments block later lessons. Existing students keep migration-time reached lessons, and earned passes survive content edits. Subscription/publication protection remains mandatory. The implementation contract now governs rollout and immutable revisions.
+
 Current local continuation (2026-10-01): the [fresh M7/M8 Docker review](local-m7-m8-refresh-review.md) reproduces 446 backend tests, 76 frontend tests plus two compatibility checks, 81 browser checks and the Railway candidate rehearsal. The rebuilt preview is http://localhost:8080; all existing local data volumes are preserved. The teammate's real-video preview described below is machine-local and was not transferred by Git. Deployment, commercial DRM, capacity qualification and recovery/monitoring are explicitly deferred by the owner. The [remaining-work plan](m7-m8-remaining-work-plan.md) is retained for a future assignment. No production deployment or milestone acceptance is inferred.
 
 Owner delivery authorization (2026-10-01): commit/push the completed M7 local preparation and M8 implementation, with [the teammate continuation prompt](m7-m8-teammate-handoff.md). This authorizes source delivery, not production deployment or automatic milestone acceptance. Historical reports preserve their original no-commit execution status.
@@ -58,6 +70,11 @@ Where sources conflict, record the conflict and ask the owner. Neither existing 
 
 | File | Purpose |
 | --- | --- |
+| [m9-testing-corrections-report.md](m9-testing-corrections-report.md) | Owner-reported code privacy, purchase, grading and submission-review fixes with fresh Docker evidence |
+| [m9-implementation-report.md](m9-implementation-report.md) | M9 implementation, review, actual Docker evidence and release limits |
+| [m9-implementation-contract.md](m9-implementation-contract.md) | Owner-approved IDE, quota, grading and progression contracts |
+| [m9-schema-api.md](m9-schema-api.md) | Assessment persistence, API, privacy and lifecycle |
+| [m9-docker-runbook.md](m9-docker-runbook.md) | Build, preview, isolation, recovery, cleanup and rollback |
 | [m8-04-completion-report.md](m8-04-completion-report.md) | Final M8 implementation and Docker verification |
 | [m7-07-manager-review.md](m7-07-manager-review.md) | Bounded Prisma override manager review |
 | [m6-owner-acceptance.md](m6-owner-acceptance.md) | Explicit M6 acceptance and commit/push authority; separate release limits |

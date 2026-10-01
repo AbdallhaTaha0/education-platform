@@ -45,6 +45,7 @@ export function Header({
   const label = (ar: string, en: string): string => (lang === 'ar' ? ar : en);
   const entries: { href: string; label: string; icon: Icon; active: boolean }[] = admin
     ? [
+        { href: '#/admin/practice', label: label('التدريب', 'Practice'), icon: 'learning', active: route === 'admin-practice' },
         {
           href: '#/admin/summary',
           label: label('الإدارة', 'Overview'),
@@ -72,6 +73,7 @@ export function Header({
         },
       ]
     : [
+        ...(signedIn ? [{ href: '#/practice', label: label('مختبر البرمجة', 'Practice IDE'), icon: 'learning' as const, active: route === 'practice' }] : []),
         { href: '#/', label: t.navHome, icon: 'home', active: route === 'home' },
         {
           href: '#/courses',
@@ -158,6 +160,7 @@ export function Header({
       </header>
       <nav
         className="mobile-dock"
+        style={{ gridTemplateColumns: `repeat(${entries.length}, minmax(0, 1fr))` }}
         aria-label={label('التنقل الرئيسي', 'Main navigation')}
         data-testid="mobile-dock"
       >

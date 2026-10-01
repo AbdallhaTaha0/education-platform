@@ -300,6 +300,9 @@ describe('M8 academic and atomic package purchase', () => {
     ).toBe(409);
   });
   it('converges a concurrent cross-kind race on one debit without duplication', async () => {
+    // Earlier cases bought these shared fixture courses. Expire only this
+    // synthetic student's fixture grants to exercise the admission race.
+    await world.prisma.subscription.updateMany({ where: { studentId: world.studentUser.id, courseId: ids[0]! }, data: { startsAt: new Date('2020-01-01'), expiresAt: new Date('2020-02-01') } });
     const p = await pkg();
     const plan = await world.prisma.subscriptionPlan.create({
       data: { courseId: ids[0]!, currentPricePiastres: 5000, durationDays: 30 },
@@ -391,6 +394,7 @@ describe('M8 academic and atomic package purchase', () => {
     }
   });
   it('grants fixed-date course access and refuses an already expired offer', async () => {
+    await world.prisma.subscription.updateMany({ where: { studentId: world.studentUser.id, courseId: ids[0]! }, data: { startsAt: new Date('2020-01-01'), expiresAt: new Date('2020-02-01') } });
     const res = await adminPost(
       world.app,
       `/admin/catalog/courses/${ids[0]}/plans`,
@@ -423,8 +427,9 @@ describe('M8 academic and atomic package purchase', () => {
     expect(await balance()).toBe(before);
   });
   it('preserves longer standalone access when purchasing an overlapping package', async () => {
+    await world.prisma.subscription.updateMany({ where: { studentId: world.studentUser.id, courseId: ids[0]! }, data: { startsAt: new Date('2020-01-01'), expiresAt: new Date('2020-02-01') } });
     const plan = await world.prisma.subscriptionPlan.create({
-      data: { courseId: ids[0]!, currentPricePiastres: 100, durationDays: 90 },
+      data: { courseId: ids[0]!, currentPricePiastres: 100, durationDays: 730 },
     });
     const standalone = await studentPost(world.app, '/wallet/purchases', world.studentJar, {
       planId: plan.id,
@@ -455,7 +460,7 @@ describe('M8 academic and atomic package purchase', () => {
       ),
     ).toBe(false);
   });
-  it('only charges for a fixed deadline when it extends existing access', async () => {
+  it('does not charge an active course again even if ADMIN extends the offer deadline', async () => {
     const res = await adminPost(
       world.app,
       `/admin/catalog/courses/${ids[1]}/plans`,
@@ -471,7 +476,7 @@ describe('M8 academic and atomic package purchase', () => {
     const input = { planId: res.body.data.plan.id, idempotencyKey: uniqueKey('m8-no-extension') };
     expect(
       (await studentPost(world.app, '/wallet/purchases', world.studentJar, input)).body.error.code,
-    ).toBe('NO_ACCESS_EXTENSION');
+    ).toBe('COURSE_ALREADY_SUBSCRIBED');
     expect(await balance()).toBe(before);
     expect(
       (
@@ -484,9 +489,9 @@ describe('M8 academic and atomic package purchase', () => {
       ...input,
       idempotencyKey: uniqueKey('m8-extension'),
     });
-    expect(extended.status).toBe(201);
-    expect(extended.body.data.subscription.expiresAt).toBe('2028-01-15T16:00:00.000Z');
-    expect(await balance()).toBe(before - 100);
+    expect(extended.status).toBe(409);
+    expect(extended.body.error.code).toBe('COURSE_ALREADY_SUBSCRIBED');
+    expect(await balance()).toBe(before);
   });
   it('offers unpublished monthly members with a clear label but no learning access', async () => {
     await world.prisma.course.update({ where: { id: ids[2] }, data: { status: 'DRAFT' } });
@@ -513,6 +518,7 @@ describe('M8 academic and atomic package purchase', () => {
     }
   });
   it('preserves indefinite snapshots and suppresses expiry despite older finite grants', async () => {
+    await world.prisma.subscription.updateMany({ where: { studentId: world.studentUser.id, courseId: ids[2]! }, data: { startsAt: new Date('2020-01-01'), expiresAt: new Date('2020-02-01') } });
     const res = await adminPost(
       world.app,
       `/admin/catalog/courses/${ids[2]}/plans`,
@@ -553,7 +559,7 @@ describe('M8 academic and atomic package purchase', () => {
       ...input,
       idempotencyKey: uniqueKey('m8-indefinite-repeat'),
     });
-    expect(repeat.body.error.code).toBe('NO_ACCESS_EXTENSION');
+    expect(repeat.body.error.code).toBe('COURSE_ALREADY_SUBSCRIBED');
     expect(await balance()).toBe(before - 100);
   });
   it('refuses stale versions, insufficient funds and archived members without debit', async () => {

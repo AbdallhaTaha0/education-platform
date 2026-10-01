@@ -997,3 +997,7 @@ html[data-virtual-keyboard='open'] .mobile-dock {
     display: none;
   }
 }
+
+/* IDE syntax colors: contrast against the elevated surface in both themes. */
+:root { --ide-keyword: #c4b5fd; --ide-string: #86efac; --ide-number: #fdba74; --ide-comment: #a7b7a8; --ide-function: #7dd3fc; --ide-operator: #cbd5e1; }
+html[data-theme="light"] { --ide-keyword: #6d28d9; --ide-string: #166534; --ide-number: #9a3412; --ide-comment: #526155; --ide-function: #075985; --ide-operator: #334155; }

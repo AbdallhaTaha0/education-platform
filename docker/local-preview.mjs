@@ -25,8 +25,8 @@ if (Object.keys(settings).length !== keys.length || keys.some(key => !/^[a-zA-Z0
 const childEnv = { ...process.env, ...settings, COMPOSE_PROFILES: '' };
 const platforms = {
   platform: {project: 'fayq-local-preview', files: ['docker/compose.dev.yml', 'docker/compose.local.yml'], env: '.env',
-    volumes: [settings.LOCAL_PGDATA_NAME, settings.LOCAL_REDISDATA_NAME], services: ['postgres','redis','migrate','server','client','nginx'],
-    images: {migrate:'fayq-platform-migrate:0.8.0-local',server:'fayq-platform-server:0.8.0-local',client:'fayq-platform-client:0.8.0-local',nginx:'fayq-platform-nginx:0.8.0-local'},
+    volumes: [settings.LOCAL_PGDATA_NAME, settings.LOCAL_REDISDATA_NAME], services: ['postgres','redis','migrate','server','client','nginx','grading'],
+    images: {migrate:'fayq-platform-migrate:0.9.0-m9',server:'fayq-platform-server:0.9.0-m9',client:'fayq-platform-client:0.9.0-m9',nginx:'fayq-platform-nginx:0.8.0-local',grading:'fayq-assessment-controller:0.9.0'},
     ingress: 'nginx', port: 8080, containerPort: 8080},
   drm: {project: 'education-drm-service', files: ['education-drm-service/docker/docker-compose.yml', 'docker/compose.local-drm.yml'], env: 'education-drm-service/.env',
     volumes: [settings.LOCAL_DRM_PGDATA_NAME, settings.LOCAL_DRM_REDISDATA_NAME], services: ['postgres','valkey','migrate','api','worker'],
@@ -48,8 +48,10 @@ for (const group of Object.values(platforms)) {
     const s = config.services[name];
     if (!s || (group.images[name] && s.image !== group.images[name])) throw new Error('Image/service guard refused.');
     for (const mount of s.volumes || []) {
+      if (group.project === 'fayq-local-preview' && name === 'grading' && mount.type === 'bind' && mount.source === '/var/run/docker.sock' && mount.target === '/var/run/docker.sock') continue;
       if (mount.type !== 'volume' || !group.volumes.includes(config.volumes[mount.source]?.name)) throw new Error('Mount guard refused.');
     }
+    if (name === 'grading' && Object.keys(s.environment || {}).some(key => /AUTH|DRM|SECRET|TOKEN/.test(key))) throw new Error('Grading credential guard refused.');
     const ports = s.ports || [];
     if (name === group.ingress) {
       if (ports.length !== 1 || ports[0].host_ip !== '127.0.0.1' || Number(ports[0].published) !== group.port || ports[0].target !== group.containerPort)
@@ -67,9 +69,11 @@ const action = process.argv[2] || 'check';
 if (action === 'check') process.exit(0);
 if (action === 'build') {
   run(platforms.platform,['build','--no-cache','--pull','server','migrate','client','nginx']);
+  run(platforms.platform,['build','grading']);
   run(platforms.drm,['build','--no-cache','--pull','api','worker','migrate']);
 } else if (action === 'up') {
-  run(platforms.platform,['up','-d','--wait','nginx']);
+  run(platforms.platform,['up','-d','--wait','server','client','grading']);
+  run(platforms.platform,['up','-d','--wait','--no-deps','--force-recreate','nginx']);
   run(platforms.drm,['up','-d','--wait','api','worker']);
 } else if (action === 'stop') {
   run(platforms.platform,['stop']); run(platforms.drm,['stop']);

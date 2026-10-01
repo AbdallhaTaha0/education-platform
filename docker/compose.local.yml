@@ -2,19 +2,36 @@
 # External volumes keep existing data through container/image replacement.
 services:
   migrate:
-    image: fayq-platform-migrate:0.8.0-local
+    image: fayq-platform-migrate:0.9.0-m9
   server:
-    image: fayq-platform-server:0.8.0-local
+    image: fayq-platform-server:0.9.0-m9
     environment:
       NODE_ENV: development
-      SERVICE_VERSION: 0.8.0-local
+      SERVICE_VERSION: 0.9.0-m9
       ALLOWED_ORIGINS: http://localhost:8080
       COOKIE_SECURE: 'false'
       OWNER_PREVIEW: '1'
       DRM_BASE_URL: http://host.docker.internal:3000
       DRM_PUBLIC_BASE_URL: http://localhost:3000
   client:
-    image: fayq-platform-client:0.8.0-local
+    image: fayq-platform-client:0.9.0-m9
+  grading:
+    build:
+      context: ..
+      dockerfile: docker/ide/controller.Dockerfile
+    image: fayq-assessment-controller:0.9.0
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-education_platform}
+      REDIS_URL: redis://redis:6379
+      GRADING_IMAGE: fayq-assessment-execution:0.9.0
+    # Trusted execution-host controller only. No serving replica or job socket.
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
   nginx:
     image: fayq-platform-nginx:0.8.0-local
     ports: !override

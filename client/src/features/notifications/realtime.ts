@@ -69,6 +69,11 @@ export function connectInbox(
   socket.on('notifications:reauthenticate', () => {
     void reauthenticate();
   });
+  socket.on('assessment:completed', (signal: unknown) => {
+    if (!disposed && signal && typeof signal === 'object' && 'submissionId' in signal && typeof signal.submissionId === 'string' && /^[a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(signal.submissionId)) {
+      window.dispatchEvent(new CustomEvent('fayq-assessment-completed', { detail: signal.submissionId }));
+    }
+  });
   socket.on('disconnect', (reason) => {
     if (!disposed) {
       connection('disconnected');

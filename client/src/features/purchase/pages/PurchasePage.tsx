@@ -7,7 +7,7 @@ import { Loading, Notice, EmptyState } from '../../../components/ui/Notice';
 import { fetchPublicCourses } from '../../catalog/api/client';
 import { fetchWallet } from '../../wallet/api/client';
 import { Money } from '../../wallet/components/Money';
-import { newIdempotencyKey, purchaseCourse } from '../api/client';
+import { fetchMySubscriptions, newIdempotencyKey, purchaseCourse } from '../api/client';
 import type { PurchaseReceipt } from '../types/models';
 import { displayDeadline, type AccessMode } from '../../academic/model';
 
@@ -36,11 +36,14 @@ export function PurchasePage({
     let live = true;
     (async () => {
       try {
-        const [courses, wallet] = await Promise.all([fetchPublicCourses(), fetchWallet()]);
+        const [courses, wallet, subscriptions] = await Promise.all([fetchPublicCourses(), fetchWallet(), fetchMySubscriptions()]);
         if (!live) return;
         for (const course of courses) {
           const plan = course.plans.find((p) => p.id === planId);
           if (plan) {
+            if (subscriptions.some((s) => s.courseId === course.id && (s.expiresAt === null || new Date(s.expiresAt).getTime() > Date.now()))) {
+              setErrorCode('COURSE_ALREADY_SUBSCRIBED'); setPhase('failed'); return;
+            }
             setPrice(plan.currentPricePiastres);
             setDuration(plan.durationDays);
             setMode(plan.accessMode ?? 'DURATION');
@@ -146,7 +149,9 @@ export function PurchasePage({
             <h1 className="text-2xl font-bold">{t.purchaseTitle}</h1>
             <div className="mt-4">
               <Notice kind="error">
-                {errorCode === 'NO_ACCESS_EXTENSION'
+                {errorCode === 'COURSE_ALREADY_SUBSCRIBED'
+                  ? lang === 'ar' ? 'أنت مشترك بالفعل في هذا الكورس. لم يتم خصم أي مبلغ. يمكنك التجديد بعد انتهاء الاشتراك.' : 'You already have access to this course. No payment was taken. You can renew after access expires.'
+                  : errorCode === 'NO_ACCESS_EXTENSION'
                   ? lang === 'ar'
                     ? 'عندك وصول يغطي هذا العرض بالفعل. لم يتم خصم أي مبلغ.'
                     : 'Your existing access already covers this offer. No payment was taken.'

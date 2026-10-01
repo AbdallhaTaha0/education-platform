@@ -30,6 +30,9 @@ const KEYS: Record<Route, string | null> = {
   dashboard: 'navDashboard',
   notifications: 'navNotifications',
   learn: 'learningTitle',
+  practice: 'learningTitle',
+  assessment: 'learningTitle',
+  'admin-practice': 'navAdmin',
 };
 
 /** Resolve the document title for a route from localized labels. */

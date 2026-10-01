@@ -9,6 +9,7 @@ import { OrderingControls } from '../components/OrderingControls';
 import { createLesson, patchLesson, reorderLessons } from '../api/client';
 import type { AdminLesson } from '../types/models';
 import { MediaUploader } from './MediaUploader';
+import { AdminAssessmentPanel } from '../../assessments/AdminAssessmentPanel';
 
 export function LessonList({
   sectionId,
@@ -84,6 +85,7 @@ export function LessonList({
               mediaStatus={l.media?.status ?? null}
               onChanged={onChanged}
             />
+            <AdminAssessmentPanel lessonId={l.id} />
           </li>
         ))}
       </ul>

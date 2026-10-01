@@ -1,0 +1,78 @@
+# Standalone, synthetic M9 UI test stack. No owner env or DRM credentials.
+name: fayq-m9-ui
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: education_platform_test
+    volumes: ['pg-ui:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d education_platform_test']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    volumes: ['redis-ui:/data']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  migrate:
+    image: fayq-m9-server-test:0.9.0
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_test
+    command: ['npx', 'prisma', 'migrate', 'deploy']
+    depends_on:
+      postgres: { condition: service_healthy }
+  server:
+    image: fayq-platform-server:0.9.0-m9
+    environment:
+      NODE_ENV: test
+      PORT: 3000
+      SERVICE_VERSION: 0.9.0-m9-ui
+      LOG_LEVEL: warn
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_test
+      REDIS_URL: redis://redis:6379
+      AUTH_JWT_SECRET: m9-synthetic-ui-only-secret-012345678901234567890
+      AUTH_ISSUER: m9-ui
+      AUTH_AUDIENCE: m9-ui-browser
+      ALLOWED_ORIGINS: http://localhost:8084
+      COOKIE_SECURE: 'false'
+      ARGON2_MEMORY_KB: 8192
+      ARGON2_TIME_COST: 2
+      ARGON2_PARALLELISM: 1
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  client:
+    image: fayq-platform-client:0.9.0-m9
+  nginx:
+    image: fayq-platform-nginx:0.8.0-local
+    ports: ['127.0.0.1:8084:8080']
+    depends_on:
+      server: { condition: service_healthy }
+      client: { condition: service_started }
+  grading:
+    image: fayq-assessment-controller:0.9.0
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_test
+      REDIS_URL: redis://redis:6379
+      GRADING_IMAGE: fayq-assessment-execution:0.9.0
+    # Trusted local controller only. Never mount in server/client/execution jobs.
+    volumes: ['/var/run/docker.sock:/var/run/docker.sock']
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+volumes:
+  pg-ui:
+  redis-ui:

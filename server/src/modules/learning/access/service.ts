@@ -11,6 +11,7 @@ import type { PrismaClient } from '@prisma/client';
 import { LearningError } from '../errors.js';
 import type { LearningBinding } from '../types.js';
 import { evaluateEntitlement, isLearnableStatus } from './entitlement.js';
+import { assertLessonUnlocked, lessonLocks } from '../../assessments/progression.js';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -103,6 +104,7 @@ export async function resolveLesson(
   if (lesson === null || lesson.section.courseId !== course.courseId) {
     throw new LearningError('LESSON_NOT_FOUND');
   }
+  await assertLessonUnlocked(prisma, studentId, course.courseId, lesson.id);
   if (
     lesson.media === null ||
     lesson.media.status !== 'READY' ||
@@ -142,6 +144,7 @@ export async function loadOutline(
       titleEn: string;
       position: number;
       playable: boolean;
+      locked: boolean;
       completed: boolean;
       resumePositionSeconds: number;
     }>;
@@ -162,6 +165,7 @@ export async function loadOutline(
     select: { lessonId: true, positionSeconds: true, completedAt: true },
   });
   const byLesson = new Map(progress.map((p) => [p.lessonId, p]));
+  const locks = await lessonLocks(prisma, studentId, courseId);
   return sections.map((section) => ({
     sectionId: section.id,
     titleAr: section.titleAr,
@@ -174,7 +178,8 @@ export async function loadOutline(
         titleAr: lesson.titleAr,
         titleEn: lesson.titleEn,
         position: lesson.position,
-        playable: lesson.media?.status === 'READY' && lesson.media.externalAssetId !== '',
+        playable: !locks.get(lesson.id)?.length && lesson.media?.status === 'READY' && lesson.media.externalAssetId !== '',
+        locked: !!locks.get(lesson.id)?.length,
         completed: p?.completedAt !== null && p?.completedAt !== undefined,
         resumePositionSeconds: p?.completedAt ? 0 : (p?.positionSeconds ?? 0),
       };

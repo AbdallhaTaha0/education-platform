@@ -61,6 +61,12 @@ model User {
   notificationAudience NotificationAudience[]
   notificationInboxState NotificationInboxState?
   notificationExpiries NotificationExpiryMarker[]
+  assessmentDrafts AssessmentDraft[]
+  assessmentSubmissions AssessmentSubmission[]
+  assessmentPasses AssessmentPass[]
+  preservedUnlocks PreservedLessonUnlock[]
+  practiceQuota PracticeQuota?
+  practiceRuns PracticeRun[]
 
   @@index([role])
 }
@@ -171,6 +177,123 @@ model Course {
   @@index([deletionRequestedAt])
 }
 
+// M9: platform-owned assessments, never external DRM records.
+model Assessment {
+  id String @id @default(uuid())
+  lessonId String
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  kind String
+  status String @default("DRAFT")
+  required Boolean
+  draftRequired Boolean?
+  version Int @default(0)
+  content Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  preparations AssessmentPreparation[]
+  versions AssessmentVersion[]
+  drafts AssessmentDraft[]
+  submissions AssessmentSubmission[]
+  passes AssessmentPass[]
+  @@index([lessonId, status])
+}
+
+model AssessmentVersion {
+  id String @id @default(uuid())
+  assessmentId String
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  version Int
+  content Json
+  createdAt DateTime @default(now())
+  submissions AssessmentSubmission[]
+  @@unique([assessmentId, version])
+}
+
+model AssessmentDraft {
+  id String @id @default(uuid())
+  studentId String
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  context String
+  assessmentId String?
+  assessment Assessment? @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  content Json
+  revision Int @default(1)
+  updatedAt DateTime @updatedAt
+  @@unique([studentId, context])
+}
+
+model AssessmentSubmission {
+  id String @id @default(uuid())
+  studentId String
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  assessmentId String
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  versionId String
+  version AssessmentVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  idempotencyKey String
+  inputHash String
+  answers Json?
+  state String @default("PENDING")
+  result Json?
+  leaseToken String?
+  leasedUntil DateTime?
+  attempts Int @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([studentId, idempotencyKey])
+  @@index([state, leasedUntil, createdAt])
+  @@index([studentId, assessmentId, createdAt])
+  @@index([assessmentId, createdAt, id])
+  @@index([createdAt])
+}
+
+model AssessmentPass {
+  studentId String
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  assessmentId String
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  passedVersion Int
+  passedAt DateTime @default(now())
+  @@id([studentId, assessmentId])
+}
+
+model PreservedLessonUnlock {
+  studentId String
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  lessonId String
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@id([studentId, lessonId])
+}
+
+model PracticeQuota {
+  studentId String @id
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  limit Int?
+  anchor DateTime?
+  windowStart DateTime
+  windowEnd DateTime
+  used Int @default(0)
+  epoch Int @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+model PracticeRun {
+  studentId String
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  idempotencyKey String
+  epoch Int
+  createdAt DateTime @default(now())
+  @@id([studentId, idempotencyKey])
+  @@index([createdAt])
+}
+
+model AssessmentQueueBudget {
+  id Int @id
+  pending Int @default(0)
+  capacity Int @default(10000)
+}
+
 model CourseSection {
   id        String   @id @default(uuid())
   courseId  String
@@ -198,6 +321,9 @@ model Lesson {
   media     MediaMapping?
   progress  LessonProgress[]
   playbackReferences PlaybackReference[]
+
+  assessments Assessment[]
+  preservedUnlocks PreservedLessonUnlock[]
 
   @@unique([sectionId, position])
   @@index([sectionId, position])
@@ -690,4 +816,21 @@ model NotificationExpiryMarker {
 model NotificationRollout {
   id Int @id
   installedAt DateTime
+}
+
+model AssessmentPreparation {
+  id String @id @default(uuid())
+  assessmentId String
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  contentHash String
+  content Json
+  state String @default("PENDING")
+  result Json?
+  error String?
+  leaseToken String?
+  leasedUntil DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([assessmentId, contentHash])
+  @@index([state, leasedUntil, createdAt])
 }

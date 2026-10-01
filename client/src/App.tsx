@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
-import { AuthProvider } from './auth';
+import { AuthProvider, useAuth } from './auth';
 import { Container } from './components/ui/Card';
 import { useLang } from './i18n';
 import { routeDocumentTitle } from './pageTitles';
@@ -37,13 +37,19 @@ const CourseLearningPage = lazy(() =>
 );
 import { NotificationsProvider } from './features/notifications/context';
 import { NotificationsPage } from './features/notifications/pages/NotificationsPage';
+const PracticePage = lazy(() => import('./features/ide/PracticePage').then((m) => ({ default: m.PracticePage })));
+const AssessmentPage = lazy(() => import('./features/assessments/AssessmentPage').then((m) => ({ default: m.AssessmentPage })));
+const AdminQuotaPage = lazy(() => import('./features/assessments/AdminQuotaPage').then((m) => ({ default: m.AdminQuotaPage })));
 
 function Shell(): JSX.Element {
   const { lang, t, setLang } = useLang();
+  const { user } = useAuth();
   const [route, setRoute] = useState<Route>(() => routeFromHash());
+  const [hash, setHash] = useState(() => window.location.hash);
 
   useEffect(() => {
     const onHash = (): void => {
+      setHash(window.location.hash);
       setRoute(routeFromHash());
       window.scrollTo(0, 0);
     };
@@ -143,6 +149,9 @@ function Shell(): JSX.Element {
         />
       ) : null}
       {route === 'notifications' ? <NotificationsPage /> : null}
+      {['practice', 'assessment', 'admin-practice'].includes(route) ? <Suspense fallback={<main id="main"><Container><Loading text={t.loading} /></Container></main>}>
+        {route === 'practice' ? <PracticePage key={user?.id ?? 'anonymous'} /> : route === 'admin-practice' ? <AdminQuotaPage key={user?.id ?? 'anonymous'} /> : <AssessmentPage key={`${user?.id ?? 'anonymous'}:${hash}`} id={decodeURIComponent(hash.slice('#/assessment/'.length))} />}
+      </Suspense> : null}
       {route === 'learn' ? (
         <Suspense
           fallback={

@@ -22,6 +22,7 @@ import { createDrmClient } from './modules/catalog/drmClient.js';
 import type { Clock } from './modules/identity/tokens.js';
 import { createAssertionJwks } from './modules/learning/playback/assertion.js';
 import { createNotificationRouter } from './modules/notifications/index.js';
+import { assessmentRouters } from './modules/assessments/routes.js';
 
 export interface AppDependencies {
   config: ServerConfig;
@@ -148,6 +149,10 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
   const learning = createLearningModule(learningDeps);
   app.set('learning', learning.context);
   app.use('/learning', learning.router);
+
+  const assessments = assessmentRouters(deps.prisma, tunables.clock ?? Date.now);
+  app.use('/assessments', assessments.studentRouter);
+  app.use('/admin/assessments', assessments.adminRouter);
 
   // M6 recipient-only inbox APIs, inside the same modular backend.
   app.use(

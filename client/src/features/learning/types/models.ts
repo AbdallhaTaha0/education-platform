@@ -42,6 +42,7 @@ export interface OutlineLesson {
   titleEn: string;
   position: number;
   playable: boolean;
+  locked?: boolean;
   completed: boolean;
   resumePositionSeconds: number;
 }

@@ -13,6 +13,7 @@ import {
 } from '../components/Learning';
 import { DashLessonPlayer } from '../player/Player';
 import { clear as clearSession } from '../player/session';
+import { LessonAssessments } from '../../assessments/LessonAssessments';
 
 export interface CourseLearningPageProps {
   courseSlug: string;
@@ -237,6 +238,7 @@ export function CourseLearningPage({ courseSlug, onRenew }: CourseLearningPagePr
                 <ErrorBlock message={t('learningPlaybackError')} />
               </div>
             ) : null}
+            {selectedLesson !== null ? <LessonAssessments key={selectedLesson.lessonId} lessonId={selectedLesson.lessonId} /> : null}
           </div>
 
           <nav aria-label={t('learningOutline')}>

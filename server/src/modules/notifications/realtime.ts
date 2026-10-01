@@ -93,6 +93,9 @@ export async function attachNotificationRealtime(
   }
   type Identity = AccessTokenClaims & { exp: number };
   const claims = new WeakMap<Socket, Identity>();
+  const gradingSockets = new Map<string, Set<Socket>>();
+  const grading = deps.redis.duplicate({ lazyConnect: false, enableOfflineQueue: false, retryStrategy: () => 1000 });
+  grading.on('error', () => {});
   const now = () => (deps.clock ?? Date.now)();
   let closed = false;
   async function authorize(identity: Identity) {
@@ -181,6 +184,8 @@ export async function attachNotificationRealtime(
     void invalidate(userId, revision).finally(() => ack?.());
   });
   namespace.on('connection', (socket) => {
+    const studentId = claims.get(socket)!.sub;
+    const owned = gradingSockets.get(studentId) ?? new Set<Socket>(); owned.add(socket); gradingSockets.set(studentId, owned);
     void send(socket);
     const expiryTimer = setTimeout(
       () => {
@@ -190,10 +195,24 @@ export async function attachNotificationRealtime(
       Math.max(0, claims.get(socket)!.exp * 1000 - now()),
     );
     expiryTimer.unref();
-    socket.once('disconnect', () => clearTimeout(expiryTimer));
+    socket.once('disconnect', () => { clearTimeout(expiryTimer); owned.delete(socket); if (!owned.size) gradingSockets.delete(studentId); });
     // Clients have no room/subscription/write protocol.
     socket.onAny(() => socket.disconnect(true));
   });
+  grading.on('message', (_channel, raw) => {
+    if (closed || raw.length > 256) return;
+    let message: { studentId?: unknown; submissionId?: unknown };
+    try { message = JSON.parse(raw) as typeof message; } catch { return; }
+    const uuid = /^[a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}$/i;
+    if (typeof message.studentId !== 'string' || typeof message.submissionId !== 'string' || !uuid.test(message.studentId) || !uuid.test(message.submissionId)) return;
+    for (const socket of gradingSockets.get(message.studentId) ?? []) {
+      const identity = claims.get(socket); if (!identity) continue;
+      void authorize(identity).then(() => {
+        if (!closed && socket.connected && identity.exp * 1000 > now()) socket.emit('assessment:completed', { submissionId: message.submissionId });
+      }).catch(() => { socket.disconnect(true); });
+    }
+  });
+  await ensureRedis(grading).then(() => grading.subscribe('education-platform:m9:completed')).catch(() => grading.disconnect());
   let checking = false;
   const timer = setInterval(() => {
     if (checking || closed) return;
@@ -238,6 +257,7 @@ export async function attachNotificationRealtime(
       await new Promise<void>((resolve) => io.close(() => resolve()));
       pub.disconnect();
       sub.disconnect();
+      grading.disconnect();
     },
   };
 }

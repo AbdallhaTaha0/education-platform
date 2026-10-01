@@ -1,0 +1,16 @@
+{
+  "name": "@fayq/assessment-execution",
+  "version": "0.9.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc"
+  },
+  "dependencies": {
+    "puppeteer-core": "^25.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.30",
+    "typescript": "5.8.3"
+  }
+}

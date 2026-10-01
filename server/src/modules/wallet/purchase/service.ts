@@ -138,6 +138,17 @@ export async function purchaseCourse(
         const sub = await tx.subscription.findUniqueOrThrow({ where: { purchaseId: settled.id } });
         return { purchase: settled, subscription: sub };
       }
+      // Different tabs/clicks can carry different idempotency keys. Check
+      // ownership after the wallet lock so even those concurrent requests
+      // cannot buy the same active course twice. An exact replay above still
+      // returns its original receipt without another debit.
+      const now = new Date();
+      if (await tx.subscription.findFirst({ where: {
+        studentId, courseId: plan.course.id,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+      }, select: { id: true } })) {
+        throw new ApiError(409, 'COURSE_ALREADY_SUBSCRIBED', 'You already have access to this course. No payment was taken.');
+      }
       if (wallet.balancePiastres < plan.currentPricePiastres) {
         throw new ApiError(
           402,
@@ -145,32 +156,11 @@ export async function purchaseCourse(
           'Wallet balance is insufficient for this plan.',
         );
       }
-      const now = new Date();
       if (
         ['TERM_END', 'YEAR_END'].includes(plan.accessMode) &&
         (!plan.accessEndsAt || plan.accessEndsAt <= now)
       ) {
         throw new ApiError(409, 'OFFER_EXPIRED', 'The access deadline has passed.');
-      }
-      if (
-        await tx.subscription.count({
-          where: { studentId, courseId: plan.course.id, expiresAt: null },
-        })
-      ) {
-        throw new ApiError(409, 'NO_ACCESS_EXTENSION', 'Existing access has no expiry.');
-      }
-      if (['TERM_END', 'YEAR_END'].includes(plan.accessMode)) {
-        const existing = await tx.subscription.aggregate({
-          where: { studentId, courseId: plan.course.id },
-          _max: { expiresAt: true },
-        });
-        if (existing._max.expiresAt && existing._max.expiresAt >= plan.accessEndsAt!) {
-          throw new ApiError(
-            409,
-            'NO_ACCESS_EXTENSION',
-            'This offer does not add access beyond your existing expiry.',
-          );
-        }
       }
       // Deterministic lock order: wallet → ledger → purchase → subscription.
       const purchase = await tx.purchase.create({
@@ -193,19 +183,8 @@ export async function purchaseCourse(
         'PURCHASE',
         purchase.id,
       );
-      // Renewal math on backend time: extend from the latest expiry when it
-      // still covers now, otherwise start immediately. One subscription row
-      // per purchase (purchaseId unique); effective access is the union.
-      const latest = await tx.subscription.findFirst({
-        where: { studentId, courseId: plan.course.id },
-        orderBy: { expiresAt: 'desc' },
-      });
-      const base =
-        plan.accessMode === 'DURATION' &&
-        latest?.expiresAt &&
-        latest.expiresAt.getTime() > now.getTime()
-          ? latest.expiresAt
-          : now;
+      // Once prior access has expired, a new purchase starts immediately.
+      const base = now;
       const subscription = await tx.subscription.create({
         data: {
           studentId,

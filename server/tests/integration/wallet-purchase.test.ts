@@ -207,7 +207,7 @@ describe('course purchase', () => {
     // outcome is deterministic (exactly 1 success, 3 denials) regardless of
     // balances accumulated by earlier tests in this file.
     const racer = await registerStudent(world.app);
-    const { planId } = await publishedPlan(60000, 30);
+    const plans = await Promise.all(Array.from({ length: 4 }, () => publishedPlan(60000, 30)));
     const sub = await studentPost(
       world.app,
       '/wallet/recharge-requests',
@@ -226,9 +226,9 @@ describe('course purchase', () => {
       ).status,
     ).toBe(200);
     const results = await Promise.all(
-      Array.from({ length: 4 }, () =>
+      Array.from({ length: 4 }, (_, i) =>
         studentPost(world.app, '/wallet/purchases', racer.jar, {
-          planId,
+          planId: plans[i]!.planId,
           idempotencyKey: uniqueKey('race'),
         }),
       ),
@@ -268,7 +268,7 @@ describe('course purchase', () => {
     expect(purchase.durationDays).toBe(90);
   });
 
-  it('active renewal extends from the existing expiry', async () => {
+  it('blocks a new purchase key while course access is active without debiting again', async () => {
     const { planId } = await publishedPlan(60000, 90);
     await fundedBalance(300000);
     const first = await studentPost(world.app, '/wallet/purchases', world.studentJar, {
@@ -276,16 +276,27 @@ describe('course purchase', () => {
       idempotencyKey: uniqueKey('ren1'),
     });
     expect(first.status).toBe(201);
-    const firstExpiry = new Date(first.body.data.subscription.expiresAt).getTime();
+    const before = await balance();
     const second = await studentPost(world.app, '/wallet/purchases', world.studentJar, {
       planId,
       idempotencyKey: uniqueKey('ren2'),
     });
-    expect(second.status).toBe(201);
-    const secondStart = new Date(second.body.data.subscription.startsAt).getTime();
-    const secondExpiry = new Date(second.body.data.subscription.expiresAt).getTime();
-    expect(Math.abs(secondStart - firstExpiry)).toBeLessThan(5000);
-    expect(Math.round((secondExpiry - secondStart) / 86_400_000)).toBe(90);
+    expect(second.status).toBe(409);
+    expect(second.body.error.code).toBe('COURSE_ALREADY_SUBSCRIBED');
+    expect(await balance()).toBe(before);
+  });
+
+  it('concurrent different keys/plans for one course produce exactly one debit', async () => {
+    const { planId, courseId } = await publishedPlan(10000, 30);
+    const alternative = await world.prisma.subscriptionPlan.create({ data: { courseId, currentPricePiastres: 10000, durationDays: 90 } });
+    await fundedBalance(50000);
+    const before = await balance();
+    const outcomes = await Promise.all(Array.from({ length: 5 }, (_, i) => studentPost(world.app, '/wallet/purchases', world.studentJar, { planId: i % 2 ? alternative.id : planId, idempotencyKey: uniqueKey(`same-course-${i}`) })));
+    expect(outcomes.filter((r) => r.status === 201)).toHaveLength(1);
+    expect(outcomes.filter((r) => r.status === 409 && r.body.error.code === 'COURSE_ALREADY_SUBSCRIBED')).toHaveLength(4);
+    expect(await balance()).toBe(before - 10000);
+    expect(await world.prisma.purchase.count({ where: { studentId: world.studentUser.id, courseId } })).toBe(1);
+    expect(await world.prisma.subscription.count({ where: { studentId: world.studentUser.id, courseId } })).toBe(1);
   });
 
   it('expired renewal starts immediately', async () => {
