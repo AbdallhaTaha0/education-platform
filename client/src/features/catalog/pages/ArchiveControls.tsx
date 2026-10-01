@@ -6,7 +6,15 @@ import { ConfirmDialog } from '../../../components/ui/Dialog';
 import { Notice } from '../../../components/ui/Notice';
 import { archiveCourse, unarchiveCourse } from '../api/client';
 
-export function ArchiveControls({ courseId, archived, onChanged }: { courseId: string; archived: boolean; onChanged: () => Promise<void> }): JSX.Element {
+export function ArchiveControls({
+  courseId,
+  archived,
+  onChanged,
+}: {
+  courseId: string;
+  archived: boolean;
+  onChanged: () => Promise<void>;
+}): JSX.Element {
   const { t } = useLang();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -34,7 +42,11 @@ export function ArchiveControls({ courseId, archived, onChanged }: { courseId: s
           {t.actionArchive}
         </Button>
       ) : (
-        <Button variant="secondary" disabled={busy} onClick={() => void run(() => unarchiveCourse(courseId))}>
+        <Button
+          variant="secondary"
+          disabled={busy}
+          onClick={() => void run(() => unarchiveCourse(courseId))}
+        >
           {t.actionUnarchive}
         </Button>
       )}

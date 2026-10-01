@@ -35,7 +35,8 @@ export interface DrmAdapterConfig {
 
 export function resolveDrmAdapterConfig(config: ServerConfig): DrmAdapterConfig | null {
   const { drmBaseUrl, drmClientId, drmClientSecret, drmRequestTimeoutMs, drmMaxRetries } = config;
-  if (drmBaseUrl === undefined || drmClientId === undefined || drmClientSecret === undefined) return null;
+  if (drmBaseUrl === undefined || drmClientId === undefined || drmClientSecret === undefined)
+    return null;
   return {
     baseUrl: drmBaseUrl.replace(/\/+$/, ''),
     clientId: drmClientId,
@@ -107,7 +108,10 @@ export class DrmClient {
         if (!res.ok) {
           const category = toCategory(res.status);
           getLogger().warn(
-            sanitizeForLog({ drmPath: path, status: res.status, category, attempt }) as Record<string, unknown>,
+            sanitizeForLog({ drmPath: path, status: res.status, category, attempt }) as Record<
+              string,
+              unknown
+            >,
             'drm request failed',
           );
           throw new ApiError(
@@ -119,15 +123,23 @@ export class DrmClient {
         return this.parseJson(text);
       } catch (err) {
         if (err instanceof ApiError) {
-          const retryable = opts.idempotent && (err.code === 'DRM_SERVER' || err.code === 'DRM_UNKNOWN');
+          const retryable =
+            opts.idempotent && (err.code === 'DRM_SERVER' || err.code === 'DRM_UNKNOWN');
           if (!retryable || attempt === maxAttempts - 1) throw err;
           lastError = err;
           continue;
         }
         const aborted = (err as { name?: string }).name === 'AbortError';
-        const mapped = new ApiError(502, aborted ? 'DRM_TIMEOUT' : 'DRM_NETWORK', 'External media request failed.');
+        const mapped = new ApiError(
+          502,
+          aborted ? 'DRM_TIMEOUT' : 'DRM_NETWORK',
+          'External media request failed.',
+        );
         getLogger().warn(
-          sanitizeForLog({ drmPath: path, category: mapped.code, attempt }) as Record<string, unknown>,
+          sanitizeForLog({ drmPath: path, category: mapped.code, attempt }) as Record<
+            string,
+            unknown
+          >,
           'drm transport failure',
         );
         if (!opts.idempotent || attempt === maxAttempts - 1) throw mapped;
@@ -141,7 +153,8 @@ export class DrmClient {
 
   private async readBoundedBody(res: Response): Promise<string> {
     const text = await res.text();
-    if (text.length > MAX_BODY_BYTES) throw new ApiError(502, 'DRM_MALFORMED', 'External response too large.');
+    if (text.length > MAX_BODY_BYTES)
+      throw new ApiError(502, 'DRM_MALFORMED', 'External response too large.');
     return text;
   }
 
@@ -149,7 +162,8 @@ export class DrmClient {
     if (text.trim() === '') throw new ApiError(502, 'DRM_MALFORMED', 'External response empty.');
     try {
       const parsed: unknown = JSON.parse(text);
-      if (typeof parsed !== 'object' || parsed === null) throw new ApiError(502, 'DRM_MALFORMED', 'External response malformed.');
+      if (typeof parsed !== 'object' || parsed === null)
+        throw new ApiError(502, 'DRM_MALFORMED', 'External response malformed.');
       return parsed;
     } catch (err) {
       if (err instanceof ApiError) throw err;
@@ -171,30 +185,49 @@ export class DrmClient {
       idempotencyKey: input.idempotencyKey,
     };
     if (input.title !== undefined) body['title'] = input.title;
-    return validateRegistrationResponse(await this.request('/v1/media', { method: 'POST', body, idempotent: false }));
+    return validateRegistrationResponse(
+      await this.request('/v1/media', { method: 'POST', body, idempotent: false }),
+    );
   }
 
   async completeUpload(assetId: string): Promise<{ status: string }> {
     return validateCompletionResponse(
-      await this.request(`/v1/media/${encodeURIComponent(assetId)}/complete`, { method: 'POST', body: {}, idempotent: false }),
+      await this.request(`/v1/media/${encodeURIComponent(assetId)}/complete`, {
+        method: 'POST',
+        body: {},
+        idempotent: false,
+      }),
     );
   }
 
   async mediaStatus(assetId: string): Promise<{ status: string }> {
     return validateMediaStatusResponse(
-      await this.request(`/v1/admin/media/${encodeURIComponent(assetId)}/status`, { method: 'GET', idempotent: true }),
+      await this.request(`/v1/admin/media/${encodeURIComponent(assetId)}/status`, {
+        method: 'GET',
+        idempotent: true,
+      }),
     );
   }
 
-  async deleteMedia(assetId: string, confirmation: string): Promise<{ deletionId: string; status: string; duplicate?: boolean; scheduled?: boolean }> {
+  async deleteMedia(
+    assetId: string,
+    confirmation: string,
+  ): Promise<{ deletionId: string; status: string; duplicate?: boolean; scheduled?: boolean }> {
     return validateDeletionRequestResponse(
-      await this.request(`/v1/media/${encodeURIComponent(assetId)}`, { method: 'DELETE', body: { confirmation }, idempotent: true }),
+      await this.request(`/v1/media/${encodeURIComponent(assetId)}`, {
+        method: 'DELETE',
+        body: { confirmation },
+        idempotent: true,
+      }),
     );
   }
 
   async deletionStatus(deletionId: string): Promise<{ status: string }> {
     return validateDeletionStatusResponse(
-      await this.request(`/v1/admin/media-deletions/${encodeURIComponent(deletionId)}`, { method: 'GET', idempotent: true }),
+      await this.request(`/v1/admin/media-deletions/${encodeURIComponent(deletionId)}`, {
+        method: 'GET',
+        idempotent: true,
+      }),
     );
   }
 
@@ -237,16 +270,27 @@ export class DrmClient {
       });
       if (!res.ok) {
         getLogger().warn(
-          sanitizeForLog({ drmPath: path, status: res.status, attempt: 0 }) as Record<string, unknown>,
+          sanitizeForLog({ drmPath: path, status: res.status, attempt: 0 }) as Record<
+            string,
+            unknown
+          >,
           'drm playback request failed',
         );
-        throw new ApiError(res.status === 401 ? 401 : 502, 'DRM_PLAYBACK', 'External playback request failed.');
+        throw new ApiError(
+          res.status === 401 ? 401 : 502,
+          'DRM_PLAYBACK',
+          'External playback request failed.',
+        );
       }
       return this.parseJson(await this.readBoundedBody(res));
     } catch (err) {
       if (err instanceof ApiError) throw err;
       const aborted = (err as { name?: string }).name === 'AbortError';
-      throw new ApiError(502, aborted ? 'DRM_TIMEOUT' : 'DRM_NETWORK', 'External playback request failed.');
+      throw new ApiError(
+        502,
+        aborted ? 'DRM_TIMEOUT' : 'DRM_NETWORK',
+        'External playback request failed.',
+      );
     } finally {
       clearTimeout(timer);
     }
@@ -301,11 +345,14 @@ export class DrmClient {
    * treated as idempotent so the expiry reconciler can retry safely.
    */
   async revokePlaybackSession(sessionId: string, reason: string): Promise<{ status: string }> {
-    const body = await this.request(`/v1/playback/sessions/${encodeURIComponent(sessionId)}/revoke`, {
-      method: 'POST',
-      body: { reason },
-      idempotent: true,
-    });
+    const body = await this.request(
+      `/v1/playback/sessions/${encodeURIComponent(sessionId)}/revoke`,
+      {
+        method: 'POST',
+        body: { reason },
+        idempotent: true,
+      },
+    );
     if (typeof body === 'object' && body !== null) {
       const status = (body as { status?: unknown }).status;
       return { status: typeof status === 'string' ? status : 'unknown' };

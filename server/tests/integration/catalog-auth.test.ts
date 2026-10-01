@@ -1,6 +1,13 @@
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { adminDelete, adminGet, adminPatch, adminPost, createCatalogWorld, type CatalogWorld } from './catalog-helpers.js';
+import {
+  adminDelete,
+  adminGet,
+  adminPatch,
+  adminPost,
+  createCatalogWorld,
+  type CatalogWorld,
+} from './catalog-helpers.js';
 import { TEST_ORIGIN, uniqueIp } from './identity-helpers.js';
 
 let world: CatalogWorld;
@@ -42,9 +49,15 @@ describe('catalog authorization + request safety', () => {
     expect(anon.status).toBe(401);
 
     // Admin read requires auth too.
-    const anonRead = await request(world.app).get(`/admin/catalog/courses/${courseId}`).set('X-Forwarded-For', uniqueIp());
+    const anonRead = await request(world.app)
+      .get(`/admin/catalog/courses/${courseId}`)
+      .set('X-Forwarded-For', uniqueIp());
     expect(anonRead.status).toBe(401);
-    const studentRead = await adminGet(world.app, `/admin/catalog/courses/${courseId}`, world.studentJar);
+    const studentRead = await adminGet(
+      world.app,
+      `/admin/catalog/courses/${courseId}`,
+      world.studentJar,
+    );
     expect(studentRead.status).toBe(403);
   });
 
@@ -55,7 +68,13 @@ describe('catalog authorization + request safety', () => {
       .set('Cookie', world.adminJar.header())
       .set('X-Csrf-Token', world.adminJar.csrf())
       .set('X-Forwarded-For', uniqueIp())
-      .send({ slug: 'no-origin-x', titleAr: 'د', titleEn: 'C', descriptionAr: 'و', descriptionEn: 'D' });
+      .send({
+        slug: 'no-origin-x',
+        titleAr: 'د',
+        titleEn: 'C',
+        descriptionAr: 'و',
+        descriptionEn: 'D',
+      });
     expect(noOrigin.status).toBe(403);
 
     // Bad CSRF → 403.
@@ -65,7 +84,13 @@ describe('catalog authorization + request safety', () => {
       .set('Cookie', world.adminJar.header())
       .set('X-Csrf-Token', '0'.repeat(64))
       .set('X-Forwarded-For', uniqueIp())
-      .send({ slug: 'bad-csrf-x', titleAr: 'د', titleEn: 'C', descriptionAr: 'و', descriptionEn: 'D' });
+      .send({
+        slug: 'bad-csrf-x',
+        titleAr: 'د',
+        titleEn: 'C',
+        descriptionAr: 'و',
+        descriptionEn: 'D',
+      });
     expect(badCsrf.status).toBe(403);
   });
 

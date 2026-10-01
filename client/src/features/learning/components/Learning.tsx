@@ -45,7 +45,11 @@ export function SubscriptionCard({
         <div className="min-w-0">
           <h3 className="truncate text-lg font-bold">{title}</h3>
           <p className="mt-1 text-sm text-muted">
-            {item.expiresAt ? `${labels.expiresOn} ${formatDate(item.expiresAt, lang)} (${lang === 'ar' ? 'القاهرة' : 'Cairo'})` : (lang === 'ar' ? 'بدون انتهاء، حتى الحذف النهائي' : 'No expiry, until permanent removal')}
+            {item.expiresAt
+              ? `${labels.expiresOn} ${formatDate(item.expiresAt, lang)} (${lang === 'ar' ? 'القاهرة' : 'Cairo'})`
+              : lang === 'ar'
+                ? 'بدون انتهاء، حتى الحذف النهائي'
+                : 'No expiry, until permanent removal'}
           </p>
         </div>
         <StatusBadge
@@ -66,14 +70,23 @@ export function SubscriptionCard({
           aria-label={labels.progress}
           className="mt-1 h-2 w-full overflow-hidden rounded-full bg-canvas"
         >
-          <div className="h-full rounded-full bg-primary" style={{ width: `${item.percentComplete}%` }} />
+          <div
+            className="h-full rounded-full bg-primary"
+            style={{ width: `${item.percentComplete}%` }}
+          />
         </div>
         <p className="mt-1 text-xs text-muted">
           {labels.lessonCount}: {item.completedLessons}/{item.totalLessons}
         </p>
       </div>
       <div className="mt-4 flex flex-wrap gap-3">
-        {isActive && item.availableForLearning === false ? <p className="text-sm text-muted">{lang === 'ar' ? 'المشاهدة غير متاحة حاليًا؛ ستظهر بعد نشر الكورس.' : 'Viewing is currently unavailable; it opens when the course is published.'}</p> : null}
+        {isActive && item.availableForLearning === false ? (
+          <p className="text-sm text-muted">
+            {lang === 'ar'
+              ? 'المشاهدة غير متاحة حاليًا؛ ستظهر بعد نشر الكورس.'
+              : 'Viewing is currently unavailable; it opens when the course is published.'}
+          </p>
+        ) : null}
         {isActive && item.availableForLearning !== false && onContinue ? (
           <button
             type="button"
@@ -116,7 +129,10 @@ export function CourseOutline({
     <div className="space-y-4" data-testid="course-outline">
       {sections.length === 0 ? <p className="text-muted">{labels.notStarted}</p> : null}
       {sections.map((section) => (
-        <section key={section.sectionId} className="rounded-card border border-border bg-surface p-4">
+        <section
+          key={section.sectionId}
+          className="rounded-card border border-border bg-surface p-4"
+        >
           <h3 className="font-bold">{lang === 'ar' ? section.titleAr : section.titleEn}</h3>
           <ol className="mt-2 space-y-1">
             {section.lessons.map((lesson) => {
@@ -137,12 +153,20 @@ export function CourseOutline({
                     disabled={disabled === true || !lesson.playable}
                     onClick={() => onSelect(lesson.lessonId)}
                     className={`flex min-h-[44px] w-full items-center justify-between gap-2 rounded-control border px-3 py-2 text-start text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${
-                      selected ? 'border-primary bg-elevated text-ink' : 'border-border bg-canvas text-ink'
+                      selected
+                        ? 'border-primary bg-elevated text-ink'
+                        : 'border-border bg-canvas text-ink'
                     } ${lesson.playable ? '' : 'opacity-60'}`}
                   >
-                    <span className="truncate">{lang === 'ar' ? lesson.titleAr : lesson.titleEn}</span>
+                    <span className="truncate">
+                      {lang === 'ar' ? lesson.titleAr : lesson.titleEn}
+                    </span>
                     <span className="shrink-0 text-xs text-muted">
-                      {state === 'completed' ? labels.completed : state === 'current' ? labels.resume : labels.notStarted}
+                      {state === 'completed'
+                        ? labels.completed
+                        : state === 'current'
+                          ? labels.resume
+                          : labels.notStarted}
                     </span>
                   </button>
                 </li>
@@ -155,7 +179,15 @@ export function CourseOutline({
   );
 }
 
-export function RenewalRequired({ message, action, actionLabel }: { message: string; action?: () => void; actionLabel?: string }): JSX.Element {
+export function RenewalRequired({
+  message,
+  action,
+  actionLabel,
+}: {
+  message: string;
+  action?: () => void;
+  actionLabel?: string;
+}): JSX.Element {
   return (
     <div
       data-testid="renewal-required"
@@ -177,16 +209,32 @@ export function RenewalRequired({ message, action, actionLabel }: { message: str
 
 export function LoadingBlock({ label }: { label: string }): JSX.Element {
   return (
-    <div data-testid="learning-loading" className="rounded-card border border-border bg-surface p-6" aria-live="polite">
+    <div
+      data-testid="learning-loading"
+      className="rounded-card border border-border bg-surface p-6"
+      aria-live="polite"
+    >
       <BrandMark size="sm" withSlogan={false} />
       <p className="mt-2 text-muted">{label}</p>
     </div>
   );
 }
 
-export function ErrorBlock({ message, retryLabel, onRetry }: { message: string; retryLabel?: string; onRetry?: () => void }): JSX.Element {
+export function ErrorBlock({
+  message,
+  retryLabel,
+  onRetry,
+}: {
+  message: string;
+  retryLabel?: string;
+  onRetry?: () => void;
+}): JSX.Element {
   return (
-    <div data-testid="learning-error" className="rounded-card border border-error-fg bg-error-bg p-6" role="alert">
+    <div
+      data-testid="learning-error"
+      className="rounded-card border border-error-fg bg-error-bg p-6"
+      role="alert"
+    >
       <BrandMark size="sm" withSlogan={false} />
       <p className="mt-2 font-bold text-error-fg">{message}</p>
       {onRetry && retryLabel ? (
@@ -208,10 +256,10 @@ export function formatDate(value: string, lang: 'ar' | 'en'): string {
   return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-US', {
     year: 'numeric',
     month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'Africa/Cairo',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Africa/Cairo',
   }).format(date);
 }
 

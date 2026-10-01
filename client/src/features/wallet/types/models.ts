@@ -41,5 +41,7 @@ export function formatEgp(piastres: number, lang: 'ar' | 'en'): string {
   const rest = abs % 100;
   const grouped = pounds.toString().replace(/\B(?=(\d{3})+(?!\d))/g, lang === 'ar' ? '٬' : ',');
   const amount = rest === 0 ? grouped : `${grouped}.${rest.toString().padStart(2, '0')}`;
-  return lang === 'ar' ? `${negative ? '-' : ''}${amount} ج.م` : `${negative ? '-' : ''}EGP ${amount}`;
+  return lang === 'ar'
+    ? `${negative ? '-' : ''}${amount} ج.م`
+    : `${negative ? '-' : ''}EGP ${amount}`;
 }

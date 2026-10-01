@@ -25,7 +25,10 @@ export function resolveDependencyUrls(
   allowedOrigin: string | undefined,
 ): ResolvedDependencyUrls {
   if (allowedOrigin === undefined || allowedOrigin === '') {
-    throw new LearningError('PLAYBACK_UNAVAILABLE', 'No browser-facing media origin is configured.');
+    throw new LearningError(
+      'PLAYBACK_UNAVAILABLE',
+      'No browser-facing media origin is configured.',
+    );
   }
   let base: URL;
   try {
@@ -44,26 +47,44 @@ export function resolveDependencyUrls(
 
 function resolveOne(raw: unknown, base: URL, field: string): string {
   if (typeof raw !== 'string' || raw.length === 0 || raw.length > MAX_URL_LENGTH) {
-    throw new LearningError('PLAYBACK_UNAVAILABLE', `The media service returned an unusable ${field} URL.`);
+    throw new LearningError(
+      'PLAYBACK_UNAVAILABLE',
+      `The media service returned an unusable ${field} URL.`,
+    );
   }
   if (/[\r\n]/.test(raw) || raw.includes('..')) {
-    throw new LearningError('PLAYBACK_UNAVAILABLE', `The media service returned an unusable ${field} URL.`);
+    throw new LearningError(
+      'PLAYBACK_UNAVAILABLE',
+      `The media service returned an unusable ${field} URL.`,
+    );
   }
   let candidate: URL;
   try {
     candidate = new URL(raw, base);
   } catch {
-    throw new LearningError('PLAYBACK_UNAVAILABLE', `The media service returned an unusable ${field} URL.`);
+    throw new LearningError(
+      'PLAYBACK_UNAVAILABLE',
+      `The media service returned an unusable ${field} URL.`,
+    );
   }
   if (candidate.protocol !== 'http:' && candidate.protocol !== 'https:') {
-    throw new LearningError('PLAYBACK_UNAVAILABLE', `The media service returned an unusable ${field} URL.`);
+    throw new LearningError(
+      'PLAYBACK_UNAVAILABLE',
+      `The media service returned an unusable ${field} URL.`,
+    );
   }
   if (candidate.username !== '' || candidate.password !== '') {
-    throw new LearningError('PLAYBACK_UNAVAILABLE', `The media service returned an unusable ${field} URL.`);
+    throw new LearningError(
+      'PLAYBACK_UNAVAILABLE',
+      `The media service returned an unusable ${field} URL.`,
+    );
   }
   // Only the configured origin is ever handed to the player.
   if (candidate.origin !== base.origin) {
-    throw new LearningError('PLAYBACK_UNAVAILABLE', `The media service returned an unusable ${field} URL.`);
+    throw new LearningError(
+      'PLAYBACK_UNAVAILABLE',
+      `The media service returned an unusable ${field} URL.`,
+    );
   }
   return candidate.toString();
 }

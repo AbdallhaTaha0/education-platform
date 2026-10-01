@@ -1,8 +1,20 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createDrmClient } from '../../src/modules/catalog/drmClient.js';
-import { acquireLease, releaseLease, withDeletionLease } from '../../src/modules/catalog/deletion/lease.js';
-import { reconcilePendingOperations, reconcileOperationWithLease } from '../../src/modules/catalog/deletion/reconciler.js';
-import { adminPost, createCatalogWorld, createFullDraft, type CatalogWorld } from './catalog-helpers.js';
+import {
+  acquireLease,
+  releaseLease,
+  withDeletionLease,
+} from '../../src/modules/catalog/deletion/lease.js';
+import {
+  reconcilePendingOperations,
+  reconcileOperationWithLease,
+} from '../../src/modules/catalog/deletion/reconciler.js';
+import {
+  adminPost,
+  createCatalogWorld,
+  createFullDraft,
+  type CatalogWorld,
+} from './catalog-helpers.js';
 import { loadConfig } from '../../src/config.js';
 
 let world: CatalogWorld;
@@ -18,12 +30,25 @@ afterAll(async () => {
 
 function cfg() {
   const config = loadConfig(process.env);
-  return { ...config, drmBaseUrl: world.fixture!.url, drmClientId: world.fixture!.expectedClientId, drmClientSecret: world.fixture!.expectedClientSecret };
+  return {
+    ...config,
+    drmBaseUrl: world.fixture!.url,
+    drmClientId: world.fixture!.expectedClientId,
+    drmClientSecret: world.fixture!.expectedClientSecret,
+  };
 }
 
 async function readyLesson(lessonId: string): Promise<void> {
-  await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media`, world.adminJar, { contentType: 'video/mp4', securityTier: 'STANDARD' });
-  await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media/complete`, world.adminJar, {});
+  await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media`, world.adminJar, {
+    contentType: 'video/mp4',
+    securityTier: 'STANDARD',
+  });
+  await adminPost(
+    world.app,
+    `/admin/catalog/lessons/${lessonId}/media/complete`,
+    world.adminJar,
+    {},
+  );
   const mapping = await world.prisma.mediaMapping.findFirstOrThrow({ where: { lessonId } });
   world.fixture!.markReady(mapping.assetId as string);
   await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media/sync`, world.adminJar, {});
@@ -34,7 +59,12 @@ describe('replica-safe deletion lease', () => {
     const { courseId, lessonId } = await createFullDraft(world, 'lease-del');
     await readyLesson(lessonId);
     const course = await world.prisma.course.findUniqueOrThrow({ where: { id: courseId } });
-    const del = await adminPost(world.app, `/admin/catalog/courses/${courseId}/delete`, world.adminJar, { confirmation: course.slug });
+    const del = await adminPost(
+      world.app,
+      `/admin/catalog/courses/${courseId}/delete`,
+      world.adminJar,
+      { confirmation: course.slug },
+    );
     expect(del.status).toBe(202);
     const deletesBefore = world.fixture!.requests.filter((r) => r.method === 'DELETE').length;
     const c = cfg();
@@ -51,15 +81,24 @@ describe('replica-safe deletion lease', () => {
     const { courseId, lessonId } = await createFullDraft(world, 'lease-poll');
     await readyLesson(lessonId);
     const course = await world.prisma.course.findUniqueOrThrow({ where: { id: courseId } });
-    const del = await adminPost(world.app, `/admin/catalog/courses/${courseId}/delete`, world.adminJar, { confirmation: course.slug });
+    const del = await adminPost(
+      world.app,
+      `/admin/catalog/courses/${courseId}/delete`,
+      world.adminJar,
+      { confirmation: course.slug },
+    );
     const opId = del.body.data.operation.id as string;
     const c = cfg();
-    const pollsBefore = world.fixture!.requests.filter((r) => r.url.includes('media-deletions')).length;
+    const pollsBefore = world.fixture!.requests.filter((r) =>
+      r.url.includes('media-deletions'),
+    ).length;
     const [first, second] = await Promise.all([
       reconcileOperationWithLease(world.prisma, c, createDrmClient, world.redis, opId),
       reconcileOperationWithLease(world.prisma, c, createDrmClient, world.redis, opId),
     ]);
-    const pollsAfter = world.fixture!.requests.filter((r) => r.url.includes('media-deletions')).length;
+    const pollsAfter = world.fixture!.requests.filter((r) =>
+      r.url.includes('media-deletions'),
+    ).length;
     // Exactly one owner polled (the other returned false without I/O).
     expect([first, second].filter(Boolean).length).toBeLessThanOrEqual(1);
     expect(pollsAfter - pollsBefore).toBeLessThanOrEqual(2);
@@ -89,7 +128,12 @@ describe('replica-safe deletion lease', () => {
     const { courseId, lessonId } = await createFullDraft(world, 'lease-audit');
     await readyLesson(lessonId);
     const course = await world.prisma.course.findUniqueOrThrow({ where: { id: courseId } });
-    const del = await adminPost(world.app, `/admin/catalog/courses/${courseId}/delete`, world.adminJar, { confirmation: course.slug });
+    const del = await adminPost(
+      world.app,
+      `/admin/catalog/courses/${courseId}/delete`,
+      world.adminJar,
+      { confirmation: course.slug },
+    );
     const opId = del.body.data.operation.id as string;
     const c = cfg();
     for (let i = 0; i < 8; i += 1) {
@@ -97,10 +141,21 @@ describe('replica-safe deletion lease', () => {
         reconcilePendingOperations(world.prisma, c, createDrmClient, world.redis, 10),
         reconcilePendingOperations(world.prisma, c, createDrmClient, world.redis, 10),
       ]);
-      if ((await world.prisma.catalogDeletionOperation.findUniqueOrThrow({ where: { id: opId } })).status === 'COMPLETED') break;
+      if (
+        (await world.prisma.catalogDeletionOperation.findUniqueOrThrow({ where: { id: opId } }))
+          .status === 'COMPLETED'
+      )
+        break;
     }
-    expect((await world.prisma.catalogDeletionOperation.findUniqueOrThrow({ where: { id: opId } })).status).toBe('COMPLETED');
-    expect(await world.prisma.auditEvent.count({ where: { entityId: courseId, action: 'DELETION_COMPLETED' } })).toBe(1);
+    expect(
+      (await world.prisma.catalogDeletionOperation.findUniqueOrThrow({ where: { id: opId } }))
+        .status,
+    ).toBe('COMPLETED');
+    expect(
+      await world.prisma.auditEvent.count({
+        where: { entityId: courseId, action: 'DELETION_COMPLETED' },
+      }),
+    ).toBe(1);
     await withDeletionLease(world.redis, opId, async () => undefined);
   });
 });

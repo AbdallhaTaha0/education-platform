@@ -56,7 +56,9 @@ export async function createLearningWorld(): Promise<LearningWorld> {
     drmAssertionMaxLifetimeSec: 120,
     drmPublicBaseUrl: fixture.url,
   });
-  const student = await world.prisma.user.findUniqueOrThrow({ where: { id: world.studentUser.id } });
+  const student = await world.prisma.user.findUniqueOrThrow({
+    where: { id: world.studentUser.id },
+  });
   const out = world as LearningWorld;
   out.playback = playback;
   out.studentId = student.id;
@@ -72,11 +74,17 @@ export async function makeLessonPlayable(
   courseId: string,
   lessonId: string,
 ): Promise<{ externalAssetId: string }> {
-  const reg = await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media`, world.adminJar, {
-    contentType: 'video/mp4',
-    securityTier: 'STANDARD',
-  });
-  if (reg.status !== 201) throw new Error(`media register failed ${reg.status} ${JSON.stringify(reg.body)}`);
+  const reg = await adminPost(
+    world.app,
+    `/admin/catalog/lessons/${lessonId}/media`,
+    world.adminJar,
+    {
+      contentType: 'video/mp4',
+      securityTier: 'STANDARD',
+    },
+  );
+  if (reg.status !== 201)
+    throw new Error(`media register failed ${reg.status} ${JSON.stringify(reg.body)}`);
   const complete = await adminPost(
     world.app,
     `/admin/catalog/lessons/${lessonId}/media/complete`,
@@ -104,7 +112,10 @@ export async function createPublishedCourse(
   suffix: string,
   options: { extraLessons?: number } = {},
 ): Promise<PublishedCourse> {
-  const slug = `m5-${Date.now().toString(36)}-${suffix}`.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 60);
+  const slug = `m5-${Date.now().toString(36)}-${suffix}`
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '')
+    .slice(0, 60);
   const created = await adminPost(world.app, '/admin/catalog/courses', world.adminJar, {
     slug,
     titleAr: 'دورة محمية',
@@ -119,30 +130,51 @@ export async function createPublishedCourse(
     previousPricePiastres: 90000,
     durationDays: 90,
   });
-  const section = await adminPost(world.app, `/admin/catalog/courses/${courseId}/sections`, world.adminJar, {
-    titleAr: 'قسم',
-    titleEn: 'Section',
-  });
+  const section = await adminPost(
+    world.app,
+    `/admin/catalog/courses/${courseId}/sections`,
+    world.adminJar,
+    {
+      titleAr: 'قسم',
+      titleEn: 'Section',
+    },
+  );
   const sectionId = section.body.data.section.id as string;
-  const lesson = await adminPost(world.app, `/admin/catalog/sections/${sectionId}/lessons`, world.adminJar, {
-    titleAr: 'درس',
-    titleEn: 'Lesson',
-  });
+  const lesson = await adminPost(
+    world.app,
+    `/admin/catalog/sections/${sectionId}/lessons`,
+    world.adminJar,
+    {
+      titleAr: 'درس',
+      titleEn: 'Lesson',
+    },
+  );
   const lessonId = lesson.body.data.lesson.id as string;
   await makeLessonPlayable(world, courseId, lessonId);
   const lessonIds = [lessonId];
   for (let i = 0; i < (options.extraLessons ?? 0); i += 1) {
-    const extra = await adminPost(world.app, `/admin/catalog/sections/${sectionId}/lessons`, world.adminJar, {
-      titleAr: `درس ${i + 2}`,
-      titleEn: `Lesson ${i + 2}`,
-    });
+    const extra = await adminPost(
+      world.app,
+      `/admin/catalog/sections/${sectionId}/lessons`,
+      world.adminJar,
+      {
+        titleAr: `درس ${i + 2}`,
+        titleEn: `Lesson ${i + 2}`,
+      },
+    );
     const extraId = extra.body.data.lesson.id as string;
     await makeLessonPlayable(world, courseId, extraId);
     lessonIds.push(extraId);
   }
-  await adminPost(world.app, `/admin/catalog/courses/${courseId}/transitions`, world.adminJar, { to: 'PROCESSING' });
-  await adminPost(world.app, `/admin/catalog/courses/${courseId}/transitions`, world.adminJar, { to: 'READY' });
-  await adminPost(world.app, `/admin/catalog/courses/${courseId}/transitions`, world.adminJar, { to: 'PUBLISHED' });
+  await adminPost(world.app, `/admin/catalog/courses/${courseId}/transitions`, world.adminJar, {
+    to: 'PROCESSING',
+  });
+  await adminPost(world.app, `/admin/catalog/courses/${courseId}/transitions`, world.adminJar, {
+    to: 'READY',
+  });
+  await adminPost(world.app, `/admin/catalog/courses/${courseId}/transitions`, world.adminJar, {
+    to: 'PUBLISHED',
+  });
   const row = await world.prisma.course.findUniqueOrThrow({ where: { id: courseId } });
   return { courseId, sectionId, lessonId, lessonIds, slug: row.slug };
 }
@@ -220,7 +252,10 @@ export async function setCourseStatus(
  */
 export async function isolateReferences(world: LearningWorld, keepId?: string): Promise<void> {
   await world.prisma.playbackReference.updateMany({
-    where: keepId === undefined ? { status: { in: ['ACTIVE', 'ENDED'] } } : { id: { not: keepId }, status: { in: ['ACTIVE', 'ENDED'] } },
+    where:
+      keepId === undefined
+        ? { status: { in: ['ACTIVE', 'ENDED'] } }
+        : { id: { not: keepId }, status: { in: ['ACTIVE', 'ENDED'] } },
     data: {
       status: 'TERMINATED',
       terminationStatus: 'COMPLETED',

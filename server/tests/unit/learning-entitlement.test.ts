@@ -3,7 +3,11 @@
  * instant. Pure, so no database, Redis or DRM dependency is involved.
  */
 import { describe, expect, it } from 'vitest';
-import { evaluateEntitlement, isLearnableStatus, toDecision } from '../../src/modules/learning/access/entitlement.js';
+import {
+  evaluateEntitlement,
+  isLearnableStatus,
+  toDecision,
+} from '../../src/modules/learning/access/entitlement.js';
 import { LearningError } from '../../src/modules/learning/errors.js';
 
 const T0 = Date.parse('2026-09-30T12:00:00.000Z');
@@ -31,7 +35,9 @@ describe('entitlement boundary', () => {
   });
 
   it('requires a subscription for the requested course only', () => {
-    const rows = [{ courseId: 'other-course', startsAt: new Date(T0 - day), expiresAt: new Date(T0 + day) }];
+    const rows = [
+      { courseId: 'other-course', startsAt: new Date(T0 - day), expiresAt: new Date(T0 + day) },
+    ];
     const result = evaluateEntitlement(rows, 'course-1', T0);
     expect(result.allowed).toBe(false);
     expect(result.allowed === false && result.reason).toBe('SUBSCRIPTION_REQUIRED');
@@ -67,8 +73,14 @@ describe('entitlement boundary', () => {
   });
   it('indefinite access dominates finite expiry in either row order', () => {
     const indefinite = { courseId: 'course-1', startsAt: new Date(T0), expiresAt: null };
-    for (const rows of [[sub(T0), indefinite], [indefinite, sub(T0)]]) {
-      expect(evaluateEntitlement(rows, 'course-1', T0 + 10000 * day)).toEqual({ allowed: true, expiresAt: null });
+    for (const rows of [
+      [sub(T0), indefinite],
+      [indefinite, sub(T0)],
+    ]) {
+      expect(evaluateEntitlement(rows, 'course-1', T0 + 10000 * day)).toEqual({
+        allowed: true,
+        expiresAt: null,
+      });
     }
     expect(evaluateEntitlement([indefinite], 'other-course', T0).allowed).toBe(false);
   });

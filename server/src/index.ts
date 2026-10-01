@@ -70,24 +70,38 @@ async function main(): Promise<void> {
     }, 10_000);
     force.unref?.();
 
-    void notificationWorker.stop().then(() => realtime.stop()).then(() => server.close((err) => {
-      if (err && (err as NodeJS.ErrnoException).code !== 'ERR_SERVER_NOT_RUNNING') logger.error({ err }, 'http server close error');
-      void (async () => {
-        try {
-          reconciler.stop();
-          proofCleanup.stop();
-          stopExpiry();
-          await Promise.all([closePostgres(postgresPool), closeRedis(redisClient), closePrisma()]);
-          logger.info('connections closed; exiting');
-          clearTimeout(force);
-          process.exit(0);
-        } catch (shutdownErr) {
-          logger.error({ err: shutdownErr }, 'shutdown cleanup failed');
-          clearTimeout(force);
-          process.exit(1);
-        }
-      })();
-    })).catch(() => { logger.error('notification shutdown failed'); process.exit(1); });
+    void notificationWorker
+      .stop()
+      .then(() => realtime.stop())
+      .then(() =>
+        server.close((err) => {
+          if (err && (err as NodeJS.ErrnoException).code !== 'ERR_SERVER_NOT_RUNNING')
+            logger.error({ err }, 'http server close error');
+          void (async () => {
+            try {
+              reconciler.stop();
+              proofCleanup.stop();
+              stopExpiry();
+              await Promise.all([
+                closePostgres(postgresPool),
+                closeRedis(redisClient),
+                closePrisma(),
+              ]);
+              logger.info('connections closed; exiting');
+              clearTimeout(force);
+              process.exit(0);
+            } catch (shutdownErr) {
+              logger.error({ err: shutdownErr }, 'shutdown cleanup failed');
+              clearTimeout(force);
+              process.exit(1);
+            }
+          })();
+        }),
+      )
+      .catch(() => {
+        logger.error('notification shutdown failed');
+        process.exit(1);
+      });
   };
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));

@@ -80,7 +80,9 @@ export function mintAssertion(
 }
 
 /** Export only the public RSA material the external DRM verifier needs. */
-export function createAssertionJwks(config: AssertionConfig): { keys: Array<Record<string, unknown>> } | null {
+export function createAssertionJwks(
+  config: AssertionConfig,
+): { keys: Array<Record<string, unknown>> } | null {
   if (config.algorithm !== 'RS256') return null;
   try {
     const privateKey = createPrivateKey(config.signingKey);

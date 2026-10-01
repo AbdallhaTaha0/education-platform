@@ -14,7 +14,9 @@ export interface AuditEntry {
 export async function audit(prisma: DbClient, entry: AuditEntry): Promise<void> {
   const client = prisma as PrismaClient;
   const metadata =
-    entry.metadata === undefined ? undefined : (sanitizeForLog(entry.metadata) as Prisma.InputJsonValue);
+    entry.metadata === undefined
+      ? undefined
+      : (sanitizeForLog(entry.metadata) as Prisma.InputJsonValue);
   await client.auditEvent.create({
     data: {
       actorUserId: entry.actorUserId,

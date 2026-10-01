@@ -3,7 +3,12 @@ import { ApiError } from '../../../auth';
 import { fetchPublicCourses } from '../api/client';
 import type { PublicCourse } from '../types/models';
 
-export function usePublicCourses(): { loading: boolean; courses: PublicCourse[]; error: string | null; reload: () => void } {
+export function usePublicCourses(): {
+  loading: boolean;
+  courses: PublicCourse[];
+  error: string | null;
+  reload: () => void;
+} {
   const [loading, setLoading] = useState(true);
   const [courses, setCourses] = useState<PublicCourse[]>([]);
   const [error, setError] = useState<string | null>(null);

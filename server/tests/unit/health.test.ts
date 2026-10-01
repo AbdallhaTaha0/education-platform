@@ -32,7 +32,9 @@ const config: ServerConfig = {
 const up = { status: 'up' as const, latencyMs: 1 };
 const down = { status: 'down' as const, latencyMs: 1 };
 
-function buildApp(checks: { postgres?: typeof up | typeof down; redis?: typeof up | typeof down } = {}) {
+function buildApp(
+  checks: { postgres?: typeof up | typeof down; redis?: typeof up | typeof down } = {},
+) {
   return createApp(
     {
       config,

@@ -12,7 +12,10 @@ import {
   MAX_POSITION_SECONDS,
   normalizeProgress,
 } from '../../src/modules/learning/progress/validation.js';
-import { backoffMs, MAX_TERMINATION_ATTEMPTS } from '../../src/modules/learning/expiry/reconciler.js';
+import {
+  backoffMs,
+  MAX_TERMINATION_ATTEMPTS,
+} from '../../src/modules/learning/expiry/reconciler.js';
 
 describe('progress validation', () => {
   it('accepts a finite non-negative position', () => {
@@ -51,7 +54,13 @@ describe('progress validation', () => {
 
 describe('aggregate progress', () => {
   it('derives a percentage over the current structure', () => {
-    expect(aggregateProgress({ totalLessons: 4, completedLessonIds: ['a', 'b'], lastAccessedLessonId: 'c' })).toEqual({
+    expect(
+      aggregateProgress({
+        totalLessons: 4,
+        completedLessonIds: ['a', 'b'],
+        lastAccessedLessonId: 'c',
+      }),
+    ).toEqual({
       totalLessons: 4,
       completedLessons: 2,
       percentComplete: 50,
@@ -60,7 +69,9 @@ describe('aggregate progress', () => {
   });
 
   it('reports zero for an empty course instead of dividing by zero', () => {
-    expect(aggregateProgress({ totalLessons: 0, completedLessonIds: [], lastAccessedLessonId: null })).toEqual({
+    expect(
+      aggregateProgress({ totalLessons: 0, completedLessonIds: [], lastAccessedLessonId: null }),
+    ).toEqual({
       totalLessons: 0,
       completedLessons: 0,
       percentComplete: 0,
@@ -69,7 +80,11 @@ describe('aggregate progress', () => {
   });
 
   it('caps completed lessons at the structure size and de-duplicates ids', () => {
-    const out = aggregateProgress({ totalLessons: 2, completedLessonIds: ['a', 'a', 'b', 'c'], lastAccessedLessonId: null });
+    const out = aggregateProgress({
+      totalLessons: 2,
+      completedLessonIds: ['a', 'a', 'b', 'c'],
+      lastAccessedLessonId: null,
+    });
     expect(out.completedLessons).toBe(2);
     expect(out.percentComplete).toBe(100);
   });

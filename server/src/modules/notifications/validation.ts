@@ -13,14 +13,21 @@ export function parseSequence(value: unknown, allowZero = true): bigint {
   return result;
 }
 
-export interface InboxQuery { limit: number; unreadOnly: boolean; before?: bigint }
+export interface InboxQuery {
+  limit: number;
+  unreadOnly: boolean;
+  before?: bigint;
+}
 
 export function parseInboxQuery(query: Record<string, unknown>): InboxQuery {
   if (Object.keys(query).some((key) => !['limit', 'unreadOnly', 'cursor'].includes(key))) {
     throw new ApiError(400, 'INVALID_FIELD', 'Unknown notification query field.');
   }
   const limit = query['limit'];
-  if (limit !== undefined && (typeof limit !== 'string' || !/^(?:[1-9]|[1-4][0-9]|50)$/.test(limit))) {
+  if (
+    limit !== undefined &&
+    (typeof limit !== 'string' || !/^(?:[1-9]|[1-4][0-9]|50)$/.test(limit))
+  ) {
     throw new ApiError(400, 'VALIDATION_ERROR', 'Notification limit must be between 1 and 50.');
   }
   const unread = query['unreadOnly'];
@@ -47,7 +54,8 @@ function singleField(body: unknown, field: string): unknown {
 
 export function parseReadState(body: unknown): boolean {
   const value = singleField(body, 'read');
-  if (typeof value !== 'boolean') throw new ApiError(400, 'VALIDATION_ERROR', 'read must be a boolean.');
+  if (typeof value !== 'boolean')
+    throw new ApiError(400, 'VALIDATION_ERROR', 'read must be a boolean.');
   return value;
 }
 

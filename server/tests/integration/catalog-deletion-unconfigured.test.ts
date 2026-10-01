@@ -1,5 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { adminPost, createCatalogWorld, createFullDraft, type CatalogWorld } from './catalog-helpers.js';
+import {
+  adminPost,
+  createCatalogWorld,
+  createFullDraft,
+  type CatalogWorld,
+} from './catalog-helpers.js';
 
 /** Exact regression: unconfigured DRM deletion must be side-effect free. */
 let world: CatalogWorld;
@@ -29,12 +34,19 @@ describe('unconfigured deletion is side-effect free', () => {
     const auditsBefore = await world.prisma.auditEvent.count();
 
     const course = await world.prisma.course.findUniqueOrThrow({ where: { id: courseId } });
-    const res = await adminPost(world.app, `/admin/catalog/courses/${courseId}/delete`, world.adminJar, { confirmation: course.slug });
+    const res = await adminPost(
+      world.app,
+      `/admin/catalog/courses/${courseId}/delete`,
+      world.adminJar,
+      { confirmation: course.slug },
+    );
     expect(res.status).toBe(503);
     expect(res.body.error.code).toBe('DRM_UNCONFIGURED');
 
     expect(await world.prisma.catalogDeletionOperation.count()).toBe(opsBefore);
-    expect((await world.prisma.course.findUnique({ where: { id: courseId } }))?.deletionRequestedAt).toBeNull();
+    expect(
+      (await world.prisma.course.findUnique({ where: { id: courseId } }))?.deletionRequestedAt,
+    ).toBeNull();
     const after = await world.prisma.mediaMapping.findUniqueOrThrow({ where: { id: mapping.id } });
     expect(after.status).toBe(before.status);
     expect(after.assetId).toBe(before.assetId);
@@ -45,7 +57,12 @@ describe('unconfigured deletion is side-effect free', () => {
   it('still completes platform-only deletion when no external media exists', async () => {
     const { lessonId } = await createFullDraft(world, 'unconf-empty');
     const lesson = await world.prisma.lesson.findUniqueOrThrow({ where: { id: lessonId } });
-    const res = await adminPost(world.app, `/admin/catalog/lessons/${lesson.id}/delete`, world.adminJar, { confirmation: lesson.id });
+    const res = await adminPost(
+      world.app,
+      `/admin/catalog/lessons/${lesson.id}/delete`,
+      world.adminJar,
+      { confirmation: lesson.id },
+    );
     expect(res.status).toBe(202);
     expect(res.body.data.operation.status).toBe('COMPLETED');
   });

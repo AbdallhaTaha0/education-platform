@@ -3,7 +3,12 @@ import { ApiError } from '../../../auth';
 import { fetchAdminCourse } from '../api/client';
 import type { AdminCourseDetail } from '../types/models';
 
-export function useAdminCourse(courseId: string): { loading: boolean; course: AdminCourseDetail | null; error: string | null; reload: () => Promise<void> } {
+export function useAdminCourse(courseId: string): {
+  loading: boolean;
+  course: AdminCourseDetail | null;
+  error: string | null;
+  reload: () => Promise<void>;
+} {
   const [loading, setLoading] = useState(true);
   const [course, setCourse] = useState<AdminCourseDetail | null>(null);
   const [error, setError] = useState<string | null>(null);

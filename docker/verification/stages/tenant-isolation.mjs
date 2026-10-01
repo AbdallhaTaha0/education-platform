@@ -34,7 +34,11 @@ import {
 import { expect, recordBlocked, recordFail, step } from '../lib/safe-log.mjs';
 import { mediaPath, pollUntil } from '../lib/context.mjs';
 import { createPlaybackAssertion } from '../lib/assertion.mjs';
-import { objectKeyFromPresignedUrl, drmResponseState, validClearKeyLicense } from './drm-lifecycle.mjs';
+import {
+  objectKeyFromPresignedUrl,
+  drmResponseState,
+  validClearKeyLicense,
+} from './drm-lifecycle.mjs';
 
 export const ISOLATION_CODES = {
   ownerStatus: 200,
@@ -80,16 +84,23 @@ async function prepareAsset(ctx, client, tag, video) {
   const uploadUrl = register.json?.uploadUrl;
   if (!assetId || !uploadUrl) return null;
   const uploadObjectKey = objectKeyFromPresignedUrl(uploadUrl, ctx.s3.config);
-  const put = await fetch(uploadUrl, { method: 'PUT', headers: { 'Content-Type': 'video/mp4' }, body: video });
+  const put = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'video/mp4' },
+    body: video,
+  });
   expect(`tenant-${tag}-upload`, put.status === 200, { status: put.status, bytes: video.length });
   const complete = await client.completeMedia(assetId);
   expect(`tenant-${tag}-complete`, complete.status === 202, { status: complete.status });
   const ready = await pollUntil({
-    label: `tenant-${tag}-ready`, attempts: 40, intervalMs: 5000,
+    label: `tenant-${tag}-ready`,
+    attempts: 40,
+    intervalMs: 5000,
     probe: async () => client.mediaStatus(assetId),
     getState: drmResponseState,
     done: (state) => state === 'READY',
-    onState: (attempt, state) => expect(`tenant-${tag}-ready-state`, true, { state, attempts: attempt }),
+    onState: (attempt, state) =>
+      expect(`tenant-${tag}-ready-state`, true, { state, attempts: attempt }),
   });
   expect(`tenant-${tag}-ready`, ready.reached, { state: ready.state, attempts: ready.attempts });
   if (!ready.reached) return null;
@@ -104,13 +115,18 @@ async function deleteAsset(ctx, client, asset) {
   const deletionId = deletion.json?.deletionId;
   if (!deletionId) return false;
   const removed = await pollUntil({
-    label: 'tenant-delete', attempts: 40, intervalMs: 5000,
+    label: 'tenant-delete',
+    attempts: 40,
+    intervalMs: 5000,
     probe: async () => client.deletionStatus(deletionId),
     getState: drmResponseState,
     done: (state) => state === 'COMPLETED',
     onState: (attempt, state) => expect('tenant-delete-state', true, { state, attempts: attempt }),
   });
-  expect('tenant-delete-complete', removed.reached, { state: removed.state, attempts: removed.attempts });
+  expect('tenant-delete-complete', removed.reached, {
+    state: removed.state,
+    attempts: removed.attempts,
+  });
   const packaged = await ctx.s3.listKeys({ prefix: `assets/${asset.assetId}/` });
   expect('tenant-packaged-prefix-empty', packaged.status === 200 && packaged.keys.length === 0, {
     count: packaged.keys.length,
@@ -125,7 +141,9 @@ export async function tenantIsolation(ctx) {
   const altId = ctx.env.VERIFY_ALT_DRM_CLIENT_ID;
   const altSecret = ctx.env.VERIFY_ALT_DRM_CLIENT_SECRET;
   if (!altId || !altSecret) {
-    recordBlocked('tenant-isolation-alt-tenant', { note: 'VERIFY_ALT_DRM_CLIENT_ID/SECRET are required' });
+    recordBlocked('tenant-isolation-alt-tenant', {
+      note: 'VERIFY_ALT_DRM_CLIENT_ID/SECRET are required',
+    });
     return { completed: false };
   }
   const clients = {
@@ -133,7 +151,10 @@ export async function tenantIsolation(ctx) {
     alt: DrmClient.fromEnv({ ...ctx.env, DRM_CLIENT_ID: altId, DRM_CLIENT_SECRET: altSecret }),
   };
   const clientIds = { main: ctx.env.DRM_CLIENT_ID, alt: altId };
-  const devices = { main: `tenant-iso-device-main-${ctx.runId}`, alt: `tenant-iso-device-alt-${ctx.runId}` };
+  const devices = {
+    main: `tenant-iso-device-main-${ctx.runId}`,
+    alt: `tenant-iso-device-alt-${ctx.runId}`,
+  };
   const video = await readFile(mediaPath(ctx.env));
   expect('tenant-register-media', video.length > 0, { bytes: video.length });
 
@@ -148,12 +169,20 @@ export async function tenantIsolation(ctx) {
 
   try {
     // 2. Status, playback-creation and deletion isolation, both directions.
-    for (const [ownerName, strangerName] of [['main', 'alt'], ['alt', 'main']]) {
+    for (const [ownerName, strangerName] of [
+      ['main', 'alt'],
+      ['alt', 'main'],
+    ]) {
       const asset = assets[ownerName];
       const status = await clients[ownerName].mediaStatus(asset.assetId);
-      expect('tenant-owner-status-ready', status.status === ISOLATION_CODES.ownerStatus && status.json?.status === 'READY', {
-        status: status.status, state: status.json?.status,
-      });
+      expect(
+        'tenant-owner-status-ready',
+        status.status === ISOLATION_CODES.ownerStatus && status.json?.status === 'READY',
+        {
+          status: status.status,
+          state: status.json?.status,
+        },
+      );
       const denied = await clients[strangerName].mediaStatus(asset.assetId);
       expect('tenant-stranger-status-denied', denied.status === ISOLATION_CODES.strangerStatus, {
         status: denied.status,
@@ -162,28 +191,64 @@ export async function tenantIsolation(ctx) {
         externalUserId: `tenant-iso-user-${ctx.runId}`,
         externalAssetId: asset.externalAssetId,
         deviceId: devices[ownerName],
-        assertion: assertionFor(ctx.env, clientIds[ownerName], asset.externalAssetId, devices[ownerName], ctx.runId),
+        assertion: assertionFor(
+          ctx.env,
+          clientIds[ownerName],
+          asset.externalAssetId,
+          devices[ownerName],
+          ctx.runId,
+        ),
       });
-      expect('tenant-owner-playback-create', created.status === ISOLATION_CODES.ownerPlaybackCreate, {
-        status: created.status,
-      });
+      expect(
+        'tenant-owner-playback-create',
+        created.status === ISOLATION_CODES.ownerPlaybackCreate,
+        {
+          status: created.status,
+        },
+      );
       const deniedPlayback = await clients[strangerName].createPlaybackSession({
         externalUserId: `tenant-iso-user-${ctx.runId}`,
         externalAssetId: asset.externalAssetId,
         deviceId: devices[strangerName],
-        assertion: assertionFor(ctx.env, clientIds[strangerName], asset.externalAssetId, devices[strangerName], ctx.runId),
+        assertion: assertionFor(
+          ctx.env,
+          clientIds[strangerName],
+          asset.externalAssetId,
+          devices[strangerName],
+          ctx.runId,
+        ),
       });
-      expect('tenant-stranger-playback-denied', deniedPlayback.status === ISOLATION_CODES.strangerPlaybackCreate, {
-        status: deniedPlayback.status,
-      });
-      const deniedDelete = await clients[strangerName].requestDeletion(asset.assetId, asset.externalAssetId);
-      expect('tenant-stranger-delete-denied', deniedDelete.status === ISOLATION_CODES.strangerDelete, {
-        status: deniedDelete.status,
-      });
-      if (created.json?.playbackSessionId && created.json?.playbackToken && created.json?.manifestUrl && created.json?.licenseUrl) {
+      expect(
+        'tenant-stranger-playback-denied',
+        deniedPlayback.status === ISOLATION_CODES.strangerPlaybackCreate,
+        {
+          status: deniedPlayback.status,
+        },
+      );
+      const deniedDelete = await clients[strangerName].requestDeletion(
+        asset.assetId,
+        asset.externalAssetId,
+      );
+      expect(
+        'tenant-stranger-delete-denied',
+        deniedDelete.status === ISOLATION_CODES.strangerDelete,
+        {
+          status: deniedDelete.status,
+        },
+      );
+      if (
+        created.json?.playbackSessionId &&
+        created.json?.playbackToken &&
+        created.json?.manifestUrl &&
+        created.json?.licenseUrl
+      ) {
         sessions.push({
-          tenant: ownerName, id: created.json.playbackSessionId, bearer: created.json.playbackToken,
-          deviceId: devices[ownerName], manifestUrl: created.json.manifestUrl, licenseUrl: created.json.licenseUrl,
+          tenant: ownerName,
+          id: created.json.playbackSessionId,
+          bearer: created.json.playbackToken,
+          deviceId: devices[ownerName],
+          manifestUrl: created.json.manifestUrl,
+          licenseUrl: created.json.licenseUrl,
         });
       }
     }
@@ -193,107 +258,205 @@ export async function tenantIsolation(ctx) {
 
     // 3. Manifest controls, then cross bearer-to-session denials.
     const manifests = {};
-    for (const [name, s] of [['main', sessA], ['alt', sessB]]) {
+    for (const [name, s] of [
+      ['main', sessA],
+      ['alt', sessB],
+    ]) {
       const absolute = absolutePlaybackUrl(ctx.env.DRM_BASE_URL, s.manifestUrl);
       const res = await fetch(absolute, { headers: { Authorization: `Bearer ${s.bearer}` } });
       const text = await res.text();
       manifests[name] = text;
       expect('tenant-manifest-control', res.status === ISOLATION_CODES.manifestControl, {
-        status: res.status, bytes: text.length,
+        status: res.status,
+        bytes: text.length,
       });
     }
     const crossA = await fetch(absolutePlaybackUrl(ctx.env.DRM_BASE_URL, sessA.manifestUrl), {
       headers: { Authorization: `Bearer ${sessB.bearer}` },
     });
-    await crossA.text().then(() => {}).catch(() => {});
-    expect('tenant-manifest-session-mismatch', crossA.status === ISOLATION_CODES.bearerSessionMismatch, {
-      status: crossA.status,
-    });
+    await crossA
+      .text()
+      .then(() => {})
+      .catch(() => {});
+    expect(
+      'tenant-manifest-session-mismatch',
+      crossA.status === ISOLATION_CODES.bearerSessionMismatch,
+      {
+        status: crossA.status,
+      },
+    );
     const crossB = await fetch(absolutePlaybackUrl(ctx.env.DRM_BASE_URL, sessB.manifestUrl), {
       headers: { Authorization: `Bearer ${sessA.bearer}` },
     });
-    await crossB.text().then(() => {}).catch(() => {});
-    expect('tenant-manifest-session-mismatch-reverse', crossB.status === ISOLATION_CODES.bearerSessionMismatch, {
-      status: crossB.status,
-    });
+    await crossB
+      .text()
+      .then(() => {})
+      .catch(() => {});
+    expect(
+      'tenant-manifest-session-mismatch-reverse',
+      crossB.status === ISOLATION_CODES.bearerSessionMismatch,
+      {
+        status: crossB.status,
+      },
+    );
 
     // 4. Packaged-segment control plus one cross-session denial.
-    const segUrl = resolveSegmentUrl(absolutePlaybackUrl(ctx.env.DRM_BASE_URL, sessA.manifestUrl), manifests.main);
+    const segUrl = resolveSegmentUrl(
+      absolutePlaybackUrl(ctx.env.DRM_BASE_URL, sessA.manifestUrl),
+      manifests.main,
+    );
     if (!segUrl) {
       expect('tenant-segment-control', false, { note: 'no concrete segment resolved' });
     } else {
-      const seg = await fetch(segUrl, { headers: { Authorization: `Bearer ${sessA.bearer}`, Range: 'bytes=0-1023' } });
+      const seg = await fetch(segUrl, {
+        headers: { Authorization: `Bearer ${sessA.bearer}`, Range: 'bytes=0-1023' },
+      });
       const segBytes = Buffer.from(await seg.arrayBuffer());
-      expect('tenant-segment-control', (seg.status === 200 || seg.status === ISOLATION_CODES.segmentControl) && segBytes.length > 0, {
-        status: seg.status, bytes: segBytes.length,
+      expect(
+        'tenant-segment-control',
+        (seg.status === 200 || seg.status === ISOLATION_CODES.segmentControl) &&
+          segBytes.length > 0,
+        {
+          status: seg.status,
+          bytes: segBytes.length,
+        },
+      );
+      const segCross = await fetch(segUrl, {
+        headers: { Authorization: `Bearer ${sessB.bearer}`, Range: 'bytes=0-1023' },
       });
-      const segCross = await fetch(segUrl, { headers: { Authorization: `Bearer ${sessB.bearer}`, Range: 'bytes=0-1023' } });
-      await segCross.arrayBuffer().then(() => {}).catch(() => {});
-      expect('tenant-segment-session-mismatch', segCross.status === ISOLATION_CODES.segmentSessionMismatch, {
-        status: segCross.status,
-      });
+      await segCross
+        .arrayBuffer()
+        .then(() => {})
+        .catch(() => {});
+      expect(
+        'tenant-segment-session-mismatch',
+        segCross.status === ISOLATION_CODES.segmentSessionMismatch,
+        {
+          status: segCross.status,
+        },
+      );
     }
 
     // 5. License controls, then wrong-KID denials with the valid bearer.
-    const kids = { main: extractClearKeyKid(manifests.main), alt: extractClearKeyKid(manifests.alt) };
+    const kids = {
+      main: extractClearKeyKid(manifests.main),
+      alt: extractClearKeyKid(manifests.alt),
+    };
     if (!kids.main || !kids.alt) {
       recordFail('tenant-license-kid', { note: 'manifest did not publish a ClearKey KID' });
       return { completed: false };
     }
     const licenses = {};
-    for (const [name, s] of [['main', sessA], ['alt', sessB]]) {
-      const lic = await clients[name].requestLicense({ bearer: s.bearer, challenge: buildClearKeyChallenge(kids[name]) });
-      licenses[name] = lic;
-      expect('tenant-license-control', lic.status === ISOLATION_CODES.licenseControl && validClearKeyLicense(lic.json, kids[name]), {
-        status: lic.status, bytes: lic.rawLength,
+    for (const [name, s] of [
+      ['main', sessA],
+      ['alt', sessB],
+    ]) {
+      const lic = await clients[name].requestLicense({
+        bearer: s.bearer,
+        challenge: buildClearKeyChallenge(kids[name]),
       });
+      licenses[name] = lic;
+      expect(
+        'tenant-license-control',
+        lic.status === ISOLATION_CODES.licenseControl && validClearKeyLicense(lic.json, kids[name]),
+        {
+          status: lic.status,
+          bytes: lic.rawLength,
+        },
+      );
     }
-    const licWrongA = await clients.main.requestLicense({ bearer: sessA.bearer, challenge: buildClearKeyChallenge(kids.alt) });
-    expect('tenant-license-wrong-kid-denied', licWrongA.status === ISOLATION_CODES.licenseWrongKid, {
-      status: licWrongA.status,
+    const licWrongA = await clients.main.requestLicense({
+      bearer: sessA.bearer,
+      challenge: buildClearKeyChallenge(kids.alt),
     });
-    const licWrongB = await clients.alt.requestLicense({ bearer: sessB.bearer, challenge: buildClearKeyChallenge(kids.main) });
-    expect('tenant-license-wrong-kid-denied-reverse', licWrongB.status === ISOLATION_CODES.licenseWrongKid, {
-      status: licWrongB.status,
+    expect(
+      'tenant-license-wrong-kid-denied',
+      licWrongA.status === ISOLATION_CODES.licenseWrongKid,
+      {
+        status: licWrongA.status,
+      },
+    );
+    const licWrongB = await clients.alt.requestLicense({
+      bearer: sessB.bearer,
+      challenge: buildClearKeyChallenge(kids.main),
     });
+    expect(
+      'tenant-license-wrong-kid-denied-reverse',
+      licWrongB.status === ISOLATION_CODES.licenseWrongKid,
+      {
+        status: licWrongB.status,
+      },
+    );
 
     // 6. Application-authenticated renew-admin, both directions. Renewal
     // rotates the token binding, so the renewed bearer (not the original)
     // is the usable credential afterwards; the stranger's denial must leave
     // the session usable under it.
-    for (const [ownerName, strangerName] of [['main', 'alt'], ['alt', 'main']]) {
+    for (const [ownerName, strangerName] of [
+      ['main', 'alt'],
+      ['alt', 'main'],
+    ]) {
       const s = ownerName === 'main' ? sessA : sessB;
       const renewed = await clients[ownerName].request(
-        'POST', `/v1/playback/sessions/${encodeURIComponent(s.id)}/renew-admin`, {},
+        'POST',
+        `/v1/playback/sessions/${encodeURIComponent(s.id)}/renew-admin`,
+        {},
       );
-      expect('tenant-renew-owner', renewed.status === ISOLATION_CODES.renewOwner, { status: renewed.status });
-      if (typeof renewed.json?.playbackToken === 'string' && renewed.json.playbackToken.length > 0) {
+      expect('tenant-renew-owner', renewed.status === ISOLATION_CODES.renewOwner, {
+        status: renewed.status,
+      });
+      if (
+        typeof renewed.json?.playbackToken === 'string' &&
+        renewed.json.playbackToken.length > 0
+      ) {
         s.bearer = renewed.json.playbackToken;
       }
       const deniedRenew = await clients[strangerName].request(
-        'POST', `/v1/playback/sessions/${encodeURIComponent(s.id)}/renew-admin`, {},
+        'POST',
+        `/v1/playback/sessions/${encodeURIComponent(s.id)}/renew-admin`,
+        {},
       );
       expect('tenant-renew-stranger-denied', deniedRenew.status === ISOLATION_CODES.renewStranger, {
         status: deniedRenew.status,
       });
-      const stillUsable = await clients[ownerName].heartbeat(s.id, { deviceId: s.deviceId, bearer: s.bearer });
-      expect('tenant-heartbeat-after-denied-renew', stillUsable.status === ISOLATION_CODES.heartbeatAfterDeniedRenew, {
-        status: stillUsable.status,
+      const stillUsable = await clients[ownerName].heartbeat(s.id, {
+        deviceId: s.deviceId,
+        bearer: s.bearer,
       });
+      expect(
+        'tenant-heartbeat-after-denied-renew',
+        stillUsable.status === ISOLATION_CODES.heartbeatAfterDeniedRenew,
+        {
+          status: stillUsable.status,
+        },
+      );
     }
 
     // 7. Both assets survived everything: still READY.
-    for (const [name, asset] of [['main', assetA], ['alt', assetB]]) {
+    for (const [name, asset] of [
+      ['main', assetA],
+      ['alt', assetB],
+    ]) {
       const survived = await clients[name].mediaStatus(asset.assetId);
-      expect('tenant-survives-denials', survived.status === ISOLATION_CODES.ownerStatus && survived.json?.status === 'READY', {
-        status: survived.status, state: survived.json?.status,
-      });
+      expect(
+        'tenant-survives-denials',
+        survived.status === ISOLATION_CODES.ownerStatus && survived.json?.status === 'READY',
+        {
+          status: survived.status,
+          state: survived.json?.status,
+        },
+      );
     }
 
     // 8. End all sessions, delete each asset through its owner, verify cleanup.
     for (const s of sessions) {
-      const ended = await clients[s.tenant].endSession(s.id, { deviceId: s.deviceId, bearer: s.bearer });
-      expect('tenant-session-end', ended.status === ISOLATION_CODES.ownerSessionEnd, { status: ended.status });
+      const ended = await clients[s.tenant].endSession(s.id, {
+        deviceId: s.deviceId,
+        bearer: s.bearer,
+      });
+      expect('tenant-session-end', ended.status === ISOLATION_CODES.ownerSessionEnd, {
+        status: ended.status,
+      });
     }
     sessions.length = 0;
     deletedA = await deleteAsset(ctx, clients.main, assetA);
@@ -301,7 +464,9 @@ export async function tenantIsolation(ctx) {
     return { completed: deletedA && deletedB };
   } finally {
     for (const s of sessions) {
-      await clients[s.tenant].endSession(s.id, { deviceId: s.deviceId, bearer: s.bearer }).catch(() => {});
+      await clients[s.tenant]
+        .endSession(s.id, { deviceId: s.deviceId, bearer: s.bearer })
+        .catch(() => {});
     }
     if (assetA && !deletedA) {
       deletedA = await deleteAsset(ctx, clients.main, assetA).catch(() => false);

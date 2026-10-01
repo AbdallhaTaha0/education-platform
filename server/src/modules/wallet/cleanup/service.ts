@@ -13,7 +13,11 @@ export interface CleanupSummary {
  * preserving metadata + sanitized audit trail. Safe under concurrency: the
  * compare-and-set update only clears rows that still hold bytes.
  */
-export async function cleanupExpiredProofs(prisma: PrismaClient, batchLimit = 100, actorUserId = 'system'): Promise<CleanupSummary> {
+export async function cleanupExpiredProofs(
+  prisma: PrismaClient,
+  batchLimit = 100,
+  actorUserId = 'system',
+): Promise<CleanupSummary> {
   const deadline = new Date(Date.now() - PROOF_RETENTION_DAYS * 86_400_000);
   const candidates = await prisma.rechargeProof.findMany({
     where: {
@@ -32,8 +36,10 @@ export async function cleanupExpiredProofs(prisma: PrismaClient, batchLimit = 10
       });
       if (done.count === 0) return false;
       await audit(tx, {
-        actorUserId, action: 'RECHARGE_PROOF_CLEANED',
-        entityType: 'RechargeRequest', entityId: candidate.requestId,
+        actorUserId,
+        action: 'RECHARGE_PROOF_CLEANED',
+        entityType: 'RechargeRequest',
+        entityId: candidate.requestId,
         metadata: { retentionDays: PROOF_RETENTION_DAYS },
       });
       return true;

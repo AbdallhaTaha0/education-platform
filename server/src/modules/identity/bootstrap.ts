@@ -1,6 +1,11 @@
 import type { PrismaClient } from '@prisma/client';
 import { hashPassword, type Argon2Params } from './password.js';
-import { normalizeDisplayName, normalizeEmail, normalizePhone, validatePassword } from './validation.js';
+import {
+  normalizeDisplayName,
+  normalizeEmail,
+  normalizePhone,
+  validatePassword,
+} from './validation.js';
 import { toSafeUser, type SafeUser } from './store.js';
 import { ApiError } from './errors.js';
 
@@ -24,7 +29,10 @@ export interface BootstrapDeps {
  * attempts serialize on a transaction-scoped advisory lock, so at most one
  * succeeds and the rest fail with ADMIN_EXISTS. Never logs credentials.
  */
-export async function bootstrapFirstAdmin(input: BootstrapInput, deps: BootstrapDeps): Promise<SafeUser> {
+export async function bootstrapFirstAdmin(
+  input: BootstrapInput,
+  deps: BootstrapDeps,
+): Promise<SafeUser> {
   const displayName = normalizeDisplayName(input.displayName);
   const email = normalizeEmail(input.email);
   const phone = normalizePhone(input.phone);

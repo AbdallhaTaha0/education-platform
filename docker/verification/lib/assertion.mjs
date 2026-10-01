@@ -47,6 +47,8 @@ export function createPlaybackAssertion(env, input) {
   const encodedPayload = Buffer.from(JSON.stringify(payload)).toString('base64url');
   const signingInput = `${encodedHeader}.${encodedPayload}`;
   const privatePem = Buffer.from(env.DRM_ASSERTION_PRIVATE_KEY_B64, 'base64').toString('utf8');
-  const signature = crypto.sign('RSA-SHA256', Buffer.from(signingInput), privatePem).toString('base64url');
+  const signature = crypto
+    .sign('RSA-SHA256', Buffer.from(signingInput), privatePem)
+    .toString('base64url');
   return `${signingInput}.${signature}`;
 }

@@ -38,7 +38,12 @@ export function leaseKey(referenceId: string): string {
   return `edu:learning:expiry-lease:${referenceId}`;
 }
 
-async function acquire(redis: Redis, referenceId: string, token: string, nowMs: number): Promise<boolean> {
+async function acquire(
+  redis: Redis,
+  referenceId: string,
+  token: string,
+  nowMs: number,
+): Promise<boolean> {
   const result = await redis.set(leaseKey(referenceId), token, 'PX', LEASE_TTL_SEC * 1000, 'NX');
   void nowMs;
   return result === 'OK';
@@ -114,7 +119,9 @@ export async function findEligiblePage(
     },
   });
   return rows
-    .filter((row): row is typeof row & { nextTerminationAt: Date } => row.nextTerminationAt !== null)
+    .filter(
+      (row): row is typeof row & { nextTerminationAt: Date } => row.nextTerminationAt !== null,
+    )
     .map((row) => ({
       id: row.id,
       externalSessionId: row.externalSessionId,
@@ -204,7 +211,10 @@ async function scheduleRetry(
             terminationStatus: 'FAILED',
             nextTerminationAt: null,
           }
-        : { terminationStatus: 'PENDING', nextTerminationAt: new Date(nowMs + backoffMs(attempts)) }),
+        : {
+            terminationStatus: 'PENDING',
+            nextTerminationAt: new Date(nowMs + backoffMs(attempts)),
+          }),
     },
   });
 }
@@ -338,7 +348,11 @@ export async function detectCrossedSubscriptions(
 
   for (let page = 0; page < maxPages; page += 1) {
     const active: ActiveRow[] = await prisma.playbackReference.findMany({
-      where: { status: 'ACTIVE', terminationStatus: null, ...(cursor === null ? {} : { id: { gt: cursor } }) },
+      where: {
+        status: 'ACTIVE',
+        terminationStatus: null,
+        ...(cursor === null ? {} : { id: { gt: cursor } }),
+      },
       select: { id: true, studentId: true, courseId: true },
       orderBy: { id: 'asc' },
       take: pageSize,
@@ -354,7 +368,12 @@ export async function detectCrossedSubscriptions(
     for (const sub of subscriptions) {
       const key = `${sub.studentId}:${sub.courseId}`;
       const current = latest.get(key);
-      if (current === undefined || sub.expiresAt === null || (current !== null && sub.expiresAt > current)) latest.set(key, sub.expiresAt);
+      if (
+        current === undefined ||
+        sub.expiresAt === null ||
+        (current !== null && sub.expiresAt > current)
+      )
+        latest.set(key, sub.expiresAt);
     }
     for (const reference of active) {
       const expiry = latest.get(`${reference.studentId}:${reference.courseId}`);

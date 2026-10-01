@@ -51,7 +51,9 @@ export function planIdFromHash(): string {
 }
 
 export function packageIdFromHash(): string {
-  return window.location.hash.startsWith('#/package/') ? decodeURIComponent(window.location.hash.slice('#/package/'.length)) : '';
+  return window.location.hash.startsWith('#/package/')
+    ? decodeURIComponent(window.location.hash.slice('#/package/'.length))
+    : '';
 }
 
 export function slugFromHash(): string {
@@ -62,7 +64,8 @@ export function slugFromHash(): string {
 
 export function adminCourseIdFromHash(): string {
   const hash = window.location.hash;
-  if (hash.startsWith('#/admin/courses/')) return decodeURIComponent(hash.slice('#/admin/courses/'.length));
+  if (hash.startsWith('#/admin/courses/'))
+    return decodeURIComponent(hash.slice('#/admin/courses/'.length));
   return '';
 }
 

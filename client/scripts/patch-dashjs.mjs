@@ -6,14 +6,17 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 
-const original = '(keySystemMetadata.initData || keySystemMetadata.protData && keySystemMetadata.protData.clearkeys)';
-const replacement = '(/* FAYQ remote ClearKey cenc */ keySystemMetadata.protData && keySystemMetadata.protData.clearkeys)';
+const original =
+  '(keySystemMetadata.initData || keySystemMetadata.protData && keySystemMetadata.protData.clearkeys)';
+const replacement =
+  '(/* FAYQ remote ClearKey cenc */ keySystemMetadata.protData && keySystemMetadata.protData.clearkeys)';
 export function patchSource(source, version) {
   if (version !== '5.2.1') throw new Error('Unsupported dash.js compatibility patch version');
   const count = source.split(original).length - 1;
   const patchedCount = source.split(replacement).length - 1;
   if (count === 0 && patchedCount === 1) return source;
-  if (count !== 1 || patchedCount !== 0) throw new Error('Unexpected dash.js ClearKey patch signature');
+  if (count !== 1 || patchedCount !== 0)
+    throw new Error('Unexpected dash.js ClearKey patch signature');
   return source.replace(original, replacement);
 }
 

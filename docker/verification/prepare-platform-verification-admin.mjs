@@ -50,16 +50,36 @@ setEnvValues(envPath, {
 if (process.argv.includes('--bootstrap')) {
   // Fail-closed isolation gate: refuses dev-volume overlap, wrong tags, or
   // unexpected mounts before any container runs. Non-zero exit blocks bootstrap.
-  execFileSync('node', ['docker/verification/rs256-project.mjs', 'check'], { cwd: root, stdio: 'inherit' });
+  execFileSync('node', ['docker/verification/rs256-project.mjs', 'check'], {
+    cwd: root,
+    stdio: 'inherit',
+  });
   const result = spawnSync(
     'docker',
     [
-      'compose', '--env-file', '.env', '-p', 'education-platform-rs256',
-      '-f', 'docker/compose.dev.yml', '-f', 'docker/verification/compose.rs256.yml',
-      'run', '--rm', '--no-deps',
-      '-e', 'BOOTSTRAP_ADMIN_NAME', '-e', 'BOOTSTRAP_ADMIN_EMAIL',
-      '-e', 'BOOTSTRAP_ADMIN_PHONE', '-e', 'BOOTSTRAP_ADMIN_PASSWORD',
-      'server', 'node', 'dist/bootstrap.js',
+      'compose',
+      '--env-file',
+      '.env',
+      '-p',
+      'education-platform-rs256',
+      '-f',
+      'docker/compose.dev.yml',
+      '-f',
+      'docker/verification/compose.rs256.yml',
+      'run',
+      '--rm',
+      '--no-deps',
+      '-e',
+      'BOOTSTRAP_ADMIN_NAME',
+      '-e',
+      'BOOTSTRAP_ADMIN_EMAIL',
+      '-e',
+      'BOOTSTRAP_ADMIN_PHONE',
+      '-e',
+      'BOOTSTRAP_ADMIN_PASSWORD',
+      'server',
+      'node',
+      'dist/bootstrap.js',
     ],
     {
       cwd: root,
@@ -77,7 +97,8 @@ if (process.argv.includes('--bootstrap')) {
       },
     },
   );
-  if (result.status !== 0) throw new Error(`Admin bootstrap failed with exit ${result.status ?? 'unknown'}`);
+  if (result.status !== 0)
+    throw new Error(`Admin bootstrap failed with exit ${result.status ?? 'unknown'}`);
   process.stdout.write('verificationAdminBootstrapped=true project=education-platform-rs256\n');
 } else {
   process.stdout.write(

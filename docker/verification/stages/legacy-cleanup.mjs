@@ -18,7 +18,10 @@ export async function legacyCleanup(ctx) {
 
   const listed = await s3.listKeys({ prefix: LEGACY_PREFIX });
   if (listed.status !== 200) {
-    recordBlocked('legacy-cleanup', { status: listed.status, note: 'legacy prefix could not be listed' });
+    recordBlocked('legacy-cleanup', {
+      status: listed.status,
+      note: 'legacy prefix could not be listed',
+    });
     return { removed: false };
   }
   expect('legacy-prefix-listed', true, { count: listed.keys.length });
@@ -29,16 +32,18 @@ export async function legacyCleanup(ctx) {
   }
 
   if (listed.keys.length !== 1) {
-    recordBlocked(
-      'legacy-cleanup',
-      { count: listed.keys.length, note: 'legacy prefix is ambiguous; expected exactly one object' },
-    );
+    recordBlocked('legacy-cleanup', {
+      count: listed.keys.length,
+      note: 'legacy prefix is ambiguous; expected exactly one object',
+    });
     return { removed: false, aborted: 'ambiguous' };
   }
 
   const key = listed.keys[0];
   if (!LEGACY_PATTERN.test(key)) {
-    recordBlocked('legacy-cleanup', { note: 'legacy object name is not the accepted exact pattern' });
+    recordBlocked('legacy-cleanup', {
+      note: 'legacy object name is not the accepted exact pattern',
+    });
     return { removed: false, aborted: 'unexpected-name' };
   }
 

@@ -1,7 +1,13 @@
 import { Router } from 'express';
 import type { PrismaClient } from '@prisma/client';
 import { ok } from '../../identity/errors.js';
-import { rateLimit, requireAdmin, requireAuth, requireOrigin, requireSessionCsrf } from '../../identity/middleware.js';
+import {
+  rateLimit,
+  requireAdmin,
+  requireAuth,
+  requireOrigin,
+  requireSessionCsrf,
+} from '../../identity/middleware.js';
 import { cleanupExpiredProofs } from '../cleanup/service.js';
 import { getProofBytes, listRequestsForReview } from '../recharge/queries.js';
 import { reviewRecharge } from '../recharge/service.js';
@@ -26,7 +32,9 @@ export function createWalletAdminRouter(deps: WalletAdminDeps) {
       res.json(
         ok({
           requests: await listRequestsForReview(deps.prisma, {
-            ...(status === 'PENDING' || status === 'APPROVED' || status === 'REJECTED' ? { status } : {}),
+            ...(status === 'PENDING' || status === 'APPROVED' || status === 'REJECTED'
+              ? { status }
+              : {}),
             ...(typeof channel === 'string' ? { channel } : {}),
           }),
         }),
@@ -43,7 +51,12 @@ export function createWalletAdminRouter(deps: WalletAdminDeps) {
     async (req, res, next) => {
       try {
         const { userId: reviewerId } = authOf(req);
-        const view = await reviewRecharge(deps.prisma, reviewerId, req.params['id'] as string, req.body as RechargeReviewInput);
+        const view = await reviewRecharge(
+          deps.prisma,
+          reviewerId,
+          req.params['id'] as string,
+          req.body as RechargeReviewInput,
+        );
         res.json(ok(view));
       } catch (err) {
         next(err);

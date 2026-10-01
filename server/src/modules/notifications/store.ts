@@ -15,26 +15,49 @@ export async function lockInbox(tx: NotificationTx, userId: string, now: Date) {
 }
 
 /** Internal-only consumer of a frozen audience, never an HTTP notification-creation API. */
-export async function materializeNotification(prisma: PrismaClient, eventId: string, recipientId: string, clock: Clock = Date.now) {
+export async function materializeNotification(
+  prisma: PrismaClient,
+  eventId: string,
+  recipientId: string,
+  clock: Clock = Date.now,
+) {
   return prisma.$transaction(async (tx) => {
     const state = await lockInbox(tx, recipientId, new Date(clock()));
     const now = new Date(clock());
     const audience = await tx.notificationAudience.findUnique({
-      where: { eventId_recipientId: { eventId, recipientId } }, include: { event: true },
+      where: { eventId_recipientId: { eventId, recipientId } },
+      include: { event: true },
     });
     if (audience === null || audience.event.expiresAt <= now) return null;
     // Rechecked after the inbox lock so two replicas observe the winner.
-    const prior = await tx.notification.findUnique({ where: { eventId_recipientId: { eventId, recipientId } } });
-    if (prior) return { id: prior.id, sequence: prior.recipientSequence.toString(), created: false };
+    const prior = await tx.notification.findUnique({
+      where: { eventId_recipientId: { eventId, recipientId } },
+    });
+    if (prior)
+      return { id: prior.id, sequence: prior.recipientSequence.toString(), created: false };
     const event = audience.event;
-    const created = await tx.notification.create({ data: {
-      eventId, recipientId, recipientSequence: state.lastSequence + 1n,
-      createdAt: event.recordedAt, occurredAt: event.occurredAt, expiresAt: event.expiresAt, nextSignalAt: now,
-    } });
-    await tx.notificationInboxState.update({ where: { userId: recipientId }, data: {
-      lastSequence: { increment: 1n }, revision: { increment: 1n },
-    } });
-    await tx.notificationAudience.update({ where: { eventId_recipientId: { eventId, recipientId } }, data: { materializedAt: now } });
+    const created = await tx.notification.create({
+      data: {
+        eventId,
+        recipientId,
+        recipientSequence: state.lastSequence + 1n,
+        createdAt: event.recordedAt,
+        occurredAt: event.occurredAt,
+        expiresAt: event.expiresAt,
+        nextSignalAt: now,
+      },
+    });
+    await tx.notificationInboxState.update({
+      where: { userId: recipientId },
+      data: {
+        lastSequence: { increment: 1n },
+        revision: { increment: 1n },
+      },
+    });
+    await tx.notificationAudience.update({
+      where: { eventId_recipientId: { eventId, recipientId } },
+      data: { materializedAt: now },
+    });
     return { id: created.id, sequence: created.recipientSequence.toString(), created: true };
   });
 }

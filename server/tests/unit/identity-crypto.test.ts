@@ -6,11 +6,20 @@ import {
   signAccessToken,
   verifyAccessToken,
 } from '../../src/modules/identity/tokens.js';
-import { issueCsrfToken, verifyAnonymousCsrf, verifySessionCsrf, csrfDigest } from '../../src/modules/identity/csrf.js';
+import {
+  issueCsrfToken,
+  verifyAnonymousCsrf,
+  verifySessionCsrf,
+  csrfDigest,
+} from '../../src/modules/identity/csrf.js';
 import { ApiError } from '../../src/modules/identity/errors.js';
 
 const FAST_ARGON = { memoryKb: 1024, timeCost: 1, parallelism: 1 };
-const TOKEN_CONFIG = { secret: 'test-secret-that-is-long-enough-32', issuer: 'edu-test', audience: 'edu-web' };
+const TOKEN_CONFIG = {
+  secret: 'test-secret-that-is-long-enough-32',
+  issuer: 'edu-test',
+  audience: 'edu-web',
+};
 
 describe('argon2id password hashing', () => {
   it('hashes to argon2id and verifies (wrong password fails)', async () => {
@@ -26,7 +35,11 @@ describe('argon2id password hashing', () => {
 describe('access tokens', () => {
   it('round-trips sub/role/sid/jti with issuer/audience', () => {
     const at = 1_700_000_000_000;
-    const { token, jti } = signAccessToken({ sub: 'user-1', role: 'STUDENT', sid: 'sess-1' }, TOKEN_CONFIG, at);
+    const { token, jti } = signAccessToken(
+      { sub: 'user-1', role: 'STUDENT', sid: 'sess-1' },
+      TOKEN_CONFIG,
+      at,
+    );
     const claims = verifyAccessToken(token, TOKEN_CONFIG, at);
     expect(claims).toMatchObject({ sub: 'user-1', role: 'STUDENT', sid: 'sess-1', jti });
   });
@@ -42,9 +55,9 @@ describe('access tokens', () => {
   it('rejects wrong secret, issuer, audience, and malformed tokens', () => {
     const at = 1_700_000_000_000;
     const { token } = signAccessToken({ sub: 'u', role: 'STUDENT', sid: 's' }, TOKEN_CONFIG, at);
-    expect(() => verifyAccessToken(token, { ...TOKEN_CONFIG, secret: 'x'.repeat(32) }, at)).toThrowError(
-      expect.objectContaining({ code: 'TOKEN_INVALID' }),
-    );
+    expect(() =>
+      verifyAccessToken(token, { ...TOKEN_CONFIG, secret: 'x'.repeat(32) }, at),
+    ).toThrowError(expect.objectContaining({ code: 'TOKEN_INVALID' }));
     expect(() => verifyAccessToken(token, { ...TOKEN_CONFIG, issuer: 'evil' }, at)).toThrowError(
       expect.objectContaining({ code: 'TOKEN_INVALID' }),
     );

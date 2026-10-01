@@ -1,6 +1,5 @@
 /** Same-origin API access through Nginx (/api/* -> backend). No secrets here. */
-const API_BASE: string =
-  (import.meta.env['VITE_API_BASE'] as string | undefined) || '/api';
+const API_BASE: string = (import.meta.env['VITE_API_BASE'] as string | undefined) || '/api';
 
 export type HealthState = 'loading' | 'up' | 'down';
 
@@ -28,9 +27,7 @@ export async function fetchFoundationStatus(timeoutMs = 8000): Promise<Foundatio
     fetchJson('/health/live', timeoutMs),
     fetchJson('/health/ready', timeoutMs),
   ]);
-  const live: HealthState =
-    liveRes.status === 'fulfilled' && liveRes.value.ok ? 'up' : 'down';
-  const ready: HealthState =
-    readyRes.status === 'fulfilled' && readyRes.value.ok ? 'up' : 'down';
+  const live: HealthState = liveRes.status === 'fulfilled' && liveRes.value.ok ? 'up' : 'down';
+  const ready: HealthState = readyRes.status === 'fulfilled' && readyRes.value.ok ? 'up' : 'down';
   return { live, ready };
 }

@@ -2,7 +2,8 @@ import type { NextFunction, Request, Response } from 'express';
 import type { PrismaClient } from '@prisma/client';
 import type Redis from 'ioredis';
 import { ApiError } from './errors.js';
-import { ACCESS_COOKIE, parseCookies } from './cookies.js';import { CSRF_HEADER, verifyAnonymousCsrf, verifySessionCsrf } from './csrf.js';
+import { ACCESS_COOKIE, parseCookies } from './cookies.js';
+import { CSRF_HEADER, verifyAnonymousCsrf, verifySessionCsrf } from './csrf.js';
 import { checkRateLimit, rateLimited, type RateLimit } from './rateLimit.js';
 import { getActiveSession, tombstoneKey } from './store.js';
 import { ensureRedis } from '../../infra/redis.js';
@@ -94,7 +95,8 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
         await deps.redis.set(tombstoneKey(claims.sid), '1', 'EX', 900);
         throw new ApiError(401, 'SESSION_REVOKED', 'Session is invalid.');
       }
-      if (check.reason === 'expired') throw new ApiError(401, 'SESSION_EXPIRED', 'Session has expired.');
+      if (check.reason === 'expired')
+        throw new ApiError(401, 'SESSION_EXPIRED', 'Session has expired.');
       throw new ApiError(401, 'TOKEN_INVALID', 'Session is invalid.');
     }
     if (check.user.id !== claims.sub) {

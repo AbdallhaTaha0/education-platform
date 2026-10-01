@@ -64,7 +64,9 @@ describe('display name and password policy', () => {
     expect(PASSWORD_MIN_LENGTH).toBe(12);
     expect(codeOf(() => validatePassword('short1!'))).toBe('VALIDATION_ERROR');
     // Passphrase without symbols/digits is fine.
-    expect(validatePassword('correct horse battery staple extra')).toBe('correct horse battery staple extra');
+    expect(validatePassword('correct horse battery staple extra')).toBe(
+      'correct horse battery staple extra',
+    );
     expect(validatePassword('x'.repeat(128)).length).toBe(128);
     expect(codeOf(() => validatePassword('x'.repeat(257)))).toBe('VALIDATION_ERROR');
   });

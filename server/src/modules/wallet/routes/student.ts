@@ -2,7 +2,12 @@ import { Router } from 'express';
 import type { PrismaClient } from '@prisma/client';
 import type { ServerConfig } from '../../../config.js';
 import { ApiError, ok } from '../../identity/errors.js';
-import { rateLimit, requireAuth, requireOrigin, requireSessionCsrf } from '../../identity/middleware.js';
+import {
+  rateLimit,
+  requireAuth,
+  requireOrigin,
+  requireSessionCsrf,
+} from '../../identity/middleware.js';
 import { getOrCreateWallet, reconciledBalance } from '../ledger.js';
 import { authOf } from './auth.js';
 import { listMyPurchases, listMySubscriptions, purchaseCourse } from '../purchase/service.js';
@@ -23,20 +28,39 @@ const authedWrite = [requireOrigin, requireAuth, requireSessionCsrf];
 export function createWalletStudentRouter(deps: WalletStudentDeps) {
   const router = Router();
   router.get('/packages/:id/review', ...authed, async (req, res, next) => {
-    try { res.json(ok(await packageReview(deps.prisma, authOf(req).userId, req.params.id as string))); } catch (err) { next(err); }
+    try {
+      res.json(ok(await packageReview(deps.prisma, authOf(req).userId, req.params.id as string)));
+    } catch (err) {
+      next(err);
+    }
   });
   router.get('/package-purchases', ...authed, async (req, res, next) => {
-    try { res.json(ok({ purchases: await listPackagePurchases(deps.prisma, authOf(req).userId) })); } catch (err) { next(err); }
+    try {
+      res.json(ok({ purchases: await listPackagePurchases(deps.prisma, authOf(req).userId) }));
+    } catch (err) {
+      next(err);
+    }
   });
-  router.post('/package-purchases', ...authedWrite, rateLimit('wallet-package-purchase', { windowSec: 60, max: 20 }), async (req, res, next) => {
-    try { res.status(201).json(ok(await purchasePackage(deps.prisma, authOf(req).userId, req.body))); } catch (err) { next(err); }
-  });
+  router.post(
+    '/package-purchases',
+    ...authedWrite,
+    rateLimit('wallet-package-purchase', { windowSec: 60, max: 20 }),
+    async (req, res, next) => {
+      try {
+        res.status(201).json(ok(await purchasePackage(deps.prisma, authOf(req).userId, req.body)));
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   router.get('/', ...authed, async (req, res, next) => {
     try {
       const { userId } = authOf(req);
       const wallet = await deps.prisma.$transaction(async (tx) => getOrCreateWallet(tx, userId));
-      res.json(ok({ balancePiastres: wallet.balancePiastres, updatedAt: wallet.updatedAt.toISOString() }));
+      res.json(
+        ok({ balancePiastres: wallet.balancePiastres, updatedAt: wallet.updatedAt.toISOString() }),
+      );
     } catch (err) {
       next(err);
     }
@@ -75,7 +99,12 @@ export function createWalletStudentRouter(deps: WalletStudentDeps) {
     async (req, res, next) => {
       try {
         const { userId } = authOf(req);
-        const view = await submitRecharge(deps.prisma, deps.config.paymentChannels, userId, req.body as RechargeSubmitInput);
+        const view = await submitRecharge(
+          deps.prisma,
+          deps.config.paymentChannels,
+          userId,
+          req.body as RechargeSubmitInput,
+        );
         res.status(201).json(ok(view));
       } catch (err) {
         next(err);

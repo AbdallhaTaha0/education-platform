@@ -75,7 +75,9 @@ export async function createCatalogWorld(
   const admin = await createTestAdmin(world, 'Catalog Admin', 'catalog secret twelve words');
   const session = await loginWith(world.app, admin.email, 'catalog secret twelve words');
   const student = await registerStudent(world.app);
-  const studentRow = await world.prisma.user.findUniqueOrThrow({ where: { email: student.user.email } });
+  const studentRow = await world.prisma.user.findUniqueOrThrow({
+    where: { email: student.user.email },
+  });
   const out = world as CatalogWorld;
   (out as { adminJar: unknown }).adminJar = session.jar;
   (out as { adminUser: unknown }).adminUser = { id: admin.id, email: admin.email };
@@ -85,24 +87,57 @@ export async function createCatalogWorld(
   return out;
 }
 
-export function adminPost(app: Express, path: string, jar: { header(): string; csrf(): string }, body: Record<string, unknown> = {}) {
-  return request(app).post(path).set('Origin', TEST_ORIGIN).set('X-Forwarded-For', uniqueIp()).set('Cookie', jar.header()).set('X-Csrf-Token', jar.csrf()).send(body);
+export function adminPost(
+  app: Express,
+  path: string,
+  jar: { header(): string; csrf(): string },
+  body: Record<string, unknown> = {},
+) {
+  return request(app)
+    .post(path)
+    .set('Origin', TEST_ORIGIN)
+    .set('X-Forwarded-For', uniqueIp())
+    .set('Cookie', jar.header())
+    .set('X-Csrf-Token', jar.csrf())
+    .send(body);
 }
 
-export function adminPatch(app: Express, path: string, jar: { header(): string; csrf(): string }, body: Record<string, unknown> = {}) {
-  return request(app).patch(path).set('Origin', TEST_ORIGIN).set('X-Forwarded-For', uniqueIp()).set('Cookie', jar.header()).set('X-Csrf-Token', jar.csrf()).send(body);
+export function adminPatch(
+  app: Express,
+  path: string,
+  jar: { header(): string; csrf(): string },
+  body: Record<string, unknown> = {},
+) {
+  return request(app)
+    .patch(path)
+    .set('Origin', TEST_ORIGIN)
+    .set('X-Forwarded-For', uniqueIp())
+    .set('Cookie', jar.header())
+    .set('X-Csrf-Token', jar.csrf())
+    .send(body);
 }
 
 export function adminDelete(app: Express, path: string, jar: { header(): string; csrf(): string }) {
-  return request(app).delete(path).set('Origin', TEST_ORIGIN).set('X-Forwarded-For', uniqueIp()).set('Cookie', jar.header()).set('X-Csrf-Token', jar.csrf());
+  return request(app)
+    .delete(path)
+    .set('Origin', TEST_ORIGIN)
+    .set('X-Forwarded-For', uniqueIp())
+    .set('Cookie', jar.header())
+    .set('X-Csrf-Token', jar.csrf());
 }
 
 export function adminGet(app: Express, path: string, jar: { header(): string }) {
   return request(app).get(path).set('X-Forwarded-For', uniqueIp()).set('Cookie', jar.header());
 }
 
-export async function createFullDraft(world: CatalogWorld, slugSuffix: string): Promise<{ courseId: string; sectionId: string; lessonId: string; planId: string }> {
-  const slug = `course-${Date.now().toString(36)}-${slugSuffix}`.toLowerCase().replace(/[^a-z0-9-]/g, '').slice(0, 60);
+export async function createFullDraft(
+  world: CatalogWorld,
+  slugSuffix: string,
+): Promise<{ courseId: string; sectionId: string; lessonId: string; planId: string }> {
+  const slug = `course-${Date.now().toString(36)}-${slugSuffix}`
+    .toLowerCase()
+    .replace(/[^a-z0-9-]/g, '')
+    .slice(0, 60);
   const c = await adminPost(world.app, '/admin/catalog/courses', world.adminJar, {
     slug,
     titleAr: 'دورة اختبار',
@@ -110,7 +145,8 @@ export async function createFullDraft(world: CatalogWorld, slugSuffix: string): 
     descriptionAr: 'وصف عربي',
     descriptionEn: 'English description',
   });
-  if (c.status !== 201) throw new Error(`course create failed ${c.status} ${JSON.stringify(c.body)}`);
+  if (c.status !== 201)
+    throw new Error(`course create failed ${c.status} ${JSON.stringify(c.body)}`);
   const courseId = c.body.data.course.id as string;
   const p = await adminPost(world.app, `/admin/catalog/courses/${courseId}/plans`, world.adminJar, {
     currentPricePiastres: 60000,
@@ -118,15 +154,25 @@ export async function createFullDraft(world: CatalogWorld, slugSuffix: string): 
     durationDays: 90,
   });
   const planId = p.body.data.plan.id as string;
-  const s = await adminPost(world.app, `/admin/catalog/courses/${courseId}/sections`, world.adminJar, {
-    titleAr: 'قسم أول',
-    titleEn: 'Section one',
-  });
+  const s = await adminPost(
+    world.app,
+    `/admin/catalog/courses/${courseId}/sections`,
+    world.adminJar,
+    {
+      titleAr: 'قسم أول',
+      titleEn: 'Section one',
+    },
+  );
   const sectionId = s.body.data.section.id as string;
-  const l = await adminPost(world.app, `/admin/catalog/sections/${sectionId}/lessons`, world.adminJar, {
-    titleAr: 'درس أول',
-    titleEn: 'Lesson one',
-  });
+  const l = await adminPost(
+    world.app,
+    `/admin/catalog/sections/${sectionId}/lessons`,
+    world.adminJar,
+    {
+      titleAr: 'درس أول',
+      titleEn: 'Lesson one',
+    },
+  );
   const lessonId = l.body.data.lesson.id as string;
   return { courseId, sectionId, lessonId, planId };
 }

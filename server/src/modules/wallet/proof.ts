@@ -22,7 +22,8 @@ function fail(reason: string): never {
 /** Declared extension must match the declared MIME family (anti-spoofing). */
 function checkExtensionPair(filename: string, mime: string): string {
   const dot = filename.lastIndexOf('.');
-  if (dot < 0 || filename.includes('/') || filename.includes('\\') || filename.includes('..')) fail('unsafe filename');
+  if (dot < 0 || filename.includes('/') || filename.includes('\\') || filename.includes('..'))
+    fail('unsafe filename');
   const ext = filename.slice(dot + 1).toLowerCase();
   for (const [kind, rule] of Object.entries(ALLOWED)) {
     if (rule.exts.includes(ext)) {
@@ -37,7 +38,8 @@ function checkExtensionPair(filename: string, mime: string): string {
 function checkSignature(kind: string, bytes: Buffer): void {
   if (kind === 'jpg') {
     if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) fail('not a JPEG file');
-    if (bytes[bytes.length - 2] !== 0xff || bytes[bytes.length - 1] !== 0xd9) fail('truncated JPEG file');
+    if (bytes[bytes.length - 2] !== 0xff || bytes[bytes.length - 1] !== 0xd9)
+      fail('truncated JPEG file');
   } else if (kind === 'png') {
     const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
     if (bytes.length < 33 || !sig.every((b, i) => bytes[i] === b)) fail('not a PNG file');
@@ -55,7 +57,8 @@ function checkSignature(kind: string, bytes: Buffer): void {
  * then extension/MIME pairing, magic bytes, and SHA-256 content hash.
  */
 export function validateProof(filename: unknown, mime: unknown, base64: unknown): ValidatedProof {
-  if (typeof filename !== 'string' || filename.length === 0 || filename.length > 180) fail('unsafe filename');
+  if (typeof filename !== 'string' || filename.length === 0 || filename.length > 180)
+    fail('unsafe filename');
   if (typeof mime !== 'string') fail('unsupported file type');
   if (typeof base64 !== 'string' || base64.length === 0) fail('empty file');
   // 5 MiB cap enforced on the wire form first: ceil(5MiB/3)*4 + margin.

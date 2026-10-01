@@ -39,7 +39,11 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-education_platform}"]
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-education_platform}',
+        ]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -47,11 +51,11 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--appendonly", "yes"]
+    command: ['redis-server', '--appendonly', 'yes']
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 3s
       retries: 10
@@ -68,7 +72,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    restart: "no"
+    restart: 'no'
 
   server:
     build:
@@ -122,7 +126,11 @@ services:
     # Liveness probe (not readiness): uses the node runtime already in the
     # image, no extra packages. /health/live never touches dependencies.
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3000/health/live').then((r)=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))\""]
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://127.0.0.1:3000/health/live'').then((r)=>{process.exit(r.ok?0:1)}).catch(()=>process.exit(1))"',
+        ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -137,7 +145,7 @@ services:
       - server
     # Static-file probe via the busybox wget shipped in the image.
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/"]
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:8080/']
       interval: 10s
       timeout: 5s
       retries: 3
@@ -151,7 +159,7 @@ services:
     ports:
       # Host port is overridable so isolated projects (browser tests) can run
       # beside development: NGINX_PORT=8081 docker compose -p other ...
-      - "${NGINX_PORT:-8080}:8080"
+      - '${NGINX_PORT:-8080}:8080'
     depends_on:
       server:
         condition: service_healthy
@@ -160,7 +168,11 @@ services:
     # Proves both proxy paths through the entry point: frontend shell and
     # backend liveness. Busybox wget is already in the image.
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ && wget -q -O /dev/null http://127.0.0.1:8080/api/health/live"]
+      test:
+        [
+          'CMD-SHELL',
+          'wget -q -O /dev/null http://127.0.0.1:8080/ && wget -q -O /dev/null http://127.0.0.1:8080/api/health/live',
+        ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -175,7 +187,7 @@ services:
       context: ..
       dockerfile: docker/drm-fixture/Dockerfile
     image: edu-platform-drm-fixture:0.4.0-m4
-    profiles: ["browser"]
+    profiles: ['browser']
     environment:
       PORT: 8090
       FIXTURE_CLIENT_ID: ${DRM_CLIENT_ID:-fixture-client}
@@ -185,12 +197,16 @@ services:
       FIXTURE_ASSERTION_AUDIENCE: ${DRM_ASSERTION_AUDIENCE:-}
       FIXTURE_ASSERTION_SECRET: ${DRM_ASSERTION_SECRET:-}
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8090/v1/media',{method:'POST',headers:{'Content-Type':'application/json','X-Client-Id':'x','X-Client-Secret':'y'},body:'{}'}).then(()=>process.exit(0)).catch(()=>process.exit(1))\""]
+      test:
+        [
+          'CMD-SHELL',
+          'node -e "fetch(''http://127.0.0.1:8090/v1/media'',{method:''POST'',headers:{''Content-Type'':''application/json'',''X-Client-Id'':''x'',''X-Client-Secret'':''y''},body:''{}''}).then(()=>process.exit(0)).catch(()=>process.exit(1))"',
+        ]
       interval: 5s
       timeout: 3s
       retries: 10
       start_period: 5s
-    restart: "no"
+    restart: 'no'
 
   # Containerized M3/M4 browser harness (test-only profile, never started by
   # default). Runs Chromium assertions through Nginx against a DISPOSABLE
@@ -253,7 +269,7 @@ services:
       context: ..
       dockerfile: docker/browser/Dockerfile
     image: edu-platform-browser:0.4.0-m4
-    profiles: ["browser"]
+    profiles: ['browser']
     environment:
       BASE_URL: http://nginx:8080
       EVIDENCE_DIR: /srv/browser/evidence
@@ -268,7 +284,7 @@ services:
     depends_on:
       nginx:
         condition: service_healthy
-    restart: "no"
+    restart: 'no'
 
 volumes:
   # Persistent development data: survives `down` and normal container

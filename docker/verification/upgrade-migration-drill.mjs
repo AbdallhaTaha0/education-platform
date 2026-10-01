@@ -51,12 +51,16 @@ function migrate(dir, url) {
   // Run from the server package so `npx prisma` resolves, and point it at the
   // STAGED schema: the migrations directory is derived from the schema location,
   // which is exactly the set being applied.
-  execFileSync('npx', ['prisma', 'migrate', 'deploy', '--schema', path.join(dir, 'schema.prisma')], {
-    encoding: 'utf8',
-    env: { ...process.env, DATABASE_URL: url },
-    cwd: process.env.UPGRADE_WORKSPACE ?? process.cwd(),
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  execFileSync(
+    'npx',
+    ['prisma', 'migrate', 'deploy', '--schema', path.join(dir, 'schema.prisma')],
+    {
+      encoding: 'utf8',
+      env: { ...process.env, DATABASE_URL: url },
+      cwd: process.env.UPGRADE_WORKSPACE ?? process.cwd(),
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
 }
 
 const main = async () => {
@@ -76,7 +80,8 @@ const main = async () => {
   // Stage 1: the accepted M4 state only. Count migration DIRECTORIES; the
   // migrations folder also holds a Prisma lock file.
   for (const entry of readdirSync(path.join(m4Dir, 'migrations'))) {
-    if (entry.startsWith(m4Cutoff)) rmSync(path.join(m4Dir, 'migrations', entry), { recursive: true, force: true });
+    if (entry.startsWith(m4Cutoff))
+      rmSync(path.join(m4Dir, 'migrations', entry), { recursive: true, force: true });
   }
   const m4Count = readdirSync(path.join(m4Dir, 'migrations'), { withFileTypes: true }).filter(
     (entry) => entry.isDirectory(),
@@ -88,7 +93,10 @@ const main = async () => {
   migrate(m4Dir, targetUrl);
 
   const result = await withClient(targetUrl, async (db) => {
-    const afterM4 = await scalar(db, 'SELECT count(*) AS v FROM "_prisma_migrations" WHERE finished_at IS NOT NULL');
+    const afterM4 = await scalar(
+      db,
+      'SELECT count(*) AS v FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
+    );
     // Representative accepted-state rows, so the upgrade runs against real data.
     await db.query(
       `INSERT INTO "User"(id,email,phone,"displayName","passwordHash",role,"createdAt","updatedAt") VALUES
@@ -108,7 +116,10 @@ const main = async () => {
   migrate(fullDir, targetUrl);
 
   const after = await withClient(targetUrl, async (db) => {
-    const applied = await scalar(db, 'SELECT count(*) AS v FROM "_prisma_migrations" WHERE finished_at IS NOT NULL');
+    const applied = await scalar(
+      db,
+      'SELECT count(*) AS v FROM "_prisma_migrations" WHERE finished_at IS NOT NULL',
+    );
     const users = await scalar(db, 'SELECT count(*) AS v FROM "User"');
     const courses = await scalar(db, 'SELECT count(*) AS v FROM "Course"');
     const m5Tables = await scalar(

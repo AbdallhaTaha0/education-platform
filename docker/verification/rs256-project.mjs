@@ -76,8 +76,16 @@ function baseEnv() {
 
 function composeArgs(...rest) {
   return [
-    'compose', '--env-file', '.env', '-p', SPEC.project,
-    '-f', DEV_COMPOSE, '-f', OVERRIDE, ...rest,
+    'compose',
+    '--env-file',
+    '.env',
+    '-p',
+    SPEC.project,
+    '-f',
+    DEV_COMPOSE,
+    '-f',
+    OVERRIDE,
+    ...rest,
   ];
 }
 
@@ -89,7 +97,10 @@ function buildArgs() {
 /** Resolve top-level volumes, service mounts, images and project from Compose. */
 function resolvedConfig() {
   const out = execFileSync('docker', composeArgs('config', '--format', 'json'), {
-    cwd: root, env: baseEnv(), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+    cwd: root,
+    env: baseEnv(),
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
   const cfg = JSON.parse(out);
   const volumes = {};
@@ -120,7 +131,10 @@ export function evaluateGuard(cfg) {
   const reasons = [];
   const norm = {};
   for (const [key, def] of Object.entries(cfg.volumes ?? {})) {
-    norm[key] = typeof def === 'string' ? { name: def, external: false } : { name: def?.name ?? null, external: def?.external === true };
+    norm[key] =
+      typeof def === 'string'
+        ? { name: def, external: false }
+        : { name: def?.name ?? null, external: def?.external === true };
   }
   const names = Object.values(norm).map((v) => v.name);
   if (names.length === 0) reasons.push('no volumes resolved');
@@ -144,7 +158,8 @@ export function evaluateGuard(cfg) {
       }
       const resolved = norm[m.source]?.name ?? null;
       if (!(m.source in norm)) reasons.push(`service ${svc} mounts undefined volume ${m.source}`);
-      else if (!allowed.has(resolved)) reasons.push(`service ${svc} mounts unexpected volume ${resolved}`);
+      else if (!allowed.has(resolved))
+        reasons.push(`service ${svc} mounts unexpected volume ${resolved}`);
     }
   }
   for (const [svc, want] of Object.entries(SPEC.images)) {
@@ -162,10 +177,15 @@ function guardOrThrow() {
   try {
     cfg = resolvedConfig();
   } catch (err) {
-    throw new Error(`volume guard: Compose config could not be resolved (${err.message ?? 'unknown error'})`);
+    throw new Error(
+      `volume guard: Compose config could not be resolved (${err.message ?? 'unknown error'})`,
+    );
   }
   const { ok, reasons } = evaluateGuard(cfg);
-  const shown = Object.values(cfg.volumes ?? {}).map((v) => (typeof v === 'string' ? v : v?.name ?? '?')).sort().join(',');
+  const shown = Object.values(cfg.volumes ?? {})
+    .map((v) => (typeof v === 'string' ? v : (v?.name ?? '?')))
+    .sort()
+    .join(',');
   process.stdout.write(`guard volumes=${shown} project=${cfg.project ?? 'n/a'}\n`);
   if (!ok) throw new Error(`volume guard REFUSED: ${reasons.join('; ')}`);
 }
@@ -174,7 +194,8 @@ function runDocker(...args) {
   const result = spawnSync('docker', args, { cwd: root, env: baseEnv(), encoding: 'utf8' });
   if (result.stdout) process.stdout.write(result.stdout);
   if (result.stderr) process.stderr.write(result.stderr);
-  if (result.status !== 0) throw new Error(`docker ${args[2] ?? args[0]} exited ${result.status ?? 'unknown'}`);
+  if (result.status !== 0)
+    throw new Error(`docker ${args[2] ?? args[0]} exited ${result.status ?? 'unknown'}`);
 }
 
 /** Rejection/acceptance checks on synthetic configs. No Docker, no resources. */
@@ -185,43 +206,106 @@ function selftest() {
     mounts: {
       postgres: [{ type: 'volume', source: 'pgdata', target: '/var/lib/postgresql/data' }],
       redis: [{ type: 'volume', source: 'redisdata', target: '/data' }],
-      server: [], migrate: [], client: [], nginx: [],
+      server: [],
+      migrate: [],
+      client: [],
+      nginx: [],
     },
     images: { ...SPEC.images },
   };
   const cases = [
     ['accept isolated configuration', good, true],
-    ['reject development pgdata', { ...good, volumes: { ...good.volumes, pgdata: 'docker_pgdata' } }, false],
-    ['reject development redisdata', { ...good, volumes: { ...good.volumes, redisdata: 'docker_redisdata' } }, false],
-    ['reject legacy orphan pgdata', { ...good, volumes: { ...good.volumes, pgdata: 'education-platform_pgdata' } }, false],
-    ['reject legacy orphan redisdata', { ...good, volumes: { ...good.volumes, redisdata: 'education-platform_redisdata' } }, false],
-    ['reject DRM pgdata', { ...good, volumes: { ...good.volumes, pgdata: 'education-drm-service_pgdata' } }, false],
+    [
+      'reject development pgdata',
+      { ...good, volumes: { ...good.volumes, pgdata: 'docker_pgdata' } },
+      false,
+    ],
+    [
+      'reject development redisdata',
+      { ...good, volumes: { ...good.volumes, redisdata: 'docker_redisdata' } },
+      false,
+    ],
+    [
+      'reject legacy orphan pgdata',
+      { ...good, volumes: { ...good.volumes, pgdata: 'education-platform_pgdata' } },
+      false,
+    ],
+    [
+      'reject legacy orphan redisdata',
+      { ...good, volumes: { ...good.volumes, redisdata: 'education-platform_redisdata' } },
+      false,
+    ],
+    [
+      'reject DRM pgdata',
+      { ...good, volumes: { ...good.volumes, pgdata: 'education-drm-service_pgdata' } },
+      false,
+    ],
     ['reject missing redis mapping', { ...good, volumes: { pgdata: SPEC.pgdata } }, false],
     ['reject empty volume set', { ...good, volumes: {} }, false],
     ['reject unnamed volume', { ...good, volumes: { pgdata: SPEC.pgdata, redisdata: '' } }, false],
-    ['reject wrong server tag', { ...good, images: { ...good.images, server: 'edu-platform-server:0.4.0-m4' } }, false],
-    ['reject external volume flag', { ...good, volumes: { ...good.volumes, pgdata: { name: SPEC.pgdata, external: true } } }, false],
-    ['reject remapped key to dev volume', {
-      ...good,
-      volumes: { ...good.volumes, pgdata: 'docker_pgdata' },
-      mounts: { ...good.mounts, postgres: [{ type: 'volume', source: 'pgdata', target: '/var/lib/postgresql/data' }] },
-    }, false],
-    ['reject mount with undefined key', {
-      ...good,
-      mounts: { ...good.mounts, server: [{ type: 'volume', source: 'stray', target: '/data' }] },
-    }, false],
-    ['reject bind mount on server', {
-      ...good,
-      mounts: { ...good.mounts, server: [{ type: 'bind', source: '/srv/data', target: '/data' }] },
-    }, false],
-    ['reject tmpfs mount on redis', {
-      ...good,
-      mounts: { ...good.mounts, redis: [...good.mounts.redis, { type: 'tmpfs', source: null, target: '/tmp' }] },
-    }, false],
-    ['reject short-syntax mount', {
-      ...good,
-      mounts: { ...good.mounts, server: [{ type: 'short', source: 'pgdata:/data', target: null }] },
-    }, false],
+    [
+      'reject wrong server tag',
+      { ...good, images: { ...good.images, server: 'edu-platform-server:0.4.0-m4' } },
+      false,
+    ],
+    [
+      'reject external volume flag',
+      { ...good, volumes: { ...good.volumes, pgdata: { name: SPEC.pgdata, external: true } } },
+      false,
+    ],
+    [
+      'reject remapped key to dev volume',
+      {
+        ...good,
+        volumes: { ...good.volumes, pgdata: 'docker_pgdata' },
+        mounts: {
+          ...good.mounts,
+          postgres: [{ type: 'volume', source: 'pgdata', target: '/var/lib/postgresql/data' }],
+        },
+      },
+      false,
+    ],
+    [
+      'reject mount with undefined key',
+      {
+        ...good,
+        mounts: { ...good.mounts, server: [{ type: 'volume', source: 'stray', target: '/data' }] },
+      },
+      false,
+    ],
+    [
+      'reject bind mount on server',
+      {
+        ...good,
+        mounts: {
+          ...good.mounts,
+          server: [{ type: 'bind', source: '/srv/data', target: '/data' }],
+        },
+      },
+      false,
+    ],
+    [
+      'reject tmpfs mount on redis',
+      {
+        ...good,
+        mounts: {
+          ...good.mounts,
+          redis: [...good.mounts.redis, { type: 'tmpfs', source: null, target: '/tmp' }],
+        },
+      },
+      false,
+    ],
+    [
+      'reject short-syntax mount',
+      {
+        ...good,
+        mounts: {
+          ...good.mounts,
+          server: [{ type: 'short', source: 'pgdata:/data', target: null }],
+        },
+      },
+      false,
+    ],
   ];
   let failed = 0;
   const check = (label, got, want) => {
@@ -231,14 +315,31 @@ function selftest() {
   };
   for (const [label, cfg, want] of cases) {
     const { ok } = evaluateGuard(cfg);
-    check(`${label} (guard=${ok ? 'accept' : 'refuse'}, want=${want ? 'accept' : 'refuse'})`, ok, want);
+    check(
+      `${label} (guard=${ok ? 'accept' : 'refuse'}, want=${want ? 'accept' : 'refuse'})`,
+      ok,
+      want,
+    );
   }
   // Build-command configuration: same project, files, services; no caller env.
   const args = buildArgs();
   check('build uses the verification project', args.includes(SPEC.project), true);
-  check('build pins both compose files', args.includes(DEV_COMPOSE) && args.includes(OVERRIDE), true);
-  check('build targets server+ migrate+client only', JSON.stringify(args.slice(-4)) === JSON.stringify(['build', 'server', 'migrate', 'client']), true);
-  const saved = { PGDATA_NAME: process.env.PGDATA_NAME, REDISDATA_NAME: process.env.REDISDATA_NAME, NGINX_PORT: process.env.NGINX_PORT, ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS };
+  check(
+    'build pins both compose files',
+    args.includes(DEV_COMPOSE) && args.includes(OVERRIDE),
+    true,
+  );
+  check(
+    'build targets server+ migrate+client only',
+    JSON.stringify(args.slice(-4)) === JSON.stringify(['build', 'server', 'migrate', 'client']),
+    true,
+  );
+  const saved = {
+    PGDATA_NAME: process.env.PGDATA_NAME,
+    REDISDATA_NAME: process.env.REDISDATA_NAME,
+    NGINX_PORT: process.env.NGINX_PORT,
+    ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS,
+  };
   process.env.PGDATA_NAME = 'docker_pgdata';
   process.env.REDISDATA_NAME = 'docker_redisdata';
   process.env.NGINX_PORT = '8080';
@@ -246,7 +347,10 @@ function selftest() {
   const env = baseEnv();
   check(
     'wrapper env overrides caller session values',
-    env.PGDATA_NAME === SPEC.pgdata && env.REDISDATA_NAME === SPEC.redisdata && env.NGINX_PORT === SPEC.port && env.ALLOWED_ORIGINS === SPEC.origin,
+    env.PGDATA_NAME === SPEC.pgdata &&
+      env.REDISDATA_NAME === SPEC.redisdata &&
+      env.NGINX_PORT === SPEC.port &&
+      env.ALLOWED_ORIGINS === SPEC.origin,
     true,
   );
   for (const key of Object.keys(saved)) {
@@ -264,7 +368,8 @@ function main() {
     return;
   }
   // .env must exist and stay ignored; its values are never read here.
-  if (!existsSync(resolve(root, '.env'))) throw new Error('root .env is required (ignored local configuration)');
+  if (!existsSync(resolve(root, '.env')))
+    throw new Error('root .env is required (ignored local configuration)');
   execFileSync('git', ['check-ignore', '--quiet', '.env'], { cwd: root, stdio: 'ignore' });
   const cmd = argv[0] ?? 'check';
   guardOrThrow();

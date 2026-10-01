@@ -18,7 +18,9 @@ describe('postgres write smoke (isolated test database)', () => {
   it('can create, write to, and drop a transient table', async () => {
     const client = await pool.connect();
     try {
-      await client.query('CREATE TEMP TABLE m1_migration_smoke (id SERIAL PRIMARY KEY, note TEXT NOT NULL)');
+      await client.query(
+        'CREATE TEMP TABLE m1_migration_smoke (id SERIAL PRIMARY KEY, note TEXT NOT NULL)',
+      );
       await client.query('INSERT INTO m1_migration_smoke (note) VALUES ($1)', ['foundation-ok']);
       const { rows } = await client.query<{ count: string }>(
         'SELECT COUNT(*)::text AS count FROM m1_migration_smoke',

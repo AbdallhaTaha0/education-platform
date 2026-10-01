@@ -36,5 +36,8 @@ const KEYS: Record<Route, string | null> = {
 export function routeDocumentTitle(lang: BrandLang, route: Route, labels: SectionLabels): string {
   const key = KEYS[route];
   const section = key === null ? undefined : labels[key];
-  return documentTitleFor(lang, typeof section === 'string' && section !== '' ? section : undefined);
+  return documentTitleFor(
+    lang,
+    typeof section === 'string' && section !== '' ? section : undefined,
+  );
 }

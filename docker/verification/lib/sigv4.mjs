@@ -78,14 +78,9 @@ function buildCanonicalRequest({ method, path, query, headers, payloadHash }) {
     })
     .join('');
   const signedHeaders = names.join(';');
-  return [
-    method.toUpperCase(),
-    path,
-    query,
-    canonicalHeaders,
-    signedHeaders,
-    payloadHash,
-  ].join('\n');
+  return [method.toUpperCase(), path, query, canonicalHeaders, signedHeaders, payloadHash].join(
+    '\n',
+  );
 }
 
 function signingKey({ secretAccessKey, dateStamp, region }) {

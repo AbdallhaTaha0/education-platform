@@ -23,7 +23,10 @@ export async function corsProof(ctx) {
     return { authorized: false, status: cors.status };
   }
 
-  expect('cors-rules-readable', cors.status === 200, { status: cors.status, count: cors.rules.length });
+  expect('cors-rules-readable', cors.status === 200, {
+    status: cors.status,
+    count: cors.rules.length,
+  });
 
   if (!ctx.approvedOrigin) {
     recordBlocked('cors-preflight', { note: 'R2_APPROVED_ORIGIN is required' });

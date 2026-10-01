@@ -66,11 +66,23 @@ export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element 
         </h1>
         <p className="text-muted">{t.registerBody}</p>
         <Notice kind="error">
-          {errorCode === 'MISMATCH' ? t.passwordsMismatch : errorCode ? localize(t, errorCode) : null}
+          {errorCode === 'MISMATCH'
+            ? t.passwordsMismatch
+            : errorCode
+              ? localize(t, errorCode)
+              : null}
         </Notice>
         <Notice kind="success">{null}</Notice>
         <form onSubmit={(e) => void submit(e)} noValidate>
-          <Field id="reg-name" label={t.fieldName} error={errorField === 'displayName' ? fieldError(t, errorCode ?? undefined, errorField) : undefined}>
+          <Field
+            id="reg-name"
+            label={t.fieldName}
+            error={
+              errorField === 'displayName'
+                ? fieldError(t, errorCode ?? undefined, errorField)
+                : undefined
+            }
+          >
             <input
               id="reg-name"
               name="name"
@@ -85,7 +97,16 @@ export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element 
               className={textInputClassName(errorField === 'displayName')}
             />
           </Field>
-          <Field id="reg-email" label={t.fieldEmail} dir="ltr" error={errorField === 'email' || errorCode === 'EMAIL_TAKEN' ? fieldError(t, errorCode ?? undefined, 'email') : undefined}>
+          <Field
+            id="reg-email"
+            label={t.fieldEmail}
+            dir="ltr"
+            error={
+              errorField === 'email' || errorCode === 'EMAIL_TAKEN'
+                ? fieldError(t, errorCode ?? undefined, 'email')
+                : undefined
+            }
+          >
             <input
               id="reg-email"
               name="email"
@@ -98,7 +119,16 @@ export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element 
               className={textInputClassName(errorField === 'email' || errorCode === 'EMAIL_TAKEN')}
             />
           </Field>
-          <Field id="reg-phone" label={t.fieldPhone} dir="ltr" error={errorField === 'phone' || errorCode === 'PHONE_TAKEN' ? fieldError(t, errorCode ?? undefined, 'phone') : undefined}>
+          <Field
+            id="reg-phone"
+            label={t.fieldPhone}
+            dir="ltr"
+            error={
+              errorField === 'phone' || errorCode === 'PHONE_TAKEN'
+                ? fieldError(t, errorCode ?? undefined, 'phone')
+                : undefined
+            }
+          >
             <input
               id="reg-phone"
               name="phone"
@@ -112,7 +142,16 @@ export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element 
               className={textInputClassName(errorField === 'phone' || errorCode === 'PHONE_TAKEN')}
             />
           </Field>
-          <Field id="reg-password" label={t.fieldPassword} dir="ltr" error={errorField === 'password' ? fieldError(t, errorCode ?? undefined, 'password') : undefined}>
+          <Field
+            id="reg-password"
+            label={t.fieldPassword}
+            dir="ltr"
+            error={
+              errorField === 'password'
+                ? fieldError(t, errorCode ?? undefined, 'password')
+                : undefined
+            }
+          >
             <input
               id="reg-password"
               name="new-password"

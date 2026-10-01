@@ -88,24 +88,45 @@ export function AdminRechargePage(): JSX.Element {
                 variant={filter === value ? 'primary' : 'secondary'}
                 onClick={() => setFilter(value)}
               >
-                {value === '' ? t.filterAll : value === 'PENDING' ? t.rechargePending : value === 'APPROVED' ? t.rechargeApproved : t.rechargeRejected}
+                {value === ''
+                  ? t.filterAll
+                  : value === 'PENDING'
+                    ? t.rechargePending
+                    : value === 'APPROVED'
+                      ? t.rechargeApproved
+                      : t.rechargeRejected}
               </Button>
             ))}
           </div>
           {loading ? <Loading text={t.loading} /> : null}
-          {error !== null ? <div className="mt-4"><Notice kind="error">{localizeCode(t, error)}</Notice></div> : null}
-          {!loading && rows.length === 0 ? <div className="mt-4"><EmptyState text={t.queueEmpty} /></div> : null}
+          {error !== null ? (
+            <div className="mt-4">
+              <Notice kind="error">{localizeCode(t, error)}</Notice>
+            </div>
+          ) : null}
+          {!loading && rows.length === 0 ? (
+            <div className="mt-4">
+              <EmptyState text={t.queueEmpty} />
+            </div>
+          ) : null}
           <ul className="mt-4 space-y-3">
             {rows.map((row) => (
               <li key={row.id}>
                 <Card className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="font-bold"><Money piastres={row.amountPiastres} /> <span className="font-normal text-muted">{row.senderName}</span></p>
-                    <p className="text-sm text-muted" dir="ltr">{row.referenceNorm} · {row.proofFilename}</p>
+                    <p className="font-bold">
+                      <Money piastres={row.amountPiastres} />{' '}
+                      <span className="font-normal text-muted">{row.senderName}</span>
+                    </p>
+                    <p className="text-sm text-muted" dir="ltr">
+                      {row.referenceNorm} · {row.proofFilename}
+                    </p>
                   </div>
                   <div className="flex items-center gap-3">
                     <RequestStatus status={row.status} />
-                    <Button variant="secondary" onClick={() => open(row)}>{t.reviewAction}</Button>
+                    <Button variant="secondary" onClick={() => open(row)}>
+                      {t.reviewAction}
+                    </Button>
                   </div>
                 </Card>
               </li>
@@ -114,45 +135,87 @@ export function AdminRechargePage(): JSX.Element {
           <Dialog open={selected !== null} title={t.reviewTitle} onClose={() => setSelected(null)}>
             {selected !== null ? (
               <div>
-                <p><Money piastres={selected.amountPiastres} /> · {selected.senderName}</p>
-                <p className="mt-1 text-sm text-muted" dir="ltr">{selected.referenceNorm}</p>
-                <a className="mt-2 inline-block underline" href={proofUrl(selected.id)} target="_blank" rel="noreferrer">
+                <p>
+                  <Money piastres={selected.amountPiastres} /> · {selected.senderName}
+                </p>
+                <p className="mt-1 text-sm text-muted" dir="ltr">
+                  {selected.referenceNorm}
+                </p>
+                <a
+                  className="mt-2 inline-block underline"
+                  href={proofUrl(selected.id)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   {t.proofOpen} ({selected.proofFilename})
                 </a>
                 {dialogDone !== null ? (
-                  <div className="mt-3"><Notice kind="success">{dialogDone === 'APPROVE' ? t.reviewApproved : t.reviewRejected}</Notice></div>
+                  <div className="mt-3">
+                    <Notice kind="success">
+                      {dialogDone === 'APPROVE' ? t.reviewApproved : t.reviewRejected}
+                    </Notice>
+                  </div>
                 ) : null}
-                {dialogError !== null ? <div className="mt-3"><Notice kind="error">{localizeCode(t, dialogError)}</Notice></div> : null}
+                {dialogError !== null ? (
+                  <div className="mt-3">
+                    <Notice kind="error">{localizeCode(t, dialogError)}</Notice>
+                  </div>
+                ) : null}
                 <div className="mt-4 flex gap-4" role="radiogroup" aria-label={t.reviewDecision}>
                   <label className="inline-flex min-h-[44px] items-center gap-2">
-                    <input type="radio" name="decision" checked={decision === 'APPROVE'} onChange={() => setDecision('APPROVE')} />
+                    <input
+                      type="radio"
+                      name="decision"
+                      checked={decision === 'APPROVE'}
+                      onChange={() => setDecision('APPROVE')}
+                    />
                     {t.approveAction}
                   </label>
                   <label className="inline-flex min-h-[44px] items-center gap-2">
-                    <input type="radio" name="decision" checked={decision === 'REJECT'} onChange={() => setDecision('REJECT')} />
+                    <input
+                      type="radio"
+                      name="decision"
+                      checked={decision === 'REJECT'}
+                      onChange={() => setDecision('REJECT')}
+                    />
                     {t.rejectAction}
                   </label>
                 </div>
                 {decision === 'REJECT' ? (
                   <Field id="review-reason" label={t.rejectReason}>
                     <textarea
-                      id="review-reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)}
+                      id="review-reason"
+                      rows={3}
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
                       className="w-full rounded-control border border-border bg-surface px-3 py-2"
                     />
                   </Field>
                 ) : null}
                 {decision === 'APPROVE' ? (
                   <label className="mt-3 flex min-h-[44px] items-start gap-2">
-                    <input type="checkbox" checked={verified} onChange={(e) => setVerified(e.target.checked)} className="mt-1" />
+                    <input
+                      type="checkbox"
+                      checked={verified}
+                      onChange={(e) => setVerified(e.target.checked)}
+                      className="mt-1"
+                    />
                     <span className="text-sm">{t.receiptVerified}</span>
                   </label>
                 ) : null}
-                <p className="mt-1 text-sm text-muted">{decision === 'APPROVE' ? t.approveEffect : t.rejectEffect}</p>
+                <p className="mt-1 text-sm text-muted">
+                  {decision === 'APPROVE' ? t.approveEffect : t.rejectEffect}
+                </p>
                 <div className="mt-4 flex flex-wrap gap-3">
-                  <Button onClick={() => void submitReview()} disabled={busy || dialogDone !== null}>
+                  <Button
+                    onClick={() => void submitReview()}
+                    disabled={busy || dialogDone !== null}
+                  >
                     {t.confirmReview}
                   </Button>
-                  <Button variant="secondary" onClick={() => setSelected(null)}>{t.close}</Button>
+                  <Button variant="secondary" onClick={() => setSelected(null)}>
+                    {t.close}
+                  </Button>
                 </div>
               </div>
             ) : null}

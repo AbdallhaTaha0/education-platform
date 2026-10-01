@@ -57,7 +57,9 @@ describe('loadConfig', () => {
   });
 
   it('rejects partial DRM configuration (all-or-none)', () => {
-    expect(() => loadConfig({ ...baseEnv, DRM_BASE_URL: 'https://drm.example.internal' })).toThrow(/DRM/);
+    expect(() => loadConfig({ ...baseEnv, DRM_BASE_URL: 'https://drm.example.internal' })).toThrow(
+      /DRM/,
+    );
     expect(() => loadConfig({ ...baseEnv, DRM_CLIENT_ID: 'abc12345' })).toThrow(/DRM/);
     expect(() =>
       loadConfig({ ...baseEnv, DRM_BASE_URL: 'https://x.example', DRM_CLIENT_ID: 'abc12345' }),
@@ -65,8 +67,12 @@ describe('loadConfig', () => {
   });
 
   it('rejects out-of-range DRM timeout/retry bounds', () => {
-    expect(() => loadConfig({ ...baseEnv, DRM_REQUEST_TIMEOUT_MS: '10' })).toThrow(/DRM_REQUEST_TIMEOUT_MS/);
-    expect(() => loadConfig({ ...baseEnv, DRM_REQUEST_TIMEOUT_MS: '99999' })).toThrow(/DRM_REQUEST_TIMEOUT_MS/);
+    expect(() => loadConfig({ ...baseEnv, DRM_REQUEST_TIMEOUT_MS: '10' })).toThrow(
+      /DRM_REQUEST_TIMEOUT_MS/,
+    );
+    expect(() => loadConfig({ ...baseEnv, DRM_REQUEST_TIMEOUT_MS: '99999' })).toThrow(
+      /DRM_REQUEST_TIMEOUT_MS/,
+    );
     expect(() => loadConfig({ ...baseEnv, DRM_MAX_RETRIES: '-1' })).toThrow(/DRM_MAX_RETRIES/);
     expect(() => loadConfig({ ...baseEnv, DRM_MAX_RETRIES: '9' })).toThrow(/DRM_MAX_RETRIES/);
     const ok = loadConfig({ ...baseEnv, DRM_REQUEST_TIMEOUT_MS: '250', DRM_MAX_RETRIES: '0' });
@@ -85,7 +91,9 @@ describe('loadConfig', () => {
         DRM_CLIENT_SECRET: 'test-secret-that-is-long-enough-0123456789',
       }),
     ).toThrow(/HTTPS/);
-    expect(() => loadConfig({ ...baseEnv, NODE_ENV: 'production', COOKIE_SECURE: 'true' })).toThrow(/DRM/);
+    expect(() => loadConfig({ ...baseEnv, NODE_ENV: 'production', COOKIE_SECURE: 'true' })).toThrow(
+      /DRM/,
+    );
   });
 
   it('rejects missing required platform dependencies', () => {
@@ -102,7 +110,9 @@ describe('loadConfig', () => {
   it('fails closed when the signing secret is missing or weak', () => {
     const { AUTH_JWT_SECRET: _drop, ...noSecret } = baseEnv;
     expect(() => loadConfig(noSecret)).toThrow(/AUTH_JWT_SECRET/);
-    expect(() => loadConfig({ ...baseEnv, AUTH_JWT_SECRET: 'too-short' })).toThrow(/AUTH_JWT_SECRET/);
+    expect(() => loadConfig({ ...baseEnv, AUTH_JWT_SECRET: 'too-short' })).toThrow(
+      /AUTH_JWT_SECRET/,
+    );
   });
 
   it('fails closed when issuer or audience is missing or wildcarded', () => {
@@ -115,14 +125,16 @@ describe('loadConfig', () => {
     const { ALLOWED_ORIGINS: _o, ...noOrigins } = baseEnv;
     expect(() => loadConfig(noOrigins)).toThrow(/ALLOWED_ORIGINS/);
     expect(() => loadConfig({ ...baseEnv, ALLOWED_ORIGINS: '*' })).toThrow(/ALLOWED_ORIGINS/);
-    expect(() => loadConfig({ ...baseEnv, ALLOWED_ORIGINS: 'not-a-url' })).toThrow(/ALLOWED_ORIGINS/);
+    expect(() => loadConfig({ ...baseEnv, ALLOWED_ORIGINS: 'not-a-url' })).toThrow(
+      /ALLOWED_ORIGINS/,
+    );
   });
 
   it('fails closed when production cookie security is disabled', () => {
     expect(() => loadConfig({ ...baseEnv, NODE_ENV: 'production' })).toThrow(/COOKIE_SECURE/);
-    expect(() => loadConfig({ ...baseEnv, NODE_ENV: 'production', COOKIE_SECURE: 'false' })).toThrow(
-      /COOKIE_SECURE/,
-    );
+    expect(() =>
+      loadConfig({ ...baseEnv, NODE_ENV: 'production', COOKIE_SECURE: 'false' }),
+    ).toThrow(/COOKIE_SECURE/);
   });
 
   it('allows explicit insecure cookies outside production (local Docker HTTP)', () => {
@@ -133,9 +145,9 @@ describe('loadConfig', () => {
 
   it('rejects reduced Argon2 cost outside NODE_ENV=test', () => {
     const weak = { ARGON2_MEMORY_KB: '1', ARGON2_TIME_COST: '1', ARGON2_PARALLELISM: '1' };
-    expect(() => loadConfig({ ...baseEnv, NODE_ENV: 'production', COOKIE_SECURE: 'true', ...weak })).toThrow(
-      /Argon2/,
-    );
+    expect(() =>
+      loadConfig({ ...baseEnv, NODE_ENV: 'production', COOKIE_SECURE: 'true', ...weak }),
+    ).toThrow(/Argon2/);
     expect(() => loadConfig({ ...baseEnv, ...weak })).toThrow(/Argon2/);
     const testEnv = loadConfig({ ...baseEnv, NODE_ENV: 'test', ...weak });
     expect(testEnv.argon2).toEqual({ memoryKb: 1, timeCost: 1, parallelism: 1 });
@@ -186,9 +198,9 @@ describe('M5 playback assertion configuration', () => {
   });
 
   it('fails closed on an invalid assertion key or a wildcarded identity', () => {
-    expect(() => loadConfig({ ...drmEnv, ...assertionEnv, DRM_ASSERTION_PRIVATE_KEY_B64: 'not-a-key' })).toThrow(
-      /DRM_ASSERTION_PRIVATE_KEY_B64/,
-    );
+    expect(() =>
+      loadConfig({ ...drmEnv, ...assertionEnv, DRM_ASSERTION_PRIVATE_KEY_B64: 'not-a-key' }),
+    ).toThrow(/DRM_ASSERTION_PRIVATE_KEY_B64/);
     expect(() => loadConfig({ ...drmEnv, ...assertionEnv, DRM_ASSERTION_AUDIENCE: '*' })).toThrow(
       /DRM_ASSERTION_AUDIENCE/,
     );
@@ -197,33 +209,46 @@ describe('M5 playback assertion configuration', () => {
   it('bounds the assertion lifetime to the external maximum', () => {
     const defaultConfig = loadConfig({ ...drmEnv, ...assertionEnv });
     expect(defaultConfig.drmAssertionMaxLifetimeSec).toBe(120);
-    expect(loadConfig({ ...drmEnv, ...assertionEnv, DRM_ASSERTION_MAX_LIFETIME_SEC: '30' }).drmAssertionMaxLifetimeSec)
-      .toBe(30);
-    expect(() => loadConfig({ ...drmEnv, ...assertionEnv, DRM_ASSERTION_MAX_LIFETIME_SEC: '29' })).toThrow(
-      /DRM_ASSERTION_MAX_LIFETIME_SEC/,
-    );
-    expect(() => loadConfig({ ...drmEnv, ...assertionEnv, DRM_ASSERTION_MAX_LIFETIME_SEC: '301' })).toThrow(
-      /DRM_ASSERTION_MAX_LIFETIME_SEC/,
-    );
+    expect(
+      loadConfig({ ...drmEnv, ...assertionEnv, DRM_ASSERTION_MAX_LIFETIME_SEC: '30' })
+        .drmAssertionMaxLifetimeSec,
+    ).toBe(30);
+    expect(() =>
+      loadConfig({ ...drmEnv, ...assertionEnv, DRM_ASSERTION_MAX_LIFETIME_SEC: '29' }),
+    ).toThrow(/DRM_ASSERTION_MAX_LIFETIME_SEC/);
+    expect(() =>
+      loadConfig({ ...drmEnv, ...assertionEnv, DRM_ASSERTION_MAX_LIFETIME_SEC: '301' }),
+    ).toThrow(/DRM_ASSERTION_MAX_LIFETIME_SEC/);
   });
 
   it('normalises the public DRM origin and rejects unsafe values', () => {
-    expect(loadConfig({ ...drmEnv, ...assertionEnv, DRM_PUBLIC_BASE_URL: 'https://drm.example.internal/' })
-      .drmPublicBaseUrl).toBe('https://drm.example.internal');
-    expect(() => loadConfig({ ...drmEnv, ...assertionEnv, DRM_PUBLIC_BASE_URL: 'ftp://drm.example.internal' })).toThrow(
-      /DRM_PUBLIC_BASE_URL/,
-    );
+    expect(
+      loadConfig({
+        ...drmEnv,
+        ...assertionEnv,
+        DRM_PUBLIC_BASE_URL: 'https://drm.example.internal/',
+      }).drmPublicBaseUrl,
+    ).toBe('https://drm.example.internal');
     expect(() =>
-      loadConfig({ ...drmEnv, ...assertionEnv, DRM_PUBLIC_BASE_URL: 'https://u:p@drm.example.internal' }),
+      loadConfig({ ...drmEnv, ...assertionEnv, DRM_PUBLIC_BASE_URL: 'ftp://drm.example.internal' }),
     ).toThrow(/DRM_PUBLIC_BASE_URL/);
-    expect(() => loadConfig({ ...drmEnv, ...assertionEnv, DRM_PUBLIC_BASE_URL: 'not-a-url' })).toThrow(
-      /DRM_PUBLIC_BASE_URL/,
-    );
+    expect(() =>
+      loadConfig({
+        ...drmEnv,
+        ...assertionEnv,
+        DRM_PUBLIC_BASE_URL: 'https://u:p@drm.example.internal',
+      }),
+    ).toThrow(/DRM_PUBLIC_BASE_URL/);
+    expect(() =>
+      loadConfig({ ...drmEnv, ...assertionEnv, DRM_PUBLIC_BASE_URL: 'not-a-url' }),
+    ).toThrow(/DRM_PUBLIC_BASE_URL/);
   });
 
   it('requires HTTPS for the public DRM origin in production only', () => {
     const prod = { ...drmEnv, ...assertionEnv, NODE_ENV: 'production', COOKIE_SECURE: 'true' };
-    expect(() => loadConfig({ ...prod, DRM_PUBLIC_BASE_URL: 'http://drm.example.internal' })).toThrow(/HTTPS/);
+    expect(() =>
+      loadConfig({ ...prod, DRM_PUBLIC_BASE_URL: 'http://drm.example.internal' }),
+    ).toThrow(/HTTPS/);
     expect(
       loadConfig({ ...prod, DRM_PUBLIC_BASE_URL: 'https://drm.example.internal' }).drmPublicBaseUrl,
     ).toBe('https://drm.example.internal');
@@ -248,21 +273,25 @@ describe('M5 playback assertion configuration', () => {
       DRM_ASSERTION_MODE: 'fixture-hs256',
     });
     expect(fixture.drmAssertionAlgorithm).toBe('HS256');
-    expect(() => loadConfig({
-      ...drmEnv,
-      NODE_ENV: 'production',
-      COOKIE_SECURE: 'true',
-      DRM_ASSERTION_ISSUER: assertionEnv.DRM_ASSERTION_ISSUER,
-      DRM_ASSERTION_AUDIENCE: assertionEnv.DRM_ASSERTION_AUDIENCE,
-      DRM_ASSERTION_SECRET: 'fixture-secret-that-is-long-enough-0123456789',
-      DRM_ASSERTION_MODE: 'fixture-hs256',
-    })).toThrow(/test-fixture-only/);
+    expect(() =>
+      loadConfig({
+        ...drmEnv,
+        NODE_ENV: 'production',
+        COOKIE_SECURE: 'true',
+        DRM_ASSERTION_ISSUER: assertionEnv.DRM_ASSERTION_ISSUER,
+        DRM_ASSERTION_AUDIENCE: assertionEnv.DRM_ASSERTION_AUDIENCE,
+        DRM_ASSERTION_SECRET: 'fixture-secret-that-is-long-enough-0123456789',
+        DRM_ASSERTION_MODE: 'fixture-hs256',
+      }),
+    ).toThrow(/test-fixture-only/);
   });
 });
 
 describe('redactUrlForLog', () => {
   it('exposes host only, never credentials or paths', () => {
-    const redacted = redactUrlForLog('postgresql://user:s3cret@db.internal:5432/app?sslmode=require');
+    const redacted = redactUrlForLog(
+      'postgresql://user:s3cret@db.internal:5432/app?sslmode=require',
+    );
     expect(redacted).toBe('postgresql://db.internal:5432');
     expect(redacted).not.toContain('s3cret');
     expect(redacted).not.toContain('user');

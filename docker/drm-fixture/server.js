@@ -18,7 +18,8 @@ const { randomUUID } = require('node:crypto');
 
 const PORT = Number(process.env.PORT ?? '8090');
 const CLIENT_ID = process.env.FIXTURE_CLIENT_ID ?? 'fixture-client';
-const CLIENT_SECRET = process.env.FIXTURE_CLIENT_SECRET ?? 'fixture-secret-that-is-long-enough-0123456789';
+const CLIENT_SECRET =
+  process.env.FIXTURE_CLIENT_SECRET ?? 'fixture-secret-that-is-long-enough-0123456789';
 
 const assets = new Map();
 const deletions = new Map();
@@ -42,7 +43,9 @@ function verifyAssertion(assertion) {
     return false;
   }
   return (
-    claims.iss === ASSERTION_ISSUER && claims.aud === ASSERTION_AUDIENCE && typeof claims.sub === 'string'
+    claims.iss === ASSERTION_ISSUER &&
+    claims.aud === ASSERTION_AUDIENCE &&
+    typeof claims.sub === 'string'
   );
 }
 
@@ -71,7 +74,8 @@ function corsHeaders(extra = {}) {
   return {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Client-Id, X-Client-Secret, Authorization, Range',
+    'Access-Control-Allow-Headers':
+      'Content-Type, X-Client-Id, X-Client-Secret, Authorization, Range',
     'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges',
     'X-Fixture': 'drm-contract-fixture',
     ...extra,
@@ -161,7 +165,10 @@ function serveDashManifest(res, sessionId) {
     // session's media path. This covers both explicit SegmentList entries and
     // ffmpeg's $Number$ template form.
     const prefix = `/v1/playback/sessions/${sessionId}/media/`;
-    const rewritten = xml.replace(/(["'])([^"']*\.m4s)\1/g, (_m, quote, name) => `${quote}${prefix}${name}${quote}`);
+    const rewritten = xml.replace(
+      /(["'])([^"']*\.m4s)\1/g,
+      (_m, quote, name) => `${quote}${prefix}${name}${quote}`,
+    );
     res.writeHead(200, corsHeaders({ 'Content-Type': MIME['.mpd'], 'Cache-Control': 'no-store' }));
     res.end(rewritten);
   });
@@ -182,7 +189,11 @@ function serveDashFile(res, name, range) {
       res.end(JSON.stringify({ fixture: true, error: 'media not found' }));
       return;
     }
-    const headers = corsHeaders({ 'Content-Type': type, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store' });
+    const headers = corsHeaders({
+      'Content-Type': type,
+      'Accept-Ranges': 'bytes',
+      'Cache-Control': 'no-store',
+    });
     if (range) {
       const match = /bytes=(\d*)-(\d*)/.exec(range);
       const start = match && match[1] !== '' ? Number(match[1]) : 0;
@@ -192,7 +203,11 @@ function serveDashFile(res, name, range) {
         res.end();
         return;
       }
-      res.writeHead(206, { ...headers, 'Content-Range': `bytes ${start}-${end}/${stat.size}`, 'Content-Length': end - start + 1 });
+      res.writeHead(206, {
+        ...headers,
+        'Content-Range': `bytes ${start}-${end}/${stat.size}`,
+        'Content-Length': end - start + 1,
+      });
       fs.createReadStream(file, { start, end }).pipe(res);
       return;
     }
@@ -219,7 +234,8 @@ const server = http.createServer((req, res) => {
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         // Authorization and Range are required by the player's bearer-carrying
         // manifest, segment and license requests.
-        'Access-Control-Allow-Headers': 'Content-Type, X-Client-Id, X-Client-Secret, Authorization, Range',
+        'Access-Control-Allow-Headers':
+          'Content-Type, X-Client-Id, X-Client-Secret, Authorization, Range',
         'Access-Control-Max-Age': '86400',
         'X-Fixture': 'drm-contract-fixture',
       });
@@ -228,7 +244,11 @@ const server = http.createServer((req, res) => {
     }
     const fixturePath = req.url ?? '';
     if (fixturePath.startsWith('/__fixture/')) {
-      res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'X-Fixture': 'drm-contract-fixture' });
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'X-Fixture': 'drm-contract-fixture',
+      });
       if (fixturePath === '/__fixture/fail-deletes' && req.method === 'POST') {
         const parsed = body && typeof body.count === 'number' ? body.count : 0;
         failNextDeletes = parsed;
@@ -258,7 +278,10 @@ const server = http.createServer((req, res) => {
     if (handleBrowserMedia(req, res)) {
       return;
     }
-    if (req.headers['x-client-id'] !== CLIENT_ID || req.headers['x-client-secret'] !== CLIENT_SECRET) {
+    if (
+      req.headers['x-client-id'] !== CLIENT_ID ||
+      req.headers['x-client-secret'] !== CLIENT_SECRET
+    ) {
       send(res, 401, { error: 'Invalid client credentials' });
       return;
     }
@@ -271,7 +294,11 @@ const server = http.createServer((req, res) => {
     // protection, watermarking or commercial DRM.
     if (url === '/v1/playback/sessions' && req.method === 'POST') {
       const { externalAssetId, deviceId, assertion } = body || {};
-      if (typeof externalAssetId !== 'string' || typeof deviceId !== 'string' || typeof assertion !== 'string') {
+      if (
+        typeof externalAssetId !== 'string' ||
+        typeof deviceId !== 'string' ||
+        typeof assertion !== 'string'
+      ) {
         send(res, 400, { error: 'bad request' });
         return;
       }
@@ -377,7 +404,11 @@ const server = http.createServer((req, res) => {
       return;
     }
     if (url === '/v1/media' && req.method === 'POST') {
-      if (!body || typeof body.externalAssetId !== 'string' || typeof body.idempotencyKey !== 'string') {
+      if (
+        !body ||
+        typeof body.externalAssetId !== 'string' ||
+        typeof body.idempotencyKey !== 'string'
+      ) {
         send(res, 400, { error: 'bad request' });
         return;
       }
@@ -388,9 +419,18 @@ const server = http.createServer((req, res) => {
         }
       }
       const internalId = randomUUID();
-      assets.set(internalId, { internalId, externalAssetId: body.externalAssetId, status: 'UPLOADED' });
+      assets.set(internalId, {
+        internalId,
+        externalAssetId: body.externalAssetId,
+        status: 'UPLOADED',
+      });
       const host = req.headers.host ?? `127.0.0.1:${PORT}`;
-      send(res, 202, { assetId: internalId, status: 'UPLOADED', uploadUrl: `http://${host}/upload/${internalId}?sig=fixture-signed`, idempotent: false });
+      send(res, 202, {
+        assetId: internalId,
+        status: 'UPLOADED',
+        uploadUrl: `http://${host}/upload/${internalId}?sig=fixture-signed`,
+        idempotent: false,
+      });
       return;
     }
     const complete = url.match(/^\/v1\/media\/([^/]+)\/complete$/);
@@ -463,7 +503,11 @@ const server = http.createServer((req, res) => {
       if (d.polls >= 3) d.status = 'COMPLETED';
       else if (d.polls >= 2) d.status = 'RUNNING';
       if (d.status === 'COMPLETED') assets.delete(d.assetId);
-      send(res, 200, { deletionId: decodeURIComponent(delStatus[1]), status: d.status, attempts: d.polls });
+      send(res, 200, {
+        deletionId: decodeURIComponent(delStatus[1]),
+        status: d.status,
+        attempts: d.polls,
+      });
       return;
     }
     send(res, 404, { error: 'unknown' });

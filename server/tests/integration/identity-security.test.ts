@@ -31,7 +31,12 @@ afterAll(async () => {
 describe('origin enforcement', () => {
   it('rejects missing and hostile origins on every state-changing route', async () => {
     const { jar, token } = await csrfBootstrap(world.app);
-    const base = { displayName: 'Origin Test', email: uniqueEmail(), phone: uniquePhone(), password: TEST_PASSWORD };
+    const base = {
+      displayName: 'Origin Test',
+      email: uniqueEmail(),
+      phone: uniquePhone(),
+      password: TEST_PASSWORD,
+    };
 
     const noOrigin = await request(world.app)
       .post('/auth/register')
@@ -83,7 +88,12 @@ describe('origin enforcement', () => {
 describe('csrf enforcement', () => {
   it('rejects missing, malformed, and mismatched tokens', async () => {
     const { jar, token } = await csrfBootstrap(world.app);
-    const payload = () => ({ displayName: 'CSRF Test', email: uniqueEmail(), phone: uniquePhone(), password: TEST_PASSWORD });
+    const payload = () => ({
+      displayName: 'CSRF Test',
+      email: uniqueEmail(),
+      phone: uniquePhone(),
+      password: TEST_PASSWORD,
+    });
 
     const missing = await request(world.app)
       .post('/auth/register')

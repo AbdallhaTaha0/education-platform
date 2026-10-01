@@ -63,7 +63,13 @@ export function AdminListPage({ go }: { go: (h: string) => void }): JSX.Element 
     );
   }
 
-  async function submit(input: { slug: string; titleAr: string; titleEn: string; descriptionAr: string; descriptionEn: string }): Promise<void> {
+  async function submit(input: {
+    slug: string;
+    titleAr: string;
+    titleEn: string;
+    descriptionAr: string;
+    descriptionEn: string;
+  }): Promise<void> {
     setBusy(true);
     setError(null);
     try {
@@ -82,9 +88,14 @@ export function AdminListPage({ go }: { go: (h: string) => void }): JSX.Element 
         <Container>
           <h1 className="text-3xl font-bold">{t.adminCatalogTitle}</h1>
           <p className="mt-2 text-muted">{t.adminCatalogBody}</p>
-          <a href="#/admin/packages" className="footer-discovery inline-block my-4">{lang === 'ar' ? 'إدارة باقات الشهور' : 'Manage monthly packages'} →</a>
+          <a href="#/admin/packages" className="footer-discovery inline-block my-4">
+            {lang === 'ar' ? 'إدارة باقات الشهور' : 'Manage monthly packages'} →
+          </a>
           {error !== null ? <Notice kind="error">{localizeCode(t, error)}</Notice> : null}
-          <a href="#/admin/summary" className="footer-discovery inline-block mx-4">{lang === 'ar' ? 'ملخص المنصة' : 'Platform overview'}</a><CourseForm busy={busy} onSubmit={(v) => void submit(v)} />
+          <a href="#/admin/summary" className="footer-discovery inline-block mx-4">
+            {lang === 'ar' ? 'ملخص المنصة' : 'Platform overview'}
+          </a>
+          <CourseForm busy={busy} onSubmit={(v) => void submit(v)} />
           <h2 className="mt-6 text-2xl font-bold">
             {t.navCourses} ({courses.length})
           </h2>
@@ -94,7 +105,11 @@ export function AdminListPage({ go }: { go: (h: string) => void }): JSX.Element 
             {courses.map((c) => (
               <Card key={c.id} className="flex flex-col gap-3">
                 <h3 className="m-0 text-xl">
-                  {lang === 'ar' ? c.titleAr : c.titleEn} <StatusBadge text={c.status} tone={c.status === 'PUBLISHED' ? 'success' : 'info'} />
+                  {lang === 'ar' ? c.titleAr : c.titleEn}{' '}
+                  <StatusBadge
+                    text={c.status}
+                    tone={c.status === 'PUBLISHED' ? 'success' : 'info'}
+                  />
                 </h3>
                 <p className="text-muted" dir="ltr">
                   {c.slug}
@@ -113,12 +128,24 @@ export function AdminListPage({ go }: { go: (h: string) => void }): JSX.Element 
   );
 }
 
-export function AdminSearchField({ value, onChange }: { value: string; onChange: (v: string) => void }): JSX.Element {
+export function AdminSearchField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}): JSX.Element {
   const { t } = useLang();
   return (
     <form onSubmit={(e: FormEvent) => e.preventDefault()} noValidate>
       <Field id="admin-search" label={t.navCourses}>
-        <input id="admin-search" dir="ltr" className={textInputClassName(false)} value={value} onChange={(e) => onChange(e.target.value)} />
+        <input
+          id="admin-search"
+          dir="ltr"
+          className={textInputClassName(false)}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
       </Field>
     </form>
   );

@@ -82,7 +82,9 @@ describe('playback grant', () => {
     const res = await startPlayback();
     const token = res.body.data.playback.playbackToken as string;
     const referenceId = res.body.data.playback.referenceId as string;
-    const reference = await world.prisma.playbackReference.findUniqueOrThrow({ where: { id: referenceId } });
+    const reference = await world.prisma.playbackReference.findUniqueOrThrow({
+      where: { id: referenceId },
+    });
     const row = JSON.stringify(reference);
     expect(row).not.toContain(token);
     expect(row).not.toContain('manifest');
@@ -185,7 +187,11 @@ describe('playback grant', () => {
   it('keeps entitlement after a dependency failure', async () => {
     world.playback!.failNextCreates = 1;
     await startPlayback();
-    const res = await studentGet(world.app, `/learning/courses/${course.slug}/outline`, world.studentJar);
+    const res = await studentGet(
+      world.app,
+      `/learning/courses/${course.slug}/outline`,
+      world.studentJar,
+    );
     expect(res.status).toBe(200);
   });
 });
@@ -200,12 +206,12 @@ async function startPlaybackOn(target: { slug: string; lessonId: string }) {
 }
 
 /** POST /learning/progress takes the course and lesson in the body. */
-function writeProgress(
-  slug: string,
-  lessonId: string,
-  body: Record<string, unknown>,
-) {
-  return studentPost(world.app, '/learning/progress', world.studentJar, { courseRef: slug, lessonId, ...body });
+function writeProgress(slug: string, lessonId: string, body: Record<string, unknown>) {
+  return studentPost(world.app, '/learning/progress', world.studentJar, {
+    courseRef: slug,
+    lessonId,
+    ...body,
+  });
 }
 
 describe('progress writes', () => {
@@ -295,7 +301,11 @@ describe('progress writes', () => {
     await writeProgress(other.slug, first, { positionSeconds: 600, durationSeconds: 600 });
     const completed = await studentGet(world.app, '/learning/dashboard', world.studentJar);
     const entry = (
-      completed.body.data.active as { courseId: string; percentComplete: number; lastLessonId: string | null }[]
+      completed.body.data.active as {
+        courseId: string;
+        percentComplete: number;
+        lastLessonId: string | null;
+      }[]
     ).find((a) => a.courseId === other.courseId);
     expect(entry?.percentComplete).toBe(50);
     expect(entry?.lastLessonId).toBeNull();
@@ -304,7 +314,11 @@ describe('progress writes', () => {
     await writeProgress(other.slug, second, { positionSeconds: 30, durationSeconds: 600 });
     const resumed = await studentGet(world.app, '/learning/dashboard', world.studentJar);
     const after = (
-      resumed.body.data.active as { courseId: string; percentComplete: number; lastLessonId: string | null }[]
+      resumed.body.data.active as {
+        courseId: string;
+        percentComplete: number;
+        lastLessonId: string | null;
+      }[]
     ).find((a) => a.courseId === other.courseId);
     expect(after?.percentComplete).toBe(50);
     expect(after?.lastLessonId).toBe(second);
@@ -329,10 +343,17 @@ describe('viewer end and expiry termination', () => {
   it('confirms the end with the DRM and records ENDED', async () => {
     const start = await startPlayback();
     const { referenceId, playbackSessionId } = start.body.data.playback;
-    const res = await studentPost(world.app, `/learning/playback/${referenceId}/end`, world.studentJar, {});
+    const res = await studentPost(
+      world.app,
+      `/learning/playback/${referenceId}/end`,
+      world.studentJar,
+      {},
+    );
     expect(res.status).toBe(200);
     expect(res.body.data.closure).toBe('CONFIRMED');
-    const reference = await world.prisma.playbackReference.findUniqueOrThrow({ where: { id: referenceId } });
+    const reference = await world.prisma.playbackReference.findUniqueOrThrow({
+      where: { id: referenceId },
+    });
     expect(reference.status).toBe('ENDED');
     expect(reference.terminationStatus).toBe('COMPLETED');
     expect(world.playback!.sessions.get(playbackSessionId)?.status).toBe('revoked');
@@ -342,10 +363,17 @@ describe('viewer end and expiry termination', () => {
     const start = await startPlayback();
     const { referenceId } = start.body.data.playback;
     world.playback!.revokeAlwaysFails = true;
-    const res = await studentPost(world.app, `/learning/playback/${referenceId}/end`, world.studentJar, {});
+    const res = await studentPost(
+      world.app,
+      `/learning/playback/${referenceId}/end`,
+      world.studentJar,
+      {},
+    );
     expect(res.status).toBe(200);
     expect(res.body.data.closure).toBe('QUEUED');
-    const reference = await world.prisma.playbackReference.findUniqueOrThrow({ where: { id: referenceId } });
+    const reference = await world.prisma.playbackReference.findUniqueOrThrow({
+      where: { id: referenceId },
+    });
     expect(reference.status).toBe('ENDED');
     expect(reference.terminationStatus).toBe('PENDING');
     expect(reference.pendingEndReason).toBe('VIEWER_END');
@@ -356,7 +384,12 @@ describe('viewer end and expiry termination', () => {
     const start = await startPlayback();
     const { referenceId } = start.body.data.playback;
     await studentPost(world.app, `/learning/playback/${referenceId}/end`, world.studentJar, {});
-    const again = await studentPost(world.app, `/learning/playback/${referenceId}/end`, world.studentJar, {});
+    const again = await studentPost(
+      world.app,
+      `/learning/playback/${referenceId}/end`,
+      world.studentJar,
+      {},
+    );
     expect(again.status).toBe(200);
   });
 
@@ -364,9 +397,16 @@ describe('viewer end and expiry termination', () => {
     const start = await startPlayback();
     const { referenceId } = start.body.data.playback;
     // An id that belongs to nobody discloses nothing and changes nothing.
-    const foreign = await studentPost(world.app, `/learning/playback/f6c0ffee-0000-4000-8000-000000000000/end`, world.studentJar, {});
+    const foreign = await studentPost(
+      world.app,
+      `/learning/playback/f6c0ffee-0000-4000-8000-000000000000/end`,
+      world.studentJar,
+      {},
+    );
     expect(foreign.status).toBe(200);
-    const reference = await world.prisma.playbackReference.findUniqueOrThrow({ where: { id: referenceId } });
+    const reference = await world.prisma.playbackReference.findUniqueOrThrow({
+      where: { id: referenceId },
+    });
     expect(reference.status).toBe('ACTIVE');
     expect(reference.endedAt).toBeNull();
   });
@@ -376,10 +416,17 @@ describe('viewer end and expiry termination', () => {
     const start = await startPlayback();
     const { referenceId } = start.body.data.playback;
 
-    const res = await studentPost(world.app, `/learning/playback/${referenceId}/end`, other.jar, {});
+    const res = await studentPost(
+      world.app,
+      `/learning/playback/${referenceId}/end`,
+      other.jar,
+      {},
+    );
     // Owner-scoped and existence-preserving: still 200, and the session is live.
     expect(res.status).toBe(200);
-    const reference = await world.prisma.playbackReference.findUniqueOrThrow({ where: { id: referenceId } });
+    const reference = await world.prisma.playbackReference.findUniqueOrThrow({
+      where: { id: referenceId },
+    });
     expect(reference.status).toBe('ACTIVE');
     expect(reference.endedAt).toBeNull();
 
@@ -398,10 +445,14 @@ describe('viewer end and expiry termination', () => {
     await grantSubscription(world, world.studentId, other.courseId, Date.now() + 30 * DAY);
     const start = await startPlaybackOn(other);
     const { referenceId } = start.body.data.playback;
-    const { reconcileExpiredSessions } = await import('../../src/modules/learning/expiry/reconciler.js');
+    const { reconcileExpiredSessions } = await import(
+      '../../src/modules/learning/expiry/reconciler.js'
+    );
     const result = await reconcileExpiredSessions(world.prisma, world.redis, world.drm, Date.now());
     void result;
-    const reference = await world.prisma.playbackReference.findUniqueOrThrow({ where: { id: referenceId } });
+    const reference = await world.prisma.playbackReference.findUniqueOrThrow({
+      where: { id: referenceId },
+    });
     expect(reference.status).toBe('ACTIVE');
     expect(reference.terminationStatus).toBeNull();
   });
@@ -418,12 +469,16 @@ describe('viewer end and expiry termination', () => {
       data: { expiresAt: new Date(Date.now() - 1) },
     });
 
-    const { reconcileExpiredSessions } = await import('../../src/modules/learning/expiry/reconciler.js');
+    const { reconcileExpiredSessions } = await import(
+      '../../src/modules/learning/expiry/reconciler.js'
+    );
     const result = await reconcileExpiredSessions(world.prisma, world.redis, world.drm, Date.now());
     expect(result.queued).toBeGreaterThanOrEqual(1);
     expect(result.terminated).toBeGreaterThanOrEqual(1);
 
-    const reference = await world.prisma.playbackReference.findUniqueOrThrow({ where: { id: referenceId } });
+    const reference = await world.prisma.playbackReference.findUniqueOrThrow({
+      where: { id: referenceId },
+    });
     expect(reference.status).toBe('TERMINATED');
     expect(reference.terminationStatus).toBe('COMPLETED');
     expect(reference.pendingEndReason).toBeNull();
@@ -439,13 +494,19 @@ describe('viewer end and expiry termination', () => {
       where: { studentId: world.studentId, courseId: other.courseId },
       data: { expiresAt: new Date(Date.now() - 1) },
     });
-    const { MAX_TERMINATION_ATTEMPTS } = await import('../../src/modules/learning/expiry/reconciler.js');
-    const { reconcileExpiredSessions } = await import('../../src/modules/learning/expiry/reconciler.js');
+    const { MAX_TERMINATION_ATTEMPTS } = await import(
+      '../../src/modules/learning/expiry/reconciler.js'
+    );
+    const { reconcileExpiredSessions } = await import(
+      '../../src/modules/learning/expiry/reconciler.js'
+    );
     // A persistent dependency failure is rescheduled with backoff, not lost.
     world.playback!.revokeAlwaysFails = true;
     const first = await reconcileExpiredSessions(world.prisma, world.redis, world.drm, Date.now());
     expect(first.failed).toBeGreaterThanOrEqual(1);
-    let reference = await world.prisma.playbackReference.findUniqueOrThrow({ where: { id: referenceId } });
+    let reference = await world.prisma.playbackReference.findUniqueOrThrow({
+      where: { id: referenceId },
+    });
     expect(reference.terminationAttempts).toBe(1);
     expect(reference.terminationStatus).toBe('PENDING');
     expect(reference.lastErrorCategory).toBeTruthy();
@@ -459,7 +520,9 @@ describe('viewer end and expiry termination', () => {
       Date.now() + 60_000,
     );
     expect(second.terminated).toBeGreaterThanOrEqual(1);
-    reference = await world.prisma.playbackReference.findUniqueOrThrow({ where: { id: referenceId } });
+    reference = await world.prisma.playbackReference.findUniqueOrThrow({
+      where: { id: referenceId },
+    });
     expect(reference.terminationStatus).toBe('COMPLETED');
     expect(reference.status).toBe('TERMINATED');
 
@@ -472,7 +535,11 @@ describe('viewer end and expiry termination', () => {
       where: { studentId: world.studentId, courseId: third.courseId },
       data: { expiresAt: new Date(Date.now() - 1) },
     });
-    await scheduleTermination(world.prisma, thirdStart.body.data.playback.referenceId, Date.now() - 1);
+    await scheduleTermination(
+      world.prisma,
+      thirdStart.body.data.playback.referenceId,
+      Date.now() - 1,
+    );
     await world.prisma.playbackReference.update({
       where: { id: thirdStart.body.data.playback.referenceId },
       data: { terminationAttempts: MAX_TERMINATION_ATTEMPTS - 1, nextTerminationAt: new Date(0) },
@@ -499,14 +566,18 @@ describe('viewer end and expiry termination', () => {
       where: { studentId: world.studentId, courseId: other.courseId },
       data: { expiresAt: new Date(Date.now() - 1) },
     });
-    const { reconcileExpiredSessions } = await import('../../src/modules/learning/expiry/reconciler.js');
+    const { reconcileExpiredSessions } = await import(
+      '../../src/modules/learning/expiry/reconciler.js'
+    );
     const [a, b] = await Promise.all([
       reconcileExpiredSessions(world.prisma, world.redis, world.drm, Date.now()),
       reconcileExpiredSessions(world.prisma, world.redis, world.drm, Date.now()),
     ]);
     const total = a.terminated + b.terminated;
     expect(total).toBe(1);
-    const reference = await world.prisma.playbackReference.findUniqueOrThrow({ where: { id: referenceId } });
+    const reference = await world.prisma.playbackReference.findUniqueOrThrow({
+      where: { id: referenceId },
+    });
     expect(reference.terminationAttempts).toBe(0);
     expect(world.playback!.sessions.get(playbackSessionId)?.status).toBe('revoked');
   });

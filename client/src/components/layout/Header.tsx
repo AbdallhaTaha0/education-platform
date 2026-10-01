@@ -16,41 +16,160 @@ function NavIcon({ kind }: { kind: Icon }): JSX.Element {
     courses: 'M4 3h16v18H4V3Zm4 5h8M8 12h8M8 16h5',
     recharge: 'M3 6h18v14H3V6Zm0 4h18M7 15h3',
   };
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[kind]} /></svg>;
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={paths[kind]} />
+    </svg>
+  );
 }
-export function Header({ onSwitch, route }: { onSwitch: (lang: Lang) => void; route: Route }): JSX.Element {
+export function Header({
+  onSwitch,
+  route,
+}: {
+  onSwitch: (lang: Lang) => void;
+  route: Route;
+}): JSX.Element {
   const { lang, t } = useLang();
   const { theme, toggleTheme } = useTheme();
   const { status, user } = useAuth();
   const signedIn = status === 'authenticated';
   const admin = signedIn && user?.role === 'ADMIN';
-  const label = (ar: string, en: string): string => lang === 'ar' ? ar : en;
-  const entries: { href: string; label: string; icon: Icon; active: boolean }[] = admin ? [
-    { href: '#/admin/summary', label: label('الإدارة', 'Overview'), icon: 'home', active: route === 'admin' || route === 'admin-summary' },
-    { href: '#/admin/catalog', label: t.navCourses, icon: 'courses', active: route === 'admin-catalog' || route === 'admin-course' || route === 'admin-packages' },
-    { href: '#/admin/recharge', label: t.navRecharge, icon: 'recharge', active: route === 'admin-recharge' },
-    { href: '#/account', label: label('حسابي', 'Account'), icon: 'account', active: route === 'account' },
-  ] : [
-    { href: '#/', label: t.navHome, icon: 'home', active: route === 'home' },
-    { href: '#/courses', label: label('اكتشف', 'Discover'), icon: 'discover', active: ['courses', 'course-detail', 'purchase', 'package'].includes(route) },
-    { href: signedIn ? '#/dashboard' : '#/login', label: label('تعلّمي', 'My learning'), icon: 'learning', active: route === 'dashboard' || route === 'learn' },
-    { href: '#/account', label: label('حسابي', 'Profile'), icon: 'account', active: ['account', 'login', 'register', 'wallet', 'wallet-recharge', 'purchases'].includes(route) },
-  ];
-  return <>
-    <header className="site-header"><Container><div className="site-header__inner">
-      <a className="site-brand" href="#/" aria-label={`${t.brand} — ${t.slogan}`}><Wordmark variant="compact" markSize={36} /></a>
-      <nav className="desktop-navigation" aria-label={label('التنقل الرئيسي', 'Main navigation')}>
-        {entries.map(entry => <a key={entry.href} href={entry.href} aria-current={entry.active ? 'page' : undefined}>{entry.label}</a>)}
-        {signedIn && !admin ? <a href="#/wallet" aria-current={route === 'wallet' || route === 'wallet-recharge' ? 'page' : undefined}>{t.navWallet}</a> : null}
+  const label = (ar: string, en: string): string => (lang === 'ar' ? ar : en);
+  const entries: { href: string; label: string; icon: Icon; active: boolean }[] = admin
+    ? [
+        {
+          href: '#/admin/summary',
+          label: label('الإدارة', 'Overview'),
+          icon: 'home',
+          active: route === 'admin' || route === 'admin-summary',
+        },
+        {
+          href: '#/admin/catalog',
+          label: t.navCourses,
+          icon: 'courses',
+          active:
+            route === 'admin-catalog' || route === 'admin-course' || route === 'admin-packages',
+        },
+        {
+          href: '#/admin/recharge',
+          label: t.navRecharge,
+          icon: 'recharge',
+          active: route === 'admin-recharge',
+        },
+        {
+          href: '#/account',
+          label: label('حسابي', 'Account'),
+          icon: 'account',
+          active: route === 'account',
+        },
+      ]
+    : [
+        { href: '#/', label: t.navHome, icon: 'home', active: route === 'home' },
+        {
+          href: '#/courses',
+          label: label('اكتشف', 'Discover'),
+          icon: 'discover',
+          active: ['courses', 'course-detail', 'purchase', 'package'].includes(route),
+        },
+        {
+          href: signedIn ? '#/dashboard' : '#/login',
+          label: label('تعلّمي', 'My learning'),
+          icon: 'learning',
+          active: route === 'dashboard' || route === 'learn',
+        },
+        {
+          href: '#/account',
+          label: label('حسابي', 'Profile'),
+          icon: 'account',
+          active: [
+            'account',
+            'login',
+            'register',
+            'wallet',
+            'wallet-recharge',
+            'purchases',
+          ].includes(route),
+        },
+      ];
+  return (
+    <>
+      <header className="site-header">
+        <Container>
+          <div className="site-header__inner">
+            <a className="site-brand" href="#/" aria-label={`${t.brand} — ${t.slogan}`}>
+              <Wordmark variant="compact" markSize={36} />
+            </a>
+            <nav
+              className="desktop-navigation"
+              aria-label={label('التنقل الرئيسي', 'Main navigation')}
+            >
+              {entries.map((entry) => (
+                <a
+                  key={entry.href}
+                  href={entry.href}
+                  aria-current={entry.active ? 'page' : undefined}
+                >
+                  {entry.label}
+                </a>
+              ))}
+              {signedIn && !admin ? (
+                <a
+                  href="#/wallet"
+                  aria-current={
+                    route === 'wallet' || route === 'wallet-recharge' ? 'page' : undefined
+                  }
+                >
+                  {t.navWallet}
+                </a>
+              ) : null}
+            </nav>
+            <div className="site-header__tools">
+              {signedIn ? <NotificationEntry current={route === 'notifications'} compact /> : null}
+              <button
+                type="button"
+                className="header-tool"
+                onClick={toggleTheme}
+                aria-pressed={theme === 'dark'}
+                aria-label={t.themeToggle}
+                title={t.themeToggle}
+              >
+                <span aria-hidden="true">{theme === 'dark' ? '☾' : '☀'}</span>
+              </button>
+              <button
+                type="button"
+                className="header-tool language-tool"
+                onClick={() => onSwitch(lang === 'ar' ? 'en' : 'ar')}
+                aria-label={lang === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
+                lang={lang === 'ar' ? 'en' : 'ar'}
+              >
+                {lang === 'ar' ? 'EN' : 'ع'}
+              </button>
+            </div>
+          </div>
+        </Container>
+      </header>
+      <nav
+        className="mobile-dock"
+        aria-label={label('التنقل الرئيسي', 'Main navigation')}
+        data-testid="mobile-dock"
+      >
+        {entries.map((entry) => (
+          <a key={entry.href} href={entry.href} aria-current={entry.active ? 'page' : undefined}>
+            <span className="mobile-dock__icon">
+              <NavIcon kind={entry.icon} />
+            </span>
+            <span>{entry.label}</span>
+          </a>
+        ))}
       </nav>
-      <div className="site-header__tools">
-        {signedIn ? <NotificationEntry current={route === 'notifications'} compact /> : null}
-        <button type="button" className="header-tool" onClick={toggleTheme} aria-pressed={theme === 'dark'} aria-label={t.themeToggle} title={t.themeToggle}><span aria-hidden="true">{theme === 'dark' ? '☾' : '☀'}</span></button>
-        <button type="button" className="header-tool language-tool" onClick={() => onSwitch(lang === 'ar' ? 'en' : 'ar')} aria-label={lang === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'} lang={lang === 'ar' ? 'en' : 'ar'}>{lang === 'ar' ? 'EN' : 'ع'}</button>
-      </div>
-    </div></Container></header>
-    <nav className="mobile-dock" aria-label={label('التنقل الرئيسي', 'Main navigation')} data-testid="mobile-dock">
-      {entries.map(entry => <a key={entry.href} href={entry.href} aria-current={entry.active ? 'page' : undefined}><span className="mobile-dock__icon"><NavIcon kind={entry.icon} /></span><span>{entry.label}</span></a>)}
-    </nav>
-  </>;
+    </>
+  );
 }

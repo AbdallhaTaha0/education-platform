@@ -26,7 +26,8 @@ export function toStudentView(row: Record<string, unknown>) {
 
 async function assertOwnRequest(tx: TxClient, studentId: string, requestId: string) {
   const row = await (tx as PrismaClient).rechargeRequest.findUnique({ where: { id: requestId } });
-  if (!row || row.studentId !== studentId) throw new ApiError(404, 'NOT_FOUND', 'Recharge request not found.');
+  if (!row || row.studentId !== studentId)
+    throw new ApiError(404, 'NOT_FOUND', 'Recharge request not found.');
   return row;
 }
 
@@ -37,7 +38,9 @@ export async function getOwnRequest(prisma: PrismaClient, studentId: string, req
 
 export async function listOwnRequests(prisma: PrismaClient, studentId: string, limit = 50) {
   const rows = await prisma.rechargeRequest.findMany({
-    where: { studentId }, orderBy: { createdAt: 'desc' }, take: Math.min(Math.max(limit, 1), 100),
+    where: { studentId },
+    orderBy: { createdAt: 'desc' },
+    take: Math.min(Math.max(limit, 1), 100),
   });
   return rows.map((r) => toStudentView(r as unknown as Record<string, unknown>));
 }
@@ -50,16 +53,28 @@ export async function listRequestsForReview(
   const rows = await prisma.rechargeRequest.findMany({
     where: {
       ...(filter.status ? { status: filter.status } : {}),
-      ...(filter.channel === 'INSTAPAY' || filter.channel === 'BANK_TRANSFER' || filter.channel === 'MOBILE_WALLET'
+      ...(filter.channel === 'INSTAPAY' ||
+      filter.channel === 'BANK_TRANSFER' ||
+      filter.channel === 'MOBILE_WALLET'
         ? { channel: filter.channel }
         : {}),
     },
     orderBy: { createdAt: 'desc' },
     take: Math.min(Math.max(limit, 1), 100),
     select: {
-      id: true, studentId: true, amountPiastres: true, channel: true, status: true,
-      createdAt: true, reviewedAt: true, rejectReason: true, proofFilename: true,
-      proofSize: true, referenceNorm: true, senderName: true, transferDate: true,
+      id: true,
+      studentId: true,
+      amountPiastres: true,
+      channel: true,
+      status: true,
+      createdAt: true,
+      reviewedAt: true,
+      rejectReason: true,
+      proofFilename: true,
+      proofSize: true,
+      referenceNorm: true,
+      senderName: true,
+      transferDate: true,
     },
   });
   return rows.map((r) => ({
@@ -74,6 +89,7 @@ export async function listRequestsForReview(
 /** Admin-only proof bytes with safe preview/download headers. Never for students. */
 export async function getProofBytes(prisma: PrismaClient, requestId: string) {
   const proof = await prisma.rechargeProof.findUnique({ where: { requestId } });
-  if (!proof || proof.bytes === null) throw new ApiError(404, 'NOT_FOUND', 'Proof is no longer available.');
+  if (!proof || proof.bytes === null)
+    throw new ApiError(404, 'NOT_FOUND', 'Proof is no longer available.');
   return { bytes: Buffer.from(proof.bytes), mime: proof.mime, size: proof.size };
 }

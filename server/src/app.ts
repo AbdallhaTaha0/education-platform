@@ -73,9 +73,8 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
   const standardJson = express.json({ limit: '256kb' });
   const proofJson = express.json({ limit: '8mb' });
   app.use((req, res, next) => {
-    const parser = req.method === 'POST' && req.path === '/wallet/recharge-requests'
-      ? proofJson
-      : standardJson;
+    const parser =
+      req.method === 'POST' && req.path === '/wallet/recharge-requests' ? proofJson : standardJson;
     parser(req, res, next);
   });
 
@@ -115,7 +114,9 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
     redis: deps.redisClient,
     config: deps.config,
     ...(tunables.clock ? { clock: tunables.clock } : {}),
-    ...(tunables.drmFactory ? { drmFactory: tunables.drmFactory } : { drmFactory: createDrmClient }),
+    ...(tunables.drmFactory
+      ? { drmFactory: tunables.drmFactory }
+      : { drmFactory: createDrmClient }),
   });
   app.set('catalog', {
     prisma: deps.prisma,
@@ -149,9 +150,13 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
   app.use('/learning', learning.router);
 
   // M6 recipient-only inbox APIs, inside the same modular backend.
-  app.use('/notifications', createNotificationRouter({
-    prisma: deps.prisma, ...(tunables.clock ? { clock: tunables.clock } : {}),
-  }));
+  app.use(
+    '/notifications',
+    createNotificationRouter({
+      prisma: deps.prisma,
+      ...(tunables.clock ? { clock: tunables.clock } : {}),
+    }),
+  );
 
   // Public signing metadata for the independently deployed DRM verifier.
   // Only the RSA public key is exposed; HS256 exists solely for labeled test fixtures.

@@ -37,11 +37,13 @@ const NEGATIVE_PAGE_ORIGIN = 'http://education-platform-rs256-nginx-1:8080';
 
 /** Self-reporting probe page: PUTs 64 bytes, publishes status/error in title. */
 export function buildProbePage(putUrl) {
-  return `<!doctype html><html><head><meta charset="utf-8"><title>PENDING</title></head><body><script>
+  return (
+    `<!doctype html><html><head><meta charset="utf-8"><title>PENDING</title></head><body><script>
 fetch(${JSON.stringify(putUrl)}, { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body: new Uint8Array(64).fill(65) })
   .then(function (r) { document.title = 'RESULT status=' + r.status; })
   .catch(function (e) { document.title = 'RESULT error=' + e.name; });
-</scr` + `ipt></body></html>`;
+</scr` + `ipt></body></html>`
+  );
 }
 
 function sh(args, opts = {}) {
@@ -57,8 +59,16 @@ export async function corsBrowserProof(ctx) {
   const negKey = `${prefix}negative.bin`;
 
   // 1. Fresh presigned PUTs; OPTIONS against the exact presigned host+path.
-  const posUrl = s3.presignPut({ key: posKey, expiresIn: 300, contentType: 'application/octet-stream' });
-  const negUrl = s3.presignPut({ key: negKey, expiresIn: 300, contentType: 'application/octet-stream' });
+  const posUrl = s3.presignPut({
+    key: posKey,
+    expiresIn: 300,
+    contentType: 'application/octet-stream',
+  });
+  const negUrl = s3.presignPut({
+    key: negKey,
+    expiresIn: 300,
+    contentType: 'application/octet-stream',
+  });
   const preStarted = Date.now();
   let preflight;
   try {
@@ -70,7 +80,10 @@ export async function corsBrowserProof(ctx) {
         'Access-Control-Request-Headers': 'content-type',
       },
     });
-    await response.text().then(() => {}).catch(() => {});
+    await response
+      .text()
+      .then(() => {})
+      .catch(() => {});
     preflight = {
       status: response.status,
       allowOrigin: response.headers.get('access-control-allow-origin'),
@@ -81,15 +94,26 @@ export async function corsBrowserProof(ctx) {
     return { proven: false, reason: `preflight unreachable (${safeErrorCategory(e)})` };
   }
   expect('cors-browser-preflight-status', preflight.status >= 200 && preflight.status < 300, {
-    origin: ctx.approvedOrigin, status: preflight.status, ms: preflight.ms,
+    origin: ctx.approvedOrigin,
+    status: preflight.status,
+    ms: preflight.ms,
   });
   expect('cors-browser-preflight-allows-origin', preflight.allowOrigin === ctx.approvedOrigin, {
-    origin: ctx.approvedOrigin, status: preflight.status,
-  });
-  expect('cors-browser-preflight-allows-put', (preflight.allowMethods || '').toUpperCase().includes('PUT'), {
+    origin: ctx.approvedOrigin,
     status: preflight.status,
   });
-  if (preflight.status < 200 || preflight.status >= 300 || preflight.allowOrigin !== ctx.approvedOrigin) {
+  expect(
+    'cors-browser-preflight-allows-put',
+    (preflight.allowMethods || '').toUpperCase().includes('PUT'),
+    {
+      status: preflight.status,
+    },
+  );
+  if (
+    preflight.status < 200 ||
+    preflight.status >= 300 ||
+    preflight.allowOrigin !== ctx.approvedOrigin
+  ) {
     return { proven: false, reason: 'preflight refused: approved rule not in effect' };
   }
 
@@ -102,7 +126,10 @@ export async function corsBrowserProof(ctx) {
   writeFileSync(tmpNeg, buildProbePage(negUrl));
   const deployed = [];
   try {
-    for (const [tmp, name] of [[tmpPos, posFile], [tmpNeg, negFile]]) {
+    for (const [tmp, name] of [
+      [tmpPos, posFile],
+      [tmpNeg, negFile],
+    ]) {
       const cp = sh(['cp', tmp, `${CLIENT_CONTAINER}:${HTML_ROOT}/${name}`]);
       if (cp.status !== 0) return { proven: false, reason: 'probe page deploy failed' };
       deployed.push(name);
@@ -110,11 +137,18 @@ export async function corsBrowserProof(ctx) {
 
     // 3. Real Chromium PUT from the approved origin.
     const positive = runProbe(`${APPROVED_ORIGIN}/${posFile}`, 'status', '200');
-    expect('cors-browser-approved-put', positive.pass, { origin: APPROVED_ORIGIN, status: positive.status, note: positive.note });
+    expect('cors-browser-approved-put', positive.pass, {
+      origin: APPROVED_ORIGIN,
+      status: positive.status,
+      note: positive.note,
+    });
 
     // 4. Unapproved-origin denial with an otherwise valid presigned URL.
     const negative = runProbe(`${NEGATIVE_PAGE_ORIGIN}/${negFile}`, 'block', '');
-    expect('cors-browser-unapproved-denied', negative.pass, { status: negative.status, note: negative.note });
+    expect('cors-browser-unapproved-denied', negative.pass, {
+      status: negative.status,
+      note: negative.note,
+    });
 
     return { proven: positive.pass && negative.pass, reason: '' };
   } finally {
@@ -124,7 +158,9 @@ export async function corsBrowserProof(ctx) {
         await s3.deleteObject({ key, scopePrefix: prefix });
       }
       const listed = await s3.listKeys({ prefix });
-      expect('cors-browser-prefix-empty', listed.status === 200 && listed.keys.length === 0, { count: listed.keys.length });
+      expect('cors-browser-prefix-empty', listed.status === 200 && listed.keys.length === 0, {
+        count: listed.keys.length,
+      });
     } catch (e) {
       recordBlocked('cors-browser-cleanup', { note: safeErrorCategory(e) });
     }
@@ -142,28 +178,56 @@ function runProbe(pageUrl, mode, wantStatus) {
   const started = Date.now();
   // Container loopback always wins over --add-host, so map the approved
   // origin host at the Chromium layer to the Docker Desktop host gateway.
-  const gw = sh(['run', '--rm', '--network', BROWSER_NETWORK, BROWSER_IMAGE, 'getent', 'hosts', 'host.docker.internal']);
+  const gw = sh([
+    'run',
+    '--rm',
+    '--network',
+    BROWSER_NETWORK,
+    BROWSER_IMAGE,
+    'getent',
+    'hosts',
+    'host.docker.internal',
+  ]);
   const gwText = `${gw.stdout || ''} ${gw.stderr || ''}`;
   const gwIp = (gwText.match(/(\d+\.\d+\.\d+\.\d+)/) || [])[1] || '';
   if (!gwIp) {
     const snippet = gwText.replace(/\s+/g, ' ').slice(0, 100);
-    return { pass: false, status: 'none', note: `gateway-undiscovered exit=${gw.status ?? 'unknown'} err=${snippet}` };
+    return {
+      pass: false,
+      status: 'none',
+      note: `gateway-undiscovered exit=${gw.status ?? 'unknown'} err=${snippet}`,
+    };
   }
   const result = sh([
-    'run', '--rm', '--network', BROWSER_NETWORK,
-    '-v', `${DRIVER_PATH}:/srv/browser/cors-probe.mjs:ro`,
-    '-e', `PAGE_URL=${pageUrl}`,
-    '-e', `EXPECT_MODE=${mode}`,
-    '-e', `EXPECT_STATUS=${wantStatus}`,
-    '-e', `RESOLVER_RULES=MAP localhost ${gwIp}`,
-    BROWSER_IMAGE, 'node', 'cors-probe.mjs',
+    'run',
+    '--rm',
+    '--network',
+    BROWSER_NETWORK,
+    '-v',
+    `${DRIVER_PATH}:/srv/browser/cors-probe.mjs:ro`,
+    '-e',
+    `PAGE_URL=${pageUrl}`,
+    '-e',
+    `EXPECT_MODE=${mode}`,
+    '-e',
+    `EXPECT_STATUS=${wantStatus}`,
+    '-e',
+    `RESOLVER_RULES=MAP localhost ${gwIp}`,
+    BROWSER_IMAGE,
+    'node',
+    'cors-probe.mjs',
   ]);
   const ms = Date.now() - started;
   const out = `${result.stdout || ''}${result.stderr || ''}`;
   const verdict = /probe verdict=PASS/.test(out);
   const status = (/status=(\d+)/.exec(out) || [])[1] || 'none';
   const note = (/error=([A-Za-z]+)/.exec(out) || [])[1] || 'none';
-  return { pass: result.status === 0 && verdict, status: status === 'none' ? 'none' : Number(status), note, ms };
+  return {
+    pass: result.status === 0 && verdict,
+    status: status === 'none' ? 'none' : Number(status),
+    note,
+    ms,
+  };
 }
 
 function parseEnvFile(path) {
@@ -182,7 +246,10 @@ async function selftest() {
     ['page sends content type', page.includes('application/octet-stream')],
     ['page reports status', page.includes('RESULT status=')],
     ['page reports error name', page.includes('RESULT error=')],
-    ['page embeds the exact URL once', page.split('https://example.invalid/key?sig=abc').length === 2],
+    [
+      'page embeds the exact URL once',
+      page.split('https://example.invalid/key?sig=abc').length === 2,
+    ],
   ];
   let failed = 0;
   for (const [label, cond] of checks) {
@@ -193,7 +260,8 @@ async function selftest() {
   process.stdout.write('browser-page selftest: all pass\n');
 }
 
-const invokedAsMain = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const invokedAsMain =
+  process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invokedAsMain) {
   if (process.argv.includes('--selftest')) {
     await selftest();
@@ -212,7 +280,9 @@ if (invokedAsMain) {
       if (config.authorized && config.preflightProven) {
         await corsBrowserProof(ctx);
       } else {
-        recordBlocked('cors-browser', { note: 'skipped: configuration proof did not authorize browser stages' });
+        recordBlocked('cors-browser', {
+          note: 'skipped: configuration proof did not authorize browser stages',
+        });
       }
     }
     summary();

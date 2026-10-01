@@ -31,7 +31,11 @@ export interface PlayerProps {
   labels: PlayerLabels;
   /** True when entitlement is known to have lapsed; forces the expired state. */
   entitlementLost?: boolean;
-  onProgress?: (positionSeconds: number, durationSeconds: number | null, completed: boolean) => void;
+  onProgress?: (
+    positionSeconds: number,
+    durationSeconds: number | null,
+    completed: boolean,
+  ) => void;
   onEnded?: () => void;
   onError?: (code: string) => void;
   onExpire?: () => void;
@@ -73,7 +77,9 @@ export function DashLessonPlayer({
     try {
       if (document.fullscreenElement === frame) await document.exitFullscreen();
       else await frame.requestFullscreen();
-    } catch { /* Unsupported fullscreen leaves the ordinary player usable. */ }
+    } catch {
+      /* Unsupported fullscreen leaves the ordinary player usable. */
+    }
   }, []);
 
   // The reducer needs the current phase, so it is read through a ref to keep
@@ -136,14 +142,17 @@ export function DashLessonPlayer({
     const expiresAtMs = Date.parse(grant.tokenExpiresAt);
     if (!Number.isFinite(expiresAtMs) || phaseRef.current === 'expired') return;
     const wait = Math.min(expiresAtMs - Date.now(), MAX_TIMER_MS);
-    const timer = setTimeout(() => {
-      if (isExpired()) {
-        playerRef.current?.reset();
-        videoRef.current?.pause();
-        dispatch({ type: 'EXPIRED' });
-        onExpireRef.current?.();
-      }
-    }, Math.max(wait, 0));
+    const timer = setTimeout(
+      () => {
+        if (isExpired()) {
+          playerRef.current?.reset();
+          videoRef.current?.pause();
+          dispatch({ type: 'EXPIRED' });
+          onExpireRef.current?.();
+        }
+      },
+      Math.max(wait, 0),
+    );
     return () => clearTimeout(timer);
   }, [grant.tokenExpiresAt, dispatch]);
 
@@ -152,9 +161,12 @@ export function DashLessonPlayer({
   useEffect(() => {
     const keySystem = emeKeyForProvider(grant.drmProvider);
     if (keySystem && playerRef.current) {
-      playerRef.current.setProtectionData({ [keySystem]: {
-        serverURL: grant.licenseUrl, httpRequestHeaders: { 'Content-Type': 'application/octet-stream', ...authHeaders() },
-      } });
+      playerRef.current.setProtectionData({
+        [keySystem]: {
+          serverURL: grant.licenseUrl,
+          httpRequestHeaders: { 'Content-Type': 'application/octet-stream', ...authHeaders() },
+        },
+      });
     }
   }, [grant.playbackToken, grant.licenseUrl, grant.drmProvider]);
 
@@ -240,10 +252,13 @@ export function DashLessonPlayer({
       player.on(dashjs.MediaPlayer.events.ERROR, (event: { error?: unknown }) => {
         const detail = event.error;
         if (awaitsEncryptionInitData(detail)) return;
-        const numeric = detail && typeof detail === 'object' && 'code' in detail ? detail.code : null;
+        const numeric =
+          detail && typeof detail === 'object' && 'code' in detail ? detail.code : null;
         // Keep diagnostics useful without forwarding raw URLs or license data.
-        const code = typeof numeric === 'number' && Number.isSafeInteger(numeric)
-          ? `DASH_${numeric}` : 'STREAM_SETUP_ERROR';
+        const code =
+          typeof numeric === 'number' && Number.isSafeInteger(numeric)
+            ? `DASH_${numeric}`
+            : 'STREAM_SETUP_ERROR';
         dispatch({ type: 'FAILED', code });
         onErrorRef.current?.(code);
       });
@@ -350,11 +365,20 @@ export function DashLessonPlayer({
           onLoadedMetadata={handleLoadedMetadata}
           onEnded={handleEnded}
         />
-        <PlayerOverlay phase={state.phase} labels={labels} code={state.errorCode} canPlay={canPlay} />
+        <PlayerOverlay
+          phase={state.phase}
+          labels={labels}
+          code={state.errorCode}
+          canPlay={canPlay}
+        />
         {document.fullscreenEnabled ? (
-          <button type="button" data-testid="player-fullscreen" aria-pressed={fullscreen}
+          <button
+            type="button"
+            data-testid="player-fullscreen"
+            aria-pressed={fullscreen}
             className="absolute end-3 top-3 z-30 min-h-[44px] rounded-control bg-black/80 px-3 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
-            onClick={() => void toggleFullscreen()}>
+            onClick={() => void toggleFullscreen()}
+          >
             {fullscreen ? labels.exitFullscreen : labels.fullscreen}
           </button>
         ) : null}
@@ -369,11 +393,19 @@ export function DashLessonPlayer({
           onClick={toggle}
           disabled={state.phase === 'expired' || state.phase === 'error'}
         >
-          {state.phase === 'playing' ? labels.pause : state.phase === 'paused' ? labels.resume : labels.play}
+          {state.phase === 'playing'
+            ? labels.pause
+            : state.phase === 'paused'
+              ? labels.resume
+              : labels.play}
         </button>
         {state.phase === 'error' && onRetry ? (
-          <button type="button" data-testid="player-retry" onClick={onRetry}
-            className="min-h-[44px] rounded-control border border-border px-4 py-2 font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
+          <button
+            type="button"
+            data-testid="player-retry"
+            onClick={onRetry}
+            className="min-h-[44px] rounded-control border border-border px-4 py-2 font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+          >
             {labels.retry}
           </button>
         ) : null}

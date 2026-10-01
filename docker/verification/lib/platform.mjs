@@ -39,9 +39,7 @@ export class PlatformClient {
 
   absorb(response) {
     const list =
-      typeof response.headers.getSetCookie === 'function'
-        ? response.headers.getSetCookie()
-        : [];
+      typeof response.headers.getSetCookie === 'function' ? response.headers.getSetCookie() : [];
     for (const entry of list) {
       const pair = entry.split(';')[0];
       const index = pair.indexOf('=');
@@ -97,7 +95,9 @@ export class PlatformClient {
   }
 
   async transitionCourse(courseId, to) {
-    return this.call('POST', `/api/admin/catalog/courses/${courseId}/transitions`, { body: { to } });
+    return this.call('POST', `/api/admin/catalog/courses/${courseId}/transitions`, {
+      body: { to },
+    });
   }
 
   async submitRecharge(payload) {
@@ -117,21 +117,31 @@ export class PlatformClient {
   }
 
   async outline(courseRef) {
-    return this.call('GET', `/api/learning/courses/${encodeURIComponent(courseRef)}/outline`, { withCsrf: false });
-  }
-
-  async requestPlayback(courseRef, lessonId, deviceId) {
-    return this.call('POST', `/api/learning/courses/${encodeURIComponent(courseRef)}/lessons/${encodeURIComponent(lessonId)}/playback`, {
-      body: { deviceId },
+    return this.call('GET', `/api/learning/courses/${encodeURIComponent(courseRef)}/outline`, {
+      withCsrf: false,
     });
   }
 
+  async requestPlayback(courseRef, lessonId, deviceId) {
+    return this.call(
+      'POST',
+      `/api/learning/courses/${encodeURIComponent(courseRef)}/lessons/${encodeURIComponent(lessonId)}/playback`,
+      {
+        body: { deviceId },
+      },
+    );
+  }
+
   async endPlayback(referenceId) {
-    return this.call('POST', `/api/learning/playback/${encodeURIComponent(referenceId)}/end`, { body: {} });
+    return this.call('POST', `/api/learning/playback/${encodeURIComponent(referenceId)}/end`, {
+      body: {},
+    });
   }
 
   async renewPlayback(referenceId) {
-    return this.call('POST', `/api/learning/playback/${encodeURIComponent(referenceId)}/renew`, { body: {} });
+    return this.call('POST', `/api/learning/playback/${encodeURIComponent(referenceId)}/renew`, {
+      body: {},
+    });
   }
 
   async createCourse(payload) {

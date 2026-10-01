@@ -36,27 +36,47 @@ export async function selfTest() {
   step('selftest');
 
   // Prefix guard: accept only a run-scoped child of the test root.
-  expect('selftest-prefix-accepts-run-scope', (() => {
-    try {
-      assertTestPrefix(`${TEST_ROOT}run-abc/media/`, TEST_ROOT);
-      return true;
-    } catch {
-      return false;
-    }
-  })(), { label: 'run-scoped-prefix' });
+  expect(
+    'selftest-prefix-accepts-run-scope',
+    (() => {
+      try {
+        assertTestPrefix(`${TEST_ROOT}run-abc/media/`, TEST_ROOT);
+        return true;
+      } catch {
+        return false;
+      }
+    })(),
+    { label: 'run-scoped-prefix' },
+  );
 
-  expect('selftest-prefix-rejects-empty', rejects(() => assertTestPrefix('', TEST_ROOT)), {
-    label: 'empty',
-  });
-  expect('selftest-prefix-rejects-root', rejects(() => assertTestPrefix('/', TEST_ROOT)), {
-    label: 'root',
-  });
-  expect('selftest-prefix-rejects-uploads', rejects(() => assertTestPrefix('uploads/', TEST_ROOT)), {
-    label: 'uploads',
-  });
-  expect('selftest-prefix-rejects-assets', rejects(() => assertTestPrefix('assets/', TEST_ROOT)), {
-    label: 'assets',
-  });
+  expect(
+    'selftest-prefix-rejects-empty',
+    rejects(() => assertTestPrefix('', TEST_ROOT)),
+    {
+      label: 'empty',
+    },
+  );
+  expect(
+    'selftest-prefix-rejects-root',
+    rejects(() => assertTestPrefix('/', TEST_ROOT)),
+    {
+      label: 'root',
+    },
+  );
+  expect(
+    'selftest-prefix-rejects-uploads',
+    rejects(() => assertTestPrefix('uploads/', TEST_ROOT)),
+    {
+      label: 'uploads',
+    },
+  );
+  expect(
+    'selftest-prefix-rejects-assets',
+    rejects(() => assertTestPrefix('assets/', TEST_ROOT)),
+    {
+      label: 'assets',
+    },
+  );
   expect(
     'selftest-prefix-rejects-test-root',
     rejects(() => assertTestPrefix(TEST_ROOT, TEST_ROOT)),
@@ -86,7 +106,10 @@ export async function selfTest() {
   );
   expect(
     'selftest-logger-drops-unknown-fields',
-    !Object.hasOwn(sanitizeRecord({ step: 'probe', status: 200, unexpectedSecret: 'x' }), 'unexpectedSecret'),
+    !Object.hasOwn(
+      sanitizeRecord({ step: 'probe', status: 200, unexpectedSecret: 'x' }),
+      'unexpectedSecret',
+    ),
     { label: 'unknown-field' },
   );
 

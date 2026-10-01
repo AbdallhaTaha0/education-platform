@@ -27,8 +27,16 @@ function sameValue(a: string, b: string): boolean {
  * must equal the readable cookie, both well-formed. A cross-site attacker
  * cannot read the cookie value, so it cannot forge the header.
  */
-export function verifyAnonymousCsrf(headerValue: string | undefined, cookieValue: string | undefined): string {
-  if (!headerValue || !cookieValue || !CSRF_TOKEN_PATTERN.test(headerValue) || !sameValue(headerValue, cookieValue)) {
+export function verifyAnonymousCsrf(
+  headerValue: string | undefined,
+  cookieValue: string | undefined,
+): string {
+  if (
+    !headerValue ||
+    !cookieValue ||
+    !CSRF_TOKEN_PATTERN.test(headerValue) ||
+    !sameValue(headerValue, cookieValue)
+  ) {
     throw new ApiError(403, 'CSRF_INVALID', 'Request verification failed.');
   }
   return headerValue;

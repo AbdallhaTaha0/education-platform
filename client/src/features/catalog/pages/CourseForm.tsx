@@ -15,7 +15,15 @@ export interface CourseFormValues {
   academic?: Academic | null;
 }
 
-export function CourseForm({ busy, initial, onSubmit }: { busy: boolean; initial?: CourseFormValues; onSubmit: (v: CourseFormValues) => void }): JSX.Element {
+export function CourseForm({
+  busy,
+  initial,
+  onSubmit,
+}: {
+  busy: boolean;
+  initial?: CourseFormValues;
+  onSubmit: (v: CourseFormValues) => void;
+}): JSX.Element {
   const { t } = useLang();
   const [slug, setSlug] = useState(initial?.slug ?? '');
   const [titleAr, setTitleAr] = useState(initial?.titleAr ?? '');
@@ -39,22 +47,57 @@ export function CourseForm({ busy, initial, onSubmit }: { busy: boolean; initial
 
   return (
     <Card className="mx-auto mt-4 max-w-[640px]">
-      <h2 className="text-xl font-bold">{initial === undefined ? t.courseCreateTitle : t.courseEditTitle}</h2>
+      <h2 className="text-xl font-bold">
+        {initial === undefined ? t.courseCreateTitle : t.courseEditTitle}
+      </h2>
       <form onSubmit={submit} noValidate className="mt-4">
         <Field id="cf-slug" label={t.fieldSlug} dir="ltr">
-          <input id="cf-slug" dir="ltr" required className={textInputClassName(false)} value={slug} onChange={(e) => setSlug(e.target.value)} />
+          <input
+            id="cf-slug"
+            dir="ltr"
+            required
+            className={textInputClassName(false)}
+            value={slug}
+            onChange={(e) => setSlug(e.target.value)}
+          />
         </Field>
         <Field id="cf-ta" label={t.fieldTitleAr}>
-          <input id="cf-ta" required className={textInputClassName(false)} value={titleAr} onChange={(e) => setTitleAr(e.target.value)} />
+          <input
+            id="cf-ta"
+            required
+            className={textInputClassName(false)}
+            value={titleAr}
+            onChange={(e) => setTitleAr(e.target.value)}
+          />
         </Field>
         <Field id="cf-te" label={t.fieldTitleEn} dir="ltr">
-          <input id="cf-te" dir="ltr" required className={textInputClassName(false)} value={titleEn} onChange={(e) => setTitleEn(e.target.value)} />
+          <input
+            id="cf-te"
+            dir="ltr"
+            required
+            className={textInputClassName(false)}
+            value={titleEn}
+            onChange={(e) => setTitleEn(e.target.value)}
+          />
         </Field>
         <Field id="cf-da" label={t.fieldDescAr}>
-          <textarea id="cf-da" required className={textInputClassName(false)} value={descAr} onChange={(e) => setDescAr(e.target.value)} />
+          <textarea
+            id="cf-da"
+            required
+            className={textInputClassName(false)}
+            value={descAr}
+            onChange={(e) => setDescAr(e.target.value)}
+          />
         </Field>
         <Field id="cf-de" label={t.fieldDescEn} dir="ltr">
-          <textarea id="cf-de" dir="ltr" required className={textInputClassName(false)} value={descEn} onChange={(e) => setDescEn(e.target.value)} />
+          <textarea
+            id="cf-de"
+            dir="ltr"
+            required
+            className={textInputClassName(false)}
+            value={descEn}
+            onChange={(e) => setDescEn(e.target.value)}
+          />
         </Field>
         <AcademicFields value={academic} onChange={setAcademic} />
         <div className="mt-6 flex flex-wrap gap-3">

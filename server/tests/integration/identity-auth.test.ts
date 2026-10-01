@@ -73,9 +73,27 @@ describe('registration', () => {
   it('always creates STUDENT and rejects role injection', async () => {
     const { jar, token } = await csrfBootstrap(world.app);
     for (const body of [
-      { displayName: 'X', email: uniqueEmail(), phone: uniquePhone(), password: TEST_PASSWORD, role: 'ADMIN' },
-      { displayName: 'X', email: uniqueEmail(), phone: uniquePhone(), password: TEST_PASSWORD, isAdmin: true },
-      { displayName: 'X', email: uniqueEmail(), phone: uniquePhone(), password: TEST_PASSWORD, role: 'STUDENT' },
+      {
+        displayName: 'X',
+        email: uniqueEmail(),
+        phone: uniquePhone(),
+        password: TEST_PASSWORD,
+        role: 'ADMIN',
+      },
+      {
+        displayName: 'X',
+        email: uniqueEmail(),
+        phone: uniquePhone(),
+        password: TEST_PASSWORD,
+        isAdmin: true,
+      },
+      {
+        displayName: 'X',
+        email: uniqueEmail(),
+        phone: uniquePhone(),
+        password: TEST_PASSWORD,
+        role: 'STUDENT',
+      },
     ]) {
       const res = await request(world.app)
         .post('/auth/register')
@@ -169,7 +187,12 @@ describe('profile and cookies', () => {
       .set('X-Forwarded-For', uniqueIp())
       .set('Cookie', fresh.header())
       .set('X-Csrf-Token', token)
-      .send({ displayName: 'Cookie Check', email: uniqueEmail(), phone: uniquePhone(), password: TEST_PASSWORD });
+      .send({
+        displayName: 'Cookie Check',
+        email: uniqueEmail(),
+        phone: uniquePhone(),
+        password: TEST_PASSWORD,
+      });
     expect(res.status).toBe(201);
     const setCookies = res.headers['set-cookie'] as unknown as string[];
     const access = setCookies.find((h) => h.startsWith('edu_access='));
@@ -193,7 +216,12 @@ describe('profile and cookies', () => {
         .set('X-Forwarded-For', uniqueIp())
         .set('Cookie', jar.header())
         .set('X-Csrf-Token', token)
-        .send({ displayName: 'Secure Check', email: uniqueEmail(), phone: uniquePhone(), password: TEST_PASSWORD });
+        .send({
+          displayName: 'Secure Check',
+          email: uniqueEmail(),
+          phone: uniquePhone(),
+          password: TEST_PASSWORD,
+        });
       expect(res.status).toBe(201);
       const setCookies = res.headers['set-cookie'] as unknown as string[];
       for (const header of setCookies) {
@@ -340,7 +368,9 @@ describe('logout', () => {
     expect(res.status).toBe(200);
     const cleared = res.headers['set-cookie'] as unknown as string[];
     expect(cleared.some((h) => h.startsWith('edu_access=') && h.includes('Max-Age=0'))).toBe(true);
-    expect(cleared.some((h) => h.startsWith('edu_refresh=') && h.includes('Path=/api/auth'))).toBe(true);
+    expect(cleared.some((h) => h.startsWith('edu_refresh=') && h.includes('Path=/api/auth'))).toBe(
+      true,
+    );
 
     const me = await request(world.app).get('/auth/me').set('Cookie', reg.jar.header());
     expect(me.status).toBe(401);

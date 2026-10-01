@@ -11,11 +11,21 @@ export const notificationApi: NotificationApi = {
     return (await apiFetch<{ data: InboxMetadata }>('/notifications/unread-count')).data;
   },
   async read(id, read) {
-    return (await apiFetch<{ data: ReadResult }>(`/notifications/${encodeURIComponent(id)}/read-state`,
-      { method: 'PUT', body: { read }, retryOnAuth: true })).data;
+    return (
+      await apiFetch<{ data: ReadResult }>(`/notifications/${encodeURIComponent(id)}/read-state`, {
+        method: 'PUT',
+        body: { read },
+        retryOnAuth: true,
+      })
+    ).data;
   },
   async readAll(throughSequence) {
-    return (await apiFetch<{ data: ReadAllResult }>('/notifications/read-all',
-      { method: 'POST', body: { throughSequence }, retryOnAuth: true })).data;
+    return (
+      await apiFetch<{ data: ReadAllResult }>('/notifications/read-all', {
+        method: 'POST',
+        body: { throughSequence },
+        retryOnAuth: true,
+      })
+    ).data;
   },
 };

@@ -38,13 +38,19 @@ export interface ReduceResult {
 export function reducePlayerState(state: PlayerState, event: PlayerEvent): ReduceResult {
   switch (event.type) {
     case 'REQUEST':
-      return { state: { phase: 'requesting', grant: null, errorCode: null, message: null }, clearCredentials: true };
+      return {
+        state: { phase: 'requesting', grant: null, errorCode: null, message: null },
+        clearCredentials: true,
+      };
     case 'GRANTED':
       // A grant whose token is already expired is never adopted.
       if (event.expiresAt <= event.now) {
         return { state: { ...INITIAL_PLAYER_STATE, phase: 'expired' }, clearCredentials: true };
       }
-      return { state: { ...state, phase: 'loading', errorCode: null, message: null }, clearCredentials: false };
+      return {
+        state: { ...state, phase: 'loading', errorCode: null, message: null },
+        clearCredentials: false,
+      };
     case 'DENIED':
       return {
         state: { phase: 'error', grant: null, errorCode: event.code, message: null },
@@ -70,7 +76,10 @@ export function reducePlayerState(state: PlayerState, event: PlayerEvent): Reduc
         clearCredentials: true,
       };
     case 'EXPIRED':
-      return { state: { phase: 'expired', grant: null, errorCode: null, message: null }, clearCredentials: true };
+      return {
+        state: { phase: 'expired', grant: null, errorCode: null, message: null },
+        clearCredentials: true,
+      };
     case 'RESET':
       return { state: { ...INITIAL_PLAYER_STATE }, clearCredentials: true };
     default:

@@ -10,10 +10,12 @@ import pg from 'pg';
 const url = new URL(process.env.DATABASE_URL ?? '');
 assert.equal(url.hostname, 'postgres', 'use the isolated compose.test.yml PostgreSQL');
 assert.equal(url.pathname, '/education_platform_test', 'refusing a non-test database');
-const adminUrl = new URL(url); adminUrl.pathname = '/postgres';
+const adminUrl = new URL(url);
+adminUrl.pathname = '/postgres';
 const target = `upgradeprobe_m6_${randomBytes(8).toString('hex')}`;
 assert.match(target, /^upgradeprobe_m6_[a-f0-9]{16}$/);
-const targetUrl = new URL(url); targetUrl.pathname = `/${target}`;
+const targetUrl = new URL(url);
+targetUrl.pathname = `/${target}`;
 const work = mkdtempSync(path.join(tmpdir(), 'm6-inbox-upgrade-'));
 const priorDir = path.join(work, 'm5');
 const fullDir = path.join(work, 'full');
@@ -24,56 +26,106 @@ let created = false;
 async function database(connectionString, fn) {
   const client = new pg.Client({ connectionString: String(connectionString) });
   await client.connect();
-  try { return await fn(client); } finally { await client.end(); }
+  try {
+    return await fn(client);
+  } finally {
+    await client.end();
+  }
 }
 function migrate(dir) {
-  execFileSync('npx', ['--no-install', 'prisma', 'migrate', 'deploy', '--schema', path.join(dir, 'schema.prisma')], {
-    env: { ...process.env, DATABASE_URL: String(targetUrl), PRISMA_HIDE_UPDATE_MESSAGE: 'true' },
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  execFileSync(
+    'npx',
+    ['--no-install', 'prisma', 'migrate', 'deploy', '--schema', path.join(dir, 'schema.prisma')],
+    {
+      env: { ...process.env, DATABASE_URL: String(targetUrl), PRISMA_HIDE_UPDATE_MESSAGE: 'true' },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
 }
 function drift(dir) {
   try {
-    return execFileSync('npx', ['--no-install', 'prisma', 'migrate', 'diff', '--from-url', String(targetUrl),
-      '--to-schema-datamodel', path.join(dir, 'schema.prisma'), '--exit-code'], {
-      env: { ...process.env, PRISMA_HIDE_UPDATE_MESSAGE: 'true' }, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    return execFileSync(
+      'npx',
+      [
+        '--no-install',
+        'prisma',
+        'migrate',
+        'diff',
+        '--from-url',
+        String(targetUrl),
+        '--to-schema-datamodel',
+        path.join(dir, 'schema.prisma'),
+        '--exit-code',
+      ],
+      {
+        env: { ...process.env, PRISMA_HIDE_UPDATE_MESSAGE: 'true' },
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    );
   } catch (err) {
     if (err.status === 2 && typeof err.stdout === 'string') return err.stdout;
     throw err;
   }
 }
-const legacyTables = ['User', 'AuthSession', 'RefreshToken', 'Wallet', 'WalletLedgerEntry', 'Purchase',
-  'Subscription', 'Course', 'CourseSection', 'Lesson', 'LessonProgress', 'PlaybackReference'];
+const legacyTables = [
+  'User',
+  'AuthSession',
+  'RefreshToken',
+  'Wallet',
+  'WalletLedgerEntry',
+  'Purchase',
+  'Subscription',
+  'Course',
+  'CourseSection',
+  'Lesson',
+  'LessonProgress',
+  'PlaybackReference',
+];
 async function snapshot(db) {
   const result = {};
   for (const table of legacyTables) {
     // Names are fixed locally, never caller input.
-    result[table] = (await db.query(`SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY id), '[]'::jsonb) AS rows FROM "${table}" t`)).rows[0].rows;
+    result[table] = (
+      await db.query(
+        `SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY id), '[]'::jsonb) AS rows FROM "${table}" t`,
+      )
+    ).rows[0].rows;
   }
   return result;
 }
 async function countMigrations(db) {
-  return Number((await db.query('SELECT count(*) AS n FROM "_prisma_migrations" WHERE finished_at IS NOT NULL')).rows[0].n);
+  return Number(
+    (await db.query('SELECT count(*) AS n FROM "_prisma_migrations" WHERE finished_at IS NOT NULL'))
+      .rows[0].n,
+  );
 }
 
 try {
   for (const dir of [priorDir, fullDir]) cpSync(source, dir, { recursive: true });
   const names = readdirSync(path.join(fullDir, 'migrations'), { withFileTypes: true })
-    .filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
-  assert.equal(names.length, 8); assert.equal(names.at(-1), addition);
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+  assert.equal(names.length, 8);
+  assert.equal(names.at(-1), addition);
   rmSync(path.join(priorDir, 'migrations', addition), { recursive: true });
   // M6 is appended to the model and adds only three inverse User relations.
   // Reconstruct the prior datamodel to attribute inherited drift accurately.
   const schema = readFileSync(path.join(fullDir, 'schema.prisma'), 'utf8');
   const marker = schema.indexOf('/// M6 durable notification intent.');
   assert.ok(marker > 0);
-  const priorSchema = schema.slice(0, marker).replace(/^  notifications Notification\[\]\r?\n/m, '')
+  const priorSchema = schema
+    .slice(0, marker)
+    .replace(/^  notifications Notification\[\]\r?\n/m, '')
     .replace(/^  notificationAudience NotificationAudience\[\]\r?\n/m, '')
     .replace(/^  notificationInboxState NotificationInboxState\?\r?\n/m, '');
   assert.ok(!priorSchema.includes('Notification'));
   writeFileSync(path.join(priorDir, 'schema.prisma'), priorSchema);
-  await database(adminUrl, async (db) => { await db.query(`CREATE DATABASE "${target}"`); created = true; });
+  await database(adminUrl, async (db) => {
+    await db.query(`CREATE DATABASE "${target}"`);
+    created = true;
+  });
   migrate(priorDir);
   const priorDrift = drift(priorDir);
   const before = await database(targetUrl, async (db) => {
@@ -108,12 +160,18 @@ try {
     return snapshot(db);
   });
   migrate(fullDir);
-  assert.equal(drift(fullDir), priorDrift, 'M6 must add no datamodel drift beyond the prior schema');
+  assert.equal(
+    drift(fullDir),
+    priorDrift,
+    'M6 must add no datamodel drift beyond the prior schema',
+  );
   await database(targetUrl, async (db) => {
     assert.equal(await countMigrations(db), 8);
     assert.deepEqual(await snapshot(db), before, 'legacy rows must remain byte-equivalent as JSON');
-    const tables = (await db.query(`SELECT table_name FROM information_schema.tables WHERE table_schema='public'
-      AND table_name IN ('NotificationEvent','NotificationAudience','Notification','NotificationInboxState')`)).rows;
+    const tables = (
+      await db.query(`SELECT table_name FROM information_schema.tables WHERE table_schema='public'
+      AND table_name IN ('NotificationEvent','NotificationAudience','Notification','NotificationInboxState')`)
+    ).rows;
     assert.equal(tables.length, 4);
     for (const { table_name: table } of tables) {
       assert.equal(Number((await db.query(`SELECT count(*) AS n FROM "${table}"`)).rows[0].n), 0);
@@ -122,20 +180,30 @@ try {
   // Deploying the same migration twice must preserve both rows and migration count.
   migrate(fullDir);
   await database(targetUrl, async (db) => {
-    assert.equal(await countMigrations(db), 8); assert.deepEqual(await snapshot(db), before);
+    assert.equal(await countMigrations(db), 8);
+    assert.deepEqual(await snapshot(db), before);
   });
-  console.log('M6 UPGRADE PASS: 7 -> 8 migrations; 12 populated legacy tables unchanged; 4 empty notification tables; redeploy unchanged.');
-  console.log('M6 drift comparison PASS: prior and upgraded drift are identical (inherited catalog index names).');
+  console.log(
+    'M6 UPGRADE PASS: 7 -> 8 migrations; 12 populated legacy tables unchanged; 4 empty notification tables; redeploy unchanged.',
+  );
+  console.log(
+    'M6 drift comparison PASS: prior and upgraded drift are identical (inherited catalog index names).',
+  );
 } catch (err) {
   // Exclude Prisma output/URLs and database connection details from evidence.
-  console.error(`M6 UPGRADE FAIL: ${err instanceof assert.AssertionError ? err.message : 'migration or database operation failed'}`);
+  console.error(
+    `M6 UPGRADE FAIL: ${err instanceof assert.AssertionError ? err.message : 'migration or database operation failed'}`,
+  );
   process.exitCode = 1;
 } finally {
   if (created) {
     try {
       await database(adminUrl, (db) => db.query(`DROP DATABASE "${target}"`));
       console.log('M6 upgrade database removed.');
-    } catch { console.error('M6 upgrade database cleanup failed.'); process.exitCode = 1; }
+    } catch {
+      console.error('M6 upgrade database cleanup failed.');
+      process.exitCode = 1;
+    }
   }
   assert.ok(work.startsWith(path.join(tmpdir(), 'm6-inbox-upgrade-')));
   rmSync(work, { recursive: true, force: true });

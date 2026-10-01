@@ -36,11 +36,15 @@ try {
   const errorMatch = /^RESULT error=([A-Za-z]+)$/.exec(title);
   if (mode === 'block') {
     const pass = errorMatch !== null;
-    process.stdout.write(`probe verdict=${pass ? 'PASS' : 'FAIL'} error=${errorMatch ? errorMatch[1] : 'none'} status=${statusMatch ? statusMatch[1] : 'none'}\n`);
+    process.stdout.write(
+      `probe verdict=${pass ? 'PASS' : 'FAIL'} error=${errorMatch ? errorMatch[1] : 'none'} status=${statusMatch ? statusMatch[1] : 'none'}\n`,
+    );
     process.exit(pass ? 0 : 1);
   }
   const pass = statusMatch !== null && statusMatch[1] === wantStatus;
-  process.stdout.write(`probe verdict=${pass ? 'PASS' : 'FAIL'} status=${statusMatch ? statusMatch[1] : 'none'} error=${errorMatch ? errorMatch[1] : 'none'}\n`);
+  process.stdout.write(
+    `probe verdict=${pass ? 'PASS' : 'FAIL'} status=${statusMatch ? statusMatch[1] : 'none'} error=${errorMatch ? errorMatch[1] : 'none'}\n`,
+  );
   process.exit(pass ? 0 : 1);
 } finally {
   await browser.close();

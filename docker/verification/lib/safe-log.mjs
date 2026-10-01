@@ -71,7 +71,9 @@ let sensitiveValues = [];
 const ledger = [];
 
 function configureSensitiveValues(values) {
-  sensitiveValues = [...new Set(values.filter((value) => typeof value === 'string' && value.length > 0))];
+  sensitiveValues = [
+    ...new Set(values.filter((value) => typeof value === 'string' && value.length > 0)),
+  ];
 }
 
 function assertNeverPrintable(name) {

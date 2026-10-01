@@ -18,7 +18,10 @@ export function OfferPage({ slug, onBack }: { slug: string; onBack: () => void }
     (async () => {
       setLoading(true);
       try {
-        const body = await apiFetch<{ data: { course: PublicCourse } }>(`/catalog/courses/${encodeURIComponent(slug)}`, { retryOnAuth: false });
+        const body = await apiFetch<{ data: { course: PublicCourse } }>(
+          `/catalog/courses/${encodeURIComponent(slug)}`,
+          { retryOnAuth: false },
+        );
         if (live) setCourse(body.data.course);
       } catch (err) {
         if (live) setError(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
@@ -42,11 +45,19 @@ export function OfferPage({ slug, onBack }: { slug: string; onBack: () => void }
           {error !== null ? <Notice kind="error">{localizeCode(t, error)}</Notice> : null}
           {course !== null ? (
             <Card className="mx-auto mt-4 max-w-[800px]">
-              <h1 className="text-3xl font-bold">{lang === 'ar' ? course.titleAr : course.titleEn}</h1>
+              <h1 className="text-3xl font-bold">
+                {lang === 'ar' ? course.titleAr : course.titleEn}
+              </h1>
               <p className="mt-2">{lang === 'ar' ? course.descriptionAr : course.descriptionEn}</p>
               {course.plans.map((p) => (
                 <div key={p.id} className="mt-3 flex flex-wrap items-center gap-3">
-                  <PriceDisplay current={p.currentPricePiastres} previous={p.previousPricePiastres} durationDays={p.durationDays} accessMode={p.accessMode} accessEndsAt={p.accessEndsAt} />
+                  <PriceDisplay
+                    current={p.currentPricePiastres}
+                    previous={p.previousPricePiastres}
+                    durationDays={p.durationDays}
+                    accessMode={p.accessMode}
+                    accessEndsAt={p.accessEndsAt}
+                  />
                   <a
                     className="inline-flex min-h-[44px] items-center justify-center rounded-control bg-primary px-6 font-semibold text-primary-ink no-underline hover:bg-primary-hover"
                     href={`#/purchase/${encodeURIComponent(p.id)}`}
@@ -55,7 +66,11 @@ export function OfferPage({ slug, onBack }: { slug: string; onBack: () => void }
                   </a>
                 </div>
               ))}
-              <p className="mt-4 text-muted">{lang === 'ar' ? 'لا تعرض قوائم الدروس قبل الاشتراك.' : 'Lesson lists require a subscription.'}</p>
+              <p className="mt-4 text-muted">
+                {lang === 'ar'
+                  ? 'لا تعرض قوائم الدروس قبل الاشتراك.'
+                  : 'Lesson lists require a subscription.'}
+              </p>
             </Card>
           ) : null}
         </Container>

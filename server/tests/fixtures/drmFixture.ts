@@ -27,7 +27,12 @@ export class DrmFixture {
   expectedClientSecret = 'fixture-secret-that-is-long-enough-0123456789';
   assets = new Map<string, FixtureAsset>();
   deletions = new Map<string, { assetId: string; status: string; polls: number }>();
-  requests: { method: string; url: string; headers: Record<string, string | string[] | undefined>; body: unknown }[] = [];
+  requests: {
+    method: string;
+    url: string;
+    headers: Record<string, string | string[] | undefined>;
+    body: unknown;
+  }[] = [];
   mode: FixtureMode = 'healthy';
   failNextStatusCount = 0;
   failNextDeletes = 0;
@@ -42,7 +47,8 @@ export class DrmFixture {
   playback: DrmPlaybackFixture | null = null;
 
   async start(): Promise<string> {
-    this.server = createServer((req: IncomingMessage, res: ServerResponse) => {      let data = '';
+    this.server = createServer((req: IncomingMessage, res: ServerResponse) => {
+      let data = '';
       req.on('data', (c) => {
         data += c;
       });
@@ -67,7 +73,10 @@ export class DrmFixture {
             return;
           }
           // Required headers.
-          if (req.headers['x-client-id'] !== this.expectedClientId || req.headers['x-client-secret'] !== this.expectedClientSecret) {
+          if (
+            req.headers['x-client-id'] !== this.expectedClientId ||
+            req.headers['x-client-secret'] !== this.expectedClientSecret
+          ) {
             res.writeHead(401, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'Invalid client credentials' }));
             return;
@@ -105,7 +114,11 @@ export class DrmFixture {
               return;
             }
             const b = body as Record<string, unknown>;
-            if (!b || typeof b['externalAssetId'] !== 'string' || typeof b['idempotencyKey'] !== 'string') {
+            if (
+              !b ||
+              typeof b['externalAssetId'] !== 'string' ||
+              typeof b['idempotencyKey'] !== 'string'
+            ) {
               res.writeHead(400, { 'Content-Type': 'application/json' });
               res.end(JSON.stringify({ error: 'bad request' }));
               return;
@@ -114,13 +127,25 @@ export class DrmFixture {
             for (const a of this.assets.values()) {
               if (a.externalAssetId === b['externalAssetId']) {
                 res.writeHead(202, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ assetId: a.internalId, status: a.status, idempotent: true,
-                  ...(this.reissuePendingUploadUrl && a.status === 'UPLOADED' ? { uploadUrl: `${this.url}/upload/${a.internalId}?sig=fixture-reissued` } : {}) }));
+                res.end(
+                  JSON.stringify({
+                    assetId: a.internalId,
+                    status: a.status,
+                    idempotent: true,
+                    ...(this.reissuePendingUploadUrl && a.status === 'UPLOADED'
+                      ? { uploadUrl: `${this.url}/upload/${a.internalId}?sig=fixture-reissued` }
+                      : {}),
+                  }),
+                );
                 return;
               }
             }
             const internalId = randomUUID();
-            const asset: FixtureAsset = { internalId, externalAssetId: b['externalAssetId'] as string, status: 'UPLOADED' };
+            const asset: FixtureAsset = {
+              internalId,
+              externalAssetId: b['externalAssetId'] as string,
+              status: 'UPLOADED',
+            };
             this.assets.set(internalId, asset);
             res.writeHead(202, { 'Content-Type': 'application/json' });
             res.end(
@@ -200,7 +225,14 @@ export class DrmFixture {
             for (const [delId, del] of this.deletions.entries()) {
               if (del.assetId === id && (del.status === 'PENDING' || del.status === 'RUNNING')) {
                 res.writeHead(202, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ deletionId: delId, status: del.status, duplicate: true, scheduled: true }));
+                res.end(
+                  JSON.stringify({
+                    deletionId: delId,
+                    status: del.status,
+                    duplicate: true,
+                    scheduled: true,
+                  }),
+                );
                 return;
               }
             }
@@ -209,7 +241,9 @@ export class DrmFixture {
             this.deletions.set(deletionId, { assetId: id, status: initial, polls: 0 });
             asset.status = 'DELETING';
             res.writeHead(202, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ deletionId, status: initial, duplicate: false, scheduled: true }));
+            res.end(
+              JSON.stringify({ deletionId, status: initial, duplicate: false, scheduled: true }),
+            );
             return;
           }
           // GET /v1/admin/media-deletions/:id

@@ -1,7 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { lockCourseRow } from '../../src/modules/catalog/locks.js';
 import { audit } from '../../src/modules/catalog/audit.js';
-import { adminPatch, createCatalogWorld, createFullDraft, type CatalogWorld } from './catalog-helpers.js';
+import {
+  adminPatch,
+  createCatalogWorld,
+  createFullDraft,
+  type CatalogWorld,
+} from './catalog-helpers.js';
 
 let world: CatalogWorld;
 
@@ -21,7 +26,9 @@ describe('course-scoped lock-then-validate concurrency', () => {
   it('waiting structural mutation fails 409 when the course is archived under the lock', async () => {
     const { courseId, sectionId } = await createFullDraft(world, 'lockarch');
     const before = await world.prisma.courseSection.findUniqueOrThrow({ where: { id: sectionId } });
-    const auditsBefore = await world.prisma.auditEvent.count({ where: { entityType: 'CourseSection', entityId: sectionId } });
+    const auditsBefore = await world.prisma.auditEvent.count({
+      where: { entityType: 'CourseSection', entityId: sectionId },
+    });
 
     // T1: hold the course row lock, then archive inside the same transaction.
     let releaseHolder!: () => void;
@@ -41,7 +48,13 @@ describe('course-scoped lock-then-validate concurrency', () => {
           where: { id: courseId },
           data: { status: 'ARCHIVED', priorStatus: 'DRAFT', archivedAt: new Date() },
         });
-        await audit(tx, { actorUserId: world.adminUser.id, action: 'COURSE_ARCHIVED', entityType: 'Course', entityId: courseId, metadata: {} });
+        await audit(tx, {
+          actorUserId: world.adminUser.id,
+          action: 'COURSE_ARCHIVED',
+          entityType: 'Course',
+          entityId: courseId,
+          metadata: {},
+        });
       },
       { timeout: 20000, maxWait: 5000 },
     );
@@ -59,7 +72,9 @@ describe('course-scoped lock-then-validate concurrency', () => {
     });
     await sleep(750);
     expect(settled).toBe(false);
-    expect(await world.prisma.courseSection.findUnique({ where: { id: sectionId } })).toEqual(before);
+    expect(await world.prisma.courseSection.findUnique({ where: { id: sectionId } })).toEqual(
+      before,
+    );
 
     releaseHolder();
     await holder;
@@ -68,8 +83,16 @@ describe('course-scoped lock-then-validate concurrency', () => {
     expect(res.body.error.code).toBe('COURSE_ARCHIVED');
 
     // Hierarchy and audit rows prove the waiter changed nothing.
-    expect(await world.prisma.courseSection.findUnique({ where: { id: sectionId } })).toEqual(before);
-    expect(await world.prisma.auditEvent.count({ where: { entityType: 'CourseSection', entityId: sectionId } })).toBe(auditsBefore);
-    expect((await world.prisma.course.findUniqueOrThrow({ where: { id: courseId } })).status).toBe('ARCHIVED');
+    expect(await world.prisma.courseSection.findUnique({ where: { id: sectionId } })).toEqual(
+      before,
+    );
+    expect(
+      await world.prisma.auditEvent.count({
+        where: { entityType: 'CourseSection', entityId: sectionId },
+      }),
+    ).toBe(auditsBefore);
+    expect((await world.prisma.course.findUniqueOrThrow({ where: { id: courseId } })).status).toBe(
+      'ARCHIVED',
+    );
   });
 });

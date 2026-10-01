@@ -89,24 +89,38 @@ describe('playback assertion', () => {
 
   it('signs with the server-only private key and verifies with the public key', () => {
     const { token } = mintAssertion(config, binding, NOW);
-    expect(jwt.verify(token, PUBLIC_KEY, { algorithms: ['RS256'], clockTimestamp: NOW / 1000 })).toBeTruthy();
-    expect(jwt.decode(token, { complete: true })?.header).toMatchObject({ alg: 'RS256', kid: 'm5-unit-key' });
+    expect(
+      jwt.verify(token, PUBLIC_KEY, { algorithms: ['RS256'], clockTimestamp: NOW / 1000 }),
+    ).toBeTruthy();
+    expect(jwt.decode(token, { complete: true })?.header).toMatchObject({
+      alg: 'RS256',
+      kid: 'm5-unit-key',
+    });
   });
 
   it('rejects a weak signing configuration instead of minting', () => {
-    expect(() => mintAssertion({ ...config, signingKey: 'short' }, binding, NOW)).toThrow(LearningError);
+    expect(() => mintAssertion({ ...config, signingKey: 'short' }, binding, NOW)).toThrow(
+      LearningError,
+    );
   });
 
   it('publishes only the corresponding RSA public key through JWKS', () => {
     const jwks = createAssertionJwks(config);
     expect(jwks?.keys).toHaveLength(1);
-    expect(jwks?.keys[0]).toMatchObject({ kty: 'RSA', kid: 'm5-unit-key', use: 'sig', alg: 'RS256' });
+    expect(jwks?.keys[0]).toMatchObject({
+      kty: 'RSA',
+      kid: 'm5-unit-key',
+      use: 'sig',
+      alg: 'RS256',
+    });
     expect(jwks?.keys[0]).not.toHaveProperty('d');
     expect(JSON.stringify(jwks)).not.toContain('PRIVATE KEY');
   });
 
   it('refuses a claim value that could forge a header', () => {
-    expect(() => mintAssertion(config, { ...binding, courseId: 'a\r\nb' }, NOW)).toThrow(LearningError);
+    expect(() => mintAssertion(config, { ...binding, courseId: 'a\r\nb' }, NOW)).toThrow(
+      LearningError,
+    );
   });
 });
 
@@ -122,13 +136,21 @@ describe('dependency URL validation', () => {
   });
 
   it('accepts an absolute URL on the configured origin', () => {
-    const urls = resolveDependencyUrls('https://drm.example.com/a.mpd', 'https://drm.example.com/l', 'https://drm.example.com');
+    const urls = resolveDependencyUrls(
+      'https://drm.example.com/a.mpd',
+      'https://drm.example.com/l',
+      'https://drm.example.com',
+    );
     expect(urls.manifestUrl).toBe('https://drm.example.com/a.mpd');
   });
 
   it('rejects a foreign origin so a dependency cannot redirect the player', () => {
     expect(() =>
-      resolveDependencyUrls('https://evil.example.net/a.mpd', '/v1/licenses', 'https://drm.example.com'),
+      resolveDependencyUrls(
+        'https://evil.example.net/a.mpd',
+        '/v1/licenses',
+        'https://drm.example.com',
+      ),
     ).toThrow(LearningError);
   });
 
@@ -140,19 +162,27 @@ describe('dependency URL validation', () => {
 
   it('rejects embedded credentials', () => {
     expect(() =>
-      resolveDependencyUrls('https://user:pass@drm.example.com/a.mpd', '/v1/licenses', 'https://drm.example.com'),
+      resolveDependencyUrls(
+        'https://user:pass@drm.example.com/a.mpd',
+        '/v1/licenses',
+        'https://drm.example.com',
+      ),
     ).toThrow(LearningError);
   });
 
   it('rejects traversal and control characters', () => {
-    expect(() => resolveDependencyUrls('/v1/../../etc/passwd', '/v1/licenses', 'https://drm.example.com')).toThrow(
-      LearningError,
-    );
-    expect(() => resolveDependencyUrls('/v1/a\nb', '/v1/licenses', 'https://drm.example.com')).toThrow(LearningError);
+    expect(() =>
+      resolveDependencyUrls('/v1/../../etc/passwd', '/v1/licenses', 'https://drm.example.com'),
+    ).toThrow(LearningError);
+    expect(() =>
+      resolveDependencyUrls('/v1/a\nb', '/v1/licenses', 'https://drm.example.com'),
+    ).toThrow(LearningError);
   });
 
   it('fails closed when no browser-facing origin is configured', () => {
-    expect(() => resolveDependencyUrls('/v1/a.mpd', '/v1/licenses', undefined)).toThrow(LearningError);
+    expect(() => resolveDependencyUrls('/v1/a.mpd', '/v1/licenses', undefined)).toThrow(
+      LearningError,
+    );
   });
 });
 
@@ -175,11 +205,15 @@ describe('DRM playback response validation', () => {
   });
 
   it('rejects a non-UUID session id', () => {
-    expect(() => validatePlaybackSession({ ...valid, playbackSessionId: 'nope' })).toThrow(LearningError);
+    expect(() => validatePlaybackSession({ ...valid, playbackSessionId: 'nope' })).toThrow(
+      LearningError,
+    );
   });
 
   it('rejects an unknown provider rather than silently downgrading', () => {
-    expect(() => validatePlaybackSession({ ...valid, drmProvider: 'SOMETHING_ELSE' })).toThrow(LearningError);
+    expect(() => validatePlaybackSession({ ...valid, drmProvider: 'SOMETHING_ELSE' })).toThrow(
+      LearningError,
+    );
   });
 
   it('rejects a missing or malformed token', () => {
@@ -189,7 +223,9 @@ describe('DRM playback response validation', () => {
   });
 
   it('rejects unparsable expiry timestamps', () => {
-    expect(() => validatePlaybackSession({ ...valid, tokenExpiresAt: 'not-a-date' })).toThrow(LearningError);
+    expect(() => validatePlaybackSession({ ...valid, tokenExpiresAt: 'not-a-date' })).toThrow(
+      LearningError,
+    );
   });
 
   it('rejects a non-object body', () => {
@@ -200,13 +236,24 @@ describe('DRM playback response validation', () => {
 
 describe('watermark presentation', () => {
   it('projects the real signed DRM payload without exposing signature or trace fields', () => {
-    const out = toWatermarkPresentation({ payload: {
-      maskedIdentity: 'ab***yz', sessionRef: 'private-session', assetRef: 'private-asset',
-      traceCode: 'private-trace', issuedAt: 1700000000, expiresAt: 1700003600,
-      positions: [{ x: 10, y: 20, intervalSeconds: 25 }],
-    }, signature: 'private-signature' });
-    expect(out).toEqual({ type: 'MASKED', maskedIdentity: 'ab***yz',
-      positions: [{ x: 10, y: 20 }], expiresAt: '2023-11-14T23:13:20.000Z' });
+    const out = toWatermarkPresentation({
+      payload: {
+        maskedIdentity: 'ab***yz',
+        sessionRef: 'private-session',
+        assetRef: 'private-asset',
+        traceCode: 'private-trace',
+        issuedAt: 1700000000,
+        expiresAt: 1700003600,
+        positions: [{ x: 10, y: 20, intervalSeconds: 25 }],
+      },
+      signature: 'private-signature',
+    });
+    expect(out).toEqual({
+      type: 'MASKED',
+      maskedIdentity: 'ab***yz',
+      positions: [{ x: 10, y: 20 }],
+      expiresAt: '2023-11-14T23:13:20.000Z',
+    });
     expect(JSON.stringify(out)).not.toContain('private-');
     expect(JSON.stringify(out)).not.toContain('intervalSeconds');
   });
@@ -275,7 +322,9 @@ describe('renewal response validation', () => {
   });
 
   it('rejects unparsable expiry timestamps', () => {
-    expect(() => validateRenewal({ ...valid, tokenExpiresAt: 'not-a-date' })).toThrow(LearningError);
+    expect(() => validateRenewal({ ...valid, tokenExpiresAt: 'not-a-date' })).toThrow(
+      LearningError,
+    );
   });
 
   it('rejects a non-object body', () => {

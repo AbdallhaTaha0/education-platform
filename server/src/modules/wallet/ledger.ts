@@ -58,6 +58,9 @@ export async function postEntry(
 
 /** Reconcile the cached balance against the append-only ledger. */
 export async function reconciledBalance(tx: TxClient, walletId: string): Promise<number> {
-  const rows = await tx.walletLedgerEntry.findMany({ where: { walletId }, select: { amountPiastres: true } });
+  const rows = await tx.walletLedgerEntry.findMany({
+    where: { walletId },
+    select: { amountPiastres: true },
+  });
   return rows.reduce((sum, r) => sum + r.amountPiastres, 0);
 }

@@ -11,8 +11,18 @@ import {
 } from './identity-helpers.js';
 
 export const TEST_CHANNELS = [
-  { channel: 'INSTAPAY', accountLabel: 'test-alias (test only)', instructionsAr: 'تعليمات', instructionsEn: 'instructions' },
-  { channel: 'BANK_TRANSFER', accountLabel: 'test-iban (test only)', instructionsAr: 'تعليمات', instructionsEn: 'instructions' },
+  {
+    channel: 'INSTAPAY',
+    accountLabel: 'test-alias (test only)',
+    instructionsAr: 'تعليمات',
+    instructionsEn: 'instructions',
+  },
+  {
+    channel: 'BANK_TRANSFER',
+    accountLabel: 'test-iban (test only)',
+    instructionsAr: 'تعليمات',
+    instructionsEn: 'instructions',
+  },
 ] as const;
 
 export interface WalletWorld extends IdentityWorld {
@@ -42,7 +52,9 @@ export async function resetFinancialState(world: IdentityWorld): Promise<void> {
 
 export async function createWalletWorld(configured = true): Promise<WalletWorld> {
   const world = await createWorld(
-    configured ? ({ paymentChannels: [...TEST_CHANNELS] } as never) : ({ paymentChannels: [] } as never),
+    configured
+      ? ({ paymentChannels: [...TEST_CHANNELS] } as never)
+      : ({ paymentChannels: [] } as never),
   );
   await resetFinancialState(world);
 
@@ -51,7 +63,9 @@ export async function createWalletWorld(configured = true): Promise<WalletWorld>
   const admin = await createTestAdmin(world, 'Wallet Admin', 'wallet secret twelve words');
   const session = await loginWith(world.app, admin.email, 'wallet secret twelve words');
   const student = await registerStudent(world.app);
-  const studentRow = await world.prisma.user.findUniqueOrThrow({ where: { email: student.user.email } });
+  const studentRow = await world.prisma.user.findUniqueOrThrow({
+    where: { email: student.user.email },
+  });
   const out = world as WalletWorld;
   (out as { adminJar: unknown }).adminJar = session.jar;
   (out as { adminUser: unknown }).adminUser = { id: admin.id, email: admin.email };
@@ -60,8 +74,19 @@ export async function createWalletWorld(configured = true): Promise<WalletWorld>
   return out;
 }
 
-export function studentPost(app: Express, path: string, jar: { header(): string; csrf(): string }, body: Record<string, unknown> = {}) {
-  return request(app).post(path).set('Origin', TEST_ORIGIN).set('X-Forwarded-For', uniqueIp()).set('Cookie', jar.header()).set('X-Csrf-Token', jar.csrf()).send(body);
+export function studentPost(
+  app: Express,
+  path: string,
+  jar: { header(): string; csrf(): string },
+  body: Record<string, unknown> = {},
+) {
+  return request(app)
+    .post(path)
+    .set('Origin', TEST_ORIGIN)
+    .set('X-Forwarded-For', uniqueIp())
+    .set('Cookie', jar.header())
+    .set('X-Csrf-Token', jar.csrf())
+    .send(body);
 }
 
 export function studentGet(app: Express, path: string, jar: { header(): string }) {

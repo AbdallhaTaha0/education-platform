@@ -19,7 +19,11 @@ export interface SubscriptionRow {
 
 export type EntitlementResult =
   | { allowed: true; expiresAt: Date | null }
-  | { allowed: false; reason: 'SUBSCRIPTION_REQUIRED' | 'SUBSCRIPTION_EXPIRED'; expiresAt: Date | null };
+  | {
+      allowed: false;
+      reason: 'SUBSCRIPTION_REQUIRED' | 'SUBSCRIPTION_EXPIRED';
+      expiresAt: Date | null;
+    };
 
 /**
  * Decide entitlement for one course.
@@ -37,10 +41,13 @@ export function evaluateEntitlement(
   if (forCourse.length === 0) {
     return { allowed: false, reason: 'SUBSCRIPTION_REQUIRED', expiresAt: null };
   }
-  if (forCourse.some(s => s.expiresAt === null)) return { allowed: true, expiresAt: null };
+  if (forCourse.some((s) => s.expiresAt === null)) return { allowed: true, expiresAt: null };
   // Effective access is the union of every purchase covering this course, so
   // the latest expiry wins (early renewal extends from the existing expiry).
-  const latest = forCourse.reduce<Date>((max, s) => (s.expiresAt! > max ? s.expiresAt! : max), forCourse[0]!.expiresAt!);
+  const latest = forCourse.reduce<Date>(
+    (max, s) => (s.expiresAt! > max ? s.expiresAt! : max),
+    forCourse[0]!.expiresAt!,
+  );
   // Strictly before expiresAt: the expiry instant itself is already expired.
   if (latest.getTime() <= nowMs) {
     return { allowed: false, reason: 'SUBSCRIPTION_EXPIRED', expiresAt: latest };

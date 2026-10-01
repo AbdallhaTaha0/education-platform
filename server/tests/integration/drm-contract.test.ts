@@ -8,7 +8,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DrmClient } from '../../src/modules/catalog/drmClient.js';
 import { DrmFixture } from '../fixtures/drmFixture.js';
-import { adminPost, createCatalogWorld, createFullDraft, type CatalogWorld } from './catalog-helpers.js';
+import {
+  adminPost,
+  createCatalogWorld,
+  createFullDraft,
+  type CatalogWorld,
+} from './catalog-helpers.js';
 
 let world: CatalogWorld;
 
@@ -52,10 +57,15 @@ describe('DRM HTTP contract fixture', () => {
 
   it('returns signed URL only through protected admin path, never persisted', async () => {
     const { lessonId } = await createFullDraft(world, 'signed');
-    const reg = await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media`, world.adminJar, {
-      contentType: 'video/mp4',
-      securityTier: 'STANDARD',
-    });
+    const reg = await adminPost(
+      world.app,
+      `/admin/catalog/lessons/${lessonId}/media`,
+      world.adminJar,
+      {
+        contentType: 'video/mp4',
+        securityTier: 'STANDARD',
+      },
+    );
     expect(reg.status).toBe(201);
     expect(typeof reg.body.data.uploadUrl).toBe('string');
     expect(reg.body.data.uploadUrl).toContain('/upload/');
@@ -67,13 +77,26 @@ describe('DRM HTTP contract fixture', () => {
 
   it('performs completion + status mapping', async () => {
     const { lessonId } = await createFullDraft(world, 'compstat');
-    await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media`, world.adminJar, { contentType: 'video/mp4', securityTier: 'STANDARD' });
-    const comp = await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media/complete`, world.adminJar, {});
+    await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media`, world.adminJar, {
+      contentType: 'video/mp4',
+      securityTier: 'STANDARD',
+    });
+    const comp = await adminPost(
+      world.app,
+      `/admin/catalog/lessons/${lessonId}/media/complete`,
+      world.adminJar,
+      {},
+    );
     expect(comp.status).toBe(200);
     expect(comp.body.data.mapping.status).toBe('PROCESSING');
     const mapping = await world.prisma.mediaMapping.findFirstOrThrow({ where: { lessonId } });
     world.fixture!.markReady(mapping.assetId as string);
-    const sync = await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media/sync`, world.adminJar, {});
+    const sync = await adminPost(
+      world.app,
+      `/admin/catalog/lessons/${lessonId}/media/sync`,
+      world.adminJar,
+      {},
+    );
     expect(sync.body.data.mapping.status).toBe('READY');
   });
 

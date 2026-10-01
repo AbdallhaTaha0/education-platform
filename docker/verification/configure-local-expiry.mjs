@@ -38,7 +38,9 @@ function setEnvValue(path, name, value) {
   const newline = text.includes('\r\n') ? '\r\n' : '\n';
   const line = `${name}=${value}`;
   const pattern = new RegExp(`^${name}=.*$`, 'm');
-  const updated = pattern.test(text) ? text.replace(pattern, line) : `${text.replace(/\s*$/, '')}${newline}${line}${newline}`;
+  const updated = pattern.test(text)
+    ? text.replace(pattern, line)
+    : `${text.replace(/\s*$/, '')}${newline}${line}${newline}`;
   writeFileSync(path, updated, { encoding: 'utf8', mode: 0o600 });
 }
 
@@ -50,22 +52,32 @@ function statePath() {
   return resolve(path);
 }
 
-const mode = process.argv.includes('--set') ? 'set' : process.argv.includes('--restore') ? 'restore' : null;
+const mode = process.argv.includes('--set')
+  ? 'set'
+  : process.argv.includes('--restore')
+    ? 'restore'
+    : null;
 if (!mode) throw new Error('pass --set or --restore');
 
 if (mode === 'set') {
-  if (!process.argv.includes('--dev')) throw new Error('refusing: --dev flag is required for TTL changes');
+  if (!process.argv.includes('--dev'))
+    throw new Error('refusing: --dev flag is required for TTL changes');
   const current = readEnv(drmEnv);
-  if (current.get('NODE_ENV') === 'production') throw new Error('refusing: production environment marker');
-  if (current.get('CLEAR_KEY_ENABLED') === 'false') throw new Error('refusing: production DRM marker');
+  if (current.get('NODE_ENV') === 'production')
+    throw new Error('refusing: production environment marker');
+  if (current.get('CLEAR_KEY_ENABLED') === 'false')
+    throw new Error('refusing: production DRM marker');
   const previous = current.get(NAME) ?? '';
   if (!/^\d+$/.test(previous)) throw new Error('refusing: current TTL is not a plain integer');
   writeFileSync(statePath(), JSON.stringify({ previous }), { encoding: 'utf8', mode: 0o600 });
   setEnvValue(drmEnv, NAME, String(DRILL_SECONDS));
-  process.stdout.write(`expiry drill set: previousLength=${previous.length} ttlSeconds=${DRILL_SECONDS}\n`);
+  process.stdout.write(
+    `expiry drill set: previousLength=${previous.length} ttlSeconds=${DRILL_SECONDS}\n`,
+  );
 } else {
   const saved = JSON.parse(readFileSync(statePath(), 'utf8'));
-  if (!saved || !/^\d+$/.test(saved.previous ?? '')) throw new Error('refusing: state file has no valid previous TTL');
+  if (!saved || !/^\d+$/.test(saved.previous ?? ''))
+    throw new Error('refusing: state file has no valid previous TTL');
   setEnvValue(drmEnv, NAME, saved.previous);
   process.stdout.write(`expiry drill restored: ttlLength=${saved.previous.length}\n`);
 }

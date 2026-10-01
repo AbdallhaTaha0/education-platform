@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { ar } from './locales/ar';
 import { en } from './locales/en';
 
@@ -49,7 +57,10 @@ export function LanguageProvider({ children }: { children: ReactNode }): JSX.Ele
     }
   }, []);
 
-  const value = useMemo<LangContextValue>(() => ({ lang, dir, t: STRINGS[lang], setLang }), [lang, dir, setLang]);
+  const value = useMemo<LangContextValue>(
+    () => ({ lang, dir, t: STRINGS[lang], setLang }),
+    [lang, dir, setLang],
+  );
   return <LangContext.Provider value={value}>{children}</LangContext.Provider>;
 }
 

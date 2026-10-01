@@ -2,12 +2,7 @@
 import { useMemo } from 'react';
 import { Container } from '../../../components/ui/Card';
 import { useDashboard } from '../hooks/useLearning';
-import {
-  ErrorBlock,
-  LoadingBlock,
-  SectionHeading,
-  SubscriptionCard,
-} from '../components/Learning';
+import { ErrorBlock, LoadingBlock, SectionHeading, SubscriptionCard } from '../components/Learning';
 import { useLang, useTranslate } from '../../../i18n';
 import type { LearningLabels } from '../components/Learning';
 
@@ -100,7 +95,10 @@ export function DashboardPage({ onContinue, onRenew, onBrowse }: DashboardPagePr
             ) : null}
 
             {data.active.length === 0 && data.expired.length === 0 ? (
-              <div data-testid="learning-empty" className="rounded-card border border-border bg-surface p-6">
+              <div
+                data-testid="learning-empty"
+                className="rounded-card border border-border bg-surface p-6"
+              >
                 <p className="text-muted">{labels.noSubscription}</p>
                 <button
                   type="button"

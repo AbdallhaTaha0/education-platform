@@ -25,20 +25,32 @@ describe('grant adoption', () => {
     expect(requested.state.phase).toBe('requesting');
     expect(requested.clearCredentials).toBe(true);
 
-    const granted = reducePlayerState(requested.state, { type: 'GRANTED', expiresAt: 1_000, now: 500 });
+    const granted = reducePlayerState(requested.state, {
+      type: 'GRANTED',
+      expiresAt: 1_000,
+      now: 500,
+    });
     expect(granted.state.phase).toBe('loading');
     expect(granted.clearCredentials).toBe(false);
   });
 
   it('refuses a grant whose token is already expired', () => {
-    const out = reducePlayerState(INITIAL_PLAYER_STATE, { type: 'GRANTED', expiresAt: 100, now: 500 });
+    const out = reducePlayerState(INITIAL_PLAYER_STATE, {
+      type: 'GRANTED',
+      expiresAt: 100,
+      now: 500,
+    });
     expect(out.state.phase).toBe('expired');
     expect(out.state.grant).toBeNull();
     expect(out.clearCredentials).toBe(true);
   });
 
   it('refuses a grant expiring at exactly now', () => {
-    const out = reducePlayerState(INITIAL_PLAYER_STATE, { type: 'GRANTED', expiresAt: 500, now: 500 });
+    const out = reducePlayerState(INITIAL_PLAYER_STATE, {
+      type: 'GRANTED',
+      expiresAt: 500,
+      now: 500,
+    });
     expect(out.state.phase).toBe('expired');
   });
 });

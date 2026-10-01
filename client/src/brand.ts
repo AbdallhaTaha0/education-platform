@@ -69,5 +69,7 @@ export function brandFor(lang: BrandLang): BrandStrings {
  */
 export function documentTitleFor(lang: BrandLang, section?: string): string {
   const base = brandFor(lang);
-  return section === undefined || section === '' ? `${base.name} — ${base.tagline}` : `${section} | ${base.name}`;
+  return section === undefined || section === ''
+    ? `${base.name} — ${base.tagline}`
+    : `${section} | ${base.name}`;
 }

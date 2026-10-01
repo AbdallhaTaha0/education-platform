@@ -34,7 +34,10 @@ export async function checkRateLimit(
   limit: RateLimit,
 ): Promise<{ allowed: boolean; retryAfterSec: number }> {
   const key = rateLimitKey(scope, ip);
-  const raw = (await redis.eval(INCR_WITH_TTL, 1, key, String(limit.windowSec))) as [number, number];
+  const raw = (await redis.eval(INCR_WITH_TTL, 1, key, String(limit.windowSec))) as [
+    number,
+    number,
+  ];
   const count = Number(raw[0]);
   const ttl = Number(raw[1]);
   if (count > limit.max) {

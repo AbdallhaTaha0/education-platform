@@ -12,14 +12,27 @@ interface ConfirmDialogProps {
 }
 
 /** Keyboard-operable confirmation dialog with visible focus and sane tab order. */
-export function ConfirmDialog({ open, title, body, confirmLabel, cancelLabel, onConfirm, onCancel }: ConfirmDialogProps): JSX.Element | null {
+export function ConfirmDialog({
+  open,
+  title,
+  body,
+  confirmLabel,
+  cancelLabel,
+  onConfirm,
+  onCancel,
+}: ConfirmDialogProps): JSX.Element | null {
   const confirmRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (open) confirmRef.current?.focus();
-  }, [open ]);
+  }, [open]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" role="dialog" aria-modal="true" aria-label={title}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
       <div className="w-full max-w-md rounded-card border border-border bg-surface p-6 shadow-rest">
         <h2 className="mb-2 text-xl font-bold">{title}</h2>
         <p className="mb-6 text-muted">{body}</p>
@@ -50,7 +63,7 @@ export function Dialog({ open, title, onClose, children }: DialogProps): JSX.Ele
   const titleRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     if (open) titleRef.current?.focus();
-  }, [open ]);
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent): void => {
@@ -61,16 +74,30 @@ export function Dialog({ open, title, onClose, children }: DialogProps): JSX.Ele
   }, [open, onClose]);
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ink/40 p-4" role="dialog" aria-modal="true" aria-label={title}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ink/40 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
       <div className="w-full max-w-lg rounded-card border border-border bg-surface p-6 shadow-rest">
-        <h2 ref={titleRef} tabIndex={-1} className="mb-2 text-xl font-bold">{title}</h2>
+        <h2 ref={titleRef} tabIndex={-1} className="mb-2 text-xl font-bold">
+          {title}
+        </h2>
         {children}
       </div>
     </div>
   );
 }
 
-export function StatusBadge({ text, tone }: { text: string; tone: 'success' | 'pending' | 'error' | 'info'; label?: string }): JSX.Element {
+export function StatusBadge({
+  text,
+  tone,
+}: {
+  text: string;
+  tone: 'success' | 'pending' | 'error' | 'info';
+  label?: string;
+}): JSX.Element {
   const tones = {
     success: 'border-success-fg bg-success-bg text-success-fg',
     pending: 'border-pending-fg bg-pending-bg text-pending-fg',
@@ -78,7 +105,10 @@ export function StatusBadge({ text, tone }: { text: string; tone: 'success' | 'p
     info: 'border-border bg-canvas text-ink',
   } as const;
   return (
-    <span className={`inline-block rounded-full border px-3 py-1 text-sm font-bold ${tones[tone]}`} aria-label={text}>
+    <span
+      className={`inline-block rounded-full border px-3 py-1 text-sm font-bold ${tones[tone]}`}
+      aria-label={text}
+    >
       {text as ReactNode}
     </span>
   );

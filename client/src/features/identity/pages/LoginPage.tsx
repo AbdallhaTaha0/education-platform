@@ -23,7 +23,11 @@ export function LoginScreen({ onDone }: { onDone: () => void }): JSX.Element {
     setBusy(true);
     setErrorCode(null);
     try {
-      await apiFetch('/auth/login', { method: 'POST', retryOnAuth: false, body: { identifier, password } });
+      await apiFetch('/auth/login', {
+        method: 'POST',
+        retryOnAuth: false,
+        body: { identifier, password },
+      });
       await reload();
       onDone();
     } catch (err) {

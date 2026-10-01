@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '../../src/modules/identity/errors.js';
-import { assertIdempotencyKey, assertNonEmptyString, assertPiastres, normalizeReference } from '../../src/modules/wallet/money.js';
+import {
+  assertIdempotencyKey,
+  assertNonEmptyString,
+  assertPiastres,
+  normalizeReference,
+} from '../../src/modules/wallet/money.js';
 
 function expectValidationError(fn: () => unknown): void {
   try {

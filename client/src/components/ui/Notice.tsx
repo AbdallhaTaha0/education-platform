@@ -10,11 +10,22 @@ const CLASSES: Record<Kind, string> = {
   pending: 'border-pending-fg bg-pending-bg text-pending-fg',
 };
 
-export function Notice({ kind, children }: { kind: Kind; children: ReactNode }): JSX.Element | null {
+export function Notice({
+  kind,
+  children,
+}: {
+  kind: Kind;
+  children: ReactNode;
+}): JSX.Element | null {
   if (children === null || children === undefined || children === '') return null;
   return (
-    <div className={`mb-4 flex items-start gap-3 rounded-control border px-4 py-3 font-semibold [&:empty]:hidden ${CLASSES[kind]}`} role={kind === 'error' ? 'alert' : 'status'}>
-      <span aria-hidden="true" className="mt-0.5 text-lg">{kind === 'error' ? '!' : kind === 'success' ? '✓' : kind === 'pending' ? '…' : 'i'}</span>
+    <div
+      className={`mb-4 flex items-start gap-3 rounded-control border px-4 py-3 font-semibold [&:empty]:hidden ${CLASSES[kind]}`}
+      role={kind === 'error' ? 'alert' : 'status'}
+    >
+      <span aria-hidden="true" className="mt-0.5 text-lg">
+        {kind === 'error' ? '!' : kind === 'success' ? '✓' : kind === 'pending' ? '…' : 'i'}
+      </span>
       {children}
     </div>
   );

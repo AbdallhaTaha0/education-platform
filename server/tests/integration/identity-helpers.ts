@@ -26,7 +26,10 @@ export interface IdentityWorld {
   close: () => Promise<void>;
 }
 
-export async function createWorld(overrides: Partial<ServerConfig> = {}, clock?: Clock): Promise<IdentityWorld> {
+export async function createWorld(
+  overrides: Partial<ServerConfig> = {},
+  clock?: Clock,
+): Promise<IdentityWorld> {
   const config = { ...loadConfig(process.env), ...overrides };
   const pool = createPostgresPool(config.databaseUrl);
   const redis = createRedisClient(config.redisUrl);
@@ -127,7 +130,11 @@ export async function createTestAdmin(
 ): Promise<{ id: string; email: string }> {
   const email = uniqueEmail();
   const phone = uniquePhone();
-  const passwordHash = await hashPassword(password, { memoryKb: 8192, timeCost: 2, parallelism: 1 });
+  const passwordHash = await hashPassword(password, {
+    memoryKb: 8192,
+    timeCost: 2,
+    parallelism: 1,
+  });
   const created = await world.prisma.user.create({
     data: { email, phone, displayName, passwordHash, role: 'ADMIN' },
   });
@@ -167,12 +174,21 @@ export async function registerStudent(
       password: overrides.password ?? TEST_PASSWORD,
     });
   jar.setFrom(res);
-  return { jar, user: (res.body as { data: { user: Credential['user'] } }).data?.user, status: res.status, body: res.body };
+  return {
+    jar,
+    user: (res.body as { data: { user: Credential['user'] } }).data?.user,
+    status: res.status,
+    body: res.body,
+  };
 }
 
 /** Log in with an identifier, returning the session jar + safe user. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function loginWith(app: Express, identifier: string, password = TEST_PASSWORD): Promise<Credential & { status: number; body: any }> {
+export async function loginWith(
+  app: Express,
+  identifier: string,
+  password = TEST_PASSWORD,
+): Promise<Credential & { status: number; body: any }> {
   const { jar, token } = await csrfBootstrap(app);
   const res = await request(app)
     .post('/auth/login')
@@ -182,11 +198,21 @@ export async function loginWith(app: Express, identifier: string, password = TES
     .set('X-Csrf-Token', token)
     .send({ identifier, password });
   jar.setFrom(res);
-  return { jar, user: (res.body as { data: { user: Credential['user'] } }).data?.user, status: res.status, body: res.body };
+  return {
+    jar,
+    user: (res.body as { data: { user: Credential['user'] } }).data?.user,
+    status: res.status,
+    body: res.body,
+  };
 }
 
 /** Authenticated POST carrying jar cookies + fresh CSRF header + origin. */
-export function authedPost(app: Express, path: string, jar: Jar, body: Record<string, unknown> = {}) {
+export function authedPost(
+  app: Express,
+  path: string,
+  jar: Jar,
+  body: Record<string, unknown> = {},
+) {
   return request(app)
     .post(path)
     .set('Origin', TEST_ORIGIN)
@@ -212,7 +238,9 @@ export function issuedSecrets(res: { headers: Record<string, unknown> }): string
  * never trusted — the server always verifies the signature). */
 export function sessionIdFromJar(jar: Jar): string {
   const payload = jar.access().split('.')[1] ?? '';
-  const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as { sid?: string };
+  const decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as {
+    sid?: string;
+  };
   if (!decoded.sid) throw new Error('no sid in access token');
   return decoded.sid;
 }
@@ -226,7 +254,9 @@ export function maxAgeOf(setCookies: string[], name: string): number {
 }
 
 /** A world with a manually advanced clock for lifetime tests. */
-export async function createClockedWorld(): Promise<IdentityWorld & { advance: (ms: number) => void; now: () => number }> {
+export async function createClockedWorld(): Promise<
+  IdentityWorld & { advance: (ms: number) => void; now: () => number }
+> {
   let now = Date.now();
   const world = await createWorld({}, () => now);
   return {

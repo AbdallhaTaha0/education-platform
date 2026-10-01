@@ -9,13 +9,25 @@ import { ApiError } from '../../identity/errors.js';
 
 export function createCatalogPublicRouter(ctx: CatalogRouteContext): Router {
   const router = Router();
-  router.get('/packages', asyncRoute(async (_req, res) => { res.json(ok({ packages: await listPackages(ctx.prisma) })); }));
-  router.get('/packages/:id', asyncRoute(async (req, res) => {
-    const id = assertUuid(req.params.id);
-    const row = await ctx.prisma.coursePackage.findUnique({ where: { id }, include: memberInclude });
-    if (!row || row.status !== 'PUBLISHED') throw new ApiError(404, 'NOT_FOUND', 'Package not found.');
-    res.json(ok({ package: publicPackage(row) }));
-  }));
+  router.get(
+    '/packages',
+    asyncRoute(async (_req, res) => {
+      res.json(ok({ packages: await listPackages(ctx.prisma) }));
+    }),
+  );
+  router.get(
+    '/packages/:id',
+    asyncRoute(async (req, res) => {
+      const id = assertUuid(req.params.id);
+      const row = await ctx.prisma.coursePackage.findUnique({
+        where: { id },
+        include: memberInclude,
+      });
+      if (!row || row.status !== 'PUBLISHED')
+        throw new ApiError(404, 'NOT_FOUND', 'Package not found.');
+      res.json(ok({ package: publicPackage(row) }));
+    }),
+  );
   router.get(
     '/courses',
     asyncRoute(async (req, res) => {

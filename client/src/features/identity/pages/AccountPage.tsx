@@ -39,7 +39,9 @@ export function AccountScreen({ go }: { go: (route: string) => void }): JSX.Elem
           <h1 ref={titleRef} tabIndex={-1}>
             {t.accountTitle}
           </h1>
-          <Notice kind="info">{lastAuthCode === 'SESSION_EXPIRED' ? t.sessionExpiredNotice : t.needLogin}</Notice>
+          <Notice kind="info">
+            {lastAuthCode === 'SESSION_EXPIRED' ? t.sessionExpiredNotice : t.needLogin}
+          </Notice>
           <div className="mt-6 flex flex-wrap gap-3">
             <Button variant="secondary" onClick={() => go('#/login')}>
               {t.navLogin}
@@ -55,7 +57,11 @@ export function AccountScreen({ go }: { go: (route: string) => void }): JSX.Elem
     if (busy) return;
     setBusy(true);
     const code = await logout();
-    setMessage(code ? { kind: 'error', text: localize(t, code) } : { kind: 'success', text: t.successLogout });
+    setMessage(
+      code
+        ? { kind: 'error', text: localize(t, code) }
+        : { kind: 'success', text: t.successLogout },
+    );
     setBusy(false);
   }
 
@@ -63,7 +69,11 @@ export function AccountScreen({ go }: { go: (route: string) => void }): JSX.Elem
     if (busy) return;
     setBusy(true);
     const code = await logoutAll();
-    setMessage(code ? { kind: 'error', text: localize(t, code) } : { kind: 'success', text: t.successLogoutAll });
+    setMessage(
+      code
+        ? { kind: 'error', text: localize(t, code) }
+        : { kind: 'success', text: t.successLogoutAll },
+    );
     setBusy(false);
   }
 
@@ -74,9 +84,26 @@ export function AccountScreen({ go }: { go: (route: string) => void }): JSX.Elem
           {t.accountTitle}
         </h1>
         <Notice kind={message?.kind ?? 'success'}>{message?.text ?? null}</Notice>
-        <nav className="account-shortcuts" aria-label={lang === 'ar' ? 'اختصارات حسابك' : 'Your account shortcuts'}>
-          {person.role === 'STUDENT' ? <><a href="#/dashboard">{t.navDashboard}</a><a href="#/wallet">{t.navWallet}</a><a href="#/purchases">{lang === 'ar' ? 'مشترياتي' : 'My purchases'}</a></> : <><a href="#/admin/summary">{t.navAdmin}</a><a href="#/admin/packages">{lang === 'ar' ? 'الباقات' : 'Packages'}</a><a href="#/admin/catalog">{t.navCatalog}</a><a href="#/admin/recharge">{t.navRecharge}</a></>}
-          <a href="#/notifications">{t.navNotifications}</a><a href="#/courses">{t.navCourses}</a>
+        <nav
+          className="account-shortcuts"
+          aria-label={lang === 'ar' ? 'اختصارات حسابك' : 'Your account shortcuts'}
+        >
+          {person.role === 'STUDENT' ? (
+            <>
+              <a href="#/dashboard">{t.navDashboard}</a>
+              <a href="#/wallet">{t.navWallet}</a>
+              <a href="#/purchases">{lang === 'ar' ? 'مشترياتي' : 'My purchases'}</a>
+            </>
+          ) : (
+            <>
+              <a href="#/admin/summary">{t.navAdmin}</a>
+              <a href="#/admin/packages">{lang === 'ar' ? 'الباقات' : 'Packages'}</a>
+              <a href="#/admin/catalog">{t.navCatalog}</a>
+              <a href="#/admin/recharge">{t.navRecharge}</a>
+            </>
+          )}
+          <a href="#/notifications">{t.navNotifications}</a>
+          <a href="#/courses">{t.navCourses}</a>
         </nav>
         <dl className="mb-6 grid gap-3">
           <div className="grid grid-cols-[140px_1fr] gap-3 border-b border-border py-2 max-sm:grid-cols-1 max-sm:gap-1">
@@ -85,19 +112,27 @@ export function AccountScreen({ go }: { go: (route: string) => void }): JSX.Elem
           </div>
           <div className="grid grid-cols-[140px_1fr] gap-3 border-b border-border py-2 max-sm:grid-cols-1 max-sm:gap-1">
             <dt className="text-sm font-semibold text-muted">{t.fieldEmail}</dt>
-            <dd className="m-0 font-semibold [overflow-wrap:anywhere]" dir="ltr">{person.email}</dd>
+            <dd className="m-0 font-semibold [overflow-wrap:anywhere]" dir="ltr">
+              {person.email}
+            </dd>
           </div>
           <div className="grid grid-cols-[140px_1fr] gap-3 border-b border-border py-2 max-sm:grid-cols-1 max-sm:gap-1">
             <dt className="text-sm font-semibold text-muted">{t.fieldPhone}</dt>
-            <dd className="m-0 font-semibold [overflow-wrap:anywhere]" dir="ltr">{person.phone}</dd>
+            <dd className="m-0 font-semibold [overflow-wrap:anywhere]" dir="ltr">
+              {person.phone}
+            </dd>
           </div>
           <div className="grid grid-cols-[140px_1fr] gap-3 border-b border-border py-2 max-sm:grid-cols-1 max-sm:gap-1">
             <dt className="text-sm font-semibold text-muted">{t.accountRole}</dt>
-            <dd className="m-0 font-semibold [overflow-wrap:anywhere]">{person.role === 'ADMIN' ? t.roleAdmin : t.roleStudent}</dd>
+            <dd className="m-0 font-semibold [overflow-wrap:anywhere]">
+              {person.role === 'ADMIN' ? t.roleAdmin : t.roleStudent}
+            </dd>
           </div>
           <div className="grid grid-cols-[140px_1fr] gap-3 border-b border-border py-2 max-sm:grid-cols-1 max-sm:gap-1">
             <dt className="text-sm font-semibold text-muted">{t.accountSince}</dt>
-            <dd className="m-0 font-semibold [overflow-wrap:anywhere]">{formatDate(person.createdAt, lang)}</dd>
+            <dd className="m-0 font-semibold [overflow-wrap:anywhere]">
+              {formatDate(person.createdAt, lang)}
+            </dd>
           </div>
         </dl>
         <div className="mt-6 flex flex-wrap gap-3">

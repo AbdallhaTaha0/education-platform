@@ -62,44 +62,79 @@ export function validatePosition(value: unknown, field = 'position'): number {
 }
 
 export function validateDurationDays(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < DURATION_DAYS_MIN || value > DURATION_DAYS_MAX) {
-    throw new ApiError(400, 'VALIDATION_ERROR', `durationDays must be ${DURATION_DAYS_MIN}–${DURATION_DAYS_MAX}.`, {
-      field: 'durationDays',
-    });
+  if (
+    typeof value !== 'number' ||
+    !Number.isInteger(value) ||
+    value < DURATION_DAYS_MIN ||
+    value > DURATION_DAYS_MAX
+  ) {
+    throw new ApiError(
+      400,
+      'VALIDATION_ERROR',
+      `durationDays must be ${DURATION_DAYS_MIN}–${DURATION_DAYS_MAX}.`,
+      {
+        field: 'durationDays',
+      },
+    );
   }
   return value;
 }
 
 export function validatePrice(value: unknown, field: string): number {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < PRICE_MIN_PIASTRES || value > PRICE_MAX_PIASTRES) {
-    throw new ApiError(400, 'VALIDATION_ERROR', `${field} must be ${PRICE_MIN_PIASTRES}–${PRICE_MAX_PIASTRES} piastres.`, {
-      field,
-    });
+  if (
+    typeof value !== 'number' ||
+    !Number.isInteger(value) ||
+    value < PRICE_MIN_PIASTRES ||
+    value > PRICE_MAX_PIASTRES
+  ) {
+    throw new ApiError(
+      400,
+      'VALIDATION_ERROR',
+      `${field} must be ${PRICE_MIN_PIASTRES}–${PRICE_MAX_PIASTRES} piastres.`,
+      {
+        field,
+      },
+    );
   }
   return value;
 }
 
-export function validatePricePair(current: unknown, previous: unknown): { current: number; previous: number | null } {
+export function validatePricePair(
+  current: unknown,
+  previous: unknown,
+): { current: number; previous: number | null } {
   const cur = validatePrice(current, 'currentPricePiastres');
   if (previous === undefined || previous === null) return { current: cur, previous: null };
   const prev = validatePrice(previous, 'previousPricePiastres');
   if (!(prev > cur)) {
-    throw new ApiError(400, 'VALIDATION_ERROR', 'previousPricePiastres must be strictly greater than currentPricePiastres.', {
-      field: 'previousPricePiastres',
-    });
+    throw new ApiError(
+      400,
+      'VALIDATION_ERROR',
+      'previousPricePiastres must be strictly greater than currentPricePiastres.',
+      {
+        field: 'previousPricePiastres',
+      },
+    );
   }
   return { current: cur, previous: prev };
 }
 
 export function normalizeContentType(value: unknown): DrmContentType {
   if (typeof value !== 'string') {
-    throw new ApiError(400, 'VALIDATION_ERROR', 'contentType is required.', { field: 'contentType' });
+    throw new ApiError(400, 'VALIDATION_ERROR', 'contentType is required.', {
+      field: 'contentType',
+    });
   }
   const key = value.trim();
   const upper = key.toUpperCase();
-  const mapped = PLATFORM_CONTENT_ALIASES[key] ?? PLATFORM_CONTENT_ALIASES[upper] ?? PLATFORM_CONTENT_ALIASES[key.toLowerCase()];
+  const mapped =
+    PLATFORM_CONTENT_ALIASES[key] ??
+    PLATFORM_CONTENT_ALIASES[upper] ??
+    PLATFORM_CONTENT_ALIASES[key.toLowerCase()];
   if (!mapped) {
-    throw new ApiError(400, 'VALIDATION_ERROR', 'contentType must be MP4, WebM, or QuickTime.', { field: 'contentType' });
+    throw new ApiError(400, 'VALIDATION_ERROR', 'contentType must be MP4, WebM, or QuickTime.', {
+      field: 'contentType',
+    });
   }
   return mapped;
 }
@@ -107,7 +142,9 @@ export function normalizeContentType(value: unknown): DrmContentType {
 export function validateSecurityTier(value: unknown): string {
   if (value === undefined || value === null || value === '') return 'STANDARD';
   if (typeof value !== 'string' || !(DRM_SECURITY_TIERS as readonly string[]).includes(value)) {
-    throw new ApiError(400, 'VALIDATION_ERROR', 'securityTier is invalid.', { field: 'securityTier' });
+    throw new ApiError(400, 'VALIDATION_ERROR', 'securityTier is invalid.', {
+      field: 'securityTier',
+    });
   }
   return value;
 }
@@ -119,7 +156,9 @@ export function rejectUnknownFields(body: unknown, allowed: ReadonlySet<string>)
   }
   const unknown = Object.keys(body as Record<string, unknown>).filter((k) => !allowed.has(k));
   if (unknown.length > 0) {
-    throw new ApiError(400, 'INVALID_FIELD', 'Request contains unknown fields.', { fields: unknown });
+    throw new ApiError(400, 'INVALID_FIELD', 'Request contains unknown fields.', {
+      fields: unknown,
+    });
   }
 }
 
@@ -168,7 +207,11 @@ export function assertValidTransition(from: string, to: string): void {
   }
   // Archive/unarchive use dedicated endpoints; direct transition API rejects them.
   if (to === 'ARCHIVED' || from === 'ARCHIVED') {
-    throw new ApiError(409, 'INVALID_TRANSITION', `Transition ${from} → ${to} must use archive endpoints.`);
+    throw new ApiError(
+      409,
+      'INVALID_TRANSITION',
+      `Transition ${from} → ${to} must use archive endpoints.`,
+    );
   }
   const allowed = VALID_TRANSITIONS[from] ?? [];
   if (!allowed.includes(to)) {

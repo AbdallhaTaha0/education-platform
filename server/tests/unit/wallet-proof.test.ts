@@ -25,11 +25,22 @@ function minimalPng(): string {
   const crc = [0x00, 0x00, 0x00, 0x00];
   const iendLen = [0x00, 0x00, 0x00, 0x00];
   const iend = [0x49, 0x45, 0x4e, 0x44];
-  return Buffer.from([...sig, ...ihdrLen, ...ihdr, ...data, ...crc, ...iendLen, ...iend, ...crc]).toString('base64');
+  return Buffer.from([
+    ...sig,
+    ...ihdrLen,
+    ...ihdr,
+    ...data,
+    ...crc,
+    ...iendLen,
+    ...iend,
+    ...crc,
+  ]).toString('base64');
 }
 
 function minimalPdf(): string {
-  return Buffer.from('%PDF-1.4\n1 0 obj<</>>endobj\ntrailer<</>>\n%%EOF', 'ascii').toString('base64');
+  return Buffer.from('%PDF-1.4\n1 0 obj<</>>endobj\ntrailer<</>>\n%%EOF', 'ascii').toString(
+    'base64',
+  );
 }
 
 describe('proof validation', () => {
@@ -41,7 +52,9 @@ describe('proof validation', () => {
 
   it('accepts a minimal PNG and PDF', () => {
     expect(validateProof('shot.PNG', 'image/png', minimalPng()).mime).toBe('image/png');
-    expect(validateProof('transfer.pdf', 'application/pdf', minimalPdf()).mime).toBe('application/pdf');
+    expect(validateProof('transfer.pdf', 'application/pdf', minimalPdf()).mime).toBe(
+      'application/pdf',
+    );
   });
 
   it('rejects extension/MIME mismatch (spoofing)', () => {
@@ -60,7 +73,9 @@ describe('proof validation', () => {
 
   it('rejects path traversal, bad extensions, and oversize payloads', () => {
     expectValidationError(() => validateProof('../evil.jpg', 'image/jpeg', minimalJpeg()));
-    expectValidationError(() => validateProof('run.exe', 'application/x-msdownload', minimalJpeg()));
+    expectValidationError(() =>
+      validateProof('run.exe', 'application/x-msdownload', minimalJpeg()),
+    );
     expectValidationError(() => validateProof('big.jpg', 'image/jpeg', 'A'.repeat(7_100_001)));
     expectValidationError(() => validateProof('empty.jpg', 'image/jpeg', ''));
   });

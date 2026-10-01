@@ -97,9 +97,10 @@ export const learningApi = {
     durationSeconds: number | null;
     completed: boolean;
   }): Promise<LessonProgressState> {
-    return request<{ progress: LessonProgressState }>('/learning/progress', mutationInit(input)).then(
-      (body) => body.progress,
-    );
+    return request<{ progress: LessonProgressState }>(
+      '/learning/progress',
+      mutationInit(input),
+    ).then((body) => body.progress);
   },
   endPlayback(referenceId: string): Promise<PlaybackEnd> {
     return request<PlaybackEnd>(

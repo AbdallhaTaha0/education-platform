@@ -9,7 +9,9 @@ afterAll(async () => {
 
 describe('M3 additive migration', () => {
   it('applies over M1+M2 without editing them', async () => {
-    const rows = await prisma.$queryRaw<{ migration_name: string }[]>`SELECT migration_name FROM _prisma_migrations ORDER BY started_at`;
+    const rows = await prisma.$queryRaw<
+      { migration_name: string }[]
+    >`SELECT migration_name FROM _prisma_migrations ORDER BY started_at`;
     const names = rows.map((r) => r.migration_name);
     expect(names).toContain('20260927090000_m1_init');
     expect(names).toContain('20260928091356_m2_identity');
@@ -22,7 +24,9 @@ describe('M3 additive migration', () => {
       data: { slug, titleAr: 'أ', titleEn: 'B', descriptionAr: 'ج', descriptionEn: 'D' },
     });
     await expect(
-      prisma.course.create({ data: { slug, titleAr: 'أ', titleEn: 'B', descriptionAr: 'ج', descriptionEn: 'D' } }),
+      prisma.course.create({
+        data: { slug, titleAr: 'أ', titleEn: 'B', descriptionAr: 'ج', descriptionEn: 'D' },
+      }),
     ).rejects.toThrow();
     await prisma.course.deleteMany({ where: { slug } });
   });

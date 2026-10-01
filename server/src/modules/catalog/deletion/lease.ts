@@ -20,7 +20,11 @@ export interface DeletionLease {
 }
 
 /** Acquire the per-operation lease. Null when another replica (or a stale local) owns it, or Redis is down. */
-export async function acquireDeletionLease(redis: Redis, operationId: string, ttlMs = LEASE_TTL_MS): Promise<DeletionLease | null> {
+export async function acquireDeletionLease(
+  redis: Redis,
+  operationId: string,
+  ttlMs = LEASE_TTL_MS,
+): Promise<DeletionLease | null> {
   try {
     await ensureRedis(redis);
     const token = randomUUID();
@@ -35,7 +39,13 @@ export async function acquireDeletionLease(redis: Redis, operationId: string, tt
 export async function renewDeletionLease(redis: Redis, lease: DeletionLease): Promise<boolean> {
   try {
     await ensureRedis(redis);
-    const result = (await redis.eval(RENEW_SCRIPT, 1, leaseKey(lease.operationId), lease.token, String(lease.ttlMs))) as number;
+    const result = (await redis.eval(
+      RENEW_SCRIPT,
+      1,
+      leaseKey(lease.operationId),
+      lease.token,
+      String(lease.ttlMs),
+    )) as number;
     return result === 1;
   } catch {
     return false;
@@ -46,7 +56,12 @@ export async function renewDeletionLease(redis: Redis, lease: DeletionLease): Pr
 export async function isDeletionLeaseOwner(redis: Redis, lease: DeletionLease): Promise<boolean> {
   try {
     await ensureRedis(redis);
-    const result = (await redis.eval(OWNER_SCRIPT, 1, leaseKey(lease.operationId), lease.token)) as number;
+    const result = (await redis.eval(
+      OWNER_SCRIPT,
+      1,
+      leaseKey(lease.operationId),
+      lease.token,
+    )) as number;
     return result === 1;
   } catch {
     return false;
@@ -114,12 +129,20 @@ export async function withRenewingLease<T>(
 }
 
 /** Token-checked Redis lease. Only the owner performs external I/O. */
-export async function acquireLease(redis: Redis, operationId: string, ttlMs = LEASE_TTL_MS): Promise<string | null> {
+export async function acquireLease(
+  redis: Redis,
+  operationId: string,
+  ttlMs = LEASE_TTL_MS,
+): Promise<string | null> {
   const lease = await acquireDeletionLease(redis, operationId, ttlMs);
   return lease === null ? null : lease.token;
 }
 
-export async function releaseLease(redis: Redis, operationId: string, token: string): Promise<void> {
+export async function releaseLease(
+  redis: Redis,
+  operationId: string,
+  token: string,
+): Promise<void> {
   await releaseDeletionLease(redis, { operationId, token, ttlMs: LEASE_TTL_MS });
 }
 

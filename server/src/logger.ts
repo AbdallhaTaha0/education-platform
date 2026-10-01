@@ -25,7 +25,8 @@ export const LOG_REDACT_PATHS = [
 ] as const;
 
 /** Keys that must never appear with raw values in logs or audit metadata. */
-const SENSITIVE_KEY_PATTERN = /(token|secret|key|assertion|signature|credential|cookie|authorization|uploadurl|upload_url|storage|confirmation)/i;
+const SENSITIVE_KEY_PATTERN =
+  /(token|secret|key|assertion|signature|credential|cookie|authorization|uploadurl|upload_url|storage|confirmation)/i;
 
 /**
  * Sanitize an arbitrary value for logs/audit: replaces sensitive keys with

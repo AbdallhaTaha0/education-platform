@@ -55,7 +55,10 @@ export function readCsrfCookie(): string | null {
 async function ensureCsrf(): Promise<string> {
   const existing = readCsrfCookie();
   if (existing) return existing;
-  const res = await fetch(`${API_BASE}/auth/csrf`, { credentials: 'include', headers: { Accept: 'application/json' } });
+  const res = await fetch(`${API_BASE}/auth/csrf`, {
+    credentials: 'include',
+    headers: { Accept: 'application/json' },
+  });
   if (!res.ok) throw new ApiError(res.status, 'SERVICE_ERROR', 'Service unavailable.');
   const token = readCsrfCookie();
   if (!token) throw new ApiError(res.status, 'SERVICE_ERROR', 'Service unavailable.');
@@ -64,7 +67,9 @@ async function ensureCsrf(): Promise<string> {
 
 async function parseFailure(res: Response): Promise<ApiFailure> {
   try {
-    const body = (await res.json()) as { error?: { code?: string; message?: string; details?: Record<string, unknown> } };
+    const body = (await res.json()) as {
+      error?: { code?: string; message?: string; details?: Record<string, unknown> };
+    };
     return {
       code: body.error?.code ?? 'SERVICE_ERROR',
       message: body.error?.message ?? 'Service unavailable.',

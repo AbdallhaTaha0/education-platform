@@ -6,7 +6,17 @@
  * serialisable export of the token.
  */
 import { afterEach, describe, expect, it } from 'vitest';
-import { authHeaders, clear, expiries, getSession, isActive, isExpired, renewSession, setSession, subscribe } from './session.js';
+import {
+  authHeaders,
+  clear,
+  expiries,
+  getSession,
+  isActive,
+  isExpired,
+  renewSession,
+  setSession,
+  subscribe,
+} from './session.js';
 
 const TOKEN = 'transient-playback-token-value';
 

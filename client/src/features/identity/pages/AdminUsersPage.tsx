@@ -90,19 +90,62 @@ export function AdminScreen({ go }: { go: (route: string) => void }): JSX.Elemen
         </h1>
         <p className="text-muted">{t.adminBody}</p>
         <Notice kind="error">{errorCode ? localize(t, errorCode) : null}</Notice>
-        <Notice kind="success">{createdEmail ? `${t.successAdminCreate} (${createdEmail})` : null}</Notice>
+        <Notice kind="success">
+          {createdEmail ? `${t.successAdminCreate} (${createdEmail})` : null}
+        </Notice>
         <form onSubmit={(e) => void submit(e)} noValidate>
           <Field id="adm-name" label={t.fieldName}>
-            <input id="adm-name" name="name" autoComplete="off" required minLength={2} maxLength={100} value={name} onChange={(e) => setName(e.target.value)} className={textInputClassName(false)} />
+            <input
+              id="adm-name"
+              name="name"
+              autoComplete="off"
+              required
+              minLength={2}
+              maxLength={100}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className={textInputClassName(false)}
+            />
           </Field>
           <Field id="adm-email" label={t.fieldEmail} dir="ltr">
-            <input id="adm-email" name="email" type="email" autoComplete="off" required value={email} onChange={(e) => setEmail(e.target.value)} className={textInputClassName(false)} />
+            <input
+              id="adm-email"
+              name="email"
+              type="email"
+              autoComplete="off"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={textInputClassName(false)}
+            />
           </Field>
           <Field id="adm-phone" label={t.fieldPhone} dir="ltr">
-            <input id="adm-phone" name="phone" type="tel" inputMode="tel" autoComplete="off" required value={phone} onChange={(e) => setPhone(e.target.value)} className={textInputClassName(false)} />
+            <input
+              id="adm-phone"
+              name="phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="off"
+              required
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className={textInputClassName(false)}
+            />
           </Field>
           <Field id="adm-password" label={t.fieldPassword} dir="ltr">
-            <input id="adm-password" name="new-password" type="password" autoComplete="new-password" required minLength={12} maxLength={256} value={password} onChange={(e) => setPassword(e.target.value)} aria-describedby="adm-password-hint" className={textInputClassName(false)} />
+            <input
+              id="adm-password"
+              name="new-password"
+              type="password"
+              autoComplete="new-password"
+              required
+              minLength={12}
+              maxLength={256}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              aria-describedby="adm-password-hint"
+              className={textInputClassName(false)}
+            />
             <p className="mt-2 text-sm text-muted" id="adm-password-hint">
               {t.passwordHint}
             </p>

@@ -35,7 +35,13 @@ export interface PublicCourse {
   descriptionEn: string;
   publishedAt: string | null;
   plans: PublicPlan[];
-  academic: { grade: string | null; academicYear: string | null; term: number | null; courseKind: string | null; teachingMonth: string | null };
+  academic: {
+    grade: string | null;
+    academicYear: string | null;
+    term: number | null;
+    courseKind: string | null;
+    teachingMonth: string | null;
+  };
 }
 
 export interface AffectedMedia {

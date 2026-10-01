@@ -54,7 +54,11 @@ describe('E: learning requires a PUBLISHED course', () => {
   it('refuses the outline for every non-released state', async () => {
     for (const status of states) {
       await setCourseStatus(world, course.courseId, status);
-      const res = await studentGet(world.app, `/learning/courses/${course.slug}/outline`, world.studentJar);
+      const res = await studentGet(
+        world.app,
+        `/learning/courses/${course.slug}/outline`,
+        world.studentJar,
+      );
       // Existence is not disclosed: a non-releasable course is indistinguishable
       // from a missing one.
       expect(res.status, `${status} outline`).toBe(404);
@@ -86,7 +90,11 @@ describe('E: learning requires a PUBLISHED course', () => {
 
   it('allows a PUBLISHED course for an entitled student', async () => {
     await setCourseStatus(world, course.courseId, 'PUBLISHED');
-    const outline = await studentGet(world.app, `/learning/courses/${course.slug}/outline`, world.studentJar);
+    const outline = await studentGet(
+      world.app,
+      `/learning/courses/${course.slug}/outline`,
+      world.studentJar,
+    );
     expect(outline.status).toBe(200);
     expect(outline.body.data.course.entitled).toBe(true);
     expect((await startPlayback()).status).toBe(201);
@@ -96,7 +104,9 @@ describe('E: learning requires a PUBLISHED course', () => {
     // The course is fully processed and playable at the media level, yet it is
     // not learnable. This is the exact distinction the finding asked for.
     await setCourseStatus(world, course.courseId, 'READY');
-    const mapping = await world.prisma.mediaMapping.findFirstOrThrow({ where: { lessonId: course.lessonId } });
+    const mapping = await world.prisma.mediaMapping.findFirstOrThrow({
+      where: { lessonId: course.lessonId },
+    });
     expect(mapping.status).toBe('READY');
     const res = await startPlayback();
     expect(res.status).toBe(404);
@@ -143,7 +153,9 @@ describe('B: platform-mediated token renewal', () => {
     const referenceId = start.body.data.playback.referenceId;
     const res = await renew(referenceId);
     const token = res.body.data.renewal.playbackToken as string;
-    const reference = await world.prisma.playbackReference.findUniqueOrThrow({ where: { id: referenceId } });
+    const reference = await world.prisma.playbackReference.findUniqueOrThrow({
+      where: { id: referenceId },
+    });
     expect(JSON.stringify(reference)).not.toContain(token);
   });
 
@@ -158,13 +170,14 @@ describe('B: platform-mediated token renewal', () => {
 
     await expireSubscription(world, world.studentId, target.courseId);
 
-
     const res = await renew(referenceId);
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('PLAYBACK_SESSION_EXPIRED');
 
     // A refused renewal also requests durable external termination.
-    const reference = await world.prisma.playbackReference.findUniqueOrThrow({ where: { id: referenceId } });
+    const reference = await world.prisma.playbackReference.findUniqueOrThrow({
+      where: { id: referenceId },
+    });
     expect(reference.pendingEndReason).toBe('SUBSCRIPTION_EXPIRED');
     expect(reference.terminationStatus).toBe('PENDING');
   });
@@ -398,7 +411,9 @@ describe('D: reconciliation does not starve behind 500 references', () => {
   });
 
   it('terminates newer expired sessions hidden behind older repeatedly-failing ones', async () => {
-    const { reconcileExpiredSessions } = await import('../../src/modules/learning/expiry/reconciler.js');
+    const { reconcileExpiredSessions } = await import(
+      '../../src/modules/learning/expiry/reconciler.js'
+    );
 
     // 520 older rows that are due but whose revocation keeps failing. They stay
     // eligible forever, so they permanently occupy the front of the ordering.
@@ -430,10 +445,16 @@ describe('D: reconciliation does not starve behind 500 references', () => {
 
     // The dependency is healthy again for this pass.
     world.playback!.revokeAlwaysFails = false;
-    const result = await reconcileExpiredSessions(world.prisma, world.redis, world.drm, Date.now(), {
-      pageSize: 25,
-      maxPages: 40,
-    });
+    const result = await reconcileExpiredSessions(
+      world.prisma,
+      world.redis,
+      world.drm,
+      Date.now(),
+      {
+        pageSize: 25,
+        maxPages: 40,
+      },
+    );
 
     // The pass walked the whole eligible set, not just the first page.
     expect(result.pages).toBeGreaterThan(1);
@@ -450,7 +471,9 @@ describe('D: reconciliation does not starve behind 500 references', () => {
   });
 
   it('keeps a healthy session untouched while walking past due work', async () => {
-    const { reconcileExpiredSessions } = await import('../../src/modules/learning/expiry/reconciler.js');
+    const { reconcileExpiredSessions } = await import(
+      '../../src/modules/learning/expiry/reconciler.js'
+    );
     for (let i = 0; i < 60; i += 1) {
       await seedReference(`mixed-due-${i}`, {
         terminationStatus: 'PENDING',
@@ -464,13 +487,17 @@ describe('D: reconciliation does not starve behind 500 references', () => {
       pageSize: 25,
       maxPages: 40,
     });
-    const reference = await world.prisma.playbackReference.findUniqueOrThrow({ where: { id: healthyId } });
+    const reference = await world.prisma.playbackReference.findUniqueOrThrow({
+      where: { id: healthyId },
+    });
     expect(reference.status).toBe('ACTIVE');
     expect(reference.terminationStatus).toBeNull();
   });
 
   it('detects a crossed subscription beyond the first 500 active rows', async () => {
-    const { detectCrossedSubscriptions } = await import('../../src/modules/learning/expiry/reconciler.js');
+    const { detectCrossedSubscriptions } = await import(
+      '../../src/modules/learning/expiry/reconciler.js'
+    );
     const { randomUUID } = await import('node:crypto');
 
     // 600 healthy active references with no termination scheduled at all.
@@ -486,10 +513,14 @@ describe('D: reconciliation does not starve behind 500 references', () => {
 
     await expireSubscription(world, world.studentId, lapsed.courseId);
 
-
-    const queued = await detectCrossedSubscriptions(world.prisma, Date.now(), { pageSize: 200, maxPages: 40 });
+    const queued = await detectCrossedSubscriptions(world.prisma, Date.now(), {
+      pageSize: 200,
+      maxPages: 40,
+    });
     expect(queued).toBeGreaterThanOrEqual(1);
-    const reference = await world.prisma.playbackReference.findUniqueOrThrow({ where: { id: lapsedId } });
+    const reference = await world.prisma.playbackReference.findUniqueOrThrow({
+      where: { id: lapsedId },
+    });
     expect(reference.terminationStatus).toBe('PENDING');
     expect(reference.pendingEndReason).toBe('SUBSCRIPTION_EXPIRED');
   });

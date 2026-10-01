@@ -54,10 +54,16 @@ export function isUniqueScratch(name) {
 
 /** Write KEY=value lines with mode 0600. Values are never returned or printed. */
 export function writeEnvFile(path, values, fs = { writeFileSync }) {
-  fs.writeFileSync(path, Object.entries(values).map(([k, v]) => `${k}=${v}`).join('\n'), {
-    encoding: 'utf8',
-    mode: 0o600,
-  });
+  fs.writeFileSync(
+    path,
+    Object.entries(values)
+      .map(([k, v]) => `${k}=${v}`)
+      .join('\n'),
+    {
+      encoding: 'utf8',
+      mode: 0o600,
+    },
+  );
 }
 
 /** Argv that pre-creates the harness state file owned by the stage user. */
@@ -74,26 +80,86 @@ export function summarizeStderr(text) {
 
 /** Runner exit: 0 only when setup, media, stages AND cleanup all succeed. */
 export function decideExit(results) {
-  const parts = [results.volume, results.media, results.mediaVisible, results.stateFile, results.stages, results.cleanup];
+  const parts = [
+    results.volume,
+    results.media,
+    results.mediaVisible,
+    results.stateFile,
+    results.stages,
+    results.cleanup,
+  ];
   return parts.every((code) => code === 0) ? 0 : 1;
 }
 
 export function mediaGenArgs(scratch, mediaName) {
-  return ['run', '--rm', '--network', 'none', '-u', '0', '-v', `${scratch}:/scratch`, WORKER_IMAGE,
-    'ffmpeg', '-hide_banner', '-loglevel', 'error',
-    '-f', 'lavfi', '-i', 'testsrc=duration=1:size=320x240:rate=15',
-    '-f', 'lavfi', '-i', 'sine=frequency=440:duration=1',
-    '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', `/scratch/${mediaName}`];
+  return [
+    'run',
+    '--rm',
+    '--network',
+    'none',
+    '-u',
+    '0',
+    '-v',
+    `${scratch}:/scratch`,
+    WORKER_IMAGE,
+    'ffmpeg',
+    '-hide_banner',
+    '-loglevel',
+    'error',
+    '-f',
+    'lavfi',
+    '-i',
+    'testsrc=duration=1:size=320x240:rate=15',
+    '-f',
+    'lavfi',
+    '-i',
+    'sine=frequency=440:duration=1',
+    '-c:v',
+    'libx264',
+    '-pix_fmt',
+    'yuv420p',
+    '-c:a',
+    'aac',
+    '-shortest',
+    `/scratch/${mediaName}`,
+  ];
 }
 
 export function lsMediaArgs(scratch, mediaName) {
-  return ['run', '--rm', '-v', `${scratch}:/scratch`, STAGE_IMAGE, 'ls', '-l', `/scratch/${mediaName}`];
+  return [
+    'run',
+    '--rm',
+    '-v',
+    `${scratch}:/scratch`,
+    STAGE_IMAGE,
+    'ls',
+    '-l',
+    `/scratch/${mediaName}`,
+  ];
 }
 
 /** Pre-create scratch files owned by the stage user with mode 0600. */
 export function scratchFilesSetupArgs(scratch, names) {
-  const chain = names.map((n) => `touch /scratch/${n} && chown ${STAGE_UID}:${STAGE_UID} /scratch/${n} && chmod 600 /scratch/${n}`).join(' && ');
-  return ['run', '--rm', '--network', 'none', '-u', '0', '-v', `${scratch}:/scratch`, WORKER_IMAGE, 'sh', '-c', chain];
+  const chain = names
+    .map(
+      (n) =>
+        `touch /scratch/${n} && chown ${STAGE_UID}:${STAGE_UID} /scratch/${n} && chmod 600 /scratch/${n}`,
+    )
+    .join(' && ');
+  return [
+    'run',
+    '--rm',
+    '--network',
+    'none',
+    '-u',
+    '0',
+    '-v',
+    `${scratch}:/scratch`,
+    WORKER_IMAGE,
+    'sh',
+    '-c',
+    chain,
+  ];
 }
 
 /**
@@ -109,7 +175,9 @@ export function verifyEvidence(logText) {
     try {
       const record = JSON.parse(text);
       if (record && typeof record.step === 'string') records.push(record);
-    } catch { /* non-evidence line */ }
+    } catch {
+      /* non-evidence line */
+    }
   }
   const checks = records.filter((r) => 'ok' in r && r.step !== 'summary' && r.step !== 'result');
   const negative = checks.filter((r) => r.ok === false).length;
@@ -121,14 +189,22 @@ export function verifyEvidence(logText) {
     disagreement.push('missing summary record');
   } else {
     if (summary.checks !== checks.length) {
-      disagreement.push(`summary checks=${summary.checks} but emitted check records=${checks.length}`);
+      disagreement.push(
+        `summary checks=${summary.checks} but emitted check records=${checks.length}`,
+      );
     }
     const counted = (summary.failed ?? 0) + (summary.blocked ?? 0);
     if (counted !== negative) {
       disagreement.push(`summary failed+blocked=${counted} but emitted ok:false=${negative}`);
     }
   }
-  return { records: records.length, fails: negative, summary, verdict: result?.verdict ?? null, disagreement };
+  return {
+    records: records.length,
+    fails: negative,
+    summary,
+    verdict: result?.verdict ?? null,
+    disagreement,
+  };
 }
 
 function loadEnvFile(path) {
@@ -163,7 +239,10 @@ export function runFlow(deps) {
   const fail = (step, res) => {
     const detail = summarizeStderr(res.stderr);
     if (detail) process.stderr.write(`run-live-lifecycle: ${step} failed: ${detail}\n`);
-    else process.stderr.write(`run-live-lifecycle: ${step} failed with exit ${res.status ?? 'unknown'}\n`);
+    else
+      process.stderr.write(
+        `run-live-lifecycle: ${step} failed with exit ${res.status ?? 'unknown'}\n`,
+      );
   };
 
   try {
@@ -172,37 +251,95 @@ export function runFlow(deps) {
 
     const mkVol = run(['volume', 'create', scratch]);
     results.volume = mkVol.status ?? 1;
-    if (results.volume !== 0) { fail('volume create', mkVol); return { exitCode: 1, results, argvLog }; }
+    if (results.volume !== 0) {
+      fail('volume create', mkVol);
+      return { exitCode: 1, results, argvLog };
+    }
 
     const gen = run(
-      ['run', '--rm', '--network', 'none', '-u', '0', '-v', `${scratch}:/scratch`, WORKER_IMAGE,
-        'ffmpeg', '-hide_banner', '-loglevel', 'error',
-        '-f', 'lavfi', '-i', 'testsrc=duration=1:size=320x240:rate=15',
-        '-f', 'lavfi', '-i', 'sine=frequency=440:duration=1',
-        '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-shortest', `/scratch/${mediaName}`],
+      [
+        'run',
+        '--rm',
+        '--network',
+        'none',
+        '-u',
+        '0',
+        '-v',
+        `${scratch}:/scratch`,
+        WORKER_IMAGE,
+        'ffmpeg',
+        '-hide_banner',
+        '-loglevel',
+        'error',
+        '-f',
+        'lavfi',
+        '-i',
+        'testsrc=duration=1:size=320x240:rate=15',
+        '-f',
+        'lavfi',
+        '-i',
+        'sine=frequency=440:duration=1',
+        '-c:v',
+        'libx264',
+        '-pix_fmt',
+        'yuv420p',
+        '-c:a',
+        'aac',
+        '-shortest',
+        `/scratch/${mediaName}`,
+      ],
       { stdio: 'pipe' },
     );
     results.media = gen.status ?? 1;
-    if (results.media !== 0) { fail('media generation', gen); return { exitCode: 1, results, argvLog }; }
+    if (results.media !== 0) {
+      fail('media generation', gen);
+      return { exitCode: 1, results, argvLog };
+    }
 
     const lsMedia = run(lsMediaArgs(scratch, mediaName));
     results.mediaVisible = lsMedia.status ?? 1;
-    if (results.mediaVisible !== 0) { fail('media visibility', lsMedia); return { exitCode: 1, results, argvLog }; }
-    process.stdout.write(`media file present: ${(lsMedia.stdout || '').trim().split(/\s+/)[4] || 'unknown'} bytes\n`);
+    if (results.mediaVisible !== 0) {
+      fail('media visibility', lsMedia);
+      return { exitCode: 1, results, argvLog };
+    }
+    process.stdout.write(
+      `media file present: ${(lsMedia.stdout || '').trim().split(/\s+/)[4] || 'unknown'} bytes\n`,
+    );
 
     const setup = run(stateSetupArgs(scratch));
     results.stateFile = setup.status ?? 1;
-    if (results.stateFile !== 0) { fail('state file setup', setup); return { exitCode: 1, results, argvLog }; }
+    if (results.stateFile !== 0) {
+      fail('state file setup', setup);
+      return { exitCode: 1, results, argvLog };
+    }
 
     const stages = run(
-      ['run', '--rm', '--env-file', envFile, '-v', `${repoRoot}:/repo:ro`, '-v', `${scratch}:/scratch`,
-        '-w', '/repo', STAGE_IMAGE, 'node', HARNESS, ...flowStages],
+      [
+        'run',
+        '--rm',
+        '--env-file',
+        envFile,
+        '-v',
+        `${repoRoot}:/repo:ro`,
+        '-v',
+        `${scratch}:/scratch`,
+        '-w',
+        '/repo',
+        STAGE_IMAGE,
+        'node',
+        HARNESS,
+        ...flowStages,
+      ],
       { stdio: 'inherit' },
     );
     results.stages = stages.status ?? 1;
     if (results.stages !== 0) fail('harness stages', stages);
   } finally {
-    try { rmSync(envFile, { force: true }); } catch { /* already gone */ }
+    try {
+      rmSync(envFile, { force: true });
+    } catch {
+      /* already gone */
+    }
     const ls = run(['volume', 'inspect', scratch]);
     if (ls.status === 0) {
       const rm = run(['volume', 'rm', scratch]);
@@ -241,15 +378,37 @@ export function scratchWriteArgs(volume, file) {
  * exit-checked; cleanup runs on all paths.
  */
 export async function runIsoFlow(deps) {
-  const { spawn, tag, envValues, root: repoRoot, tmpdir: tmp, readScratch, writeScratch, sleepMs = 5000, isoWaits = 48,
-    stageImage = STAGE_IMAGE, stageCommand = ['node', HARNESS, 'subscription-expiry'],
-    extraMounts = [], generateMedia = mediaGenArgs, stageWorkdir = '/repo', evidencePath = null,
+  const {
+    spawn,
+    tag,
+    envValues,
+    root: repoRoot,
+    tmpdir: tmp,
+    readScratch,
+    writeScratch,
+    sleepMs = 5000,
+    isoWaits = 48,
+    stageImage = STAGE_IMAGE,
+    stageCommand = ['node', HARNESS, 'subscription-expiry'],
+    extraMounts = [],
+    generateMedia = mediaGenArgs,
+    stageWorkdir = '/repo',
+    evidencePath = null,
   } = deps;
   const scratch = `m5-lifecycle-scratch-${tag}`;
   const mediaName = `m5-live-${tag}.mp4`;
   const envFile = join(tmp, `m5-lifecycle-env-${tag}`);
   const cname = `m5-iso-stage-${tag}`;
-  const results = { volume: 1, media: 1, mediaVisible: 1, stateFile: 1, stages: 1, fixture: 1, evidence: 1, cleanup: 1 };
+  const results = {
+    volume: 1,
+    media: 1,
+    mediaVisible: 1,
+    stateFile: 1,
+    stages: 1,
+    fixture: 1,
+    evidence: 1,
+    cleanup: 1,
+  };
   const argvLog = [];
   let cid = null;
   const run = (args, opts = {}) => {
@@ -259,7 +418,10 @@ export async function runIsoFlow(deps) {
   const fail = (step, res) => {
     const detail = summarizeStderr(res?.stderr);
     if (detail) process.stderr.write(`run-live-lifecycle: ${step} failed: ${detail}\n`);
-    else process.stderr.write(`run-live-lifecycle: ${step} failed with exit ${res?.status ?? 'unknown'}\n`);
+    else
+      process.stderr.write(
+        `run-live-lifecycle: ${step} failed with exit ${res?.status ?? 'unknown'}\n`,
+      );
   };
 
   try {
@@ -268,24 +430,53 @@ export async function runIsoFlow(deps) {
 
     const mkVol = run(['volume', 'create', scratch]);
     results.volume = mkVol.status ?? 1;
-    if (results.volume !== 0) { fail('volume create', mkVol); return { exitCode: 1, results, argvLog }; }
+    if (results.volume !== 0) {
+      fail('volume create', mkVol);
+      return { exitCode: 1, results, argvLog };
+    }
 
     const gen = run(generateMedia(scratch, mediaName), { stdio: 'pipe' });
     results.media = gen.status ?? 1;
-    if (results.media !== 0) { fail('media generation', gen); return { exitCode: 1, results, argvLog }; }
+    if (results.media !== 0) {
+      fail('media generation', gen);
+      return { exitCode: 1, results, argvLog };
+    }
 
     const lsMedia = run(lsMediaArgs(scratch, mediaName));
     results.mediaVisible = lsMedia.status ?? 1;
-    if (results.mediaVisible !== 0) { fail('media visibility', lsMedia); return { exitCode: 1, results, argvLog }; }
+    if (results.mediaVisible !== 0) {
+      fail('media visibility', lsMedia);
+      return { exitCode: 1, results, argvLog };
+    }
 
     const setup = run(scratchFilesSetupArgs(scratch, ['state.json', 'iso.json', 'iso-done.json']));
     results.stateFile = setup.status ?? 1;
-    if (results.stateFile !== 0) { fail('scratch files setup', setup); return { exitCode: 1, results, argvLog }; }
+    if (results.stateFile !== 0) {
+      fail('scratch files setup', setup);
+      return { exitCode: 1, results, argvLog };
+    }
 
-    const start = run(['run', '-d', '--name', cname, '--env-file', envFile,
-      '-v', `${repoRoot}:/repo:ro`, '-v', `${scratch}:/scratch`, ...extraMounts, '-w', stageWorkdir,
-      stageImage, ...stageCommand]);
-    if (start.status !== 0) { fail('stage container start', start); return { exitCode: 1, results, argvLog }; }
+    const start = run([
+      'run',
+      '-d',
+      '--name',
+      cname,
+      '--env-file',
+      envFile,
+      '-v',
+      `${repoRoot}:/repo:ro`,
+      '-v',
+      `${scratch}:/scratch`,
+      ...extraMounts,
+      '-w',
+      stageWorkdir,
+      stageImage,
+      ...stageCommand,
+    ]);
+    if (start.status !== 0) {
+      fail('stage container start', start);
+      return { exitCode: 1, results, argvLog };
+    }
     cid = `${start.stdout || ''}`.trim();
 
     // Wait for the fixture request, apply the guarded SQL, mark done.
@@ -293,7 +484,11 @@ export async function runIsoFlow(deps) {
     for (let i = 0; i < isoWaits; i += 1) {
       const content = await readScratch(`${scratch}/iso.json`);
       if (content) {
-        try { iso = JSON.parse(content); } catch { iso = null; }
+        try {
+          iso = JSON.parse(content);
+        } catch {
+          iso = null;
+        }
         if (iso && iso.subscriptionId) break;
         iso = null;
       }
@@ -306,22 +501,50 @@ export async function runIsoFlow(deps) {
       const fullLog = `${diag.stdout || ''}\n${diag.stderr || ''}`;
       const tail = fullLog.trim().split('\n').slice(-8).join(' | ');
       writeFileSync(join(tmp, `m5-iso-evidence-${tag}.log`), fullLog, { mode: 0o600 });
-      fail('fixture request', { status: 1, stderr: `iso request never appeared. stage log tail: ${tail}` });
+      fail('fixture request', {
+        status: 1,
+        stderr: `iso request never appeared. stage log tail: ${tail}`,
+      });
       return { exitCode: 1, results, argvLog };
     }
-    const { buildExpiryFixture, buildFixtureGuardSelect } = await import('./stages/subscription-expiry.mjs');
-    const guard = run(['exec', RS256_POSTGRES, 'psql', '-U', 'postgres', '-d', 'education_platform', '-tA', '-c',
-      buildFixtureGuardSelect(iso.subscriptionId, iso.studentId, iso.courseId)]);
+    const { buildExpiryFixture, buildFixtureGuardSelect } = await import(
+      './stages/subscription-expiry.mjs'
+    );
+    const guard = run([
+      'exec',
+      RS256_POSTGRES,
+      'psql',
+      '-U',
+      'postgres',
+      '-d',
+      'education_platform',
+      '-tA',
+      '-c',
+      buildFixtureGuardSelect(iso.subscriptionId, iso.studentId, iso.courseId),
+    ]);
     const guarded = guard.status === 0 && `${guard.stdout || ''}`.trim() === '1';
     if (!guarded) {
       fail('fixture guard', guard);
       return { exitCode: 1, results, argvLog };
     }
-    const apply = run(['exec', RS256_POSTGRES, 'psql', '-U', 'postgres', '-d', 'education_platform', '-tA', '-c',
-      buildExpiryFixture(iso.subscriptionId, iso.studentId, iso.courseId, iso.targetIso)]);
+    const apply = run([
+      'exec',
+      RS256_POSTGRES,
+      'psql',
+      '-U',
+      'postgres',
+      '-d',
+      'education_platform',
+      '-tA',
+      '-c',
+      buildExpiryFixture(iso.subscriptionId, iso.studentId, iso.courseId, iso.targetIso),
+    ]);
     const appliedOne = apply.status === 0 && `${apply.stdout || ''}`.trim() === 'UPDATE 1';
     results.fixture = appliedOne ? 0 : 1;
-    if (!appliedOne) { fail('fixture apply (exactly one row)', apply); return { exitCode: 1, results, argvLog }; }
+    if (!appliedOne) {
+      fail('fixture apply (exactly one row)', apply);
+      return { exitCode: 1, results, argvLog };
+    }
     await writeScratch(`${scratch}/iso-done.json`, '{"done":true}');
 
     const waited = run(['wait', cname]);
@@ -334,20 +557,33 @@ export async function runIsoFlow(deps) {
     const logText = `${logs.stdout || ''}\n${logs.stderr || ''}`;
     if (evidencePath) writeFileSync(evidencePath, logText, { encoding: 'utf8', mode: 0o600 });
     const evidence = verifyEvidence(logText);
-    process.stdout.write(`evidence records=${evidence.records} fails=${evidence.fails} verdict=${evidence.verdict} disagreement=${evidence.disagreement.length}\n`);
-    results.evidence = evidence.disagreement.length === 0 && evidence.verdict === 'PASS' && results.stages === 0 ? 0 : 1;
+    process.stdout.write(
+      `evidence records=${evidence.records} fails=${evidence.fails} verdict=${evidence.verdict} disagreement=${evidence.disagreement.length}\n`,
+    );
+    results.evidence =
+      evidence.disagreement.length === 0 && evidence.verdict === 'PASS' && results.stages === 0
+        ? 0
+        : 1;
     if (results.evidence !== 0) {
-      process.stderr.write(`run-live-lifecycle: evidence disagreement: ${evidence.disagreement.join('; ') || `verdict=${evidence.verdict} exit=${results.stages}`}\n`);
+      process.stderr.write(
+        `run-live-lifecycle: evidence disagreement: ${evidence.disagreement.join('; ') || `verdict=${evidence.verdict} exit=${results.stages}`}\n`,
+      );
       const tail = logText.trim().split('\n').slice(-60).join('\n');
       process.stdout.write(`--- stage log tail ---\n${tail}\n--- end stage log ---\n`);
       try {
         const evidencePath = join(tmp, `m5-iso-evidence-${tag}.log`);
         writeFileSync(evidencePath, logText, { encoding: 'utf8', mode: 0o600 });
         process.stdout.write(`evidence preserved at ${evidencePath}\n`);
-      } catch { /* best effort */ }
+      } catch {
+        /* best effort */
+      }
     }
   } finally {
-    try { rmSync(envFile, { force: true }); } catch { /* already gone */ }
+    try {
+      rmSync(envFile, { force: true });
+    } catch {
+      /* already gone */
+    }
     if (cid) run(['rm', '-f', cid]);
     const ls = run(['volume', 'inspect', scratch]);
     if (ls.status === 0) {
@@ -360,7 +596,16 @@ export async function runIsoFlow(deps) {
       process.stdout.write('scratch volume removed=n/a (absent)\n');
     }
   }
-  const parts = [results.volume, results.media, results.mediaVisible, results.stateFile, results.fixture, results.stages, results.evidence, results.cleanup];
+  const parts = [
+    results.volume,
+    results.media,
+    results.mediaVisible,
+    results.stateFile,
+    results.fixture,
+    results.stages,
+    results.evidence,
+    results.cleanup,
+  ];
   return { exitCode: parts.every((c) => c === 0) ? 0 : 1, results, argvLog };
 }
 
@@ -392,37 +637,54 @@ async function main() {
   const isoMode = runStages.length === 1 && runStages[0] === 'subscription-expiry';
   const outcome = isoMode
     ? await runIsoFlow({
-      spawn: realSpawn,
-      tag,
-      envValues: merged,
-      root,
-      tmpdir: tmpdir(),
-      readScratch: async (path) => {
-        const [volume, ...rest] = path.split('/').filter(Boolean);
-        const r = realSpawn(['run', '--rm', '-v', `${volume}:/s`, STAGE_IMAGE, 'cat', `/s/${rest.join('/')}`], { encoding: 'utf8' });
-        return r.status === 0 ? r.stdout : null;
-      },
-      writeScratch: async (path, content) => {
-        const [volume, ...rest] = path.split('/').filter(Boolean);
-        const r = realSpawn(['run', '--rm', '-v', `${volume}:/s`, STAGE_IMAGE, 'sh', '-c', `cat > /s/${rest.join('/')}`], {
-          encoding: 'utf8', input: content,
-        });
-        if (r.status !== 0) throw new Error('scratch marker write failed');
-      },
-    })
+        spawn: realSpawn,
+        tag,
+        envValues: merged,
+        root,
+        tmpdir: tmpdir(),
+        readScratch: async (path) => {
+          const [volume, ...rest] = path.split('/').filter(Boolean);
+          const r = realSpawn(
+            ['run', '--rm', '-v', `${volume}:/s`, STAGE_IMAGE, 'cat', `/s/${rest.join('/')}`],
+            { encoding: 'utf8' },
+          );
+          return r.status === 0 ? r.stdout : null;
+        },
+        writeScratch: async (path, content) => {
+          const [volume, ...rest] = path.split('/').filter(Boolean);
+          const r = realSpawn(
+            [
+              'run',
+              '--rm',
+              '-v',
+              `${volume}:/s`,
+              STAGE_IMAGE,
+              'sh',
+              '-c',
+              `cat > /s/${rest.join('/')}`,
+            ],
+            {
+              encoding: 'utf8',
+              input: content,
+            },
+          );
+          if (r.status !== 0) throw new Error('scratch marker write failed');
+        },
+      })
     : runFlow({
-    spawn: realSpawn,
-    tag,
-    envValues: merged,
-    root,
-    tmpdir: tmpdir(),
-    stages: runStages,
-  });
+        spawn: realSpawn,
+        tag,
+        envValues: merged,
+        root,
+        tmpdir: tmpdir(),
+        stages: runStages,
+      });
   process.stdout.write(`runner exit=${outcome.exitCode}\n`);
   return outcome.exitCode;
 }
 
-const invokedAsMain = Boolean(process.argv[1]) && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+const invokedAsMain =
+  Boolean(process.argv[1]) && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 if (invokedAsMain) {
   (async () => {
     let code = 1;

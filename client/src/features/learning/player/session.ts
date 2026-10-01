@@ -75,7 +75,11 @@ export function isExpired(nowMs = Date.now()): boolean {
  * session id and the media URLs are the same session, so DASH, EME and the media
  * element must not be disturbed. Nothing is persisted.
  */
-export function renewSession(playbackToken: string, tokenExpiresAtMs: number, sessionExpiresAtMs: number): boolean {
+export function renewSession(
+  playbackToken: string,
+  tokenExpiresAtMs: number,
+  sessionExpiresAtMs: number,
+): boolean {
   if (current === null) return false;
   if (!Number.isFinite(tokenExpiresAtMs) || !Number.isFinite(sessionExpiresAtMs)) return false;
   current = {

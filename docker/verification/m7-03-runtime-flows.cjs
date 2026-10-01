@@ -31,7 +31,8 @@ let fixture = null;
 function jarFrom(headers) {
   const jar = new Map();
   for (const h of headers.getSetCookie()) {
-    const pair = h.split(';')[0]; const at = pair.indexOf('=');
+    const pair = h.split(';')[0];
+    const at = pair.indexOf('=');
     jar.set(pair.slice(0, at), pair.slice(at + 1));
   }
   return jar;
@@ -47,35 +48,64 @@ async function csrfJar() {
 
 async function register(label) {
   const jar = await csrfJar();
-  const credentials = { displayName: `M7-03 flow ${label}`, email: `m7-03-${fixture.run}-${label}@example.test`,
-    phone: `011${randomInt(10000000, 100000000)}`, password: randomUUID() + '!a9A' };
+  const credentials = {
+    displayName: `M7-03 flow ${label}`,
+    email: `m7-03-${fixture.run}-${label}@example.test`,
+    phone: `011${randomInt(10000000, 100000000)}`,
+    password: randomUUID() + '!a9A',
+  };
   fixture.users.push({ label, email: credentials.email, password: credentials.password });
   fs.writeFileSync(file, JSON.stringify(fixture), { mode: 0o600 });
-  const res = await fetch(entry + '/api/auth/register', { method: 'POST', headers: {
-    Origin: ORIGIN, 'Content-Type': 'application/json', Cookie: cookies(jar), 'X-Csrf-Token': csrfOf(jar),
-  }, body: JSON.stringify(credentials) });
+  const res = await fetch(entry + '/api/auth/register', {
+    method: 'POST',
+    headers: {
+      Origin: ORIGIN,
+      'Content-Type': 'application/json',
+      Cookie: cookies(jar),
+      'X-Csrf-Token': csrfOf(jar),
+    },
+    body: JSON.stringify(credentials),
+  });
   assert.equal(res.status, 201, `${label} registration`);
   const body = await res.json();
-  const user = fixture.users.at(-1); user.id = body.data.user.id;
+  const user = fixture.users.at(-1);
+  user.id = body.data.user.id;
   fs.writeFileSync(file, JSON.stringify(fixture), { mode: 0o600 });
   return { jar: jarFrom(res.headers), user };
 }
 
 async function login(email, password) {
   const jar = await csrfJar();
-  const res = await fetch(entry + '/api/auth/login', { method: 'POST', headers: {
-    Origin: ORIGIN, 'Content-Type': 'application/json', Cookie: cookies(jar), 'X-Csrf-Token': csrfOf(jar),
-  }, body: JSON.stringify({ identifier: email, password }) });
+  const res = await fetch(entry + '/api/auth/login', {
+    method: 'POST',
+    headers: {
+      Origin: ORIGIN,
+      'Content-Type': 'application/json',
+      Cookie: cookies(jar),
+      'X-Csrf-Token': csrfOf(jar),
+    },
+    body: JSON.stringify({ identifier: email, password }),
+  });
   assert.equal(res.status, 200, `login ${email}`);
   return jarFrom(res.headers);
 }
 
 async function api(method, path, jar, body) {
-  const res = await fetch(entry + path, { method, headers: {
-    Origin: ORIGIN, 'Content-Type': 'application/json', ...(jar ? { Cookie: cookies(jar), 'X-Csrf-Token': csrfOf(jar) } : {}),
-  }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  const res = await fetch(entry + path, {
+    method,
+    headers: {
+      Origin: ORIGIN,
+      'Content-Type': 'application/json',
+      ...(jar ? { Cookie: cookies(jar), 'X-Csrf-Token': csrfOf(jar) } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
   let data = null;
-  try { data = await res.json(); } catch { /* non-JSON ignored */ }
+  try {
+    data = await res.json();
+  } catch {
+    /* non-JSON ignored */
+  }
   return { status: res.status, data };
 }
 
@@ -83,25 +113,79 @@ async function seed() {
   assert.ok(!fs.existsSync(file), 'previous fixture receipt must be cleaned first');
   fixture = { run: randomUUID(), users: [], courses: [] };
   fs.writeFileSync(file, JSON.stringify(fixture), { mode: 0o600 });
-  const a = await register('a'); const b = await register('b');
+  const a = await register('a');
+  const b = await register('b');
   console.log(`register A/B 201, login verifies Argon2 next`);
-  const admin = { label: 'admin', email: `m7-03-${fixture.run}-admin@example.test`, password: randomUUID() + '!a9A' };
-  fixture.users.push(admin); fs.writeFileSync(file, JSON.stringify(fixture), { mode: 0o600 });
-  const row = await db.user.create({ data: { email: admin.email, phone: `012${randomInt(10000000, 100000000)}`,
-    displayName: 'M7-03 flow admin', passwordHash: await hashPassword(admin.password, PRODUCTION_ARGON2), role: 'ADMIN' } });
+  const admin = {
+    label: 'admin',
+    email: `m7-03-${fixture.run}-admin@example.test`,
+    password: randomUUID() + '!a9A',
+  };
+  fixture.users.push(admin);
+  fs.writeFileSync(file, JSON.stringify(fixture), { mode: 0o600 });
+  const row = await db.user.create({
+    data: {
+      email: admin.email,
+      phone: `012${randomInt(10000000, 100000000)}`,
+      displayName: 'M7-03 flow admin',
+      passwordHash: await hashPassword(admin.password, PRODUCTION_ARGON2),
+      role: 'ADMIN',
+    },
+  });
   admin.id = row.id;
-  const course = await db.course.create({ data: { slug: `m7-03-${fixture.run}-course`,
-    titleAr: 'دورة التحقق', titleEn: 'Verification course', descriptionAr: 'اختبار فقط', descriptionEn: 'Fixture only',
-    status: 'PUBLISHED', sections: { create: { titleAr: 'قسم', titleEn: 'Section', position: 1,
-      lessons: { create: { titleAr: 'درس', titleEn: 'Lesson', position: 1, media: { create: {
-        status: 'READY', externalAssetId: randomUUID(), assetId: randomUUID(), idempotencyKey: randomUUID() } } } } } } } });
+  const course = await db.course.create({
+    data: {
+      slug: `m7-03-${fixture.run}-course`,
+      titleAr: 'دورة التحقق',
+      titleEn: 'Verification course',
+      descriptionAr: 'اختبار فقط',
+      descriptionEn: 'Fixture only',
+      status: 'PUBLISHED',
+      sections: {
+        create: {
+          titleAr: 'قسم',
+          titleEn: 'Section',
+          position: 1,
+          lessons: {
+            create: {
+              titleAr: 'درس',
+              titleEn: 'Lesson',
+              position: 1,
+              media: {
+                create: {
+                  status: 'READY',
+                  externalAssetId: randomUUID(),
+                  assetId: randomUUID(),
+                  idempotencyKey: randomUUID(),
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
   fixture.courses.push({ id: course.id, slug: course.slug });
-  const plan = await db.subscriptionPlan.create({ data: { courseId: course.id, currentPricePiastres: 60000, durationDays: 90 } });
+  const plan = await db.subscriptionPlan.create({
+    data: { courseId: course.id, currentPricePiastres: 60000, durationDays: 90 },
+  });
   fixture.planId = plan.id;
-  const request = await db.rechargeRequest.create({ data: { studentId: a.user.id, amountPiastres: 100000, channel: 'INSTAPAY',
-    referenceNorm: randomUUID().replaceAll('-', '').toUpperCase(), senderName: 'M7-03 flow', senderPhone: '01012345678',
-    transferDate: new Date(), proofFilename: 'fixture.png', proofMime: 'image/png', proofSize: 1,
-    proofHash: 'e'.repeat(64), idempotencyKey: randomUUID() } });
+  const request = await db.rechargeRequest.create({
+    data: {
+      studentId: a.user.id,
+      amountPiastres: 100000,
+      channel: 'INSTAPAY',
+      referenceNorm: randomUUID().replaceAll('-', '').toUpperCase(),
+      senderName: 'M7-03 flow',
+      senderPhone: '01012345678',
+      transferDate: new Date(),
+      proofFilename: 'fixture.png',
+      proofMime: 'image/png',
+      proofSize: 1,
+      proofHash: 'e'.repeat(64),
+      idempotencyKey: randomUUID(),
+    },
+  });
   fixture.requestId = request.id;
   fs.writeFileSync(file, JSON.stringify(fixture), { mode: 0o600 });
 
@@ -109,7 +193,8 @@ async function seed() {
   const studentJar = await login(a.user.email, a.user.password);
   console.log(`admin + student API logins 200 (Argon2 verify through serving runtime)`);
   const wallet0 = await api('GET', '/api/wallet', studentJar);
-  assert.equal(wallet0.status, 200); assert.equal(wallet0.data.data.balancePiastres, 0);
+  assert.equal(wallet0.status, 200);
+  assert.equal(wallet0.data.data.balancePiastres, 0);
   const inboxAnon = await api('GET', '/api/notifications', null);
   assert.equal(inboxAnon.status, 401);
   const inbox = await api('GET', '/api/notifications', studentJar);
@@ -119,18 +204,32 @@ async function seed() {
   assert.ok(JSON.stringify(catalog.data).includes(course.slug), 'published course listed');
 
   const studentBJar = await login(b.user.email, b.user.password);
-  const forbidden = await api('POST', `/api/admin/recharge-requests/${request.id}/review`, studentBJar, { decision: 'APPROVE', receiptVerified: true });
-  console.log(`student approve attempt status=${forbidden.status} code=${forbidden.data?.error?.code ?? 'n/a'}`);
+  const forbidden = await api(
+    'POST',
+    `/api/admin/recharge-requests/${request.id}/review`,
+    studentBJar,
+    { decision: 'APPROVE', receiptVerified: true },
+  );
+  console.log(
+    `student approve attempt status=${forbidden.status} code=${forbidden.data?.error?.code ?? 'n/a'}`,
+  );
   assert.equal(forbidden.status, 403);
   assert.equal(forbidden.data.error.code, 'FORBIDDEN');
 
-  const approval = await api('POST', `/api/admin/recharge-requests/${request.id}/review`, adminJar, { decision: 'APPROVE', receiptVerified: true });
+  const approval = await api(
+    'POST',
+    `/api/admin/recharge-requests/${request.id}/review`,
+    adminJar,
+    { decision: 'APPROVE', receiptVerified: true },
+  );
   assert.equal(approval.status, 200, 'admin approval');
   const wallet1 = await api('GET', '/api/wallet', studentJar);
   assert.equal(wallet1.data.data.balancePiastres, 100000);
   const recon1 = await api('GET', '/api/wallet/reconcile', studentJar);
   assert.equal(recon1.data.data.matches, true);
-  console.log(`approval credited exact: balance=${wallet1.data.data.balancePiastres} ledgerMatch=${recon1.data.data.matches}`);
+  console.log(
+    `approval credited exact: balance=${wallet1.data.data.balancePiastres} ledgerMatch=${recon1.data.data.matches}`,
+  );
   let inboxAfter = null;
   for (let attempt = 0; attempt < 10; attempt += 1) {
     inboxAfter = await api('GET', '/api/notifications', studentJar);
@@ -138,18 +237,33 @@ async function seed() {
     if (inboxAfter.data.data.items.some((item) => item.type === 'RECHARGE_APPROVED')) break;
     await new Promise((resolve) => setTimeout(resolve, 3000));
   }
-  console.log(`approval notice visible after dispatcher poll: items=${inboxAfter.data.data.items.length}`);
-  assert.ok(inboxAfter.data.data.items.some((item) => item.type === 'RECHARGE_APPROVED'), 'approval notice visible to requester');
+  console.log(
+    `approval notice visible after dispatcher poll: items=${inboxAfter.data.data.items.length}`,
+  );
+  assert.ok(
+    inboxAfter.data.data.items.some((item) => item.type === 'RECHARGE_APPROVED'),
+    'approval notice visible to requester',
+  );
   const foreignInbox = await api('GET', '/api/notifications', studentBJar);
   assert.equal(foreignInbox.status, 200);
   assert.equal(foreignInbox.data.data.items.length, 0, 'approval notice is private to requester');
 
-  const replay = await api('POST', `/api/admin/recharge-requests/${request.id}/review`, adminJar, { decision: 'APPROVE', receiptVerified: true });
+  const replay = await api('POST', `/api/admin/recharge-requests/${request.id}/review`, adminJar, {
+    decision: 'APPROVE',
+    receiptVerified: true,
+  });
   assert.equal(replay.status, 409, 'duplicate approval immutable');
   const walletAfterReplay = await api('GET', '/api/wallet', studentJar);
-  assert.equal(walletAfterReplay.data.data.balancePiastres, 100000, 'duplicate approval never credits again');
+  assert.equal(
+    walletAfterReplay.data.data.balancePiastres,
+    100000,
+    'duplicate approval never credits again',
+  );
 
-  const purchase = await api('POST', '/api/wallet/purchases', studentJar, { planId: plan.id, idempotencyKey: randomUUID() });
+  const purchase = await api('POST', '/api/wallet/purchases', studentJar, {
+    planId: plan.id,
+    idempotencyKey: randomUUID(),
+  });
   assert.equal(purchase.status, 201, 'student purchase');
   assert.equal(purchase.data.data.pricePiastres, 60000);
   const sub = purchase.data.data.subscription;
@@ -161,11 +275,19 @@ async function seed() {
   assert.equal(wallet2.data.data.balancePiastres, 40000);
   const recon2 = await api('GET', '/api/wallet/reconcile', studentJar);
   assert.equal(recon2.data.data.matches, true);
-  console.log(`purchase debited exact: balance=${wallet2.data.data.balancePiastres} spanDays=${spanDays} ledgerMatch=${recon2.data.data.matches}`);
+  console.log(
+    `purchase debited exact: balance=${wallet2.data.data.balancePiastres} spanDays=${spanDays} ledgerMatch=${recon2.data.data.matches}`,
+  );
 
-  const renewal = await api('POST', '/api/wallet/purchases', studentJar, { planId: plan.id, idempotencyKey: randomUUID() });
+  const renewal = await api('POST', '/api/wallet/purchases', studentJar, {
+    planId: plan.id,
+    idempotencyKey: randomUUID(),
+  });
   assert.equal(renewal.status, 402, 'second purchase needs funds (40000 < 60000)');
-  const poor = await api('POST', '/api/wallet/purchases', studentBJar, { planId: plan.id, idempotencyKey: randomUUID() });
+  const poor = await api('POST', '/api/wallet/purchases', studentBJar, {
+    planId: plan.id,
+    idempotencyKey: randomUUID(),
+  });
   assert.equal(poor.status, 402, 'zero-balance purchase refused');
   console.log(`M7-03 runtime flows PASS: approval=100000 purchase=60000 renewal402 poor402.`);
 }
@@ -175,15 +297,28 @@ async function cleanup() {
   fixture = JSON.parse(fs.readFileSync(file, 'utf8'));
   assert.match(fixture.run, /^[a-f0-9-]{36}$/);
   const userPrefix = `m7-03-${fixture.run}-`;
-  const ownedUsers = await db.user.findMany({ where: { email: { startsWith: userPrefix } }, select: { id: true } });
+  const ownedUsers = await db.user.findMany({
+    where: { email: { startsWith: userPrefix } },
+    select: { id: true },
+  });
   const ids = ownedUsers.map((r) => r.id);
-  const ownedCourses = await db.course.findMany({ where: { slug: { startsWith: userPrefix } }, select: { id: true } });
+  const ownedCourses = await db.course.findMany({
+    where: { slug: { startsWith: userPrefix } },
+    select: { id: true },
+  });
   const courseIds = ownedCourses.map((r) => r.id);
-  const ownedRequests = await db.rechargeRequest.findMany({ where: { studentId: { in: ids } }, select: { id: true } });
-  await db.notificationEvent.deleteMany({ where: { OR: [
-    { courseId: { in: courseIds } },
-    ...ownedRequests.map((r) => ({ eventKey: `recharge:${r.id}:decision` })),
-  ] } });
+  const ownedRequests = await db.rechargeRequest.findMany({
+    where: { studentId: { in: ids } },
+    select: { id: true },
+  });
+  await db.notificationEvent.deleteMany({
+    where: {
+      OR: [
+        { courseId: { in: courseIds } },
+        ...ownedRequests.map((r) => ({ eventKey: `recharge:${r.id}:decision` })),
+      ],
+    },
+  });
   await db.auditEvent.deleteMany({ where: { actorUserId: { in: ids } } });
   await db.walletLedgerEntry.deleteMany({ where: { wallet: { userId: { in: ids } } } });
   await db.wallet.deleteMany({ where: { userId: { in: ids } } });
@@ -200,11 +335,18 @@ async function cleanup() {
 
 (async () => {
   try {
-    if (process.argv[2] === 'cleanup') { await cleanup(); return; }
+    if (process.argv[2] === 'cleanup') {
+      await cleanup();
+      return;
+    }
     assert.equal(process.argv[2], 'seed');
     await seed();
   } catch (error) {
-    console.error(`M7-03 flow operation failed: ${error instanceof assert.AssertionError ? error.message : 'API/database/file operation'}`);
+    console.error(
+      `M7-03 flow operation failed: ${error instanceof assert.AssertionError ? error.message : 'API/database/file operation'}`,
+    );
     process.exitCode = 1;
-  } finally { await db.$disconnect(); }
+  } finally {
+    await db.$disconnect();
+  }
 })();

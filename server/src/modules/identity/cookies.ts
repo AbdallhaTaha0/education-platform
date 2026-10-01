@@ -26,7 +26,14 @@ export interface CookieFlags {
   secure: boolean;
 }
 
-function base(name: string, value: string, path: string, maxAgeSec: number, flags: CookieFlags, httpOnly: boolean): string {
+function base(
+  name: string,
+  value: string,
+  path: string,
+  maxAgeSec: number,
+  flags: CookieFlags,
+  httpOnly: boolean,
+): string {
   const parts = [
     `${name}=${encodeURIComponent(value)}`,
     `Path=${path}`,
@@ -43,10 +50,21 @@ export function accessCookie(token: string, flags: CookieFlags): string {
 }
 
 export function refreshCookie(secret: string, maxAgeSec: number, flags: CookieFlags): string {
-  return base(REFRESH_COOKIE, secret, REFRESH_PATH, Math.max(0, Math.floor(maxAgeSec)), flags, true);
+  return base(
+    REFRESH_COOKIE,
+    secret,
+    REFRESH_PATH,
+    Math.max(0, Math.floor(maxAgeSec)),
+    flags,
+    true,
+  );
 }
 
-export function csrfCookie(token: string, flags: CookieFlags, maxAgeSec: number = CSRF_MAX_AGE_SEC): string {
+export function csrfCookie(
+  token: string,
+  flags: CookieFlags,
+  maxAgeSec: number = CSRF_MAX_AGE_SEC,
+): string {
   return base(CSRF_COOKIE, token, CSRF_PATH, Math.max(1, Math.floor(maxAgeSec)), flags, false);
 }
 

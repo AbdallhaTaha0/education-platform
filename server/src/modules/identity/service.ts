@@ -127,7 +127,15 @@ async function establishSession(
   getLogger().info({ userId: user.id, sessionId: timing.sessionId }, 'session established');
   return {
     user,
-    cookies: await buildSessionCookies(ctx, user, role, timing.sessionId, timing.refreshSecret, timing.absoluteExpiresAt, csrfToken),
+    cookies: await buildSessionCookies(
+      ctx,
+      user,
+      role,
+      timing.sessionId,
+      timing.refreshSecret,
+      timing.absoluteExpiresAt,
+      csrfToken,
+    ),
   };
 }
 
@@ -139,7 +147,11 @@ export interface RegisterInput {
 }
 
 /** Public registration always creates STUDENT. Privilege fields are rejected. */
-export async function register(ctx: IdentityContext, raw: unknown, csrfToken: string): Promise<SessionCookies> {
+export async function register(
+  ctx: IdentityContext,
+  raw: unknown,
+  csrfToken: string,
+): Promise<SessionCookies> {
   rejectPrivilegeFields(raw);
   const body = (typeof raw === 'object' && raw !== null ? raw : {}) as RegisterInput;
   const displayName = normalizeDisplayName(body.displayName);
@@ -152,7 +164,8 @@ export async function register(ctx: IdentityContext, raw: unknown, csrfToken: st
     select: { email: true, phone: true },
   });
   if (conflict) {
-    if (conflict.email === email) throw new ApiError(409, 'EMAIL_TAKEN', 'Email is already registered.');
+    if (conflict.email === email)
+      throw new ApiError(409, 'EMAIL_TAKEN', 'Email is already registered.');
     throw new ApiError(409, 'PHONE_TAKEN', 'Phone is already registered.');
   }
   const passwordHash = await hashPassword(password, ctx.auth.argon2);
@@ -185,7 +198,15 @@ export async function register(ctx: IdentityContext, raw: unknown, csrfToken: st
   getLogger().info({ userId }, 'student registered');
   return {
     user: toSafeUser(created),
-    cookies: await buildSessionCookies(ctx, toSafeUser(created), 'STUDENT', timing.sessionId, timing.refreshSecret, timing.absoluteExpiresAt, csrfToken),
+    cookies: await buildSessionCookies(
+      ctx,
+      toSafeUser(created),
+      'STUDENT',
+      timing.sessionId,
+      timing.refreshSecret,
+      timing.absoluteExpiresAt,
+      csrfToken,
+    ),
   };
 }
 
@@ -196,7 +217,11 @@ export interface LoginInput {
 
 /** One identifier field accepts either normalized email or normalized phone.
  * Unknown identifiers and wrong passwords share one public failure shape. */
-export async function login(ctx: IdentityContext, raw: unknown, csrfToken: string): Promise<SessionCookies> {
+export async function login(
+  ctx: IdentityContext,
+  raw: unknown,
+  csrfToken: string,
+): Promise<SessionCookies> {
   rejectPrivilegeFields(raw);
   const body = (typeof raw === 'object' && raw !== null ? raw : {}) as LoginInput;
   const password = typeof body.password === 'string' ? body.password : '';
@@ -361,7 +386,8 @@ export async function createAdmin(ctx: IdentityContext, raw: unknown): Promise<S
     select: { email: true, phone: true },
   });
   if (conflict) {
-    if (conflict.email === email) throw new ApiError(409, 'EMAIL_TAKEN', 'Email is already registered.');
+    if (conflict.email === email)
+      throw new ApiError(409, 'EMAIL_TAKEN', 'Email is already registered.');
     throw new ApiError(409, 'PHONE_TAKEN', 'Phone is already registered.');
   }
   const passwordHash = await hashPassword(password, ctx.auth.argon2);

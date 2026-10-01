@@ -48,10 +48,7 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
   const keyRef = useRef<string | null>(null);
 
   const piastres = useMemo(() => egpToPiastres(amount), [amount]);
-  const channelOptions = useMemo(
-    () => (instructions ?? []).map((c) => c.channel),
-    [instructions],
-  );
+  const channelOptions = useMemo(() => (instructions ?? []).map((c) => c.channel), [instructions]);
 
   async function onSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
@@ -126,59 +123,93 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
             <form onSubmit={(e) => void onSubmit(e)} noValidate>
               <Field id="rch-amount" label={t.fieldAmount}>
                 <input
-                  id="rch-amount" name="amount" inputMode="decimal" required
-                  value={amount} onChange={(e) => setAmount(e.target.value)}
-                  placeholder="600" dir="ltr" className="w-full rounded-control border border-border bg-surface px-3 py-2"
+                  id="rch-amount"
+                  name="amount"
+                  inputMode="decimal"
+                  required
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  placeholder="600"
+                  dir="ltr"
+                  className="w-full rounded-control border border-border bg-surface px-3 py-2"
                 />
               </Field>
               {piastres !== null ? (
-                <p className="mt-1 text-sm text-muted"><Money piastres={piastres} /></p>
+                <p className="mt-1 text-sm text-muted">
+                  <Money piastres={piastres} />
+                </p>
               ) : null}
               <Field id="rch-channel" label={t.fieldChannel}>
                 <select
-                  id="rch-channel" name="channel" required value={channel}
+                  id="rch-channel"
+                  name="channel"
+                  required
+                  value={channel}
                   onChange={(e) => setChannel(e.target.value as RechargeChannel | '')}
                   className="w-full rounded-control border border-border bg-surface px-3 py-2"
                 >
                   <option value="">{t.selectChannel}</option>
                   {channelOptions.map((c) => (
                     <option key={c} value={c}>
-                      {c === 'INSTAPAY' ? t.channelInstapay : c === 'BANK_TRANSFER' ? t.channelBank : t.channelMobile}
+                      {c === 'INSTAPAY'
+                        ? t.channelInstapay
+                        : c === 'BANK_TRANSFER'
+                          ? t.channelBank
+                          : t.channelMobile}
                     </option>
                   ))}
                 </select>
               </Field>
               <Field id="rch-reference" label={t.fieldReference}>
                 <input
-                  id="rch-reference" name="reference" required dir="ltr"
-                  value={reference} onChange={(e) => setReference(e.target.value)}
+                  id="rch-reference"
+                  name="reference"
+                  required
+                  dir="ltr"
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
                   className="w-full rounded-control border border-border bg-surface px-3 py-2"
                 />
               </Field>
               <Field id="rch-sender" label={t.fieldSenderName}>
                 <input
-                  id="rch-sender" name="senderName" required
-                  value={senderName} onChange={(e) => setSenderName(e.target.value)}
+                  id="rch-sender"
+                  name="senderName"
+                  required
+                  value={senderName}
+                  onChange={(e) => setSenderName(e.target.value)}
                   className="w-full rounded-control border border-border bg-surface px-3 py-2"
                 />
               </Field>
               <Field id="rch-phone" label={t.fieldSenderPhone}>
                 <input
-                  id="rch-phone" name="senderPhone" type="tel" required dir="ltr"
-                  value={senderPhone} onChange={(e) => setSenderPhone(e.target.value)}
+                  id="rch-phone"
+                  name="senderPhone"
+                  type="tel"
+                  required
+                  dir="ltr"
+                  value={senderPhone}
+                  onChange={(e) => setSenderPhone(e.target.value)}
                   className="w-full rounded-control border border-border bg-surface px-3 py-2"
                 />
               </Field>
               <Field id="rch-date" label={t.fieldTransferDate}>
                 <input
-                  id="rch-date" name="transferDate" type="date" required
-                  value={transferDate} onChange={(e) => setTransferDate(e.target.value)}
+                  id="rch-date"
+                  name="transferDate"
+                  type="date"
+                  required
+                  value={transferDate}
+                  onChange={(e) => setTransferDate(e.target.value)}
                   className="w-full rounded-control border border-border bg-surface px-3 py-2"
                 />
               </Field>
               <Field id="rch-proof" label={t.fieldProof} error={fileError ?? undefined}>
                 <input
-                  id="rch-proof" name="proof" type="file" required
+                  id="rch-proof"
+                  name="proof"
+                  type="file"
+                  required
                   accept=".jpg,.jpeg,.png,.pdf"
                   onChange={(e) => {
                     setFile(e.target.files?.[0] ?? null);
@@ -188,8 +219,12 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
                 />
               </Field>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Button type="submit" disabled={busy}>{busy ? <Loading text={t.submitting} /> : t.submitRecharge}</Button>
-                <Button variant="secondary" onClick={() => go('#/wallet')}>{t.cancel}</Button>
+                <Button type="submit" disabled={busy}>
+                  {busy ? <Loading text={t.submitting} /> : t.submitRecharge}
+                </Button>
+                <Button variant="secondary" onClick={() => go('#/wallet')}>
+                  {t.cancel}
+                </Button>
               </div>
             </form>
           </div>

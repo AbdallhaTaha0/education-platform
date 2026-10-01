@@ -5,7 +5,15 @@ import { useLang } from './i18n';
 import { routeDocumentTitle } from './pageTitles';
 import { ThemeProvider } from './theme';
 import { Header } from './components/layout/Header';
-import { adminCourseIdFromHash, learnSlugFromHash, planIdFromHash, packageIdFromHash, routeFromHash, slugFromHash, type Route } from './routes';
+import {
+  adminCourseIdFromHash,
+  learnSlugFromHash,
+  planIdFromHash,
+  packageIdFromHash,
+  routeFromHash,
+  slugFromHash,
+  type Route,
+} from './routes';
 import { PackagePage } from './features/academic/PackagePage';
 import { AdminPackagesPage } from './features/academic/AdminPackagesPage';
 import { AdminSummaryPage } from './features/academic/AdminSummaryPage';
@@ -22,7 +30,11 @@ import { PurchasePage } from './features/purchase/pages/PurchasePage';
 import { PurchaseHistoryPage } from './features/purchase/pages/PurchaseHistoryPage';
 import { DashboardPage } from './features/learning/pages/DashboardPage';
 import { Loading } from './components/ui/Notice';
-const CourseLearningPage = lazy(() => import('./features/learning/pages/CourseLearningPage').then(module => ({ default: module.CourseLearningPage })));
+const CourseLearningPage = lazy(() =>
+  import('./features/learning/pages/CourseLearningPage').then((module) => ({
+    default: module.CourseLearningPage,
+  })),
+);
 import { NotificationsProvider } from './features/notifications/context';
 import { NotificationsPage } from './features/notifications/pages/NotificationsPage';
 
@@ -56,17 +68,37 @@ function Shell(): JSX.Element {
 
   return (
     <div id="top" className="site-shell flex min-h-screen flex-col">
-      <a className="skip-link" href="#main" onClick={(event) => { event.preventDefault(); const main = document.getElementById('main'); if (main) { main.tabIndex = -1; main.focus(); main.scrollIntoView(); } }}>
+      <a
+        className="skip-link"
+        href="#main"
+        onClick={(event) => {
+          event.preventDefault();
+          const main = document.getElementById('main');
+          if (main) {
+            main.tabIndex = -1;
+            main.focus();
+            main.scrollIntoView();
+          }
+        }}
+      >
         {t.skipToContent}
       </a>
       <Header onSwitch={setLang} route={route} />
-      {route === 'home' ? <HomePage onSelectCourse={(slug) => go(`#/courses/${encodeURIComponent(slug)}`)} /> : null}
-      {route === 'courses' ? <PublicCatalogPage onSelect={(slug) => go(`#/courses/${encodeURIComponent(slug)}`)} /> : null}
-      {route === 'course-detail' ? <OfferPage slug={slugFromHash()} onBack={() => go('#/courses')} /> : null}
+      {route === 'home' ? (
+        <HomePage onSelectCourse={(slug) => go(`#/courses/${encodeURIComponent(slug)}`)} />
+      ) : null}
+      {route === 'courses' ? (
+        <PublicCatalogPage onSelect={(slug) => go(`#/courses/${encodeURIComponent(slug)}`)} />
+      ) : null}
+      {route === 'course-detail' ? (
+        <OfferPage slug={slugFromHash()} onBack={() => go('#/courses')} />
+      ) : null}
       {route === 'admin-catalog' ? <AdminListPage go={go} /> : null}
       {route === 'admin-packages' ? <AdminPackagesPage /> : null}
       {route === 'admin-summary' ? <AdminSummaryPage /> : null}
-      {route === 'package' ? <PackagePage key={packageIdFromHash()} id={packageIdFromHash()} /> : null}
+      {route === 'package' ? (
+        <PackagePage key={packageIdFromHash()} id={packageIdFromHash()} />
+      ) : null}
       {route === 'admin-course' ? <AdminDetailPage courseId={adminCourseIdFromHash()} /> : null}
       {route === 'register' ? (
         <main id="main">
@@ -99,7 +131,9 @@ function Shell(): JSX.Element {
       {route === 'wallet' ? <WalletPage go={go} /> : null}
       {route === 'wallet-recharge' ? <RechargePage go={go} /> : null}
       {route === 'purchases' ? <PurchaseHistoryPage /> : null}
-      {route === 'purchase' ? <PurchasePage key={planIdFromHash()} planId={planIdFromHash()} go={go} /> : null}
+      {route === 'purchase' ? (
+        <PurchasePage key={planIdFromHash()} planId={planIdFromHash()} go={go} />
+      ) : null}
       {route === 'admin-recharge' ? <AdminRechargePage /> : null}
       {route === 'dashboard' ? (
         <DashboardPage
@@ -110,11 +144,27 @@ function Shell(): JSX.Element {
       ) : null}
       {route === 'notifications' ? <NotificationsPage /> : null}
       {route === 'learn' ? (
-        <Suspense fallback={<main id="main"><Container><Loading text={t.loading} /></Container></main>}><CourseLearningPage courseSlug={learnSlugFromHash()} onRenew={() => go('#/wallet')} /></Suspense>
+        <Suspense
+          fallback={
+            <main id="main">
+              <Container>
+                <Loading text={t.loading} />
+              </Container>
+            </main>
+          }
+        >
+          <CourseLearningPage courseSlug={learnSlugFromHash()} onRenew={() => go('#/wallet')} />
+        </Suspense>
       ) : null}
       <footer className="mt-auto border-t border-border bg-surface py-8 text-sm text-muted">
         <Container>
-          <div className="flex flex-wrap items-center justify-between gap-3"><p className="font-semibold text-ink">{t.footer}</p><a className="footer-discovery" href="#/courses">{t.navCourses} ↗</a><p>{t.slogan}</p></div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="font-semibold text-ink">{t.footer}</p>
+            <a className="footer-discovery" href="#/courses">
+              {t.navCourses} ↗
+            </a>
+            <p>{t.slogan}</p>
+          </div>
         </Container>
       </footer>
     </div>
@@ -125,7 +175,9 @@ export default function App(): JSX.Element {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <NotificationsProvider><Shell /></NotificationsProvider>
+        <NotificationsProvider>
+          <Shell />
+        </NotificationsProvider>
       </AuthProvider>
     </ThemeProvider>
   );

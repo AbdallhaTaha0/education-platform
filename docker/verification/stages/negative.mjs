@@ -45,7 +45,10 @@ export async function negativeCases(ctx, target = {}) {
     ctx.env.DRM_BASE_URL,
     '/v1/media',
     {},
-    { 'X-Client-Id': ctx.env.DRM_CLIENT_ID, 'X-Client-Secret': `absent-secret-${runId}-0000000000` },
+    {
+      'X-Client-Id': ctx.env.DRM_CLIENT_ID,
+      'X-Client-Secret': `absent-secret-${runId}-0000000000`,
+    },
   );
   results.wrongSecret = wrongSecret.status;
   expect('neg-wrong-secret', wrongSecret.status === 401, { status: wrongSecret.status });

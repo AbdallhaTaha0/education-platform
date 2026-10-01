@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from "react";
-import { useAuth } from "../../../auth";
-import { useLang } from "../../../i18n";
-import { Container, Card } from "../../../components/ui/Card";
-import { Button } from "../../../components/ui/Button";
-import { Loading, Notice } from "../../../components/ui/Notice";
-import { useNotifications } from "../context";
-import { BellIcon } from "../components/NotificationEntry";
-import { notificationHref } from "../inbox";
+import { useEffect, useRef, useState } from 'react';
+import { useAuth } from '../../../auth';
+import { useLang } from '../../../i18n';
+import { Container, Card } from '../../../components/ui/Card';
+import { Button } from '../../../components/ui/Button';
+import { Loading, Notice } from '../../../components/ui/Notice';
+import { useNotifications } from '../context';
+import { BellIcon } from '../components/NotificationEntry';
+import { notificationHref } from '../inbox';
 
 export function NotificationsPage(): JSX.Element {
   const { status } = useAuth();
@@ -14,23 +14,28 @@ export function NotificationsPage(): JSX.Element {
   const { store, state, connection } = useNotifications();
   const heading = useRef<HTMLHeadingElement>(null);
   const [online, setOnline] = useState(() => navigator.onLine);
-  useEffect(() => { heading.current?.focus(); }, [status]);
   useEffect(() => {
-    if (status !== "authenticated") return;
+    heading.current?.focus();
+  }, [status]);
+  useEffect(() => {
+    if (status !== 'authenticated') return;
     store.open();
     return () => store.close();
   }, [status, store]);
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
-    window.addEventListener("online", update);
-    window.addEventListener("offline", update);
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
     return () => {
-      window.removeEventListener("online", update);
-      window.removeEventListener("offline", update);
+      window.removeEventListener('online', update);
+      window.removeEventListener('offline', update);
     };
   }, []);
-  const number = new Intl.NumberFormat(lang === "ar" ? "ar-EG" : "en-GB");
-  const date = new Intl.DateTimeFormat(lang === "ar" ? "ar-EG" : "en-GB", { dateStyle: "medium", timeStyle: "short" });
+  const number = new Intl.NumberFormat(lang === 'ar' ? 'ar-EG' : 'en-GB');
+  const date = new Intl.DateTimeFormat(lang === 'ar' ? 'ar-EG' : 'en-GB', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
   const busy = state.busy !== null;
   return (
     <main id="main" className="py-8 md:py-12">
@@ -41,13 +46,15 @@ export function NotificationsPage(): JSX.Element {
               <BellIcon className="h-6 w-6" />
             </span>
             <div>
-              <h1 ref={heading} tabIndex={-1} className="page-title">{t.navNotifications}</h1>
+              <h1 ref={heading} tabIndex={-1} className="page-title">
+                {t.navNotifications}
+              </h1>
               <p className="mt-2 text-muted">{t.notificationsSubtitle}</p>
             </div>
           </div>
-          {status === "loading" ? (
+          {status === 'loading' ? (
             <Loading text={t.loading} />
-          ) : status !== "authenticated" ? (
+          ) : status !== 'authenticated' ? (
             <Card>
               <p className="mb-4">{t.notificationsSignIn}</p>
               <a
@@ -61,29 +68,48 @@ export function NotificationsPage(): JSX.Element {
             <>
               {!online ? <Notice kind="pending">{t.notificationsOffline}</Notice> : null}
               <p className="mb-4 text-sm text-muted" data-testid="notification-connection">
-                {connection === "connected" ? t.notificationsConnected : connection === "connecting" ? t.notificationsConnecting : t.notificationsDisconnected}
+                {connection === 'connected'
+                  ? t.notificationsConnected
+                  : connection === 'connecting'
+                    ? t.notificationsConnecting
+                    : t.notificationsDisconnected}
               </p>
               <Card className="mb-6">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
                     <p className="text-sm text-muted">{t.notificationsUnreadHeading}</p>
-                    <p className="mt-1 text-3xl font-extrabold" data-testid="notification-unread-count">
+                    <p
+                      className="mt-1 text-3xl font-extrabold"
+                      data-testid="notification-unread-count"
+                    >
                       <bdi>
-                        {state.countError || state.unreadCount === null ? "—" : number.format(state.unreadCount)}
+                        {state.countError || state.unreadCount === null
+                          ? '—'
+                          : number.format(state.unreadCount)}
                       </bdi>
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    <Button variant="secondary" disabled={state.loading || busy} onClick={() => void store.refresh()}>
-                      {state.loading && state.loaded ? t.notificationsRefreshing : t.notificationsRefresh}
+                    <Button
+                      variant="secondary"
+                      disabled={state.loading || busy}
+                      onClick={() => void store.refresh()}
+                    >
+                      {state.loading && state.loaded
+                        ? t.notificationsRefreshing
+                        : t.notificationsRefresh}
                     </Button>
                     <Button
                       disabled={
-                        !state.loaded || busy || state.loading || state.unreadCount === 0 || state.unreadCount === null
+                        !state.loaded ||
+                        busy ||
+                        state.loading ||
+                        state.unreadCount === 0 ||
+                        state.unreadCount === null
                       }
                       onClick={() => void store.readAll()}
                     >
-                      {state.busy === "all" ? t.notificationsSaving : t.notificationsMarkAll}
+                      {state.busy === 'all' ? t.notificationsSaving : t.notificationsMarkAll}
                     </Button>
                   </div>
                 </div>
@@ -94,9 +120,10 @@ export function NotificationsPage(): JSX.Element {
                     aria-pressed={!state.unreadOnly}
                     disabled={busy}
                     onClick={() => store.setFilter(false)}
-                    className={!state.unreadOnly ? "border-primary text-primary-strong" : ""}
+                    className={!state.unreadOnly ? 'border-primary text-primary-strong' : ''}
                   >
-                    {!state.unreadOnly ? <span aria-hidden="true">✓</span> : null}{t.notificationsAll}
+                    {!state.unreadOnly ? <span aria-hidden="true">✓</span> : null}
+                    {t.notificationsAll}
                   </Button>
                   <Button
                     variant="secondary"
@@ -104,9 +131,10 @@ export function NotificationsPage(): JSX.Element {
                     aria-pressed={state.unreadOnly}
                     disabled={busy}
                     onClick={() => store.setFilter(true)}
-                    className={state.unreadOnly ? "border-primary text-primary-strong" : ""}
+                    className={state.unreadOnly ? 'border-primary text-primary-strong' : ''}
                   >
-                    {state.unreadOnly ? <span aria-hidden="true">✓</span> : null}{t.notificationsUnread}
+                    {state.unreadOnly ? <span aria-hidden="true">✓</span> : null}
+                    {t.notificationsUnread}
                   </Button>
                 </div>
               </Card>
@@ -127,9 +155,13 @@ export function NotificationsPage(): JSX.Element {
                 </Notice>
               ) : null}
               <p role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-                {state.loaded && !state.loading && !busy && !state.countError && state.unreadCount !== null
+                {state.loaded &&
+                !state.loading &&
+                !busy &&
+                !state.countError &&
+                state.unreadCount !== null
                   ? `${number.format(state.unreadCount)} ${t.notificationsUnreadCount}`
-                  : ""}
+                  : ''}
               </p>
               {state.loading && !state.loaded ? <Loading text={t.notificationsLoading} /> : null}
               {state.loaded && state.items.length === 0 && !state.error ? (
@@ -141,19 +173,27 @@ export function NotificationsPage(): JSX.Element {
                   <p className="mt-2 text-muted">{t.notificationsEmptyBody}</p>
                 </Card>
               ) : null}
-              <ul className="space-y-4" aria-label={t.navNotifications} aria-busy={state.loading || state.loadingMore}>
+              <ul
+                className="space-y-4"
+                aria-label={t.navNotifications}
+                aria-busy={state.loading || state.loadingMore}
+              >
                 {state.items.map((item) => {
                   const href = notificationHref(item);
-                  const title = lang === "ar" ? item.titleAr : item.titleEn;
-                  const body = lang === "ar" ? item.bodyAr : item.bodyEn;
+                  const title = lang === 'ar' ? item.titleAr : item.titleEn;
+                  const body = lang === 'ar' ? item.bodyAr : item.bodyEn;
                   const read = item.readAt !== null;
                   return (
-                    <li key={item.id} data-testid="notification-item" data-notification-id={item.id}>
-                      <Card className={!read ? "border-border-strong" : ""}>
+                    <li
+                      key={item.id}
+                      data-testid="notification-item"
+                      data-notification-id={item.id}
+                    >
+                      <Card className={!read ? 'border-border-strong' : ''}>
                         <div className="flex items-start gap-3">
                           <span
                             aria-hidden="true"
-                            className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${read ? "border border-border-strong" : "bg-primary"}`}
+                            className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${read ? 'border border-border-strong' : 'bg-primary'}`}
                           />
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -164,9 +204,13 @@ export function NotificationsPage(): JSX.Element {
                             </div>
                             <p className="mt-2 text-muted">{body}</p>
                             <p className="mt-3 text-sm text-muted">
-                              {item.type === "SUBSCRIPTION_EXPIRED" ? t.notificationsExpiredOn : t.notificationsDate}{" "}
+                              {item.type === 'SUBSCRIPTION_EXPIRED'
+                                ? t.notificationsExpiredOn
+                                : t.notificationsDate}{' '}
                               <bdi>
-                                <time dateTime={item.occurredAt}>{date.format(new Date(item.occurredAt))}</time>
+                                <time dateTime={item.occurredAt}>
+                                  {date.format(new Date(item.occurredAt))}
+                                </time>
                               </bdi>
                             </p>
                             <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -175,10 +219,10 @@ export function NotificationsPage(): JSX.Element {
                                   href={href}
                                   className="inline-flex min-h-[44px] items-center gap-2 rounded-control px-3 font-bold text-primary-strong hover:bg-interactive"
                                 >
-                                  {item.target?.kind === "WALLET"
+                                  {item.target?.kind === 'WALLET'
                                     ? t.notificationsOpenWallet
                                     : t.notificationsOpenCourse}
-                                  <span aria-hidden="true">{lang === "ar" ? "←" : "→"}</span>
+                                  <span aria-hidden="true">{lang === 'ar' ? '←' : '→'}</span>
                                 </a>
                               ) : (
                                 <span className="flex min-h-[44px] items-center gap-2 text-sm text-muted">

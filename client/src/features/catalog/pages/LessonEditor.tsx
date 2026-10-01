@@ -10,7 +10,15 @@ import { createLesson, patchLesson, reorderLessons } from '../api/client';
 import type { AdminLesson } from '../types/models';
 import { MediaUploader } from './MediaUploader';
 
-export function LessonList({ sectionId, lessons, onChanged }: { sectionId: string; lessons: AdminLesson[]; onChanged: () => Promise<void> }): JSX.Element {
+export function LessonList({
+  sectionId,
+  lessons,
+  onChanged,
+}: {
+  sectionId: string;
+  lessons: AdminLesson[];
+  onChanged: () => Promise<void>;
+}): JSX.Element {
   const { t, lang } = useLang();
   const [titleAr, setTitleAr] = useState('');
   const [titleEn, setTitleEn] = useState('');
@@ -60,21 +68,48 @@ export function LessonList({ sectionId, lessons, onChanged }: { sectionId: strin
                 #{l.position} {lang === 'ar' ? l.titleAr : l.titleEn}
               </span>
               <LessonRename lessonId={l.id} onChanged={onChanged} />
-              <OrderingControls onMoveUp={() => void move(i, -1)} onMoveDown={() => void move(i, 1)} upDisabled={i === 0} downDisabled={i === lessons.length - 1} busy={busy} />
+              <OrderingControls
+                onMoveUp={() => void move(i, -1)}
+                onMoveDown={() => void move(i, 1)}
+                upDisabled={i === 0}
+                downDisabled={i === lessons.length - 1}
+                busy={busy}
+              />
             </div>
             <div className="mt-2 text-sm text-muted">
               {t.mediaStatusLabel}: {l.media?.status ?? '—'}
             </div>
-            <MediaUploader lessonId={l.id} mediaStatus={l.media?.status ?? null} onChanged={onChanged} />
+            <MediaUploader
+              lessonId={l.id}
+              mediaStatus={l.media?.status ?? null}
+              onChanged={onChanged}
+            />
           </li>
         ))}
       </ul>
-      <form onSubmit={(e) => void submit(e)} noValidate className="mt-3 grid grid-cols-2 gap-3 max-sm:grid-cols-1">
+      <form
+        onSubmit={(e) => void submit(e)}
+        noValidate
+        className="mt-3 grid grid-cols-2 gap-3 max-sm:grid-cols-1"
+      >
         <Field id={`les-ta-${sectionId}`} label={t.fieldTitleAr}>
-          <input id={`les-ta-${sectionId}`} required className={textInputClassName(false)} value={titleAr} onChange={(e) => setTitleAr(e.target.value)} />
+          <input
+            id={`les-ta-${sectionId}`}
+            required
+            className={textInputClassName(false)}
+            value={titleAr}
+            onChange={(e) => setTitleAr(e.target.value)}
+          />
         </Field>
         <Field id={`les-te-${sectionId}`} label={t.fieldTitleEn} dir="ltr">
-          <input id={`les-te-${sectionId}`} dir="ltr" required className={textInputClassName(false)} value={titleEn} onChange={(e) => setTitleEn(e.target.value)} />
+          <input
+            id={`les-te-${sectionId}`}
+            dir="ltr"
+            required
+            className={textInputClassName(false)}
+            value={titleEn}
+            onChange={(e) => setTitleEn(e.target.value)}
+          />
         </Field>
         <div className="col-span-2">
           <Button type="submit" disabled={busy}>
@@ -86,7 +121,13 @@ export function LessonList({ sectionId, lessons, onChanged }: { sectionId: strin
   );
 }
 
-function LessonRename({ lessonId, onChanged }: { lessonId: string; onChanged: () => Promise<void> }): JSX.Element {
+function LessonRename({
+  lessonId,
+  onChanged,
+}: {
+  lessonId: string;
+  onChanged: () => Promise<void>;
+}): JSX.Element {
   const { t } = useLang();
   const [editing, setEditing] = useState(false);
   const [titleAr, setTitleAr] = useState('');
@@ -100,8 +141,19 @@ function LessonRename({ lessonId, onChanged }: { lessonId: string; onChanged: ()
   }
   return (
     <span className="inline-flex flex-wrap items-end gap-2">
-      <input aria-label={t.fieldTitleAr} className={textInputClassName(false)} value={titleAr} onChange={(e) => setTitleAr(e.target.value)} />
-      <input aria-label={t.fieldTitleEn} dir="ltr" className={textInputClassName(false)} value={titleEn} onChange={(e) => setTitleEn(e.target.value)} />
+      <input
+        aria-label={t.fieldTitleAr}
+        className={textInputClassName(false)}
+        value={titleAr}
+        onChange={(e) => setTitleAr(e.target.value)}
+      />
+      <input
+        aria-label={t.fieldTitleEn}
+        dir="ltr"
+        className={textInputClassName(false)}
+        value={titleEn}
+        onChange={(e) => setTitleEn(e.target.value)}
+      />
       <Button
         variant="primary"
         onClick={() => {
@@ -118,7 +170,15 @@ function LessonRename({ lessonId, onChanged }: { lessonId: string; onChanged: ()
   );
 }
 
-export function LessonEditorCard({ sectionId, lessons, onChanged }: { sectionId: string; lessons: AdminLesson[]; onChanged: () => Promise<void> }): JSX.Element {
+export function LessonEditorCard({
+  sectionId,
+  lessons,
+  onChanged,
+}: {
+  sectionId: string;
+  lessons: AdminLesson[];
+  onChanged: () => Promise<void>;
+}): JSX.Element {
   return (
     <Card className="mt-2">
       <LessonList sectionId={sectionId} lessons={lessons} onChanged={onChanged} />

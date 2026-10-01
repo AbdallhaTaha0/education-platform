@@ -1,6 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { lockCourseRow } from '../../src/modules/catalog/locks.js';
-import { adminPost, createCatalogWorld, createFullDraft, type CatalogWorld } from './catalog-helpers.js';
+import {
+  adminPost,
+  createCatalogWorld,
+  createFullDraft,
+  type CatalogWorld,
+} from './catalog-helpers.js';
 
 let world: CatalogWorld;
 
@@ -33,15 +38,23 @@ describe('deletion safety around media registration intents', () => {
     const operationsBefore = await world.prisma.catalogDeletionOperation.count();
     const auditsBefore = await world.prisma.auditEvent.count();
 
-    const response = await adminPost(world.app, `/admin/catalog/courses/${courseId}/delete`, world.adminJar, {
-      confirmation: course.slug,
-    });
+    const response = await adminPost(
+      world.app,
+      `/admin/catalog/courses/${courseId}/delete`,
+      world.adminJar,
+      {
+        confirmation: course.slug,
+      },
+    );
 
     expect(response.status).toBe(409);
     expect(response.body.error.code).toBe('MEDIA_REGISTRATION_UNRESOLVED');
     expect(await world.prisma.catalogDeletionOperation.count()).toBe(operationsBefore);
     expect(await world.prisma.auditEvent.count()).toBe(auditsBefore);
-    expect((await world.prisma.course.findUniqueOrThrow({ where: { id: courseId } })).deletionRequestedAt).toBeNull();
+    expect(
+      (await world.prisma.course.findUniqueOrThrow({ where: { id: courseId } }))
+        .deletionRequestedAt,
+    ).toBeNull();
     expect(await world.prisma.mediaMapping.findUnique({ where: { lessonId } })).not.toBeNull();
   });
 
@@ -50,29 +63,41 @@ describe('deletion safety around media registration intents', () => {
     const course = await world.prisma.course.findUniqueOrThrow({ where: { id: courseId } });
     let release!: () => void;
     let locked!: () => void;
-    const releaseGate = new Promise<void>((resolve) => { release = resolve; });
-    const lockGate = new Promise<void>((resolve) => { locked = resolve; });
+    const releaseGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const lockGate = new Promise<void>((resolve) => {
+      locked = resolve;
+    });
 
-    const holder = world.prisma.$transaction(async (tx) => {
-      await lockCourseRow(tx, courseId);
-      locked();
-      await releaseGate;
-      await tx.mediaMapping.create({
-        data: {
-          lessonId,
-          externalAssetId: `late-media-${Date.now().toString(36)}`,
-          assetId: '11111111-1111-4111-8111-111111111111',
-          status: 'READY',
-          idempotencyKey: `late-idem-${Date.now().toString(36)}`,
-        },
-      });
-    }, { timeout: 20_000, maxWait: 5_000 });
+    const holder = world.prisma.$transaction(
+      async (tx) => {
+        await lockCourseRow(tx, courseId);
+        locked();
+        await releaseGate;
+        await tx.mediaMapping.create({
+          data: {
+            lessonId,
+            externalAssetId: `late-media-${Date.now().toString(36)}`,
+            assetId: '11111111-1111-4111-8111-111111111111',
+            status: 'READY',
+            idempotencyKey: `late-idem-${Date.now().toString(36)}`,
+          },
+        });
+      },
+      { timeout: 20_000, maxWait: 5_000 },
+    );
     await lockGate;
 
     let settled = false;
-    const deletion = adminPost(world.app, `/admin/catalog/courses/${courseId}/delete`, world.adminJar, {
-      confirmation: course.slug,
-    }).then((response) => {
+    const deletion = adminPost(
+      world.app,
+      `/admin/catalog/courses/${courseId}/delete`,
+      world.adminJar,
+      {
+        confirmation: course.slug,
+      },
+    ).then((response) => {
       settled = true;
       return response;
     });

@@ -24,14 +24,20 @@ export async function completeLessonUpload(
 ) {
   assertUuid(lessonId, 'lessonId');
   const drm = drmFactory(config);
-  if (drm === null) throw new ApiError(503, 'DRM_UNCONFIGURED', 'External media service is not configured.');
+  if (drm === null)
+    throw new ApiError(503, 'DRM_UNCONFIGURED', 'External media service is not configured.');
 
   const courseId = await courseIdForLesson(prisma, lessonId);
   const precheck = await withCourseLock(prisma, courseId, async (tx) => {
-    const lesson = await tx.lesson.findUnique({ where: { id: lessonId }, include: { media: true, section: { include: { course: true } } } });
-    if (lesson === null || lesson.media === null) throw new ApiError(404, 'MEDIA_MISSING', 'Media mapping not found.');
+    const lesson = await tx.lesson.findUnique({
+      where: { id: lessonId },
+      include: { media: true, section: { include: { course: true } } },
+    });
+    if (lesson === null || lesson.media === null)
+      throw new ApiError(404, 'MEDIA_MISSING', 'Media mapping not found.');
     ensureStructuralAllowed(lesson.section.course);
-    if (lesson.media.assetId === null) throw new ApiError(409, 'MEDIA_MISSING', 'Media not registered with DRM.');
+    if (lesson.media.assetId === null)
+      throw new ApiError(409, 'MEDIA_MISSING', 'Media not registered with DRM.');
     return { assetId: lesson.media.assetId, mappingId: lesson.media.id };
   });
   const { assetId, mappingId } = precheck;
@@ -41,7 +47,10 @@ export async function completeLessonUpload(
     const result = await drm.completeUpload(assetId);
     remoteStatus = result.status;
   } catch (err) {
-    if (err instanceof ApiError && (err.code === 'DRM_TIMEOUT' || err.code === 'DRM_NETWORK' || err.code === 'DRM_UNKNOWN')) {
+    if (
+      err instanceof ApiError &&
+      (err.code === 'DRM_TIMEOUT' || err.code === 'DRM_NETWORK' || err.code === 'DRM_UNKNOWN')
+    ) {
       return reconcileAfterUncertainCompletion(prisma, drm, actorId, lessonId, mappingId, assetId);
     }
     if (err instanceof ApiError && err.code === 'DRM_CONFLICT') {
@@ -52,16 +61,30 @@ export async function completeLessonUpload(
 
   const nextLocal = mapDrmStatusToLocal(remoteStatus) as MediaState;
   return withCourseLock(prisma, courseId, async (tx) => {
-    const lesson = await tx.lesson.findUnique({ where: { id: lessonId }, include: { media: true, section: { include: { course: true } } } });
+    const lesson = await tx.lesson.findUnique({
+      where: { id: lessonId },
+      include: { media: true, section: { include: { course: true } } },
+    });
     if (lesson === null || lesson.media === null || lesson.media.id !== mappingId) {
       throw new ApiError(404, 'MEDIA_MISSING', 'Media mapping not found.');
     }
     ensureStructuralAllowed(lesson.section.course);
     const updated = await tx.mediaMapping.update({
       where: { id: mappingId },
-      data: { status: nextLocal, uploadCompletedAt: new Date(), lastSyncedAt: new Date(), errorCategory: null },
+      data: {
+        status: nextLocal,
+        uploadCompletedAt: new Date(),
+        lastSyncedAt: new Date(),
+        errorCategory: null,
+      },
     });
-    await audit(tx, { actorUserId: actorId, action: 'MEDIA_COMPLETED', entityType: 'Lesson', entityId: lessonId, metadata: { status: nextLocal } });
+    await audit(tx, {
+      actorUserId: actorId,
+      action: 'MEDIA_COMPLETED',
+      entityType: 'Lesson',
+      entityId: lessonId,
+      metadata: { status: nextLocal },
+    });
     return updated;
   });
 }
@@ -78,7 +101,10 @@ async function reconcileAfterUncertainCompletion(
   const nextLocal = mapDrmStatusToLocal(remote.status) as MediaState;
   const courseId = await courseIdForLesson(prisma, lessonId);
   return withCourseLock(prisma, courseId, async (tx) => {
-    const lesson = await tx.lesson.findUnique({ where: { id: lessonId }, include: { media: true, section: { include: { course: true } } } });
+    const lesson = await tx.lesson.findUnique({
+      where: { id: lessonId },
+      include: { media: true, section: { include: { course: true } } },
+    });
     if (lesson === null || lesson.media === null || lesson.media.id !== mappingId) {
       throw new ApiError(404, 'MEDIA_MISSING', 'Media mapping not found.');
     }
@@ -88,10 +114,18 @@ async function reconcileAfterUncertainCompletion(
       data: {
         status: nextLocal,
         lastSyncedAt: new Date(),
-        ...(nextLocal === 'PROCESSING' || nextLocal === 'READY' ? { uploadCompletedAt: new Date(), errorCategory: null } : {}),
+        ...(nextLocal === 'PROCESSING' || nextLocal === 'READY'
+          ? { uploadCompletedAt: new Date(), errorCategory: null }
+          : {}),
       },
     });
-    await audit(tx, { actorUserId: actorId, action: 'MEDIA_RECONCILED', entityType: 'Lesson', entityId: lessonId, metadata: { status: nextLocal } });
+    await audit(tx, {
+      actorUserId: actorId,
+      action: 'MEDIA_RECONCILED',
+      entityType: 'Lesson',
+      entityId: lessonId,
+      metadata: { status: nextLocal },
+    });
     return updated;
   });
 }

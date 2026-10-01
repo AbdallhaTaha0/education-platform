@@ -18,7 +18,8 @@ if (files.length === 0) {
 function classify(value) {
   if (value === '') return 'empty';
   const lower = value.toLowerCase();
-  if (/(change[_-]?me|placeholder|example|your[_-]|replace[_-]me|xxxx+|todo)/.test(lower)) return 'placeholder-like';
+  if (/(change[_-]?me|placeholder|example|your[_-]|replace[_-]me|xxxx+|todo)/.test(lower))
+    return 'placeholder-like';
   return 'set';
 }
 
@@ -35,7 +36,10 @@ for (const file of files) {
     if (idx <= 0) continue;
     const key = line.slice(0, idx).trim();
     let value = line.slice(idx + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
       value = value.slice(1, -1);
     }
     entries.push({ key, length: value.length, category: classify(value) });
@@ -43,6 +47,8 @@ for (const file of files) {
   entries.sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
   console.log(`file ${file} : ${entries.length} keys`);
   for (const entry of entries) {
-    console.log(`  ${entry.key} present=${entry.length > 0} length=${entry.length} category=${entry.category}`);
+    console.log(
+      `  ${entry.key} present=${entry.length > 0} length=${entry.length} category=${entry.category}`,
+    );
   }
 }

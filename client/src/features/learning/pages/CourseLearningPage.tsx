@@ -75,8 +75,11 @@ export function CourseLearningPage({ courseSlug, onRenew }: CourseLearningPagePr
       sections.flatMap((s) => s.lessons).find((l) => l.playable && !l.completed) ??
       sections.flatMap((s) => s.lessons).find((l) => l.playable) ??
       null;
-    setSelectedLessonId((current) => sections.some(s => s.lessons.some(l => l.lessonId === current && l.playable))
-      ? current : firstPlayable?.lessonId ?? null);
+    setSelectedLessonId((current) =>
+      sections.some((s) => s.lessons.some((l) => l.lessonId === current && l.playable))
+        ? current
+        : (firstPlayable?.lessonId ?? null),
+    );
   }, [sections]);
 
   // Losing entitlement must tear the player down and drop the credential. The
@@ -130,14 +133,22 @@ export function CourseLearningPage({ courseSlug, onRenew }: CourseLearningPagePr
     );
   }
 
-  if (errorCode === 'SUBSCRIPTION_EXPIRED' || errorCode === 'SUBSCRIPTION_REQUIRED' ||
-      playback.errorCode === 'PLAYBACK_SESSION_EXPIRED' || playback.errorCode === 'SUBSCRIPTION_EXPIRED') {
+  if (
+    errorCode === 'SUBSCRIPTION_EXPIRED' ||
+    errorCode === 'SUBSCRIPTION_REQUIRED' ||
+    playback.errorCode === 'PLAYBACK_SESSION_EXPIRED' ||
+    playback.errorCode === 'SUBSCRIPTION_EXPIRED'
+  ) {
     return (
       <Container id="main">
         <main className="py-8">
           <h1 className="mb-4 text-3xl font-bold">{t('learningTitle')}</h1>
           <RenewalRequired
-            message={errorCode === 'SUBSCRIPTION_EXPIRED' ? t('learningExpiredNotice') : t('learningRequiredNotice')}
+            message={
+              errorCode === 'SUBSCRIPTION_EXPIRED'
+                ? t('learningExpiredNotice')
+                : t('learningRequiredNotice')
+            }
             actionLabel={t('learningRenew')}
             action={() => onRenew(courseSlug)}
           />
@@ -169,13 +180,24 @@ export function CourseLearningPage({ courseSlug, onRenew }: CourseLearningPagePr
   return (
     <Container id="main">
       <main className="py-8">
-        <h1 className="mb-2 text-3xl font-bold">{lang === 'ar' ? course.titleAr : course.titleEn}</h1>
-        <p className="mb-2 text-muted">{lang === 'ar' ? course.descriptionAr : course.descriptionEn}</p>
+        <h1 className="mb-2 text-3xl font-bold">
+          {lang === 'ar' ? course.titleAr : course.titleEn}
+        </h1>
+        <p className="mb-2 text-muted">
+          {lang === 'ar' ? course.descriptionAr : course.descriptionEn}
+        </p>
         {course.expiresAt !== null ? (
           <p data-testid="learning-expiry" className="mb-6 text-sm text-muted">
-            {labels.expiresOn} {formatDate(course.expiresAt, lang)} ({lang === 'ar' ? 'القاهرة' : 'Cairo'})
+            {labels.expiresOn} {formatDate(course.expiresAt, lang)} (
+            {lang === 'ar' ? 'القاهرة' : 'Cairo'})
           </p>
-        ) : <p data-testid="learning-expiry" className="mb-6 text-sm text-muted">{lang === 'ar' ? 'بدون انتهاء، حتى الحذف النهائي للكورس' : 'No expiry, until permanent course removal'}</p>}
+        ) : (
+          <p data-testid="learning-expiry" className="mb-6 text-sm text-muted">
+            {lang === 'ar'
+              ? 'بدون انتهاء، حتى الحذف النهائي للكورس'
+              : 'No expiry, until permanent course removal'}
+          </p>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div>

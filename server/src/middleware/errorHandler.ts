@@ -65,14 +65,22 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     const bodyStatus = (err as { status?: unknown }).status;
     if (bodyType === 'entity.too.large' && bodyStatus === 413) {
       const body: ApiErrorBody = {
-        error: { code: 'VALIDATION_ERROR', message: 'Request body is too large.', requestId: req.requestId ?? 'unknown' },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Request body is too large.',
+          requestId: req.requestId ?? 'unknown',
+        },
       };
       res.status(413).json(body);
       return;
     }
     if (bodyType === 'entity.parse.failed' && bodyStatus === 400) {
       const body: ApiErrorBody = {
-        error: { code: 'VALIDATION_ERROR', message: 'Malformed JSON body.', requestId: req.requestId ?? 'unknown' },
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Malformed JSON body.',
+          requestId: req.requestId ?? 'unknown',
+        },
       };
       res.status(400).json(body);
       return;

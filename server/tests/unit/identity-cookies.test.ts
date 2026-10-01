@@ -59,7 +59,9 @@ describe('cookie contract', () => {
   });
 
   it('parses only platform cookies and round-trips values', () => {
-    const parsed = parseCookies('edu_access=a.b.c; edu_refresh=s3cr3t; edu_csrf=ff00; Other=ignored; junk');
+    const parsed = parseCookies(
+      'edu_access=a.b.c; edu_refresh=s3cr3t; edu_csrf=ff00; Other=ignored; junk',
+    );
     expect(parsed).toEqual({ edu_access: 'a.b.c', edu_refresh: 's3cr3t', edu_csrf: 'ff00' });
     expect(parseCookies(undefined)).toEqual({});
   });

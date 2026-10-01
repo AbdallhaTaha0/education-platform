@@ -1,7 +1,12 @@
 import type { PrismaClient, User } from '@prisma/client';
 import { ApiError } from './errors.js';
 import { verifySessionCsrf } from './csrf.js';
-import { REFRESH_ABSOLUTE_TTL_SEC, generateRefreshSecret, sha256Hex, type Clock } from './tokens.js';
+import {
+  REFRESH_ABSOLUTE_TTL_SEC,
+  generateRefreshSecret,
+  sha256Hex,
+  type Clock,
+} from './tokens.js';
 
 export type SafeUser = Pick<User, 'id' | 'email' | 'phone' | 'displayName' | 'role' | 'createdAt'>;
 
@@ -83,7 +88,12 @@ export async function getActiveSession(
   if (!session) return { ok: false, reason: 'missing' };
   if (session.revokedAt) return { ok: false, reason: 'revoked' };
   if (session.absoluteExpiresAt.getTime() <= nowMs) return { ok: false, reason: 'expired' };
-  return { ok: true, sessionId: session.id, user: session.user, absoluteExpiresAt: session.absoluteExpiresAt };
+  return {
+    ok: true,
+    sessionId: session.id,
+    user: session.user,
+    absoluteExpiresAt: session.absoluteExpiresAt,
+  };
 }
 
 /** Rebind the session synchronizer (CSRF bootstrap on an active session).
@@ -103,7 +113,13 @@ export async function bindSessionCsrf(
 }
 
 export type RotationOutcome =
-  | { status: 'rotated'; user: User; sessionId: string; newRefreshSecret: string; absoluteExpiresAt: Date }
+  | {
+      status: 'rotated';
+      user: User;
+      sessionId: string;
+      newRefreshSecret: string;
+      absoluteExpiresAt: Date;
+    }
   | { status: 'reused'; sessionId: string }
   | { status: 'revoked'; sessionId: string }
   | { status: 'expired'; sessionId: string }
@@ -251,11 +267,16 @@ export async function revokeAllUserSessions(
 /** Map a Prisma unique violation to the public conflict shape. */
 export function mapUniqueViolation(err: unknown): ApiError | null {
   const target =
-    typeof err === 'object' && err !== null && 'code' in err && (err as { code: unknown }).code === 'P2002'
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    (err as { code: unknown }).code === 'P2002'
       ? ((err as { meta?: { target?: unknown } }).meta?.target as string[] | undefined)
       : undefined;
   if (!target) return null;
-  if (target.includes('email')) return new ApiError(409, 'EMAIL_TAKEN', 'Email is already registered.');
-  if (target.includes('phone')) return new ApiError(409, 'PHONE_TAKEN', 'Phone is already registered.');
+  if (target.includes('email'))
+    return new ApiError(409, 'EMAIL_TAKEN', 'Email is already registered.');
+  if (target.includes('phone'))
+    return new ApiError(409, 'PHONE_TAKEN', 'Phone is already registered.');
   return new ApiError(409, 'EMAIL_TAKEN', 'Account already exists.');
 }

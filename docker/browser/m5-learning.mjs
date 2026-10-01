@@ -20,7 +20,10 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
   await spage.goto(`${BASE_URL}/#/dashboard`, { waitUntil: 'networkidle0', timeout: 60000 });
   await wait(1200);
   const dashText = await spage.evaluate(() => document.body.textContent);
-  check('M5 dashboard renders the learning area', /لوحة التعلم|الدورات|الاشتراك|اشتراك/.test(dashText));
+  check(
+    'M5 dashboard renders the learning area',
+    /لوحة التعلم|الدورات|الاشتراك|اشتراك/.test(dashText),
+  );
   const dashLang = await spage.evaluate(() => ({
     lang: document.documentElement.lang,
     dir: document.documentElement.dir,
@@ -38,26 +41,47 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
   }, BASE_URL);
   check('M5 dashboard API returns 200 for a subscriber', dash.status === 200, String(dash.status));
   const activeCourses = (dash.body.data?.active ?? []).map((a) => a.slug);
-  check('M5 dashboard lists the purchased course as active', activeCourses.includes(courseSlug), activeCourses.join(','));
+  check(
+    'M5 dashboard lists the purchased course as active',
+    activeCourses.includes(courseSlug),
+    activeCourses.join(','),
+  );
   const activeEntry = (dash.body.data?.active ?? []).find((a) => a.slug === courseSlug);
-  check('M5 active entry carries an expiry and zero-or-more progress', typeof activeEntry?.expiresAt === 'string');
+  check(
+    'M5 active entry carries an expiry and zero-or-more progress',
+    typeof activeEntry?.expiresAt === 'string',
+  );
 
   // ---- 2. Outline is reachable and exposes playability, never media URLs ----
-  await spage.goto(`${BASE_URL}/#/learn/${courseSlug}`, { waitUntil: 'networkidle0', timeout: 60000 });
+  await spage.goto(`${BASE_URL}/#/learn/${courseSlug}`, {
+    waitUntil: 'networkidle0',
+    timeout: 60000,
+  });
   await wait(1200);
   const outlineText = await spage.evaluate(() => document.body.textContent);
   check('M5 outline renders the course lessons', outlineText.length > 0);
-  const outline = await spage.evaluate(async (base, slug) => {
-    const res = await fetch(`${base}/api/learning/courses/${encodeURIComponent(slug)}/outline`, {
-      credentials: 'include',
-      headers: { Accept: 'application/json' },
-    });
-    return { status: res.status, body: await res.json() };
-  }, BASE_URL, courseSlug);
-  check('M5 outline API returns 200 for a subscriber', outline.status === 200, String(outline.status));
+  const outline = await spage.evaluate(
+    async (base, slug) => {
+      const res = await fetch(`${base}/api/learning/courses/${encodeURIComponent(slug)}/outline`, {
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      return { status: res.status, body: await res.json() };
+    },
+    BASE_URL,
+    courseSlug,
+  );
+  check(
+    'M5 outline API returns 200 for a subscriber',
+    outline.status === 200,
+    String(outline.status),
+  );
   check('M5 outline reports entitlement', outline.body.data?.course?.entitled === true);
   const outlineJson = JSON.stringify(outline.body);
-  check('M5 outline leaks no media URL or asset id', !/manifest|licenseUrl|assetId/i.test(outlineJson));
+  check(
+    'M5 outline leaks no media URL or asset id',
+    !/manifest|licenseUrl|assetId/i.test(outlineJson),
+  );
   await shot(spage, 'm5-outline-ar.png');
 
   const allLessons = (outline.body.data?.sections ?? []).flatMap((s) => s.lessons ?? []);
@@ -97,29 +121,55 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
     courseSlug,
     lessonId,
   );
-  check('M5 playback grant is issued (201)', grantResult.status === 201, String(grantResult.status));
+  check(
+    'M5 playback grant is issued (201)',
+    grantResult.status === 201,
+    String(grantResult.status),
+  );
   const grant = grantResult.body?.data?.playback;
-  check('M5 grant carries a transient token and expiry', typeof grant?.playbackToken === 'string' && typeof grant?.tokenExpiresAt === 'string');
-  check('M5 grant resolves media URLs onto the configured DRM origin', typeof grant?.manifestUrl === 'string' && grant.manifestUrl.startsWith('http'));
+  check(
+    'M5 grant carries a transient token and expiry',
+    typeof grant?.playbackToken === 'string' && typeof grant?.tokenExpiresAt === 'string',
+  );
+  check(
+    'M5 grant resolves media URLs onto the configured DRM origin',
+    typeof grant?.manifestUrl === 'string' && grant.manifestUrl.startsWith('http'),
+  );
 
   // ---- 4. The token never reaches browser storage or a cookie ----
   const afterGrant = await storageAudit(spage);
   const storageBlob = JSON.stringify(afterGrant);
-  check('M5 playback token absent from local/session storage', !storageBlob.includes(grant.playbackToken));
-  check('M5 no IndexedDB is created for playback', (afterGrant.idb ?? []).length === 0, JSON.stringify(afterGrant.idb));
+  check(
+    'M5 playback token absent from local/session storage',
+    !storageBlob.includes(grant.playbackToken),
+  );
+  check(
+    'M5 no IndexedDB is created for playback',
+    (afterGrant.idb ?? []).length === 0,
+    JSON.stringify(afterGrant.idb),
+  );
   const cookieBlob = JSON.stringify(await spage.cookies());
   check('M5 playback token absent from cookies', !cookieBlob.includes(grant.playbackToken));
-  check('M5 grant response body is not cached in the URL', !spage.url().includes(grant.playbackToken));
+  check(
+    'M5 grant response body is not cached in the URL',
+    !spage.url().includes(grant.playbackToken),
+  );
 
   // ---- 5. Selecting a lesson then starting playback mounts the player ----
-  await spage.goto(`${BASE_URL}/#/learn/${courseSlug}`, { waitUntil: 'networkidle0', timeout: 60000 });
+  await spage.goto(`${BASE_URL}/#/learn/${courseSlug}`, {
+    waitUntil: 'networkidle0',
+    timeout: 60000,
+  });
   await wait(1500);
   // Nothing is requested until the viewer acts, so no token is held on load.
   const idleState = await spage.evaluate(() => ({
     placeholder: document.querySelector('[data-testid="player-placeholder"]') !== null,
     video: document.querySelector('video') !== null,
   }));
-  check('M5 no player and no token before an explicit start', idleState.placeholder && !idleState.video);
+  check(
+    'M5 no player and no token before an explicit start',
+    idleState.placeholder && !idleState.video,
+  );
 
   const selected = await spage.evaluate(() => {
     const rows = [...document.querySelectorAll('[data-testid="lesson-row"]')];
@@ -138,9 +188,7 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
     return true;
   });
   check('M5 explicit start requests a grant', started);
-  await spage
-    .waitForSelector('video', { timeout: 45000 })
-    .catch(() => undefined);
+  await spage.waitForSelector('video', { timeout: 45000 }).catch(() => undefined);
   const hasPlayer = await spage.evaluate(() => document.querySelector('video') !== null);
   const afterStart = await spage.evaluate(() => ({
     placeholder: document.querySelector('[data-testid="player-placeholder"]') !== null,
@@ -167,25 +215,39 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
         const overlay = document.querySelector('[data-testid="player-state"]');
         if (overlay) {
           const phase = overlay.getAttribute('data-phase');
-          return phase !== null && ['loading', 'ready', 'playing', 'paused', 'error', 'ended', 'expired'].includes(phase)
+          return phase !== null &&
+            ['loading', 'ready', 'playing', 'paused', 'error', 'ended', 'expired'].includes(phase)
             ? { settled: true, phase, code: overlay.getAttribute('data-code') }
             : false;
         }
         const v = document.querySelector('video');
-        if (v && v.readyState >= 2) return { settled: true, phase: v.paused ? 'paused' : 'playing', code: null };
+        if (v && v.readyState >= 2)
+          return { settled: true, phase: v.paused ? 'paused' : 'playing', code: null };
         return false;
       },
       { timeout: 45000, polling: 300 },
     )
     .then((handle) => handle.jsonValue())
     .catch(() => null);
-  check('M5 player reaches a settled state', settled !== null && settled.settled === true, JSON.stringify(settled));
-  check('M5 player does not settle in an error state', settled === null || settled.phase !== 'error', JSON.stringify(settled));
+  check(
+    'M5 player reaches a settled state',
+    settled !== null && settled.settled === true,
+    JSON.stringify(settled),
+  );
+  check(
+    'M5 player does not settle in an error state',
+    settled === null || settled.phase !== 'error',
+    JSON.stringify(settled),
+  );
   const pageErrors = [];
   spage.on('pageerror', (err) => pageErrors.push(String(err && err.message ? err.message : err)));
   await spage.goto(`${BASE_URL}/#/dashboard`, { waitUntil: 'networkidle0', timeout: 60000 });
   await wait(800);
-  check('M5 navigation produced no uncaught page error', pageErrors.length === 0, pageErrors.join(' | '));
+  check(
+    'M5 navigation produced no uncaught page error',
+    pageErrors.length === 0,
+    pageErrors.join(' | '),
+  );
 
   // ---- 6. Progress write is accepted and is monotonic ----
   const progress = await spage.evaluate(
@@ -198,7 +260,12 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json', 'X-Csrf-Token': token, Origin: base },
-          body: JSON.stringify({ courseRef: slug, lessonId: id, positionSeconds, durationSeconds: 600 }),
+          body: JSON.stringify({
+            courseRef: slug,
+            lessonId: id,
+            positionSeconds,
+            durationSeconds: 600,
+          }),
         }).then((r) => r.json());
       const forward = await post(120);
       const backward = await post(10);
@@ -209,16 +276,25 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
     lessonId,
   );
   check('M5 progress write is accepted', progress.forward?.data?.progress?.positionSeconds === 120);
-  check('M5 progress never moves backwards', progress.backward?.data?.progress?.positionSeconds === 120);
+  check(
+    'M5 progress never moves backwards',
+    progress.backward?.data?.progress?.positionSeconds === 120,
+  );
 
   // ---- 7. An unbought course renders closed: notice, no player ----
   const ungated = await spage.evaluate(async (base) => {
-    const res = await fetch(`${base}/api/catalog/courses`, { credentials: 'include', headers: { Accept: 'application/json' } });
+    const res = await fetch(`${base}/api/catalog/courses`, {
+      credentials: 'include',
+      headers: { Accept: 'application/json' },
+    });
     return (await res.json()).data.courses;
   }, BASE_URL);
   const other = ungated.find((c) => c.slug !== courseSlug);
   if (other) {
-    await spage.goto(`${BASE_URL}/#/learn/${other.slug}`, { waitUntil: 'networkidle0', timeout: 60000 });
+    await spage.goto(`${BASE_URL}/#/learn/${other.slug}`, {
+      waitUntil: 'networkidle0',
+      timeout: 60000,
+    });
     await wait(1200);
     const gated = await spage.evaluate(() => ({
       text: document.body.textContent,
@@ -226,14 +302,25 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
     }));
     check('M5 unbought course shows the entitlement notice', /اشتراك|الاشتراك/.test(gated.text));
     check('M5 unbought course mounts no player', gated.hasVideo === false);
-    const gatedApi = await spage.evaluate(async (base, slug) => {
-      const res = await fetch(`${base}/api/learning/courses/${encodeURIComponent(slug)}/outline`, {
-        credentials: 'include',
-        headers: { Accept: 'application/json' },
-      });
-      return { status: res.status, body: await res.json() };
-    }, BASE_URL, other.slug);
-    check('M5 unbought outline is 403 SUBSCRIPTION_REQUIRED', gatedApi.status === 403 && gatedApi.body?.error?.code === 'SUBSCRIPTION_REQUIRED', `${gatedApi.status}/${gatedApi.body?.error?.code}`);
+    const gatedApi = await spage.evaluate(
+      async (base, slug) => {
+        const res = await fetch(
+          `${base}/api/learning/courses/${encodeURIComponent(slug)}/outline`,
+          {
+            credentials: 'include',
+            headers: { Accept: 'application/json' },
+          },
+        );
+        return { status: res.status, body: await res.json() };
+      },
+      BASE_URL,
+      other.slug,
+    );
+    check(
+      'M5 unbought outline is 403 SUBSCRIPTION_REQUIRED',
+      gatedApi.status === 403 && gatedApi.body?.error?.code === 'SUBSCRIPTION_REQUIRED',
+      `${gatedApi.status}/${gatedApi.body?.error?.code}`,
+    );
     await shot(spage, 'm5-gated-ar.png');
   }
 
@@ -267,11 +354,17 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
   const drmTraffic = [];
   const onDrmResponse = (res) => {
     const url = res.url();
-    if (url.includes('drm-fixture:8090')) drmTraffic.push(`${res.request().method()} ${url.split('drm-fixture:8090')[1]} -> ${res.status()}`);
+    if (url.includes('drm-fixture:8090'))
+      drmTraffic.push(
+        `${res.request().method()} ${url.split('drm-fixture:8090')[1]} -> ${res.status()}`,
+      );
   };
   spage.on('response', onDrmResponse);
 
-  await spage.goto(`${BASE_URL}/#/learn/${courseSlug}`, { waitUntil: 'networkidle0', timeout: 60000 });
+  await spage.goto(`${BASE_URL}/#/learn/${courseSlug}`, {
+    waitUntil: 'networkidle0',
+    timeout: 60000,
+  });
   await wait(1500);
   await spage.evaluate(() => {
     const rows = [...document.querySelectorAll('[data-testid="lesson-row"]')];
@@ -299,7 +392,10 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
     const host = document.querySelector('[data-reference-id]');
     return host ? host.getAttribute('data-reference-id') : null;
   });
-  check('M5 player publishes a non-secret reference id', typeof referenceId === 'string' && referenceId !== '');
+  check(
+    'M5 player publishes a non-secret reference id',
+    typeof referenceId === 'string' && referenceId !== '',
+  );
   // The playback token must never reach the DOM, only the opaque row id.
   const domLeak = await spage.evaluate(() => document.documentElement.outerHTML);
   const storedToken = grant.playbackToken;
@@ -357,7 +453,11 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
       referenceId: host ? host.getAttribute('data-reference-id') : null,
     };
   });
-  check('M5 a live playback session exists for renewal', typeof renewalBefore.referenceId === 'string' && renewalBefore.referenceId !== '', String(renewalBefore.referenceId));
+  check(
+    'M5 a live playback session exists for renewal',
+    typeof renewalBefore.referenceId === 'string' && renewalBefore.referenceId !== '',
+    String(renewalBefore.referenceId),
+  );
   const liveReferenceId = renewalBefore.referenceId;
   const renewal = await spage.evaluate(
     async (base, refId) => {
@@ -375,22 +475,39 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
     BASE_URL,
     liveReferenceId,
   );
-  check('M5 token renewal is accepted by the platform', renewal.status === 200, String(renewal.status));
+  check(
+    'M5 token renewal is accepted by the platform',
+    renewal.status === 200,
+    String(renewal.status),
+  );
   const renewalBody = JSON.stringify(renewal.body ?? {});
-  check('M5 renewal returns only credential fields', !/assertion|assetId|kid|manifest/i.test(renewalBody), renewalBody.slice(0, 120));
+  check(
+    'M5 renewal returns only credential fields',
+    !/assertion|assetId|kid|manifest/i.test(renewalBody),
+    renewalBody.slice(0, 120),
+  );
   const renewalAfter = await spage.evaluate(() => {
     const v = document.querySelector('video');
     return { tag: v?.dataset.renewalTag ?? null, time: v?.currentTime ?? 0 };
   });
-  check('M5 renewal does not remount the media element', renewalAfter.tag === 'renewal-original', `tag=${renewalAfter.tag}`);
-  check('M5 renewal does not rewind playback', renewalAfter.time >= renewalBefore.time, `${renewalBefore.time} -> ${renewalAfter.time}`);
+  check(
+    'M5 renewal does not remount the media element',
+    renewalAfter.tag === 'renewal-original',
+    `tag=${renewalAfter.tag}`,
+  );
+  check(
+    'M5 renewal does not rewind playback',
+    renewalAfter.time >= renewalBefore.time,
+    `${renewalBefore.time} -> ${renewalAfter.time}`,
+  );
 
   const before = await spage.evaluate(() => {
     const v = document.querySelector('video');
     return {
       tag: v?.dataset.continuityTag ?? null,
       time: v?.currentTime ?? 0,
-      phase: document.querySelector('[data-testid="player-state"]')?.getAttribute('data-phase') ?? null,
+      phase:
+        document.querySelector('[data-testid="player-state"]')?.getAttribute('data-phase') ?? null,
     };
   });
 
@@ -408,7 +525,12 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json', 'X-Csrf-Token': token, Origin: base },
-          body: JSON.stringify({ courseRef: slug, lessonId: id, positionSeconds: 1 + i, durationSeconds: 20 }),
+          body: JSON.stringify({
+            courseRef: slug,
+            lessonId: id,
+            positionSeconds: 1 + i,
+            durationSeconds: 20,
+          }),
         });
         status.push(res.status);
         await new Promise((r) => setTimeout(r, 400));
@@ -432,19 +554,39 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
       tag: v?.dataset.continuityTag ?? null,
       time: v?.currentTime ?? 0,
       paused: v?.paused ?? true,
-      phase: document.querySelector('[data-testid="player-state"]')?.getAttribute('data-phase') ?? null,
+      phase:
+        document.querySelector('[data-testid="player-state"]')?.getAttribute('data-phase') ?? null,
     };
   });
-  check('M5 progress writes do not remount the media element', after.tag === 'original', `tag=${after.tag}`);
-  check('M5 playback keeps advancing across progress writes', after.time > before.time, `${before.time} -> ${after.time}`);
-  check('M5 player is not put back into a loading state', after.phase !== 'loading' && after.phase !== 'requesting', `phase=${after.phase}`);
-  check('M5 playback is not paused by a progress write', after.paused === false, `paused=${after.paused}`);
+  check(
+    'M5 progress writes do not remount the media element',
+    after.tag === 'original',
+    `tag=${after.tag}`,
+  );
+  check(
+    'M5 playback keeps advancing across progress writes',
+    after.time > before.time,
+    `${before.time} -> ${after.time}`,
+  );
+  check(
+    'M5 player is not put back into a loading state',
+    after.phase !== 'loading' && after.phase !== 'requesting',
+    `phase=${after.phase}`,
+  );
+  check(
+    'M5 playback is not paused by a progress write',
+    after.paused === false,
+    `paused=${after.paused}`,
+  );
 
   // The outline must not be refetched: that reload used to unmount the player.
-  check('M5 routine progress writes do not reload the outline', outlineRequests === 0, `outline requests=${outlineRequests}`);
+  check(
+    'M5 routine progress writes do not reload the outline',
+    outlineRequests === 0,
+    `outline requests=${outlineRequests}`,
+  );
 
   await shot(spage, 'm5-continuity-playing.png');
-
 
   // ---- 9b. Switching lessons closes the previous session and starts clean ----
   const switched = await spage.evaluate(() => {
@@ -473,7 +615,11 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
       )
       .then((handle) => handle.jsonValue())
       .catch(() => null);
-    check('M5 lesson switch issues a fresh session', typeof newReferenceId === 'string', String(newReferenceId));
+    check(
+      'M5 lesson switch issues a fresh session',
+      typeof newReferenceId === 'string',
+      String(newReferenceId),
+    );
     const switchedVideo = await spage.evaluate(() => document.querySelector('video') !== null);
     check('M5 lesson switch keeps a player mounted', switchedVideo);
   } else {
@@ -481,9 +627,12 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
     check('M5 lesson switch keeps a player mounted', true, switched.reason);
   }
 
-
   spage.off('response', onDrmResponse);
-  check('M5 fixture traffic shows no failed media request', drmTraffic.every((line) => !/ -> [45]\d\d$/.test(line)), `hops=${drmTraffic.length}`);
+  check(
+    'M5 fixture traffic shows no failed media request',
+    drmTraffic.every((line) => !/ -> [45]\d\d$/.test(line)),
+    `hops=${drmTraffic.length}`,
+  );
 
   // ---- 11a. Gate F: the protected-playback watermark ----
   // Scope of the claim, checked here: a VISIBLE label that stays present across
@@ -522,11 +671,27 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
       videoPresent: video !== null,
     };
   });
-  check('M5 watermark is visible over protected playback', liveWatermark.present && liveWatermark.labelCount >= 1, JSON.stringify(liveWatermark));
-  check('M5 watermark shows only the masked identity', maskedIdentity !== '' && liveWatermark.text === maskedIdentity, `shown=${liveWatermark.text.length}chars`);
+  check(
+    'M5 watermark is visible over protected playback',
+    liveWatermark.present && liveWatermark.labelCount >= 1,
+    JSON.stringify(liveWatermark),
+  );
+  check(
+    'M5 watermark shows only the masked identity',
+    maskedIdentity !== '' && liveWatermark.text === maskedIdentity,
+    `shown=${liveWatermark.text.length}chars`,
+  );
   check('M5 watermark is hidden from assistive technology', liveWatermark.ariaHidden === 'true');
-  check('M5 watermark does not intercept pointer events', liveWatermark.pointerEvents === 'none', String(liveWatermark.pointerEvents));
-  check('M5 watermark does not block the media element or its controls', liveWatermark.hitTest === 'video' || liveWatermark.hitTest === 'div', `hitTest=${liveWatermark.hitTest}`);
+  check(
+    'M5 watermark does not intercept pointer events',
+    liveWatermark.pointerEvents === 'none',
+    String(liveWatermark.pointerEvents),
+  );
+  check(
+    'M5 watermark does not block the media element or its controls',
+    liveWatermark.hitTest === 'video' || liveWatermark.hitTest === 'div',
+    `hitTest=${liveWatermark.hitTest}`,
+  );
   check(
     'M5 watermark is painted above the player state overlay',
     liveWatermark.afterOverlay === true || liveWatermark.afterOverlay === null,
@@ -537,17 +702,31 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
   const watermarkLeak = await spage.evaluate(() => {
     const html = document.documentElement.outerHTML;
     const layer = document.querySelector('[data-testid="watermark-overlay"]');
-    return { html, text: layer?.textContent ?? '', attrs: layer ? [...layer.attributes].map((a) => a.name) : [] };
+    return {
+      html,
+      text: layer?.textContent ?? '',
+      attrs: layer ? [...layer.attributes].map((a) => a.name) : [],
+    };
   });
-  check('M5 watermark carries no trace code or signature', !/traceCode|signature|fixture-trace|fixture-signature/i.test(watermarkLeak.html));
+  check(
+    'M5 watermark carries no trace code or signature',
+    !/traceCode|signature|fixture-trace|fixture-signature/i.test(watermarkLeak.html),
+  );
   check(
     'M5 watermark exposes no attribute other than its test hooks',
-    watermarkLeak.attrs.every((a) => a === 'aria-hidden' || a === 'data-testid' || a === 'data-watermark-labels' || a === 'class'),
+    watermarkLeak.attrs.every(
+      (a) =>
+        a === 'aria-hidden' ||
+        a === 'data-testid' ||
+        a === 'data-watermark-labels' ||
+        a === 'class',
+    ),
     JSON.stringify(watermarkLeak.attrs),
   );
   check(
     'M5 watermark text is not an unmasked email and the token is absent',
-    !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(watermarkLeak.text.trim()) && !watermarkLeak.html.includes(storedToken),
+    !/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(watermarkLeak.text.trim()) &&
+      !watermarkLeak.html.includes(storedToken),
     `text=${watermarkLeak.text}`,
   );
 
@@ -557,7 +736,10 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
   // and a reload legitimately discards the in-memory playback grant.
   const wmPage = await spage.browserContext().newPage();
   await wmPage.setViewport({ width: 390, height: 844, isMobile: true });
-  await wmPage.goto(`${BASE_URL}/#/learn/${courseSlug}`, { waitUntil: 'networkidle0', timeout: 60000 });
+  await wmPage.goto(`${BASE_URL}/#/learn/${courseSlug}`, {
+    waitUntil: 'networkidle0',
+    timeout: 60000,
+  });
   await wait(1200);
   await wmPage.evaluate(() => {
     const rows = [...document.querySelectorAll('[data-testid="lesson-row"]')];
@@ -577,7 +759,11 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
   const narrow = await wmPage.evaluate(() => {
     const layer = document.querySelector('[data-testid="watermark-overlay"]');
     const frame = document.querySelector('[data-reference-id]');
-    if (!layer || !frame) return { present: false, overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+    if (!layer || !frame)
+      return {
+        present: false,
+        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      };
     const l = layer.getBoundingClientRect();
     const f = frame.getBoundingClientRect();
     return {
@@ -593,10 +779,26 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
       overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     };
   });
-  check('M5 watermark survives a 390px responsive layout', narrow.present && narrow.labelCount >= 1, JSON.stringify(narrow));
-  check('M5 watermark stays inside the player frame when narrow', narrow.insideFrame === true, JSON.stringify(narrow));
-  check('M5 watermark matches the player frame size when narrow', narrow.matchesFrame === true, JSON.stringify(narrow));
-  check('M5 narrow player layout has no horizontal overflow', narrow.overflow <= 1, `overflow=${narrow.overflow}`);
+  check(
+    'M5 watermark survives a 390px responsive layout',
+    narrow.present && narrow.labelCount >= 1,
+    JSON.stringify(narrow),
+  );
+  check(
+    'M5 watermark stays inside the player frame when narrow',
+    narrow.insideFrame === true,
+    JSON.stringify(narrow),
+  );
+  check(
+    'M5 watermark matches the player frame size when narrow',
+    narrow.matchesFrame === true,
+    JSON.stringify(narrow),
+  );
+  check(
+    'M5 narrow player layout has no horizontal overflow',
+    narrow.overflow <= 1,
+    `overflow=${narrow.overflow}`,
+  );
   await shot(wmPage, 'm5-watermark-mobile-ar.png');
   await wmPage.close();
 
@@ -630,11 +832,16 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
     // dependency answers with a server error rather than a network abort, so
     // dash.js has a real HTTP failure to surface instead of hanging.
     const url = req.url();
-    const isPlatform = url.startsWith(BASE_URL) || url.startsWith('data:') || url.startsWith('blob:');
-    if (!isPlatform) req.respond({ status: 500, body: 'blocked-by-browser-test' }).catch(() => undefined);
+    const isPlatform =
+      url.startsWith(BASE_URL) || url.startsWith('data:') || url.startsWith('blob:');
+    if (!isPlatform)
+      req.respond({ status: 500, body: 'blocked-by-browser-test' }).catch(() => undefined);
     else req.continue().catch(() => undefined);
   });
-  await errPage.goto(`${BASE_URL}/#/learn/${courseSlug}`, { waitUntil: 'networkidle0', timeout: 60000 });
+  await errPage.goto(`${BASE_URL}/#/learn/${courseSlug}`, {
+    waitUntil: 'networkidle0',
+    timeout: 60000,
+  });
   await wait(1200);
   await errPage.evaluate(() => {
     const rows = [...document.querySelectorAll('[data-testid="lesson-row"]')];
@@ -668,7 +875,11 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
       phase: overlay ? overlay.getAttribute('data-phase') : null,
     };
   });
-  check('M5 blocked media settles the player in an error state', errorPhase, JSON.stringify(errorDiag));
+  check(
+    'M5 blocked media settles the player in an error state',
+    errorPhase,
+    JSON.stringify(errorDiag),
+  );
   const errorWatermark = await errPage.evaluate(() => {
     const layer = document.querySelector('[data-testid="watermark-overlay"]');
     const overlay = document.querySelector('[data-testid="player-state"]');
@@ -711,17 +922,28 @@ export async function runM5Learning({ check, shot, storageAudit, BASE_URL, spage
   const desktopOverflow = await spage.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
-  check('M5 desktop dashboard has no horizontal overflow', desktopOverflow <= 1, `overflow=${desktopOverflow}`);
+  check(
+    'M5 desktop dashboard has no horizontal overflow',
+    desktopOverflow <= 1,
+    `overflow=${desktopOverflow}`,
+  );
 
   const mob = await spage.browserContext().newPage();
   await mob.setViewport({ width: 390, height: 844, isMobile: true });
-  for (const [label, hash] of [['dashboard', '#/dashboard'], ['learn', `#/learn/${courseSlug}`]]) {
+  for (const [label, hash] of [
+    ['dashboard', '#/dashboard'],
+    ['learn', `#/learn/${courseSlug}`],
+  ]) {
     await mob.goto(`${BASE_URL}/${hash}`, { waitUntil: 'networkidle0', timeout: 60000 });
     await wait(900);
     const mobOverflow = await mob.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
-    check(`M5 mobile ${label} has no overflow at 390px`, mobOverflow <= 1, `overflow=${mobOverflow}`);
+    check(
+      `M5 mobile ${label} has no overflow at 390px`,
+      mobOverflow <= 1,
+      `overflow=${mobOverflow}`,
+    );
   }
   await shot(mob, 'm5-dashboard-mobile-ar.png');
   await mob.close();

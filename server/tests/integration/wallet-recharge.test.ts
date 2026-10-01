@@ -1,5 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createWalletWorld, rechargeBody, studentGet, studentPost, uniqueKey, type WalletWorld } from './wallet-helpers.js';
+import {
+  createWalletWorld,
+  rechargeBody,
+  studentGet,
+  studentPost,
+  uniqueKey,
+  type WalletWorld,
+} from './wallet-helpers.js';
 
 let world: WalletWorld;
 
@@ -13,31 +20,58 @@ afterAll(async () => {
 
 describe('recharge submission', () => {
   it('creates a pending request with zero wallet credit', async () => {
-    const res = await studentPost(world.app, '/wallet/recharge-requests', world.studentJar, rechargeBody());
+    const res = await studentPost(
+      world.app,
+      '/wallet/recharge-requests',
+      world.studentJar,
+      rechargeBody(),
+    );
     expect(res.status).toBe(201);
     expect(res.body.data.status).toBe('PENDING');
     expect(res.body.data.proofFilename).toBe('receipt.jpg');
     expect(res.body.data.proofDeletionDate).toBeNull();
 
-    const wallet = await world.prisma.wallet.findUniqueOrThrow({ where: { userId: world.studentUser.id } });
+    const wallet = await world.prisma.wallet.findUniqueOrThrow({
+      where: { userId: world.studentUser.id },
+    });
     expect(wallet.balancePiastres).toBe(0);
     expect(await world.prisma.walletLedgerEntry.count({ where: { walletId: wallet.id } })).toBe(0);
   });
 
   it('rejects a duplicate normalized reference within the channel', async () => {
     const reference = `dup-ref-${Date.now().toString(36)}`;
-    const first = await studentPost(world.app, '/wallet/recharge-requests', world.studentJar, rechargeBody({ reference }));
+    const first = await studentPost(
+      world.app,
+      '/wallet/recharge-requests',
+      world.studentJar,
+      rechargeBody({ reference }),
+    );
     expect(first.status).toBe(201);
-    const second = await studentPost(world.app, '/wallet/recharge-requests', world.studentJar, rechargeBody({ reference: ` ${reference.toLowerCase()} ` }));
+    const second = await studentPost(
+      world.app,
+      '/wallet/recharge-requests',
+      world.studentJar,
+      rechargeBody({ reference: ` ${reference.toLowerCase()} ` }),
+    );
     expect(second.status).toBe(409);
     expect(second.body.error.code).toBe('DUPLICATE_REFERENCE');
   });
 
   it('allows the same reference on a different channel', async () => {
     const reference = `shared-ref-${Date.now().toString(36)}`;
-    const first = await studentPost(world.app, '/wallet/recharge-requests', world.studentJar, rechargeBody({ reference, channel: 'INSTAPAY' }));
+    const first = await studentPost(
+      world.app,
+      '/wallet/recharge-requests',
+      world.studentJar,
+      rechargeBody({ reference, channel: 'INSTAPAY' }),
+    );
     expect(first.status).toBe(201);
-    const second = await studentPost(world.app, '/wallet/recharge-requests', world.studentJar, rechargeBody({ reference, channel: 'BANK_TRANSFER' }));
+    const second = await studentPost(
+      world.app,
+      '/wallet/recharge-requests',
+      world.studentJar,
+      rechargeBody({ reference, channel: 'BANK_TRANSFER' }),
+    );
     expect(second.status).toBe(201);
   });
 
@@ -47,18 +81,32 @@ describe('recharge submission', () => {
     const body = rechargeBody({ idempotencyKey: key, reference });
     const first = await studentPost(world.app, '/wallet/recharge-requests', world.studentJar, body);
     expect(first.status).toBe(201);
-    const second = await studentPost(world.app, '/wallet/recharge-requests', world.studentJar, { ...body });
+    const second = await studentPost(world.app, '/wallet/recharge-requests', world.studentJar, {
+      ...body,
+    });
     expect(second.status).toBe(201);
     expect(second.body.data.id).toBe(first.body.data.id);
-    const count = await world.prisma.rechargeRequest.count({ where: { studentId: world.studentUser.id, idempotencyKey: key } });
+    const count = await world.prisma.rechargeRequest.count({
+      where: { studentId: world.studentUser.id, idempotencyKey: key },
+    });
     expect(count).toBe(1);
   });
 
   it('conflicts when the same key carries different parameters', async () => {
     const key = uniqueKey('conflict');
-    const first = await studentPost(world.app, '/wallet/recharge-requests', world.studentJar, rechargeBody({ idempotencyKey: key, amountPiastres: 60000 }));
+    const first = await studentPost(
+      world.app,
+      '/wallet/recharge-requests',
+      world.studentJar,
+      rechargeBody({ idempotencyKey: key, amountPiastres: 60000 }),
+    );
     expect(first.status).toBe(201);
-    const second = await studentPost(world.app, '/wallet/recharge-requests', world.studentJar, rechargeBody({ idempotencyKey: key, amountPiastres: 90000 }));
+    const second = await studentPost(
+      world.app,
+      '/wallet/recharge-requests',
+      world.studentJar,
+      rechargeBody({ idempotencyKey: key, amountPiastres: 90000 }),
+    );
     expect(second.status).toBe(409);
     expect(second.body.error.code).toBe('IDEMPOTENCY_CONFLICT');
   });
@@ -67,7 +115,9 @@ describe('recharge submission', () => {
     const key = uniqueKey('full-conflict');
     const reference = `full-ref-${Date.now().toString(36)}`;
     const body = rechargeBody({ idempotencyKey: key, reference });
-    expect((await studentPost(world.app, '/wallet/recharge-requests', world.studentJar, body)).status).toBe(201);
+    expect(
+      (await studentPost(world.app, '/wallet/recharge-requests', world.studentJar, body)).status,
+    ).toBe(201);
     const changedProof = Buffer.from([0xff, 0xd8, 0x01, 0xff, 0xd9]).toString('base64');
     const replay = await studentPost(world.app, '/wallet/recharge-requests', world.studentJar, {
       ...body,
@@ -81,8 +131,18 @@ describe('recharge submission', () => {
   it('concurrent mismatched uses of one idempotency key do not converge', async () => {
     const key = uniqueKey('concurrent-conflict');
     const attempts = await Promise.all([
-      studentPost(world.app, '/wallet/recharge-requests', world.studentJar, rechargeBody({ idempotencyKey: key, reference: uniqueKey('ref-a') })),
-      studentPost(world.app, '/wallet/recharge-requests', world.studentJar, rechargeBody({ idempotencyKey: key, reference: uniqueKey('ref-b') })),
+      studentPost(
+        world.app,
+        '/wallet/recharge-requests',
+        world.studentJar,
+        rechargeBody({ idempotencyKey: key, reference: uniqueKey('ref-a') }),
+      ),
+      studentPost(
+        world.app,
+        '/wallet/recharge-requests',
+        world.studentJar,
+        rechargeBody({ idempotencyKey: key, reference: uniqueKey('ref-b') }),
+      ),
     ]);
     expect(attempts.map((r) => r.status).sort()).toEqual([201, 409]);
     expect(attempts.find((r) => r.status === 409)?.body.error.code).toBe('IDEMPOTENCY_CONFLICT');
@@ -94,11 +154,18 @@ describe('recharge submission', () => {
       Buffer.alloc(300_000, 0x41),
       Buffer.from([0xff, 0xd9]),
     ]);
-    const res = await studentPost(world.app, '/wallet/recharge-requests', world.studentJar, rechargeBody({
-      proofBase64: bytes.toString('base64'),
-    }));
+    const res = await studentPost(
+      world.app,
+      '/wallet/recharge-requests',
+      world.studentJar,
+      rechargeBody({
+        proofBase64: bytes.toString('base64'),
+      }),
+    );
     expect(res.status).toBe(201);
-    const stored = await world.prisma.rechargeProof.findUniqueOrThrow({ where: { requestId: res.body.data.id } });
+    const stored = await world.prisma.rechargeProof.findUniqueOrThrow({
+      where: { requestId: res.body.data.id },
+    });
     expect(stored.size).toBe(bytes.length);
   });
 
@@ -112,7 +179,12 @@ describe('recharge submission', () => {
   });
 
   it('rejects unknown mutation fields', async () => {
-    const res = await studentPost(world.app, '/wallet/recharge-requests', world.studentJar, rechargeBody({ unexpected: true }));
+    const res = await studentPost(
+      world.app,
+      '/wallet/recharge-requests',
+      world.studentJar,
+      rechargeBody({ unexpected: true }),
+    );
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('INVALID_FIELD');
   });
@@ -129,7 +201,12 @@ describe('recharge submission', () => {
       ['oversize proof', { proofBase64: 'A'.repeat(7_100_001) }, 400],
     ];
     for (const [name, override, status] of cases) {
-      const res = await studentPost(world.app, '/wallet/recharge-requests', world.studentJar, rechargeBody(override));
+      const res = await studentPost(
+        world.app,
+        '/wallet/recharge-requests',
+        world.studentJar,
+        rechargeBody(override),
+      );
       expect(res.status, name).toBe(status);
     }
   });
@@ -139,7 +216,12 @@ describe('recharge submission', () => {
     try {
       const instructions = await studentGet(bare.app, '/wallet/instructions', bare.studentJar);
       expect(instructions.status).toBe(503);
-      const submit = await studentPost(bare.app, '/wallet/recharge-requests', bare.studentJar, rechargeBody());
+      const submit = await studentPost(
+        bare.app,
+        '/wallet/recharge-requests',
+        bare.studentJar,
+        rechargeBody(),
+      );
       expect(submit.status).toBe(503);
       expect(submit.body.error.code).toBe('PAYMENT_UNCONFIGURED');
     } finally {

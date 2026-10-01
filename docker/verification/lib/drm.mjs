@@ -111,10 +111,7 @@ export class DrmClient {
   }
 
   async mediaStatus(assetId) {
-    return this.request(
-      'GET',
-      `/v1/admin/media/${encodeURIComponent(assetId)}/status`,
-    );
+    return this.request('GET', `/v1/admin/media/${encodeURIComponent(assetId)}/status`);
   }
 
   async createPlaybackSession(input) {
@@ -122,10 +119,14 @@ export class DrmClient {
   }
 
   async heartbeat(sessionId, { deviceId, bearer }) {
-    return this.request('POST', `/v1/playback/sessions/${encodeURIComponent(sessionId)}/heartbeat`, {
-      body: { deviceId },
-      bearer,
-    });
+    return this.request(
+      'POST',
+      `/v1/playback/sessions/${encodeURIComponent(sessionId)}/heartbeat`,
+      {
+        body: { deviceId },
+        bearer,
+      },
+    );
   }
 
   async endSession(sessionId, { deviceId, bearer }) {

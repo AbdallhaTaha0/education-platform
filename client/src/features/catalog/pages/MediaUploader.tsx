@@ -8,12 +8,21 @@ import { completeMedia, registerMedia, syncLessonMedia } from '../api/client';
 import { isSupportedVideoMime } from '../types/models';
 
 function mimeFor(file: File): string {
-  if (file.type === 'video/quicktime' || file.name.toLowerCase().endsWith('.mov')) return 'video/quicktime';
+  if (file.type === 'video/quicktime' || file.name.toLowerCase().endsWith('.mov'))
+    return 'video/quicktime';
   return file.type;
 }
 
 /** Real-file upload flow: no dummy fallback; completion only after 2xx PUT. */
-export function MediaUploader({ lessonId, mediaStatus, onChanged }: { lessonId: string; mediaStatus: string | null; onChanged: () => Promise<void> }): JSX.Element {
+export function MediaUploader({
+  lessonId,
+  mediaStatus,
+  onChanged,
+}: {
+  lessonId: string;
+  mediaStatus: string | null;
+  onChanged: () => Promise<void>;
+}): JSX.Element {
   const { t } = useLang();
   const fileRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<string | null>(null);
@@ -42,9 +51,17 @@ export function MediaUploader({ lessonId, mediaStatus, onChanged }: { lessonId: 
     setProgress(0);
     try {
       setPhase('registering');
-      const { uploadUrl } = await registerMedia(lessonId, { contentType: mime, securityTier: 'STANDARD', title: file.name.slice(0, 120) });
+      const { uploadUrl } = await registerMedia(lessonId, {
+        contentType: mime,
+        securityTier: 'STANDARD',
+        title: file.name.slice(0, 120),
+      });
       setPhase('uploading');
-      const put = await fetch(uploadUrl, { method: 'PUT', body: file, headers: { 'Content-Type': mime } });
+      const put = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': mime },
+      });
       if (!put.ok) {
         setPhase('failed');
         setError('SERVICE_ERROR');
@@ -82,7 +99,13 @@ export function MediaUploader({ lessonId, mediaStatus, onChanged }: { lessonId: 
   return (
     <div className="mt-2 flex flex-wrap items-center gap-2" data-testid={`uploader-${lessonId}`}>
       <Field id={`file-${lessonId}`} label={t.fieldVideoFile}>
-        <input ref={fileRef} id={`file-${lessonId}`} type="file" accept="video/mp4,video/webm,video/quicktime,.mov" className="min-h-[44px]" />
+        <input
+          ref={fileRef}
+          id={`file-${lessonId}`}
+          type="file"
+          accept="video/mp4,video/webm,video/quicktime,.mov"
+          className="min-h-[44px]"
+        />
       </Field>
       <Button variant="secondary" disabled={busy} onClick={() => void run()}>
         {t.actionRegister}

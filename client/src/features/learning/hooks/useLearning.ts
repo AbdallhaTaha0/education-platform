@@ -58,7 +58,10 @@ export function useOutline(courseRef: string): AsyncState<OutlinePayload> {
   return useAsync(() => learningApi.outline(courseRef), [courseRef]);
 }
 
-export function useLessonProgress(courseRef: string, lessonId: string | null): LessonProgressState | null {
+export function useLessonProgress(
+  courseRef: string,
+  lessonId: string | null,
+): LessonProgressState | null {
   const [state, setState] = useState<LessonProgressState | null>(null);
   useEffect(() => {
     if (lessonId === null) {
@@ -87,7 +90,11 @@ export interface PlaybackController {
   errorCode: string | null;
   start: (lessonId: string) => Promise<void>;
   end: () => Promise<void>;
-  reportProgress: (positionSeconds: number, durationSeconds: number | null, completed: boolean) => void;
+  reportProgress: (
+    positionSeconds: number,
+    durationSeconds: number | null,
+    completed: boolean,
+  ) => void;
   /** Locally merged progress, so a write never needs an outline reload. */
   progress: Record<string, LessonProgressState>;
   release: () => void;
@@ -163,7 +170,10 @@ export function usePlayback(courseRef: string): PlaybackController {
 
     const tokenExpiresAt = Date.parse(current.tokenExpiresAt);
     if (!Number.isFinite(tokenExpiresAt)) return;
-    const wait = Math.min(Math.max(tokenExpiresAt - RENEW_MARGIN_MS - Date.now(), 1_000), MAX_TIMER_MS);
+    const wait = Math.min(
+      Math.max(tokenExpiresAt - RENEW_MARGIN_MS - Date.now(), 1_000),
+      MAX_TIMER_MS,
+    );
     renewTimer.current = setTimeout(() => {
       void (async () => {
         const held = grantRef.current;
@@ -180,8 +190,12 @@ export function usePlayback(courseRef: string): PlaybackController {
           // the DASH/EME instance is left completely untouched.
           // A late response must not resurrect an ended or switched session.
           if (grantRef.current?.referenceId !== held.referenceId) return;
-          const next = { ...held, playbackToken: renewal.playbackToken,
-            tokenExpiresAt: renewal.tokenExpiresAt, sessionExpiresAt: renewal.sessionExpiresAt };
+          const next = {
+            ...held,
+            playbackToken: renewal.playbackToken,
+            tokenExpiresAt: renewal.tokenExpiresAt,
+            sessionExpiresAt: renewal.sessionExpiresAt,
+          };
           grantRef.current = next;
           setGrant(next);
           setErrorCode(null);
@@ -285,7 +299,17 @@ export function usePlayback(courseRef: string): PlaybackController {
   );
 
   return useMemo(
-    () => ({ grant, requesting, errorCode, start, end, reportProgress, progress, release, markSessionEnded }),
+    () => ({
+      grant,
+      requesting,
+      errorCode,
+      start,
+      end,
+      reportProgress,
+      progress,
+      release,
+      markSessionEnded,
+    }),
     [grant, requesting, errorCode, start, end, reportProgress, progress, release, markSessionEnded],
   );
 }

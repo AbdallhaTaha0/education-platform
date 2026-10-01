@@ -23,7 +23,15 @@ describe('FAYQ identity', () => {
   it('never transliterates or respells the name in either locale', () => {
     for (const strings of [ar, en]) {
       const localized = JSON.stringify(strings);
-      for (const forbidden of ['فايق', 'فايكو', 'Faiq', 'FAIQ', 'FaYq', 'Learning Platform', 'منصة التعلم']) {
+      for (const forbidden of [
+        'فايق',
+        'فايكو',
+        'Faiq',
+        'FAIQ',
+        'FaYq',
+        'Learning Platform',
+        'منصة التعلم',
+      ]) {
         expect(localized, `legacy branding still present: ${forbidden}`).not.toContain(forbidden);
       }
     }

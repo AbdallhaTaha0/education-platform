@@ -11,7 +11,8 @@ export const en = {
   langLabel: 'Language',
   heroBadge: 'Technical foundation — first release',
   heroTitle: 'Learn programming in Arabic, with organized recorded lessons',
-  heroBody: 'Recorded programming lessons for first and second secondary students, with clear access terms.',
+  heroBody:
+    'Recorded programming lessons for first and second secondary students, with clear access terms.',
   heroPrimary: 'View platform status',
   heroSecondary: 'How will it work?',
   howTitle: 'How will the platform work?',
@@ -83,7 +84,8 @@ export const en = {
   navCourses: 'Courses',
   navCatalog: 'Course management',
   catalogTitle: 'Recorded programming courses',
-  catalogBody: 'Choose your grade and term, then explore monthly courses, revisions and packages. Every offer shows its price and access terms.',
+  catalogBody:
+    'Choose your grade and term, then explore monthly courses, revisions and packages. Every offer shows its price and access terms.',
   catalogEmpty: 'No published courses yet.',
   catalogLoading: 'Loading courses…',
   courseDetailBack: 'Back to courses',
@@ -96,7 +98,8 @@ export const en = {
   publishedLabel: 'Published',
   statusLabel: 'Status',
   adminCatalogTitle: 'Course management',
-  adminCatalogBody: 'Manage bilingual courses, grade and term, lessons, prices, access terms and monthly packages. Upload videos, publish, archive or permanently remove content.',
+  adminCatalogBody:
+    'Manage bilingual courses, grade and term, lessons, prices, access terms and monthly packages. Upload videos, publish, archive or permanently remove content.',
   courseCreateTitle: 'Create a new course',
   courseEditTitle: 'Edit course',
   fieldSlug: 'Slug',
@@ -135,8 +138,10 @@ export const en = {
   actionAddSection: 'Add section',
   actionAddLesson: 'Add lesson',
   actionAddPlan: 'Add plan',
-  confirmArchive: 'Confirm archive? The course leaves public offers immediately. Archive is reversible and never deletes external video.',
-  confirmDelete: 'Confirm permanent deletion? Content and external video are removed permanently. Type the identifier to confirm.',
+  confirmArchive:
+    'Confirm archive? The course leaves public offers immediately. Archive is reversible and never deletes external video.',
+  confirmDelete:
+    'Confirm permanent deletion? Content and external video are removed permanently. Type the identifier to confirm.',
   deleteProgress: 'Permanent deletion in progress…',
   deleteFailed: 'Permanent deletion failed. Retry is available.',
   deleteCompleted: 'Permanent deletion completed.',
@@ -175,9 +180,11 @@ export const en = {
   rechargeApproved: 'Approved',
   rechargeRejected: 'Rejected',
   rechargeTitle: 'New recharge request',
-  rechargeNoAutoCredit: 'Submitting proof does not credit money. An admin verifies the actual receipt first.',
+  rechargeNoAutoCredit:
+    'Submitting proof does not credit money. An admin verifies the actual receipt first.',
   rechargeSubmitted: 'Request submitted',
-  rechargeSubmittedBody: 'Your request is pending review. Credit appears only after an admin verifies the transfer.',
+  rechargeSubmittedBody:
+    'Your request is pending review. Credit appears only after an admin verifies the transfer.',
   backToWallet: 'Back to wallet',
   backToCourses: 'Back to courses',
   fieldAmount: 'Amount (EGP)',
@@ -197,7 +204,8 @@ export const en = {
   submitting: 'Submitting…',
   cancel: 'Cancel',
   adminRechargeTitle: 'Recharge review',
-  adminRechargeBody: 'Verify actual receipt independently before approving. Approval credits once and never purchases a course.',
+  adminRechargeBody:
+    'Verify actual receipt independently before approving. Approval credits once and never purchases a course.',
   filterStatus: 'Filter by status',
   filterAll: 'All',
   queueEmpty: 'No requests match this filter.',

@@ -3,12 +3,29 @@ import { ApiError } from '../../../auth';
 import { localizeCode, useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
 import { Notice } from '../../../components/ui/Notice';
-import { archiveCourse, fetchLifecycleActions, transitionCourse, unarchiveCourse } from '../api/client';
+import {
+  archiveCourse,
+  fetchLifecycleActions,
+  transitionCourse,
+  unarchiveCourse,
+} from '../api/client';
 import type { LifecycleAction } from '../types/models';
 
-const TO_MAP: Record<string, string> = { PROCESSING: 'PROCESSING', READY: 'READY', PUBLISHED: 'PUBLISHED' };
+const TO_MAP: Record<string, string> = {
+  PROCESSING: 'PROCESSING',
+  READY: 'READY',
+  PUBLISHED: 'PUBLISHED',
+};
 
-export function LifecycleControls({ courseId, status, onChanged }: { courseId: string; status: string; onChanged: () => Promise<void> }): JSX.Element {
+export function LifecycleControls({
+  courseId,
+  status,
+  onChanged,
+}: {
+  courseId: string;
+  status: string;
+  onChanged: () => Promise<void>;
+}): JSX.Element {
   const { t } = useLang();
   const [actions, setActions] = useState<LifecycleAction[]>([]);
   const [busy, setBusy] = useState(false);
@@ -46,33 +63,63 @@ export function LifecycleControls({ courseId, status, onChanged }: { courseId: s
     <div className="mt-4" aria-label={t.actionTransition}>
       {error !== null ? <Notice kind="error">{localizeCode(t, error)}</Notice> : null}
       <div className="flex flex-wrap gap-2">
-        {actions.filter((a) => a.action in TO_MAP).map((a) => (
-          <span key={a.action} title={a.reason ?? undefined}>
-            <Button variant={a.action === 'PUBLISHED' ? 'primary' : 'secondary'} disabled={busy || !a.enabled} onClick={() => void run(() => transitionCourse(courseId, a.action))}>
-              {a.action === 'PROCESSING' ? 'DRAFT → PROCESSING' : a.action === 'READY' ? 'PROCESSING → READY' : 'READY → PUBLISHED'}
-            </Button>
-            {!a.enabled && a.reason !== null ? <span className="sr-only">{a.reason}</span> : null}
-          </span>
-        ))}
+        {actions
+          .filter((a) => a.action in TO_MAP)
+          .map((a) => (
+            <span key={a.action} title={a.reason ?? undefined}>
+              <Button
+                variant={a.action === 'PUBLISHED' ? 'primary' : 'secondary'}
+                disabled={busy || !a.enabled}
+                onClick={() => void run(() => transitionCourse(courseId, a.action))}
+              >
+                {a.action === 'PROCESSING'
+                  ? 'DRAFT → PROCESSING'
+                  : a.action === 'READY'
+                    ? 'PROCESSING → READY'
+                    : 'READY → PUBLISHED'}
+              </Button>
+              {!a.enabled && a.reason !== null ? <span className="sr-only">{a.reason}</span> : null}
+            </span>
+          ))}
         {actions.some((a) => a.action === 'ARCHIVE') ? (
-          <Button variant="secondary" disabled={busy} onClick={() => void run(() => archiveCourse(courseId))}>
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onClick={() => void run(() => archiveCourse(courseId))}
+          >
             {t.actionArchive}
           </Button>
         ) : null}
         {actions.some((a) => a.action === 'UNARCHIVE') ? (
-          <Button variant="secondary" disabled={busy} onClick={() => void run(() => unarchiveCourse(courseId))}>
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onClick={() => void run(() => unarchiveCourse(courseId))}
+          >
             {t.actionUnarchive}
           </Button>
         ) : null}
         {actions.length === 0 ? (
           <>
-            <Button variant="secondary" disabled={busy} onClick={() => void run(() => transitionCourse(courseId, 'PROCESSING'))}>
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onClick={() => void run(() => transitionCourse(courseId, 'PROCESSING'))}
+            >
               DRAFT → PROCESSING
             </Button>
-            <Button variant="secondary" disabled={busy} onClick={() => void run(() => transitionCourse(courseId, 'READY'))}>
+            <Button
+              variant="secondary"
+              disabled={busy}
+              onClick={() => void run(() => transitionCourse(courseId, 'READY'))}
+            >
               PROCESSING → READY
             </Button>
-            <Button variant="primary" disabled={busy} onClick={() => void run(() => transitionCourse(courseId, 'PUBLISHED'))}>
+            <Button
+              variant="primary"
+              disabled={busy}
+              onClick={() => void run(() => transitionCourse(courseId, 'PUBLISHED'))}
+            >
               READY → PUBLISHED
             </Button>
           </>

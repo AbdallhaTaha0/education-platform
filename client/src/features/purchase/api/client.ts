@@ -4,7 +4,10 @@ import type { PurchaseHistoryRow, PurchaseReceipt, SubscriptionView } from '../t
 
 export { newIdempotencyKey };
 
-export async function purchaseCourse(planId: string, idempotencyKey: string): Promise<PurchaseReceipt> {
+export async function purchaseCourse(
+  planId: string,
+  idempotencyKey: string,
+): Promise<PurchaseReceipt> {
   const body = await apiFetch<{ data: PurchaseReceipt }>('/wallet/purchases', {
     method: 'POST',
     retryOnAuth: false,
@@ -14,13 +17,16 @@ export async function purchaseCourse(planId: string, idempotencyKey: string): Pr
 }
 
 export async function fetchMyPurchases(): Promise<PurchaseHistoryRow[]> {
-  const body = await apiFetch<{ data: { purchases: PurchaseHistoryRow[] } }>('/wallet/purchases', { retryOnAuth: true });
+  const body = await apiFetch<{ data: { purchases: PurchaseHistoryRow[] } }>('/wallet/purchases', {
+    retryOnAuth: true,
+  });
   return body.data.purchases;
 }
 
 export async function fetchMySubscriptions(): Promise<SubscriptionView[]> {
-  const body = await apiFetch<{ data: { subscriptions: SubscriptionView[] } }>('/wallet/subscriptions', { retryOnAuth: true });
+  const body = await apiFetch<{ data: { subscriptions: SubscriptionView[] } }>(
+    '/wallet/subscriptions',
+    { retryOnAuth: true },
+  );
   return body.data.subscriptions;
 }
-
-

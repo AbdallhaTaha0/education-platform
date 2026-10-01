@@ -36,25 +36,45 @@ async function recordSchedule(
     const res = await drm.deleteMedia(asset.drmAssetId, asset.externalAssetId);
     await prisma.catalogDeletionAsset.update({
       where: { id: asset.id },
-      data: { drmDeletionId: res.deletionId, lastState: res.status, attemptCount: { increment: 1 }, lastCheckedAt: new Date(), errorCategory: null },
+      data: {
+        drmDeletionId: res.deletionId,
+        lastState: res.status,
+        attemptCount: { increment: 1 },
+        lastCheckedAt: new Date(),
+        errorCategory: null,
+      },
     });
     return res.status === 'COMPLETED' ? 'completed' : 'scheduled';
   } catch (err) {
     const code = err instanceof ApiError ? err.code : 'DRM_UNKNOWN';
     await prisma.catalogDeletionAsset.update({
       where: { id: asset.id },
-      data: { attemptCount: { increment: 1 }, lastCheckedAt: new Date(), errorCategory: code, lastState: 'FAILED' },
+      data: {
+        attemptCount: { increment: 1 },
+        lastCheckedAt: new Date(),
+        errorCategory: code,
+        lastState: 'FAILED',
+      },
     });
     return 'failed';
   }
 }
 
-async function recordPoll(prisma: PrismaClient, drm: DrmClient, asset: { id: string; drmDeletionId: string }): Promise<boolean> {
+async function recordPoll(
+  prisma: PrismaClient,
+  drm: DrmClient,
+  asset: { id: string; drmDeletionId: string },
+): Promise<boolean> {
   try {
     const remote = await drm.deletionStatus(asset.drmDeletionId);
     await prisma.catalogDeletionAsset.update({
       where: { id: asset.id },
-      data: { lastState: remote.status, lastCheckedAt: new Date(), attemptCount: { increment: 1 }, ...(remote.status === 'FAILED' ? { errorCategory: 'DRM_SERVER' } : { errorCategory: null }) },
+      data: {
+        lastState: remote.status,
+        lastCheckedAt: new Date(),
+        attemptCount: { increment: 1 },
+        ...(remote.status === 'FAILED' ? { errorCategory: 'DRM_SERVER' } : { errorCategory: null }),
+      },
     });
     return remote.status === 'COMPLETED';
   } catch (err) {
@@ -84,8 +104,12 @@ export async function runDeletionCycle(
   assertUuid(operationId, 'operationId');
   const ttlMs = opts.leaseTtlMs ?? DEFAULT_LEASE_TTL_MS;
   const outcome = await withRenewingLease(redis, operationId, ttlMs, async (scope) => {
-    const op = await prisma.catalogDeletionOperation.findUnique({ where: { id: operationId }, include: { assets: true } });
-    if (op === null || op.status === 'COMPLETED') return { acted: false, completed: op?.status === 'COMPLETED', leaseLost: false };
+    const op = await prisma.catalogDeletionOperation.findUnique({
+      where: { id: operationId },
+      include: { assets: true },
+    });
+    if (op === null || op.status === 'COMPLETED')
+      return { acted: false, completed: op?.status === 'COMPLETED', leaseLost: false };
     const wasAlreadyFailed = op.status === 'FAILED';
     let acted = false;
     let allCompleted = true;
@@ -100,19 +124,33 @@ export async function runDeletionCycle(
         continue;
       }
       acted = true;
-      const done = await recordPoll(prisma, drm, { id: asset.id, drmDeletionId: asset.drmDeletionId });
+      const done = await recordPoll(prisma, drm, {
+        id: asset.id,
+        drmDeletionId: asset.drmDeletionId,
+      });
       if (!done) allCompleted = false;
     }
     if (!allCompleted) {
       if (scope.lost) return { acted, completed: false, leaseLost: true };
-      const failed = await prisma.catalogDeletionAsset.count({ where: { operationId, lastState: 'FAILED' } });
+      const failed = await prisma.catalogDeletionAsset.count({
+        where: { operationId, lastState: 'FAILED' },
+      });
       await prisma.catalogDeletionOperation.update({
         where: { id: operationId },
-        data: { status: failed > 0 ? 'FAILED' : 'RUNNING', ...(failed > 0 ? { errorCategory: 'DRM_SERVER' } : { errorCategory: null }) },
+        data: {
+          status: failed > 0 ? 'FAILED' : 'RUNNING',
+          ...(failed > 0 ? { errorCategory: 'DRM_SERVER' } : { errorCategory: null }),
+        },
       });
       // Exactly one failure audit per operation: only on transition into FAILED.
       if (failed > 0 && !wasAlreadyFailed && acted) {
-        await audit(prisma, { actorUserId: op.requestedBy, action: 'DELETION_FAILED', entityType: op.targetType as string, entityId: op.targetId, metadata: { operationId, errorCategory: 'DRM_SERVER' } });
+        await audit(prisma, {
+          actorUserId: op.requestedBy,
+          action: 'DELETION_FAILED',
+          entityType: op.targetType as string,
+          entityId: op.targetId,
+          metadata: { operationId, errorCategory: 'DRM_SERVER' },
+        });
       }
       return { acted, completed: false, leaseLost: false };
     }
@@ -138,7 +176,10 @@ export async function reconcileOperationWithLease(
   assertUuid(operationId, 'operationId');
   const drm = drmFactory(config);
   if (drm === null) {
-    await prisma.catalogDeletionOperation.update({ where: { id: operationId }, data: { status: 'FAILED', errorCategory: 'DRM_UNCONFIGURED' } });
+    await prisma.catalogDeletionOperation.update({
+      where: { id: operationId },
+      data: { status: 'FAILED', errorCategory: 'DRM_UNCONFIGURED' },
+    });
     return false;
   }
   const outcome = await runDeletionCycle(prisma, drm, redis, operationId, opts);
@@ -159,9 +200,15 @@ export async function reconcilePendingOperations(
   );
   let completed = 0;
   for (const row of pending) {
-    const before = await prisma.catalogDeletionOperation.findUnique({ where: { id: row.id }, select: { status: true } });
+    const before = await prisma.catalogDeletionOperation.findUnique({
+      where: { id: row.id },
+      select: { status: true },
+    });
     const done = await reconcileOperationWithLease(prisma, config, drmFactory, redis, row.id, opts);
-    const after = await prisma.catalogDeletionOperation.findUnique({ where: { id: row.id }, select: { status: true } });
+    const after = await prisma.catalogDeletionOperation.findUnique({
+      where: { id: row.id },
+      select: { status: true },
+    });
     if (done && before?.status !== 'COMPLETED' && after?.status === 'COMPLETED') completed += 1;
   }
   return { checked: pending.length, completed };
@@ -178,13 +225,26 @@ export async function retryDeletionOperation(
   assertUuid(operationId, 'operationId');
   const op = await prisma.catalogDeletionOperation.findUnique({ where: { id: operationId } });
   if (op === null) throw new ApiError(404, 'DELETION_NOT_FOUND', 'Deletion operation not found.');
-  if (op.status === 'COMPLETED') throw new ApiError(409, 'INVALID_TRANSITION', 'Deletion already completed.');
+  if (op.status === 'COMPLETED')
+    throw new ApiError(409, 'INVALID_TRANSITION', 'Deletion already completed.');
   if (op.status === 'FAILED') {
-    await prisma.catalogDeletionOperation.update({ where: { id: operationId }, data: { status: 'RUNNING', errorCategory: null } });
-    await audit(prisma, { actorUserId: actorId, action: 'DELETION_RETRIED', entityType: op.targetType as string, entityId: op.targetId, metadata: { operationId } });
+    await prisma.catalogDeletionOperation.update({
+      where: { id: operationId },
+      data: { status: 'RUNNING', errorCategory: null },
+    });
+    await audit(prisma, {
+      actorUserId: actorId,
+      action: 'DELETION_RETRIED',
+      entityType: op.targetType as string,
+      entityId: op.targetId,
+      metadata: { operationId },
+    });
   }
   await reconcileOperationWithLease(prisma, config, drmFactory, redis, operationId);
-  return prisma.catalogDeletionOperation.findUnique({ where: { id: operationId }, include: { assets: true } });
+  return prisma.catalogDeletionOperation.findUnique({
+    where: { id: operationId },
+    include: { assets: true },
+  });
 }
 
 export function startDeletionReconciler(
@@ -207,5 +267,10 @@ export function startDeletionReconciler(
     }
   };
   timer = setTimeout(() => void tick(), 3000);
-  return { stop: () => { stopped = true; if (timer !== null) clearTimeout(timer); } };
+  return {
+    stop: () => {
+      stopped = true;
+      if (timer !== null) clearTimeout(timer);
+    },
+  };
 }

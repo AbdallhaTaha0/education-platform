@@ -56,7 +56,11 @@ export async function createPlaybackSession(
   }
 
   const session = validatePlaybackSession(raw);
-  const urls = resolveDependencyUrls(session.manifestUrl, session.licenseUrl, deps.drmPublicBaseUrl);
+  const urls = resolveDependencyUrls(
+    session.manifestUrl,
+    session.licenseUrl,
+    deps.drmPublicBaseUrl,
+  );
 
   const record = await deps.prisma.playbackReference.create({
     data: {
@@ -107,7 +111,9 @@ export interface RenewalResult {
   sessionExpiresAt: string;
 }
 
-export type RenewalOutcome = RenewalResult | { renewed: false; reason: 'NOT_RENEWABLE' | 'SESSION_GONE' };
+export type RenewalOutcome =
+  | RenewalResult
+  | { renewed: false; reason: 'NOT_RENEWABLE' | 'SESSION_GONE' };
 
 export async function renewPlaybackToken(
   deps: PlaybackDeps,
@@ -122,7 +128,12 @@ export async function renewPlaybackToken(
 
   // Entitlement is re-evaluated on backend time before every renewal. A
   // subscription that expired since the grant was issued cannot be renewed.
-  const decision = await recheckEntitlement(deps.prisma, reference.studentId, reference.courseId, input.nowMs);
+  const decision = await recheckEntitlement(
+    deps.prisma,
+    reference.studentId,
+    reference.courseId,
+    input.nowMs,
+  );
   if (!decision.allowed) {
     // The session must not outlive the entitlement: queue durable termination.
     await scheduleTermination(deps.prisma, reference.id, input.nowMs, 'SUBSCRIPTION_EXPIRED');
@@ -138,7 +149,13 @@ export async function renewPlaybackToken(
     if ((err as { code?: string }).code === 'DRM_NOT_FOUND') {
       await deps.prisma.playbackReference.updateMany({
         where: { id: reference.id, status: 'ACTIVE' },
-        data: { status: 'TERMINATED', terminationStatus: 'COMPLETED', pendingEndReason: null, nextTerminationAt: null, endedAt: new Date(input.nowMs) },
+        data: {
+          status: 'TERMINATED',
+          terminationStatus: 'COMPLETED',
+          pendingEndReason: null,
+          nextTerminationAt: null,
+          endedAt: new Date(input.nowMs),
+        },
       });
       return { renewed: false, reason: 'SESSION_GONE' };
     }
@@ -149,7 +166,13 @@ export async function renewPlaybackToken(
   if (!renewal.renewed) {
     await deps.prisma.playbackReference.updateMany({
       where: { id: reference.id, status: 'ACTIVE' },
-      data: { status: 'TERMINATED', terminationStatus: 'COMPLETED', pendingEndReason: null, nextTerminationAt: null, endedAt: new Date(input.nowMs) },
+      data: {
+        status: 'TERMINATED',
+        terminationStatus: 'COMPLETED',
+        pendingEndReason: null,
+        nextTerminationAt: null,
+        endedAt: new Date(input.nowMs),
+      },
     });
     return { renewed: false, reason: 'SESSION_GONE' };
   }
@@ -188,13 +211,24 @@ async function recheckEntitlement(
 function mapDependencyError(err: unknown): LearningError {
   const code = (err as { code?: string }).code;
   if (code === 'DRM_UNAUTHORIZED') {
-    return new LearningError('PLAYBACK_UNAVAILABLE', 'The media service rejected the playback request.');
+    return new LearningError(
+      'PLAYBACK_UNAVAILABLE',
+      'The media service rejected the playback request.',
+    );
   }
-  if (code === 'DRM_TIMEOUT' || code === 'DRM_NETWORK' || code === 'DRM_SERVER' || code === 'DRM_UNKNOWN') {
+  if (
+    code === 'DRM_TIMEOUT' ||
+    code === 'DRM_NETWORK' ||
+    code === 'DRM_SERVER' ||
+    code === 'DRM_UNKNOWN'
+  ) {
     return new LearningError('DRM_DEPENDENCY_FAILED');
   }
   if (code === 'DRM_NOT_FOUND' || code === 'DRM_VALIDATION' || code === 'DRM_CONFLICT') {
-    return new LearningError('PLAYBACK_UNAVAILABLE', 'The media service rejected the playback request.');
+    return new LearningError(
+      'PLAYBACK_UNAVAILABLE',
+      'The media service rejected the playback request.',
+    );
   }
   return new LearningError('DRM_DEPENDENCY_FAILED');
 }

@@ -55,7 +55,14 @@ describe('watermark visibility', () => {
 
 describe('watermark positions', () => {
   it('keeps the supplied positions', () => {
-    const labels = watermarkLabels(watermark({ positions: [{ x: 20, y: 40 }, { x: 80, y: 60 }] }));
+    const labels = watermarkLabels(
+      watermark({
+        positions: [
+          { x: 20, y: 40 },
+          { x: 80, y: 60 },
+        ],
+      }),
+    );
     expect(labels).toHaveLength(2);
     expect(labels[0]).toMatchObject({ x: 20, y: 40 });
     expect(labels[1]).toMatchObject({ x: 80, y: 60 });
@@ -68,7 +75,12 @@ describe('watermark positions', () => {
 
   it('clamps out-of-range and non-finite positions instead of hiding the label', () => {
     const labels = watermarkLabels(
-      watermark({ positions: [{ x: -25, y: 900 }, { x: Number.NaN, y: Number.POSITIVE_INFINITY }] }),
+      watermark({
+        positions: [
+          { x: -25, y: 900 },
+          { x: Number.NaN, y: Number.POSITIVE_INFINITY },
+        ],
+      }),
     );
     expect(labels).toHaveLength(2);
     expect(labels[0]).toMatchObject({ x: 0, y: 100 });
@@ -77,14 +89,25 @@ describe('watermark positions', () => {
 
   it('drops duplicate coordinates so identical labels cannot stack', () => {
     const labels = watermarkLabels(
-      watermark({ positions: [{ x: 30, y: 30 }, { x: 30, y: 30 }, { x: 70, y: 70 }] }),
+      watermark({
+        positions: [
+          { x: 30, y: 30 },
+          { x: 30, y: 30 },
+          { x: 70, y: 70 },
+        ],
+      }),
     );
     expect(labels).toHaveLength(2);
   });
 
   it('bounds how many labels a dependency response can add', () => {
-    const many = Array.from({ length: MAX_WATERMARK_LABELS * 3 }, (_, i) => ({ x: i % 100, y: (i * 7) % 100 }));
-    expect(watermarkLabels(watermark({ positions: many })).length).toBeLessThanOrEqual(MAX_WATERMARK_LABELS);
+    const many = Array.from({ length: MAX_WATERMARK_LABELS * 3 }, (_, i) => ({
+      x: i % 100,
+      y: (i * 7) % 100,
+    }));
+    expect(watermarkLabels(watermark({ positions: many })).length).toBeLessThanOrEqual(
+      MAX_WATERMARK_LABELS,
+    );
   });
 
   it('ignores malformed entries but still draws a label', () => {
@@ -96,7 +119,14 @@ describe('watermark positions', () => {
   });
 
   it('gives every label a distinct, identity-free key', () => {
-    const labels = watermarkLabels(watermark({ positions: [{ x: 10, y: 10 }, { x: 20, y: 20 }] }));
+    const labels = watermarkLabels(
+      watermark({
+        positions: [
+          { x: 10, y: 10 },
+          { x: 20, y: 20 },
+        ],
+      }),
+    );
     expect(new Set(labels.map((l) => l.key)).size).toBe(labels.length);
     for (const label of labels) expect(label.key).not.toContain('fixt');
   });

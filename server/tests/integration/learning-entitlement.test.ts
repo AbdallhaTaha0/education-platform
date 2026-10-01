@@ -39,7 +39,11 @@ describe('dashboard', () => {
     });
     const res = await studentGet(world.app, '/learning/dashboard', world.studentJar);
     expect(res.status).toBe(200);
-    const active = res.body.data.active as { courseId: string; percentComplete: number; lastLessonId: string | null }[];
+    const active = res.body.data.active as {
+      courseId: string;
+      percentComplete: number;
+      lastLessonId: string | null;
+    }[];
     expect(active.map((a) => a.courseId)).toContain(course.courseId);
     const entry = active.find((a) => a.courseId === course.courseId);
     expect(entry?.percentComplete).toBe(0);
@@ -59,7 +63,10 @@ describe('dashboard', () => {
   });
 
   it('requires a session and rejects an anonymous caller', async () => {
-    const res = await studentGet(world.app, '/learning/dashboard', { header: () => '', csrf: () => '' } as never);
+    const res = await studentGet(world.app, '/learning/dashboard', {
+      header: () => '',
+      csrf: () => '',
+    } as never);
     expect(res.status).toBe(401);
   });
 
@@ -82,7 +89,11 @@ describe('dashboard', () => {
 
 describe('protected outline', () => {
   it('returns sections, lessons and playability for an entitled student', async () => {
-    const res = await studentGet(world.app, `/learning/courses/${course.slug}/outline`, world.studentJar);
+    const res = await studentGet(
+      world.app,
+      `/learning/courses/${course.slug}/outline`,
+      world.studentJar,
+    );
     expect(res.status).toBe(200);
     expect(res.body.data.course.entitled).toBe(true);
     expect(res.body.data.course.expiresAt).not.toBeNull();
@@ -92,7 +103,11 @@ describe('protected outline', () => {
   });
 
   it('carries no media URL, asset id or DRM reference in the outline', async () => {
-    const res = await studentGet(world.app, `/learning/courses/${course.slug}/outline`, world.studentJar);
+    const res = await studentGet(
+      world.app,
+      `/learning/courses/${course.slug}/outline`,
+      world.studentJar,
+    );
     const serialized = JSON.stringify(res.body);
     expect(serialized).not.toContain('manifest');
     expect(serialized).not.toContain('licenseUrl');
@@ -102,7 +117,11 @@ describe('protected outline', () => {
 
   it('returns 403 SUBSCRIPTION_REQUIRED with no subscription', async () => {
     const other = await createPublishedCourse(world, 'nosub');
-    const res = await studentGet(world.app, `/learning/courses/${other.slug}/outline`, world.studentJar);
+    const res = await studentGet(
+      world.app,
+      `/learning/courses/${other.slug}/outline`,
+      world.studentJar,
+    );
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('SUBSCRIPTION_REQUIRED');
     expect(JSON.stringify(res.body)).not.toMatch(/manifest|assetId/i);
@@ -112,20 +131,32 @@ describe('protected outline', () => {
     const other = await createPublishedCourse(world, 'expired');
     const expiry = Date.now() + 1000;
     await grantSubscription(world, world.studentId, other.courseId, expiry);
-    const stillOk = await studentGet(world.app, `/learning/courses/${other.slug}/outline`, world.studentJar);
+    const stillOk = await studentGet(
+      world.app,
+      `/learning/courses/${other.slug}/outline`,
+      world.studentJar,
+    );
     expect(stillOk.status).toBe(200);
     // Move the stored expiry into the past rather than sleeping.
     await world.prisma.subscription.updateMany({
       where: { studentId: world.studentId, courseId: other.courseId },
       data: { expiresAt: new Date(Date.now() - 1) },
     });
-    const res = await studentGet(world.app, `/learning/courses/${other.slug}/outline`, world.studentJar);
+    const res = await studentGet(
+      world.app,
+      `/learning/courses/${other.slug}/outline`,
+      world.studentJar,
+    );
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('SUBSCRIPTION_EXPIRED');
   });
 
   it('returns 404 for an unknown slug and never leaks existence', async () => {
-    const res = await studentGet(world.app, '/learning/courses/no-such-course/outline', world.studentJar);
+    const res = await studentGet(
+      world.app,
+      '/learning/courses/no-such-course/outline',
+      world.studentJar,
+    );
     expect(res.status).toBe(404);
   });
 

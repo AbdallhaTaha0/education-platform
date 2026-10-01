@@ -13,7 +13,13 @@ import { displayDeadline, type AccessMode } from '../../academic/model';
 
 type Phase = 'loading' | 'review' | 'confirming' | 'receipt' | 'failed';
 
-export function PurchasePage({ planId, go }: { planId: string; go: (hash: string) => void }): JSX.Element {
+export function PurchasePage({
+  planId,
+  go,
+}: {
+  planId: string;
+  go: (hash: string) => void;
+}): JSX.Element {
   const { t, lang } = useLang();
   const [phase, setPhase] = useState<Phase>('loading');
   const [price, setPrice] = useState<number | null>(null);
@@ -76,7 +82,11 @@ export function PurchasePage({ planId, go }: { planId: string; go: (hash: string
   if (phase === 'loading') {
     return (
       <main id="main">
-        <section className="py-8"><Container><Loading text={t.loading} /></Container></section>
+        <section className="py-8">
+          <Container>
+            <Loading text={t.loading} />
+          </Container>
+        </section>
       </main>
     );
   }
@@ -90,13 +100,36 @@ export function PurchasePage({ planId, go }: { planId: string; go: (hash: string
               <h1 className="text-2xl font-bold">{t.purchaseReceipt}</h1>
               <p className="mt-2">{courseTitle}</p>
               <dl className="mt-4 space-y-2">
-                <div className="flex justify-between gap-4"><dt className="text-muted">{t.priceLabel}</dt><dd className="font-bold"><Money piastres={receipt.pricePiastres} /></dd></div>
-                {receipt.durationDays !== null ? <div className="flex justify-between gap-4"><dt className="text-muted">{t.durationLabel}</dt><dd className="font-bold">{receipt.durationDays} {t.daysUnit}</dd></div> : null}
-                <div className="flex justify-between gap-4"><dt className="text-muted">{t.validUntil}</dt><dd className="font-bold">{receipt.subscription.expiresAt ? `${displayDeadline(receipt.subscription.expiresAt, lang)} (${lang === 'ar' ? 'القاهرة' : 'Cairo'})` : (lang === 'ar' ? 'بدون انتهاء، حتى الحذف النهائي للكورس' : 'No expiry, until permanent course removal')}</dd></div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">{t.priceLabel}</dt>
+                  <dd className="font-bold">
+                    <Money piastres={receipt.pricePiastres} />
+                  </dd>
+                </div>
+                {receipt.durationDays !== null ? (
+                  <div className="flex justify-between gap-4">
+                    <dt className="text-muted">{t.durationLabel}</dt>
+                    <dd className="font-bold">
+                      {receipt.durationDays} {t.daysUnit}
+                    </dd>
+                  </div>
+                ) : null}
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">{t.validUntil}</dt>
+                  <dd className="font-bold">
+                    {receipt.subscription.expiresAt
+                      ? `${displayDeadline(receipt.subscription.expiresAt, lang)} (${lang === 'ar' ? 'القاهرة' : 'Cairo'})`
+                      : lang === 'ar'
+                        ? 'بدون انتهاء، حتى الحذف النهائي للكورس'
+                        : 'No expiry, until permanent course removal'}
+                  </dd>
+                </div>
               </dl>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Button onClick={() => go('#/courses')}>{t.backToCourses}</Button>
-                <Button variant="secondary" onClick={() => go('#/wallet')}>{t.backToWallet}</Button>
+                <Button variant="secondary" onClick={() => go('#/wallet')}>
+                  {t.backToWallet}
+                </Button>
               </div>
             </Card>
           </Container>
@@ -111,9 +144,19 @@ export function PurchasePage({ planId, go }: { planId: string; go: (hash: string
         <section className="py-8">
           <Container>
             <h1 className="text-2xl font-bold">{t.purchaseTitle}</h1>
-            <div className="mt-4"><Notice kind="error">{errorCode === 'NO_ACCESS_EXTENSION' ? (lang === 'ar' ? 'عندك وصول يغطي هذا العرض بالفعل. لم يتم خصم أي مبلغ.' : 'Your existing access already covers this offer. No payment was taken.') : localizeCode(t, errorCode ?? 'SERVICE_ERROR')}</Notice></div>
+            <div className="mt-4">
+              <Notice kind="error">
+                {errorCode === 'NO_ACCESS_EXTENSION'
+                  ? lang === 'ar'
+                    ? 'عندك وصول يغطي هذا العرض بالفعل. لم يتم خصم أي مبلغ.'
+                    : 'Your existing access already covers this offer. No payment was taken.'
+                  : localizeCode(t, errorCode ?? 'SERVICE_ERROR')}
+              </Notice>
+            </div>
             <div className="mt-4 flex flex-wrap gap-3">
-              <Button variant="secondary" onClick={() => go('#/courses')}>{t.backToCourses}</Button>
+              <Button variant="secondary" onClick={() => go('#/courses')}>
+                {t.backToCourses}
+              </Button>
             </div>
           </Container>
         </section>
@@ -127,7 +170,9 @@ export function PurchasePage({ planId, go }: { planId: string; go: (hash: string
         <section className="py-8">
           <Container>
             <h1 className="text-2xl font-bold">{t.purchaseTitle}</h1>
-            <div className="mt-4"><EmptyState text={t.planUnavailable} /></div>
+            <div className="mt-4">
+              <EmptyState text={t.planUnavailable} />
+            </div>
           </Container>
         </section>
       </main>
@@ -144,30 +189,64 @@ export function PurchasePage({ planId, go }: { planId: string; go: (hash: string
             <h1 className="text-2xl font-bold">{t.purchaseTitle}</h1>
             <p className="mt-2">{courseTitle}</p>
             <dl className="mt-4 space-y-2">
-              <div className="flex justify-between gap-4"><dt className="text-muted">{t.priceLabel}</dt><dd className="font-bold"><Money piastres={price} /></dd></div>
-              <div className="flex justify-between gap-4"><dt className="text-muted">{t.durationLabel}</dt><dd className="font-bold">{mode === 'UNTIL_REMOVAL' ? (lang === 'ar' ? 'بدون انتهاء، حتى الحذف النهائي للكورس' : 'No expiry, until permanent course removal') : duration !== null ? `${duration} ${t.daysUnit}` : deadline ? `${displayDeadline(deadline, lang)} (${lang === 'ar' ? 'القاهرة' : 'Cairo'})` : t.planUnavailable}</dd></div>
-              <div className="flex justify-between gap-4"><dt className="text-muted">{t.walletBalance}</dt><dd className="font-bold">{balance !== null ? <Money piastres={balance} /> : '…'}</dd></div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted">{t.priceLabel}</dt>
+                <dd className="font-bold">
+                  <Money piastres={price} />
+                </dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted">{t.durationLabel}</dt>
+                <dd className="font-bold">
+                  {mode === 'UNTIL_REMOVAL'
+                    ? lang === 'ar'
+                      ? 'بدون انتهاء، حتى الحذف النهائي للكورس'
+                      : 'No expiry, until permanent course removal'
+                    : duration !== null
+                      ? `${duration} ${t.daysUnit}`
+                      : deadline
+                        ? `${displayDeadline(deadline, lang)} (${lang === 'ar' ? 'القاهرة' : 'Cairo'})`
+                        : t.planUnavailable}
+                </dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted">{t.walletBalance}</dt>
+                <dd className="font-bold">
+                  {balance !== null ? <Money piastres={balance} /> : '…'}
+                </dd>
+              </div>
               {balance !== null && !short ? (
-                <div className="flex justify-between gap-4"><dt className="text-muted">{t.balanceAfter}</dt><dd className="font-bold"><Money piastres={balance - price} /></dd></div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted">{t.balanceAfter}</dt>
+                  <dd className="font-bold">
+                    <Money piastres={balance - price} />
+                  </dd>
+                </div>
               ) : null}
             </dl>
             {errorCode === 'INSUFFICIENT_FUNDS' ? (
               <div className="mt-4">
                 <Notice kind="error">{localizeCode(t, 'INSUFFICIENT_FUNDS')}</Notice>
                 <div className="mt-3">
-                  <Button variant="secondary" onClick={() => go('#/wallet/recharge')}>{t.goRecharge}</Button>
+                  <Button variant="secondary" onClick={() => go('#/wallet/recharge')}>
+                    {t.goRecharge}
+                  </Button>
                 </div>
               </div>
             ) : null}
             {errorCode !== null && errorCode !== 'INSUFFICIENT_FUNDS' ? (
-              <div className="mt-4"><Notice kind="error">{localizeCode(t, errorCode)}</Notice></div>
+              <div className="mt-4">
+                <Notice kind="error">{localizeCode(t, errorCode)}</Notice>
+              </div>
             ) : null}
             {!short ? (
               <div className="mt-6 flex flex-wrap gap-3">
                 <Button onClick={() => void confirm()} disabled={phase === 'confirming'}>
                   {phase === 'confirming' ? <Loading text={t.confirming} /> : t.confirmPurchase}
                 </Button>
-                <Button variant="secondary" onClick={() => go('#/courses')}>{t.cancel}</Button>
+                <Button variant="secondary" onClick={() => go('#/courses')}>
+                  {t.cancel}
+                </Button>
               </div>
             ) : null}
           </Card>

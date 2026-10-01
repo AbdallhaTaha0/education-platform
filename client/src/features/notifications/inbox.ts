@@ -16,9 +16,21 @@ export interface InboxState {
   busy: string | null;
 }
 function initialState(): InboxState {
-  return { items: [], unreadCount: null, revision: '0', throughSequence: '0', nextCursor: null,
-    unreadOnly: false, loaded: false, loading: false, loadingMore: false,
-    countError: null, error: null, actionError: null, busy: null };
+  return {
+    items: [],
+    unreadCount: null,
+    revision: '0',
+    throughSequence: '0',
+    nextCursor: null,
+    unreadOnly: false,
+    loaded: false,
+    loading: false,
+    loadingMore: false,
+    countError: null,
+    error: null,
+    actionError: null,
+    busy: null,
+  };
 }
 function errorInfo(error: unknown): { status: number; code: string } {
   if (error instanceof Error && 'status' in error && 'code' in error) {
@@ -29,12 +41,17 @@ function errorInfo(error: unknown): { status: number; code: string } {
 function mergeMetadata(state: InboxState, data: InboxMetadata): Partial<InboxState> {
   // Decimal strings preserve revisions beyond JavaScript's safe integer range.
   return BigInt(data.revision) >= BigInt(state.revision)
-    ? { unreadCount: data.unreadCount, revision: data.revision, countError: null } : {};
+    ? { unreadCount: data.unreadCount, revision: data.revision, countError: null }
+    : {};
 }
 export function notificationHref(item: NotificationItem): string | null {
   if (item.target?.kind === 'WALLET') return '#/wallet';
-  if (item.target?.kind === 'COURSE_OFFER' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(item.target.slug)
-    && item.target.slug.length <= 120) return `#/courses/${encodeURIComponent(item.target.slug)}`;
+  if (
+    item.target?.kind === 'COURSE_OFFER' &&
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(item.target.slug) &&
+    item.target.slug.length <= 120
+  )
+    return `#/courses/${encodeURIComponent(item.target.slug)}`;
   return null;
 }
 
@@ -47,11 +64,16 @@ export class InboxStore {
   private listRequest = 0;
   private countRequest = 0;
   private actionRequest = 0;
-  constructor(private api: NotificationApi, private authFailed: (code: string) => void) {}
+  constructor(
+    private api: NotificationApi,
+    private authFailed: (code: string) => void,
+  ) {}
   getSnapshot = (): InboxState => this.state;
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
-    return () => { this.listeners.delete(listener); };
+    return () => {
+      this.listeners.delete(listener);
+    };
   };
   private patch(data: Partial<InboxState>) {
     this.state = { ...this.state, ...data };
@@ -72,7 +94,9 @@ export class InboxStore {
   }
   stop() {
     this.active = false;
-    this.listRequest++; this.countRequest++; this.actionRequest++;
+    this.listRequest++;
+    this.countRequest++;
+    this.actionRequest++;
     this.state = initialState();
     this.listeners.forEach((listener) => listener());
   }
@@ -80,10 +104,13 @@ export class InboxStore {
     this.opened = true;
     if (this.active) void this.refresh();
   }
-  close() { this.opened = false; }
+  close() {
+    this.opened = false;
+  }
   synchronize() {
     if (!this.active) return;
-    if (this.opened) void this.refresh(); else void this.refreshCount();
+    if (this.opened) void this.refresh();
+    else void this.refreshCount();
   }
   async refreshCount() {
     if (!this.active) return;
@@ -102,8 +129,12 @@ export class InboxStore {
     const request = ++this.listRequest;
     const unreadOnly = this.state.unreadOnly;
     const targetLength = Math.max(20, this.state.items.length);
-    this.patch({ loading: true, loadingMore: false, error: null,
-      ...(clearActionError ? { actionError: null } : {}) });
+    this.patch({
+      loading: true,
+      loadingMore: false,
+      error: null,
+      ...(clearActionError ? { actionError: null } : {}),
+    });
     try {
       let page = await this.api.list(unreadOnly);
       const throughSequence = page.throughSequence;
@@ -125,8 +156,14 @@ export class InboxStore {
         return;
       }
       this.countRequest++;
-      this.patch({ items, throughSequence, nextCursor: page.nextCursor, loaded: true, loading: false,
-        ...mergeMetadata(this.state, page) });
+      this.patch({
+        items,
+        throughSequence,
+        nextCursor: page.nextCursor,
+        loaded: true,
+        loading: false,
+        ...mergeMetadata(this.state, page),
+      });
     } catch (error) {
       if (!this.active || request !== this.listRequest) return;
       const code = this.failure(error);
@@ -134,7 +171,13 @@ export class InboxStore {
     }
   }
   async loadMore() {
-    if (!this.active || this.state.loading || this.state.loadingMore || this.state.nextCursor === null) return;
+    if (
+      !this.active ||
+      this.state.loading ||
+      this.state.loadingMore ||
+      this.state.nextCursor === null
+    )
+      return;
     const request = ++this.listRequest;
     const cursor = this.state.nextCursor;
     this.patch({ loadingMore: true, error: null });
@@ -146,8 +189,12 @@ export class InboxStore {
         return;
       }
       const existing = new Set(this.state.items.map((item) => item.id));
-      this.patch({ items: [...this.state.items, ...page.items.filter((item) => !existing.has(item.id))],
-        nextCursor: page.nextCursor, loadingMore: false, ...mergeMetadata(this.state, page) });
+      this.patch({
+        items: [...this.state.items, ...page.items.filter((item) => !existing.has(item.id))],
+        nextCursor: page.nextCursor,
+        loadingMore: false,
+        ...mergeMetadata(this.state, page),
+      });
     } catch (error) {
       if (!this.active || request !== this.listRequest) return;
       const code = this.failure(error);
@@ -160,8 +207,11 @@ export class InboxStore {
     this.patch({ unreadOnly, items: [], nextCursor: null, throughSequence: '0', loaded: false });
     void this.refresh();
   }
-  private async mutate<T extends InboxMetadata>(operation: () => Promise<T>, itemId: string,
-    apply: (data: T) => Partial<InboxState>) {
+  private async mutate<T extends InboxMetadata>(
+    operation: () => Promise<T>,
+    itemId: string,
+    apply: (data: T) => Partial<InboxState>,
+  ) {
     if (!this.active || this.state.busy !== null) return;
     const request = ++this.actionRequest;
     this.listRequest++; // A pre-mutation list must never overwrite the new state.
@@ -186,19 +236,32 @@ export class InboxStore {
     }
   }
   setRead(id: string, read: boolean) {
-    return this.mutate(() => this.api.read(id, read), id, (data) => ({
-      items: this.state.items.map((item) => item.id === id ? data.item : item)
-        .filter((item) => !this.state.unreadOnly || item.readAt === null),
-    }));
+    return this.mutate(
+      () => this.api.read(id, read),
+      id,
+      (data) => ({
+        items: this.state.items
+          .map((item) => (item.id === id ? data.item : item))
+          .filter((item) => !this.state.unreadOnly || item.readAt === null),
+      }),
+    );
   }
   readAll() {
     // Count responses and later pages never widen the observed first-page fence.
     const fence = this.state.throughSequence;
     if (!this.state.loaded) return Promise.resolve();
-    return this.mutate(() => this.api.readAll(fence), 'all', () => ({
-      items: this.state.items.map((item) => BigInt(item.sequence) <= BigInt(fence)
-        ? { ...item, readAt: item.readAt ?? new Date().toISOString() } : item)
-        .filter((item) => !this.state.unreadOnly || item.readAt === null),
-    }));
+    return this.mutate(
+      () => this.api.readAll(fence),
+      'all',
+      () => ({
+        items: this.state.items
+          .map((item) =>
+            BigInt(item.sequence) <= BigInt(fence)
+              ? { ...item, readAt: item.readAt ?? new Date().toISOString() }
+              : item,
+          )
+          .filter((item) => !this.state.unreadOnly || item.readAt === null),
+      }),
+    );
   }
 }

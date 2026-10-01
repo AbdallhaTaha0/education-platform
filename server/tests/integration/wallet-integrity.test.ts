@@ -39,10 +39,12 @@ describe('M4 database integrity constraints', () => {
       create: { userId: world.studentUser.id, balancePiastres: 0 },
       update: {},
     });
-    await expect(world.prisma.wallet.update({
-      where: { userId: world.studentUser.id },
-      data: { balancePiastres: -1 },
-    })).rejects.toThrow();
+    await expect(
+      world.prisma.wallet.update({
+        where: { userId: world.studentUser.id },
+        data: { balancePiastres: -1 },
+      }),
+    ).rejects.toThrow();
 
     const wallet = await world.prisma.wallet.findUniqueOrThrow({
       where: { userId: world.studentUser.id },

@@ -69,38 +69,83 @@ export function AdminDetailPage({ courseId }: { courseId: string }): JSX.Element
           </p>
           {error !== null ? <Notice kind="error">{localizeCode(t, error)}</Notice> : null}
           {saveError !== null ? <Notice kind="error">{localizeCode(t, saveError)}</Notice> : null}
-          {course.deletionRequestedAt !== null ? <Notice kind="pending">{t.deleteProgress}</Notice> : null}
+          {course.deletionRequestedAt !== null ? (
+            <Notice kind="pending">{t.deleteProgress}</Notice>
+          ) : null}
 
           <CourseForm
             busy={saving}
             key={course.id}
-            initial={{ slug: course.slug, titleAr: course.titleAr, titleEn: course.titleEn, descriptionAr: course.descriptionAr, descriptionEn: course.descriptionEn, academic: course.grade ? { grade: course.grade, academicYear: course.academicYear ?? null, term: course.term ?? null, courseKind: course.courseKind ?? null, teachingMonth: course.teachingMonth ?? null } : null }}
+            initial={{
+              slug: course.slug,
+              titleAr: course.titleAr,
+              titleEn: course.titleEn,
+              descriptionAr: course.descriptionAr,
+              descriptionEn: course.descriptionEn,
+              academic: course.grade
+                ? {
+                    grade: course.grade,
+                    academicYear: course.academicYear ?? null,
+                    term: course.term ?? null,
+                    courseKind: course.courseKind ?? null,
+                    teachingMonth: course.teachingMonth ?? null,
+                  }
+                : null,
+            }}
             onSubmit={(v) => void saveCourse(v)}
           />
 
           <LifecycleControls courseId={courseId} status={course.status} onChanged={reload} />
-          <ArchiveControls courseId={courseId} archived={course.status === 'ARCHIVED'} onChanged={reload} />
+          <ArchiveControls
+            courseId={courseId}
+            archived={course.status === 'ARCHIVED'}
+            onChanged={reload}
+          />
 
           <PlanEditor courseId={courseId} plans={course.plans} onChanged={reload} />
           <SectionEditor courseId={courseId} sections={course.sections} onChanged={reload} />
 
           {course.sections.map((s) => (
-            <div key={s.id} className="mt-4 rounded-card border border-border bg-surface p-6 shadow-rest">
+            <div
+              key={s.id}
+              className="mt-4 rounded-card border border-border bg-surface p-6 shadow-rest"
+            >
               <h3 className="text-xl font-bold">
                 #{s.position} {lang === 'ar' ? s.titleAr : s.titleEn}
               </h3>
               <LessonList sectionId={s.id} lessons={s.lessons} onChanged={reload} />
-              <DeletionPanel kind="sections" targetId={s.id} expectedConfirmation={s.id} onChanged={reload} />
+              <DeletionPanel
+                kind="sections"
+                targetId={s.id}
+                expectedConfirmation={s.id}
+                onChanged={reload}
+              />
               {s.lessons.map((l) => (
-                <DeletionPanel key={l.id} kind="lessons" targetId={l.id} expectedConfirmation={l.id} onChanged={reload} />
+                <DeletionPanel
+                  key={l.id}
+                  kind="lessons"
+                  targetId={l.id}
+                  expectedConfirmation={l.id}
+                  onChanged={reload}
+                />
               ))}
             </div>
           ))}
 
           <div className="mt-4 flex flex-wrap gap-2">
-            <button className="hidden" aria-hidden="true" onClick={() => void syncAll()} data-testid="sync-all" />
+            <button
+              className="hidden"
+              aria-hidden="true"
+              onClick={() => void syncAll()}
+              data-testid="sync-all"
+            />
           </div>
-          <DeletionPanel kind="courses" targetId={course.id} expectedConfirmation={course.slug} onChanged={reload} />
+          <DeletionPanel
+            kind="courses"
+            targetId={course.id}
+            expectedConfirmation={course.slug}
+            onChanged={reload}
+          />
         </Container>
       </section>
     </main>

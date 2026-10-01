@@ -1,4 +1,10 @@
-import { requireAdmin, requireAuth, requireOrigin, requireSessionCsrf, rateLimit } from '../../identity/middleware.js';
+import {
+  requireAdmin,
+  requireAuth,
+  requireOrigin,
+  requireSessionCsrf,
+  rateLimit,
+} from '../../identity/middleware.js';
 import { ADMIN_CREATE_LIMIT } from '../../identity/rateLimit.js';
 
 export const writeGuard = [requireOrigin, requireAuth, requireAdmin, requireSessionCsrf];

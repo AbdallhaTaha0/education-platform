@@ -32,7 +32,14 @@ export function signAccessToken(
   // noTimestamp prevents jsonwebtoken from substituting wall-clock iat.
   const iat = Math.floor(nowMs / 1000);
   const token = jwt.sign(
-    { sub: claims.sub, role: claims.role, sid: claims.sid, jti, iat, exp: iat + ACCESS_TOKEN_TTL_SEC },
+    {
+      sub: claims.sub,
+      role: claims.role,
+      sid: claims.sid,
+      jti,
+      iat,
+      exp: iat + ACCESS_TOKEN_TTL_SEC,
+    },
     config.secret,
     { algorithm: 'HS256', issuer: config.issuer, audience: config.audience, noTimestamp: true },
   );

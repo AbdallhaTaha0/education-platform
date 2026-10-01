@@ -7,7 +7,10 @@ export async function fetchWallet(): Promise<WalletView> {
 }
 
 export async function fetchInstructions(): Promise<PaymentInstruction[]> {
-  const body = await apiFetch<{ data: { channels: PaymentInstruction[] } }>('/wallet/instructions', { retryOnAuth: true });
+  const body = await apiFetch<{ data: { channels: PaymentInstruction[] } }>(
+    '/wallet/instructions',
+    { retryOnAuth: true },
+  );
   return body.data.channels;
 }
 
@@ -34,11 +37,16 @@ export async function submitRecharge(input: RechargeSubmit): Promise<RechargeReq
 }
 
 export async function fetchMyRequests(): Promise<RechargeRequestView[]> {
-  const body = await apiFetch<{ data: { requests: RechargeRequestView[] } }>('/wallet/recharge-requests', { retryOnAuth: true });
+  const body = await apiFetch<{ data: { requests: RechargeRequestView[] } }>(
+    '/wallet/recharge-requests',
+    { retryOnAuth: true },
+  );
   return body.data.requests;
 }
 
-export async function fetchAdminQueue(status?: string): Promise<import('../types/models').AdminRechargeRow[]> {
+export async function fetchAdminQueue(
+  status?: string,
+): Promise<import('../types/models').AdminRechargeRow[]> {
   const query = status ? `?status=${encodeURIComponent(status)}` : '';
   const body = await apiFetch<{ data: { requests: import('../types/models').AdminRechargeRow[] } }>(
     `/admin/recharge-requests${query}`,
@@ -47,7 +55,10 @@ export async function fetchAdminQueue(status?: string): Promise<import('../types
   return body.data.requests;
 }
 
-export async function reviewRequest(id: string, input: { decision: 'APPROVE' | 'REJECT'; reason?: string; receiptVerified: boolean }): Promise<void> {
+export async function reviewRequest(
+  id: string,
+  input: { decision: 'APPROVE' | 'REJECT'; reason?: string; receiptVerified: boolean },
+): Promise<void> {
   await apiFetch(`/admin/recharge-requests/${encodeURIComponent(id)}/review`, {
     method: 'POST',
     retryOnAuth: false,
@@ -61,10 +72,13 @@ export function proofUrl(id: string): string {
 }
 
 export async function runProofCleanup(): Promise<{ examined: number; cleared: number }> {
-  const body = await apiFetch<{ data: { examined: number; cleared: number } }>('/admin/maintenance/proof-cleanup', {
-    method: 'POST',
-    retryOnAuth: false,
-    body: {},
-  });
+  const body = await apiFetch<{ data: { examined: number; cleared: number } }>(
+    '/admin/maintenance/proof-cleanup',
+    {
+      method: 'POST',
+      retryOnAuth: false,
+      body: {},
+    },
+  );
   return body.data;
 }

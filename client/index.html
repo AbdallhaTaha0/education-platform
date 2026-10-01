@@ -22,10 +22,7 @@
     <meta property="og:locale:alternate" content="en_US" />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="FAYQ" />
-    <meta
-      name="twitter:description"
-      content="FAYQ — Learn It. Code It. Get It."
-    />
+    <meta name="twitter:description" content="FAYQ — Learn It. Code It. Get It." />
     <!-- Fonts are self-hosted through @fontsource (see src/main.tsx); no
       runtime third-party font fetch, so first paint never waits on it. -->
   </head>
@@ -37,7 +34,8 @@
       // authentication data must never live in browser storage.
       try {
         var stored = window.localStorage.getItem('edu-platform-theme');
-        document.documentElement.dataset.theme = stored === 'light' || stored === 'dark' ? stored : 'dark';
+        document.documentElement.dataset.theme =
+          stored === 'light' || stored === 'dark' ? stored : 'dark';
       } catch (e) {
         document.documentElement.dataset.theme = 'dark';
       }

@@ -46,7 +46,9 @@ export function normalizeProgress(
     throw new Error('VALIDATION_ERROR');
   }
   const reachedEnd =
-    durationSeconds !== null && durationSeconds > 0 && positionSeconds >= durationSeconds * COMPLETION_RATIO;
+    durationSeconds !== null &&
+    durationSeconds > 0 &&
+    positionSeconds >= durationSeconds * COMPLETION_RATIO;
   return {
     positionSeconds,
     durationSeconds,

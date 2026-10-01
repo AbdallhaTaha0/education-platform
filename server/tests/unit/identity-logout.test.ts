@@ -33,9 +33,9 @@ describe('logout durability', () => {
         },
       },
     });
-    await expect(logout(ctx, { refreshSecret: 'presented', accessSessionId: undefined })).rejects.toThrow(
-      'database unavailable',
-    );
+    await expect(
+      logout(ctx, { refreshSecret: 'presented', accessSessionId: undefined }),
+    ).rejects.toThrow('database unavailable');
   });
 
   it('returns clearing cookies without touching the database when no session is identified', async () => {
@@ -48,7 +48,10 @@ describe('logout durability', () => {
         },
       },
     });
-    const cleared = await logout(ctx, { refreshSecret: 'unknown-secret', accessSessionId: undefined });
+    const cleared = await logout(ctx, {
+      refreshSecret: 'unknown-secret',
+      accessSessionId: undefined,
+    });
     expect(calls).toEqual(['findUnique']);
     expect(cleared.some((h) => h.startsWith('edu_access=') && h.includes('Max-Age=0'))).toBe(true);
   });

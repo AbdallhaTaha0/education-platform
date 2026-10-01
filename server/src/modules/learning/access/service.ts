@@ -80,9 +80,7 @@ export async function resolveCourse(opts: ResolveOptions): Promise<ResolvedCours
 }
 
 async function findCourse(prisma: PrismaClient, ref: string) {
-  const byId = UUID_RE.test(ref)
-    ? await prisma.course.findUnique({ where: { id: ref } })
-    : null;
+  const byId = UUID_RE.test(ref) ? await prisma.course.findUnique({ where: { id: ref } }) : null;
   if (byId !== null) return byId;
   return prisma.course.findUnique({ where: { slug: ref } });
 }
@@ -105,7 +103,11 @@ export async function resolveLesson(
   if (lesson === null || lesson.section.courseId !== course.courseId) {
     throw new LearningError('LESSON_NOT_FOUND');
   }
-  if (lesson.media === null || lesson.media.status !== 'READY' || lesson.media.externalAssetId === '') {
+  if (
+    lesson.media === null ||
+    lesson.media.status !== 'READY' ||
+    lesson.media.externalAssetId === ''
+  ) {
     throw new LearningError('MEDIA_NOT_READY');
   }
   return {

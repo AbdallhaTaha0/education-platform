@@ -86,10 +86,16 @@ export class DrmPlaybackFixture {
       return true;
     }
 
-    const sessionAction = /^\/v1\/playback\/sessions\/([^/]+)\/(end|revoke|heartbeat|renew|renew-admin)$/.exec(url);
+    const sessionAction =
+      /^\/v1\/playback\/sessions\/([^/]+)\/(end|revoke|heartbeat|renew|renew-admin)$/.exec(url);
     if (sessionAction && method === 'POST') {
       const sessionId = decodeURIComponent(sessionAction[1] as string);
-      const rawAction = sessionAction[2] as 'end' | 'revoke' | 'heartbeat' | 'renew' | 'renew-admin';
+      const rawAction = sessionAction[2] as
+        | 'end'
+        | 'revoke'
+        | 'heartbeat'
+        | 'renew'
+        | 'renew-admin';
       const action = rawAction === 'renew-admin' ? 'renew' : rawAction;
       this.sessionAction(sessionId, action, headers, body, send);
       return true;
@@ -110,14 +116,20 @@ export class DrmPlaybackFixture {
     const externalAssetId = body?.['externalAssetId'];
     const deviceId = body?.['deviceId'];
     const assertion = body?.['assertion'];
-    if (typeof externalAssetId !== 'string' || typeof deviceId !== 'string' || typeof assertion !== 'string') {
+    if (
+      typeof externalAssetId !== 'string' ||
+      typeof deviceId !== 'string' ||
+      typeof assertion !== 'string'
+    ) {
       send(400, { error: 'bad request' });
       return;
     }
 
     let claims: Record<string, unknown>;
     try {
-      const decoded = jwt.verify(assertion, this.options.expectedSecret, { clockTimestamp: Math.floor(Date.now() / 1000) });
+      const decoded = jwt.verify(assertion, this.options.expectedSecret, {
+        clockTimestamp: Math.floor(Date.now() / 1000),
+      });
       if (typeof decoded === 'string') throw new Error('unexpected string payload');
       claims = decoded as Record<string, unknown>;
     } catch {
@@ -195,7 +207,8 @@ export class DrmPlaybackFixture {
     //   renew   — platform-mediated token renewal
     // A browser-driven renew carries deviceId plus the bearer and is checked
     // against both below.
-    const serviceCall = action === 'revoke' || (action === 'renew' && typeof body?.['deviceId'] !== 'string');
+    const serviceCall =
+      action === 'revoke' || (action === 'renew' && typeof body?.['deviceId'] !== 'string');
     if (serviceCall) {
       if (action === 'revoke') {
         if (this.revokeAlwaysFails) {
@@ -245,7 +258,10 @@ export class DrmPlaybackFixture {
    * id, manifest and license URL are unchanged: only the credential moves, which
    * is what lets the player swap it without touching DASH or EME.
    */
-  private platformRenew(session: PlaybackSession, send: (status: number, payload: unknown) => void): void {
+  private platformRenew(
+    session: PlaybackSession,
+    send: (status: number, payload: unknown) => void,
+  ): void {
     if (this.renewAlwaysFails) {
       send(500, { error: 'transient renew failure' });
       return;

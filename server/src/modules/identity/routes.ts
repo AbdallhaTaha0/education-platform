@@ -23,13 +23,15 @@ import { csrfDigest, CSRF_HEADER, issueCsrfToken, verifyAnonymousCsrf } from './
 import { ApiError } from './errors.js';
 import { bindSessionCsrf, getActiveSession } from './store.js';
 import { verifyAccessToken } from './tokens.js';
+import { ADMIN_CREATE_LIMIT, LOGIN_LIMIT, REFRESH_LIMIT, REGISTER_LIMIT } from './rateLimit.js';
 import {
-  ADMIN_CREATE_LIMIT,
-  LOGIN_LIMIT,
-  REFRESH_LIMIT,
-  REGISTER_LIMIT,
-} from './rateLimit.js';
-import { rateLimit as limit, requireAdmin, requireAnonymousCsrf, requireAuth, requireOrigin, requireSessionCsrf } from './middleware.js';
+  rateLimit as limit,
+  requireAdmin,
+  requireAnonymousCsrf,
+  requireAuth,
+  requireOrigin,
+  requireSessionCsrf,
+} from './middleware.js';
 
 function asyncRoute(handler: (req: Request, res: Response) => Promise<void>) {
   return (req: Request, res: Response, next: NextFunction): void => {
@@ -97,8 +99,10 @@ export function createAuthRouter(ctx: IdentityContext): Router {
       }
       const check = await getActiveSession(ctx.prisma, sessionId, now);
       if (!check.ok) {
-        if (check.reason === 'expired') throw new ApiError(401, 'SESSION_EXPIRED', 'Session has expired.');
-        if (check.reason === 'revoked') throw new ApiError(401, 'SESSION_REVOKED', 'Session is invalid.');
+        if (check.reason === 'expired')
+          throw new ApiError(401, 'SESSION_EXPIRED', 'Session has expired.');
+        if (check.reason === 'revoked')
+          throw new ApiError(401, 'SESSION_REVOKED', 'Session is invalid.');
         throw new ApiError(401, 'TOKEN_INVALID', 'Session is invalid.');
       }
       if (check.user.id !== sub) {
@@ -108,7 +112,10 @@ export function createAuthRouter(ctx: IdentityContext): Router {
       if (!bound) {
         throw new ApiError(401, 'SESSION_REVOKED', 'Session is invalid.');
       }
-      const remainingSec = Math.max(1, Math.floor((check.absoluteExpiresAt.getTime() - now) / 1000));
+      const remainingSec = Math.max(
+        1,
+        Math.floor((check.absoluteExpiresAt.getTime() - now) / 1000),
+      );
       setCookies(res, [csrfCookie(token, flagsOf(ctx), remainingSec)]);
       res.status(200).json(ok({ ok: true }));
     }),

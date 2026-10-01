@@ -1,0 +1,17 @@
+education-drm-service/
+.git/
+**/node_modules/
+**/dist/
+**/package-lock.json
+**/*.tsbuildinfo
+**/*.md
+**/*.svg
+client/src/assets/
+reports-and-markdown-files/m8-design/assets/
+reports-and-markdown-files/m8-design/reference/
+docker/browser/evidence/
+docker/volumes/
+server/prisma/migrations/
+.env
+*.local
+output/

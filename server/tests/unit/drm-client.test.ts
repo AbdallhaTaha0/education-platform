@@ -10,7 +10,16 @@ import { sanitizeForLog } from '../../src/logger.js';
 let server: Server | null = null;
 let lastHeaders: Record<string, string | string[] | undefined> = {};
 let lastBody: unknown = null;
-let behavior: 'ok-register' | 'malformed' | 'oversized' | 'error500' | 'error404' | 'slow' | 'delete-ok' | 'status-ready' | 'deletion-completed' = 'ok-register';
+let behavior:
+  | 'ok-register'
+  | 'malformed'
+  | 'oversized'
+  | 'error500'
+  | 'error404'
+  | 'slow'
+  | 'delete-ok'
+  | 'status-ready'
+  | 'deletion-completed' = 'ok-register';
 let requestCount = 0;
 
 async function startFixture(): Promise<string> {
@@ -54,7 +63,14 @@ async function startFixture(): Promise<string> {
       }
       if (req.url === '/v1/media' && req.method === 'POST') {
         res.writeHead(202, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ assetId: '11111111-1111-1111-1111-111111111111', status: 'UPLOADED', uploadUrl: 'https://signed.example/u?sig=abc', idempotent: false }));
+        res.end(
+          JSON.stringify({
+            assetId: '11111111-1111-1111-1111-111111111111',
+            status: 'UPLOADED',
+            uploadUrl: 'https://signed.example/u?sig=abc',
+            idempotent: false,
+          }),
+        );
         return;
       }
       if (req.url?.endsWith('/complete') && req.method === 'POST') {
@@ -69,12 +85,24 @@ async function startFixture(): Promise<string> {
       }
       if (req.url?.startsWith('/v1/media/') && req.method === 'DELETE') {
         res.writeHead(202, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ deletionId: '22222222-2222-2222-2222-222222222222', status: 'PENDING', duplicate: false, scheduled: true }));
+        res.end(
+          JSON.stringify({
+            deletionId: '22222222-2222-2222-2222-222222222222',
+            status: 'PENDING',
+            duplicate: false,
+            scheduled: true,
+          }),
+        );
         return;
       }
       if (req.url?.includes('/v1/admin/media-deletions/')) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ deletionId: '22222222-2222-2222-2222-222222222222', status: 'COMPLETED' }));
+        res.end(
+          JSON.stringify({
+            deletionId: '22222222-2222-2222-2222-222222222222',
+            status: 'COMPLETED',
+          }),
+        );
         return;
       }
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -93,7 +121,10 @@ afterEach(async () => {
   }
 });
 
-function clientFor(baseUrl: string, overrides: Partial<{ timeoutMs: number; maxRetries: number }> = {}) {
+function clientFor(
+  baseUrl: string,
+  overrides: Partial<{ timeoutMs: number; maxRetries: number }> = {},
+) {
   return new DrmClient({
     baseUrl,
     clientId: 'test-client-01',
@@ -156,7 +187,12 @@ describe('DRM adapter contract', () => {
     expect(requestCount).toBe(3); // 1 + 2 retries
     requestCount = 0;
     await expect(
-      client.registerMedia({ externalAssetId: 'e', contentType: 'video/mp4', securityTier: 'STANDARD', idempotencyKey: 'k' }),
+      client.registerMedia({
+        externalAssetId: 'e',
+        contentType: 'video/mp4',
+        securityTier: 'STANDARD',
+        idempotencyKey: 'k',
+      }),
     ).rejects.toThrow();
     expect(requestCount).toBe(1); // unsafe POST never retried
   });

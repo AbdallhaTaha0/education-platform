@@ -35,7 +35,10 @@ export function emeKeyForProvider(provider: string): string | null {
 
 /** True when the browser advertises this key system in EME. */
 export async function browserSupports(keySystem: string): Promise<boolean> {
-  if (typeof navigator === 'undefined' || typeof navigator.requestMediaKeySystemAccess !== 'function') {
+  if (
+    typeof navigator === 'undefined' ||
+    typeof navigator.requestMediaKeySystemAccess !== 'function'
+  ) {
     return false;
   }
   try {

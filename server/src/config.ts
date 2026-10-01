@@ -8,7 +8,11 @@
 
 import { createPrivateKey } from 'node:crypto';
 import type { Argon2Params } from './modules/identity/password.js';
-import { ARGON2_MAXIMUMS, ARGON2_MINIMUMS, PRODUCTION_ARGON2 } from './modules/identity/password.js';
+import {
+  ARGON2_MAXIMUMS,
+  ARGON2_MINIMUMS,
+  PRODUCTION_ARGON2,
+} from './modules/identity/password.js';
 
 export const DRM_TIMEOUT_DEFAULT_MS = 5000;
 export const DRM_TIMEOUT_MIN_MS = 250;
@@ -24,7 +28,11 @@ export const DRM_RETRIES_MAX = 3;
 /** M4 approved manual-funding channel identifier. */
 export type PaymentChannelId = 'INSTAPAY' | 'BANK_TRANSFER' | 'MOBILE_WALLET';
 
-export const PAYMENT_CHANNEL_IDS: PaymentChannelId[] = ['INSTAPAY', 'BANK_TRANSFER', 'MOBILE_WALLET'];
+export const PAYMENT_CHANNEL_IDS: PaymentChannelId[] = [
+  'INSTAPAY',
+  'BANK_TRANSFER',
+  'MOBILE_WALLET',
+];
 
 /**
  * M4 receiving-channel configuration. Values are deployment configuration
@@ -182,11 +190,17 @@ function parsePaymentChannels(env: NodeJS.ProcessEnv): PaymentChannelConfig[] {
     if (typeof entry !== 'object' || entry === null) {
       throw new Error(`Invalid ${where} (expected an object).`);
     }
-    const { channel, accountLabel, instructionsAr, instructionsEn } = entry as Record<string, unknown>;
+    const { channel, accountLabel, instructionsAr, instructionsEn } = entry as Record<
+      string,
+      unknown
+    >;
     if (channel !== 'INSTAPAY' && channel !== 'BANK_TRANSFER' && channel !== 'MOBILE_WALLET') {
-      throw new Error(`Invalid ${where}.channel (expected INSTAPAY, BANK_TRANSFER or MOBILE_WALLET).`);
+      throw new Error(
+        `Invalid ${where}.channel (expected INSTAPAY, BANK_TRANSFER or MOBILE_WALLET).`,
+      );
     }
-    if (seen.has(channel)) throw new Error(`Invalid ${where}.channel (duplicate channel ${channel}).`);
+    if (seen.has(channel))
+      throw new Error(`Invalid ${where}.channel (duplicate channel ${channel}).`);
     seen.add(channel);
     for (const [field, value, max] of [
       ['accountLabel', accountLabel, 120],
@@ -242,9 +256,21 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     throw new Error("Invalid COOKIE_SECURE (expected 'true' or 'false').");
   }
   const argon2: Argon2Params = {
-    memoryKb: parsePositiveInt(env['ARGON2_MEMORY_KB'], PRODUCTION_ARGON2.memoryKb, 'ARGON2_MEMORY_KB'),
-    timeCost: parsePositiveInt(env['ARGON2_TIME_COST'], PRODUCTION_ARGON2.timeCost, 'ARGON2_TIME_COST'),
-    parallelism: parsePositiveInt(env['ARGON2_PARALLELISM'], PRODUCTION_ARGON2.parallelism, 'ARGON2_PARALLELISM'),
+    memoryKb: parsePositiveInt(
+      env['ARGON2_MEMORY_KB'],
+      PRODUCTION_ARGON2.memoryKb,
+      'ARGON2_MEMORY_KB',
+    ),
+    timeCost: parsePositiveInt(
+      env['ARGON2_TIME_COST'],
+      PRODUCTION_ARGON2.timeCost,
+      'ARGON2_TIME_COST',
+    ),
+    parallelism: parsePositiveInt(
+      env['ARGON2_PARALLELISM'],
+      PRODUCTION_ARGON2.parallelism,
+      'ARGON2_PARALLELISM',
+    ),
   };
   // Reduced hashing cost is allowed ONLY under explicit NODE_ENV=test
   // (isolated automated suites). Development and production enforce the
@@ -274,7 +300,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   const drmBaseUrl = optionalEnv(env, 'DRM_BASE_URL');
   const drmClientId = optionalEnv(env, 'DRM_CLIENT_ID');
   const drmClientSecret = optionalEnv(env, 'DRM_CLIENT_SECRET');
-  const drmConfiguredCount = [drmBaseUrl, drmClientId, drmClientSecret].filter((v) => v !== undefined).length;
+  const drmConfiguredCount = [drmBaseUrl, drmClientId, drmClientSecret].filter(
+    (v) => v !== undefined,
+  ).length;
   // All-or-none: partial DRM configuration fails startup in every env.
   if (drmConfiguredCount > 0 && drmConfiguredCount < 3) {
     throw new Error(
@@ -310,7 +338,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     }
   }
   if (isProduction && drmConfiguredCount === 0) {
-    throw new Error('Invalid DRM configuration (production requires DRM_BASE_URL, DRM_CLIENT_ID and DRM_CLIENT_SECRET).');
+    throw new Error(
+      'Invalid DRM configuration (production requires DRM_BASE_URL, DRM_CLIENT_ID and DRM_CLIENT_SECRET).',
+    );
   }
 
   // ---- M5 playback-assertion and dependency-origin configuration ----
@@ -326,18 +356,25 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   let drmAssertionSigningKey: string | undefined;
   if (
     drmConfiguredCount === 3 &&
-    (drmAssertionIssuer === undefined ||
-      drmAssertionAudience === undefined)
+    (drmAssertionIssuer === undefined || drmAssertionAudience === undefined)
   ) {
     throw new Error(
       'Invalid playback assertion configuration (DRM_ASSERTION_ISSUER and DRM_ASSERTION_AUDIENCE are required when DRM is configured).',
     );
   }
-  if (drmAssertionIssuer !== undefined) parseIdentifierValue(drmAssertionIssuer, 'DRM_ASSERTION_ISSUER');
-  if (drmAssertionAudience !== undefined) parseIdentifierValue(drmAssertionAudience, 'DRM_ASSERTION_AUDIENCE');
+  if (drmAssertionIssuer !== undefined)
+    parseIdentifierValue(drmAssertionIssuer, 'DRM_ASSERTION_ISSUER');
+  if (drmAssertionAudience !== undefined)
+    parseIdentifierValue(drmAssertionAudience, 'DRM_ASSERTION_AUDIENCE');
   if (drmAssertionPrivateKeyB64 !== undefined || drmAssertionKeyId !== undefined) {
-    if (drmAssertionPrivateKeyB64 === undefined || drmAssertionKeyId === undefined || drmAssertionSecret !== undefined) {
-      throw new Error('Invalid DRM assertion key configuration (RSA key and key id must be complete and exclusive).');
+    if (
+      drmAssertionPrivateKeyB64 === undefined ||
+      drmAssertionKeyId === undefined ||
+      drmAssertionSecret !== undefined
+    ) {
+      throw new Error(
+        'Invalid DRM assertion key configuration (RSA key and key id must be complete and exclusive).',
+      );
     }
     if (!/^[A-Za-z0-9._-]{1,64}$/.test(drmAssertionKeyId)) {
       throw new Error('Invalid DRM_ASSERTION_KEY_ID.');
@@ -345,25 +382,34 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     try {
       const pem = Buffer.from(drmAssertionPrivateKeyB64, 'base64').toString('utf8');
       const key = createPrivateKey(pem);
-      if (key.asymmetricKeyType !== 'rsa' || (key.asymmetricKeyDetails?.modulusLength ?? 0) < 2048) {
+      if (
+        key.asymmetricKeyType !== 'rsa' ||
+        (key.asymmetricKeyDetails?.modulusLength ?? 0) < 2048
+      ) {
         throw new Error('RSA key must be at least 2048 bits');
       }
       drmAssertionAlgorithm = 'RS256';
       drmAssertionSigningKey = pem;
     } catch {
-      throw new Error('Invalid DRM_ASSERTION_PRIVATE_KEY_B64 (expected a base64 PKCS#8 RSA private key of at least 2048 bits).');
+      throw new Error(
+        'Invalid DRM_ASSERTION_PRIVATE_KEY_B64 (expected a base64 PKCS#8 RSA private key of at least 2048 bits).',
+      );
     }
   } else if (drmAssertionSecret !== undefined) {
     if (drmAssertionSecret.length < 32) {
       throw new Error('Invalid DRM_ASSERTION_SECRET (at least 32 characters are required).');
     }
     if (isProduction || (nodeEnv !== 'test' && !fixtureHs256)) {
-      throw new Error('DRM_ASSERTION_SECRET is test-fixture-only; real DRM requires RS256 configuration.');
+      throw new Error(
+        'DRM_ASSERTION_SECRET is test-fixture-only; real DRM requires RS256 configuration.',
+      );
     }
     drmAssertionAlgorithm = 'HS256';
     drmAssertionSigningKey = drmAssertionSecret;
   } else if (drmConfiguredCount === 3) {
-    throw new Error('Invalid playback assertion configuration (RS256 signing key is required for real DRM).');
+    throw new Error(
+      'Invalid playback assertion configuration (RS256 signing key is required for real DRM).',
+    );
   }
   // The external service enforces a 300 s maximum assertion lifetime (see
   // drm-integration.md). The platform never mints anything longer.
@@ -412,7 +458,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     jwtSecret,
     authIssuer: parseIdentifierValue(env['AUTH_ISSUER'], 'AUTH_ISSUER'),
     authAudience: parseIdentifierValue(env['AUTH_AUDIENCE'], 'AUTH_AUDIENCE'),
-    allowedOrigins: parseOrigins(requiredEnv(env, 'ALLOWED_ORIGINS', 'exact approved origins for identity requests')),
+    allowedOrigins: parseOrigins(
+      requiredEnv(env, 'ALLOWED_ORIGINS', 'exact approved origins for identity requests'),
+    ),
     cookieSecure: cookieSecureRaw === 'true',
     argon2,
     paymentChannels: parsePaymentChannels(env),

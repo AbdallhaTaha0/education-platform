@@ -34,7 +34,9 @@ describe('M3 log redaction', () => {
   });
 
   it('detects secret material in serialized payloads', () => {
-    expect(containsSecretMaterial('hello secret-world', ['secret-world'])).toEqual(['secret-world']);
+    expect(containsSecretMaterial('hello secret-world', ['secret-world'])).toEqual([
+      'secret-world',
+    ]);
     expect(containsSecretMaterial('clean', ['secret-world'])).toEqual([]);
   });
 

@@ -24,7 +24,11 @@ export class CheckTimeoutError extends Error {
 }
 
 /** Races a check against a bounded timeout so readiness cannot hang. */
-export async function withTimeout(check: CheckFn, timeoutMs: number, label: string): Promise<DependencyCheck> {
+export async function withTimeout(
+  check: CheckFn,
+  timeoutMs: number,
+  label: string,
+): Promise<DependencyCheck> {
   const started = Date.now();
   let timer: NodeJS.Timeout | undefined;
   try {

@@ -30,10 +30,12 @@ describe('lazy redis concurrency', () => {
     const fresh = createRedisClient(world.config.redisUrl);
     try {
       const results = await Promise.all(
-        Array.from({ length: 20 }, () => ensureRedis(fresh).then(
-          () => 'ok' as const,
-          (err: unknown) => `failed: ${err instanceof Error ? err.message : err}`,
-        )),
+        Array.from({ length: 20 }, () =>
+          ensureRedis(fresh).then(
+            () => 'ok' as const,
+            (err: unknown) => `failed: ${err instanceof Error ? err.message : err}`,
+          ),
+        ),
       );
       expect(results.every((r) => r === 'ok')).toBe(true);
       expect(fresh.status).toBe('ready');
@@ -85,7 +87,12 @@ describe('unavailable redis fails closed', () => {
         .set('X-Forwarded-For', uniqueIp())
         .set('Cookie', jar.header())
         .set('X-Csrf-Token', token)
-        .send({ displayName: 'Dead Redis', email: 'dead@example.test', phone: '+201000000001', password: 'dead secret twelve words' });
+        .send({
+          displayName: 'Dead Redis',
+          email: 'dead@example.test',
+          phone: '+201000000001',
+          password: 'dead secret twelve words',
+        });
       // Controlled 500 envelope: the request is refused, rate limiting and
       // revocation checks are not silently skipped.
       expect(res.status).toBe(500);

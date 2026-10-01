@@ -11,7 +11,14 @@ const EMAIL_MAX_LENGTH = 254;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Fields that must never be accepted from public input (mass assignment). */
-const PRIVILEGE_FIELDS = new Set(['role', 'isadmin', 'is_admin', 'admin', 'privileges', 'permissions']);
+const PRIVILEGE_FIELDS = new Set([
+  'role',
+  'isadmin',
+  'is_admin',
+  'admin',
+  'privileges',
+  'permissions',
+]);
 
 /** Reject bodies that attempt to set privilege-related fields. Comparison is
  * case-insensitive on common spellings; all other unknown fields are ignored. */
@@ -21,7 +28,9 @@ export function rejectPrivilegeFields(body: unknown): void {
     .map((k) => k.toLowerCase())
     .filter((k) => PRIVILEGE_FIELDS.has(k));
   if (present.length > 0) {
-    throw new ApiError(400, 'INVALID_FIELD', 'Request contains forbidden fields.', { fields: present });
+    throw new ApiError(400, 'INVALID_FIELD', 'Request contains forbidden fields.', {
+      fields: present,
+    });
   }
 }
 
@@ -68,17 +77,25 @@ export function normalizePhone(raw: unknown): string {
 
 export function normalizeDisplayName(raw: unknown): string {
   if (typeof raw !== 'string') {
-    throw new ApiError(400, 'VALIDATION_ERROR', 'Display name is required.', { field: 'displayName' });
+    throw new ApiError(400, 'VALIDATION_ERROR', 'Display name is required.', {
+      field: 'displayName',
+    });
   }
   const name = raw.trim().replace(/\s+/g, ' ');
   if (name.length < DISPLAY_NAME_MIN_LENGTH || name.length > DISPLAY_NAME_MAX_LENGTH) {
-    throw new ApiError(400, 'VALIDATION_ERROR', 'Display name is invalid.', { field: 'displayName' });
+    throw new ApiError(400, 'VALIDATION_ERROR', 'Display name is invalid.', {
+      field: 'displayName',
+    });
   }
   return name;
 }
 
 export function validatePassword(raw: unknown): string {
-  if (typeof raw !== 'string' || raw.length < PASSWORD_MIN_LENGTH || raw.length > PASSWORD_MAX_LENGTH) {
+  if (
+    typeof raw !== 'string' ||
+    raw.length < PASSWORD_MIN_LENGTH ||
+    raw.length > PASSWORD_MAX_LENGTH
+  ) {
     throw new ApiError(400, 'VALIDATION_ERROR', 'Password is invalid.', { field: 'password' });
   }
   return raw;

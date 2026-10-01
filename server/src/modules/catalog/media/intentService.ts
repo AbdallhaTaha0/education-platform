@@ -46,21 +46,33 @@ export async function registerLessonMedia(
   const body = raw as Record<string, unknown>;
   const contentType = normalizeContentType(body['contentType']);
   const securityTier = validateSecurityTier(body['securityTier']);
-  const title = body['title'] === undefined ? undefined : nonBlankString(body['title'], 'title', 255);
+  const title =
+    body['title'] === undefined ? undefined : nonBlankString(body['title'], 'title', 255);
 
   const drm = drmFactory(config);
-  if (drm === null) throw new ApiError(503, 'DRM_UNCONFIGURED', 'External media service is not configured.');
+  if (drm === null)
+    throw new ApiError(503, 'DRM_UNCONFIGURED', 'External media service is not configured.');
 
   const owningCourseId = await courseIdForLesson(prisma, lessonId);
   let intent: Intent;
   try {
     intent = await withCourseLock(prisma, owningCourseId, async (tx) => {
-      const lesson = await tx.lesson.findUnique({ where: { id: lessonId }, include: { media: true, section: { include: { course: true } } } });
+      const lesson = await tx.lesson.findUnique({
+        where: { id: lessonId },
+        include: { media: true, section: { include: { course: true } } },
+      });
       if (lesson === null) throw new ApiError(404, 'NOT_FOUND', 'Lesson not found.');
       ensureStructuralAllowed(lesson.section.course);
-      if (lesson.media !== null && lesson.media.assetId !== null &&
-          (lesson.media.status !== 'UPLOAD_PENDING' || lesson.media.uploadCompletedAt !== null)) {
-        throw new ApiError(409, 'MEDIA_EXISTS', 'Lesson already has a media mapping. Replacement is not supported.');
+      if (
+        lesson.media !== null &&
+        lesson.media.assetId !== null &&
+        (lesson.media.status !== 'UPLOAD_PENDING' || lesson.media.uploadCompletedAt !== null)
+      ) {
+        throw new ApiError(
+          409,
+          'MEDIA_EXISTS',
+          'Lesson already has a media mapping. Replacement is not supported.',
+        );
       }
       if (lesson.media !== null) return lesson.media as unknown as Intent;
       const created = await tx.mediaMapping.create({
@@ -73,16 +85,28 @@ export async function registerLessonMedia(
           lastSyncedAt: new Date(),
         },
       });
-      await audit(tx, { actorUserId: actorId, action: 'MEDIA_INTENT_CREATED', entityType: 'Lesson', entityId: lessonId, metadata: { externalAssetId: created.externalAssetId } });
+      await audit(tx, {
+        actorUserId: actorId,
+        action: 'MEDIA_INTENT_CREATED',
+        entityType: 'Lesson',
+        entityId: lessonId,
+        metadata: { externalAssetId: created.externalAssetId },
+      });
       return created as unknown as Intent;
     });
   } catch (err) {
     if ((err as { code?: string }).code === 'P2002') {
       const existing = await prisma.mediaMapping.findUnique({ where: { lessonId } });
       if (existing === null) throw err;
-      if (existing.assetId !== null &&
-          (existing.status !== 'UPLOAD_PENDING' || existing.uploadCompletedAt !== null)) {
-        throw new ApiError(409, 'MEDIA_EXISTS', 'Lesson already has a media mapping. Replacement is not supported.');
+      if (
+        existing.assetId !== null &&
+        (existing.status !== 'UPLOAD_PENDING' || existing.uploadCompletedAt !== null)
+      ) {
+        throw new ApiError(
+          409,
+          'MEDIA_EXISTS',
+          'Lesson already has a media mapping. Replacement is not supported.',
+        );
       }
       intent = existing as unknown as Intent;
     } else {
@@ -103,9 +127,18 @@ export async function registerLessonMedia(
     const code = err instanceof ApiError ? err.code : 'DRM_UNKNOWN';
     await prisma.mediaMapping.update({
       where: { id: intent.id },
-      data: { lastSyncedAt: new Date(), errorCategory: code.startsWith('DRM_') ? code : 'DRM_UNKNOWN' },
+      data: {
+        lastSyncedAt: new Date(),
+        errorCategory: code.startsWith('DRM_') ? code : 'DRM_UNKNOWN',
+      },
     });
-    await audit(prisma, { actorUserId: actorId, action: 'MEDIA_REGISTER_FAILED', entityType: 'Lesson', entityId: lessonId, metadata: { errorCategory: code } });
+    await audit(prisma, {
+      actorUserId: actorId,
+      action: 'MEDIA_REGISTER_FAILED',
+      entityType: 'Lesson',
+      entityId: lessonId,
+      metadata: { errorCategory: code },
+    });
     throw err;
   }
 
@@ -123,16 +156,32 @@ export async function registerLessonMedia(
   if (registered.uploadUrl === undefined) {
     const courseId = await courseIdForLesson(prisma, lessonId);
     await withCourseLock(prisma, courseId, async (tx) => {
-      const current = await tx.mediaMapping.findUnique({ where: { id: intent.id }, include: { lesson: { include: { section: { include: { course: true } } } } } });
+      const current = await tx.mediaMapping.findUnique({
+        where: { id: intent.id },
+        include: { lesson: { include: { section: { include: { course: true } } } } },
+      });
       if (current === null) throw new ApiError(404, 'MEDIA_MISSING', 'Media mapping not found.');
       ensureStructuralAllowed(current.lesson.section.course);
       if (current.assetId === null) {
         await tx.mediaMapping.update({
           where: { id: intent.id },
-          data: { assetId: registered.assetId, lastSyncedAt: new Date(), errorCategory: 'UPLOAD_URL_UNAVAILABLE' },
+          data: {
+            assetId: registered.assetId,
+            lastSyncedAt: new Date(),
+            errorCategory: 'UPLOAD_URL_UNAVAILABLE',
+          },
         });
       }
-      await audit(tx, { actorUserId: actorId, action: 'MEDIA_REGISTER_FAILED', entityType: 'Lesson', entityId: lessonId, metadata: { errorCategory: 'UPLOAD_URL_UNAVAILABLE', externalAssetId: intent.externalAssetId } });
+      await audit(tx, {
+        actorUserId: actorId,
+        action: 'MEDIA_REGISTER_FAILED',
+        entityType: 'Lesson',
+        entityId: lessonId,
+        metadata: {
+          errorCategory: 'UPLOAD_URL_UNAVAILABLE',
+          externalAssetId: intent.externalAssetId,
+        },
+      });
     });
     throw new ApiError(
       409,
@@ -143,22 +192,53 @@ export async function registerLessonMedia(
 
   const courseId = await courseIdForLesson(prisma, lessonId);
   const recorded = await withCourseLock(prisma, courseId, async (tx) => {
-    const current = await tx.mediaMapping.findUnique({ where: { id: intent.id }, include: { lesson: { include: { section: { include: { course: true } } } } } });
+    const current = await tx.mediaMapping.findUnique({
+      where: { id: intent.id },
+      include: { lesson: { include: { section: { include: { course: true } } } } },
+    });
     if (current === null) throw new ApiError(404, 'MEDIA_MISSING', 'Media mapping not found.');
     ensureStructuralAllowed(current.lesson.section.course);
     if (current.assetId !== null) {
-      if (current.assetId !== registered.assetId || current.status !== 'UPLOAD_PENDING' || current.uploadCompletedAt !== null) {
-        throw new ApiError(409, 'MEDIA_EXISTS', 'Upload already completed or media changed during retry.');
+      if (
+        current.assetId !== registered.assetId ||
+        current.status !== 'UPLOAD_PENDING' ||
+        current.uploadCompletedAt !== null
+      ) {
+        throw new ApiError(
+          409,
+          'MEDIA_EXISTS',
+          'Upload already completed or media changed during retry.',
+        );
       }
-      const recovered = await tx.mediaMapping.update({ where: { id: current.id }, data: { lastSyncedAt: new Date(), errorCategory: null } });
-      await audit(tx, { actorUserId: actorId, action: 'MEDIA_UPLOAD_URL_REISSUED', entityType: 'Lesson', entityId: lessonId, metadata: { externalAssetId: current.externalAssetId, status: current.status } });
+      const recovered = await tx.mediaMapping.update({
+        where: { id: current.id },
+        data: { lastSyncedAt: new Date(), errorCategory: null },
+      });
+      await audit(tx, {
+        actorUserId: actorId,
+        action: 'MEDIA_UPLOAD_URL_REISSUED',
+        entityType: 'Lesson',
+        entityId: lessonId,
+        metadata: { externalAssetId: current.externalAssetId, status: current.status },
+      });
       return recovered as unknown as Intent;
     }
     const updated = await tx.mediaMapping.update({
       where: { id: intent.id },
-      data: { assetId: registered.assetId, status: 'UPLOAD_PENDING', lastSyncedAt: new Date(), errorCategory: null },
+      data: {
+        assetId: registered.assetId,
+        status: 'UPLOAD_PENDING',
+        lastSyncedAt: new Date(),
+        errorCategory: null,
+      },
     });
-    await audit(tx, { actorUserId: actorId, action: 'MEDIA_REGISTERED', entityType: 'Lesson', entityId: lessonId, metadata: { externalAssetId: intent.externalAssetId, status: 'UPLOAD_PENDING' } });
+    await audit(tx, {
+      actorUserId: actorId,
+      action: 'MEDIA_REGISTERED',
+      entityType: 'Lesson',
+      entityId: lessonId,
+      metadata: { externalAssetId: intent.externalAssetId, status: 'UPLOAD_PENDING' },
+    });
     return updated as unknown as Intent;
   });
 

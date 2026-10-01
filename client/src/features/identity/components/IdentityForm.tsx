@@ -14,7 +14,11 @@ export function useTitleFocus(): React.RefObject<HTMLHeadingElement> {
   return ref;
 }
 
-export function fieldError(t: Strings, code: string | undefined, field: string | undefined): string | undefined {
+export function fieldError(
+  t: Strings,
+  code: string | undefined,
+  field: string | undefined,
+): string | undefined {
   if (code === undefined) return undefined;
   if (code === 'VALIDATION_ERROR' && field !== undefined) return t.err_VALIDATION_ERROR;
   return localize(t, code);

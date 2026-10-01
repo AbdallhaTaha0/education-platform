@@ -22,7 +22,7 @@ services:
     volumes:
       - pgdata-test:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d education_platform_test"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d education_platform_test']
       interval: 2s
       timeout: 3s
       retries: 20
@@ -31,7 +31,7 @@ services:
   redis:
     image: redis:7-alpine
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 2s
       timeout: 3s
       retries: 20
@@ -48,7 +48,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    restart: "no"
+    restart: 'no'
 
   test:
     build:
@@ -80,7 +80,7 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
-    restart: "no"
+    restart: 'no'
 
   # Client-side unit tests for the pure M5 learning logic (player state machine
   # and the transient credential boundary). No database or redis required.
@@ -90,7 +90,7 @@ services:
       dockerfile: client/Dockerfile
       target: test
     image: edu-platform-client-test:0.5.0-m5
-    restart: "no"
+    restart: 'no'
 
 volumes:
   # Disposable by design: the project prefix (-p education-platform-test)

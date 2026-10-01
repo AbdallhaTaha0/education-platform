@@ -7,13 +7,22 @@
  */
 import { Router } from 'express';
 import { ok } from '../../identity/errors.js';
-import { rateLimit, requireAuth, requireOrigin, requireSessionCsrf } from '../../identity/middleware.js';
+import {
+  rateLimit,
+  requireAuth,
+  requireOrigin,
+  requireSessionCsrf,
+} from '../../identity/middleware.js';
 import type { RateLimit } from '../../identity/rateLimit.js';
 import { LearningError } from '../errors.js';
 import { loadOutline, resolveCourse, resolveLesson } from '../access/service.js';
 import { loadDashboard } from '../dashboard/service.js';
 import { recordProgress } from '../progress/service.js';
-import { createPlaybackSession, endPlaybackSession, renewPlaybackToken } from '../playback/service.js';
+import {
+  createPlaybackSession,
+  endPlaybackSession,
+  renewPlaybackToken,
+} from '../playback/service.js';
 import { detectCrossedSubscriptions } from '../expiry/reconciler.js';
 import { asyncRoute, ctxOf, studentOf, type LearningRouteContext } from './shared.js';
 
@@ -75,7 +84,12 @@ export function createLearningRouter(ctx: LearningRouteContext): Router {
         courseRef: req.params['courseRef'] as string,
         nowMs,
       });
-      const lesson = await resolveLesson(c.prisma, course, req.params['lessonId'] as string, student.userId);
+      const lesson = await resolveLesson(
+        c.prisma,
+        course,
+        req.params['lessonId'] as string,
+        student.userId,
+      );
       const row = await c.prisma.lessonProgress.findUnique({
         where: { studentId_lessonId: { studentId: student.userId, lessonId: lesson.lessonId } },
         select: { positionSeconds: true, durationSeconds: true, completedAt: true },
@@ -106,9 +120,18 @@ export function createLearningRouter(ctx: LearningRouteContext): Router {
         courseRef: req.params['courseRef'] as string,
         nowMs,
       });
-      const lesson = await resolveLesson(c.prisma, course, req.params['lessonId'] as string, student.userId);
+      const lesson = await resolveLesson(
+        c.prisma,
+        course,
+        req.params['lessonId'] as string,
+        student.userId,
+      );
       const body = (req.body ?? {}) as { deviceId?: unknown };
-      if (typeof body.deviceId !== 'string' || body.deviceId.trim().length === 0 || body.deviceId.length > 128) {
+      if (
+        typeof body.deviceId !== 'string' ||
+        body.deviceId.trim().length === 0 ||
+        body.deviceId.length > 128
+      ) {
         throw new LearningError('VALIDATION_ERROR', 'deviceId is required.');
       }
       const prior = await c.prisma.lessonProgress.findUnique({

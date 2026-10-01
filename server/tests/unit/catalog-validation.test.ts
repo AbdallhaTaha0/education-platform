@@ -64,7 +64,12 @@ describe('lifecycle transition matrix', () => {
     expect(() => assertValidTransition('DRAFT', 'PROCESSING')).not.toThrow();
     expect(() => assertValidTransition('PROCESSING', 'READY')).not.toThrow();
     expect(() => assertValidTransition('READY', 'PUBLISHED')).not.toThrow();
-    for (const [from, to] of [['DRAFT', 'READY'], ['DRAFT', 'PUBLISHED'], ['READY', 'DRAFT'], ['PUBLISHED', 'DRAFT']] as const) {
+    for (const [from, to] of [
+      ['DRAFT', 'READY'],
+      ['DRAFT', 'PUBLISHED'],
+      ['READY', 'DRAFT'],
+      ['PUBLISHED', 'DRAFT'],
+    ] as const) {
       try {
         assertValidTransition(from, to);
         expect.unreachable(`${from}→${to} should fail`);
@@ -76,7 +81,10 @@ describe('lifecycle transition matrix', () => {
   });
 
   it('routes archive through dedicated endpoints', () => {
-    for (const [from, to] of [['DRAFT', 'ARCHIVED'], ['ARCHIVED', 'DRAFT']] as const) {
+    for (const [from, to] of [
+      ['DRAFT', 'ARCHIVED'],
+      ['ARCHIVED', 'DRAFT'],
+    ] as const) {
       try {
         assertValidTransition(from, to);
         expect.unreachable();

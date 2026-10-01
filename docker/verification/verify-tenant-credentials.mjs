@@ -24,7 +24,12 @@ for (const [label, id, secret] of pairs) {
   const probe = await probeApplication(baseUrl, id, secret);
   const pass = probe.ok === true;
   if (!pass) failed += 1;
-  process.stdout.write(`${pass ? 'PASS' : 'FAIL'} ${label}: status=${probe.status ?? 'network-error'}\n`);
+  process.stdout.write(
+    `${pass ? 'PASS' : 'FAIL'} ${label}: status=${probe.status ?? 'network-error'}\n`,
+  );
 }
-if (failed > 0) { process.stderr.write(`tenant credential verification: ${failed} failure(s)\n`); process.exit(1); }
+if (failed > 0) {
+  process.stderr.write(`tenant credential verification: ${failed} failure(s)\n`);
+  process.exit(1);
+}
 process.stdout.write('tenant credential verification: both applications authenticate\n');

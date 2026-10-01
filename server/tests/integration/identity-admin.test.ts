@@ -50,7 +50,10 @@ function runCli(env: Record<string, string>): Promise<{ code: number; out: strin
       ['dist/bootstrap.js'],
       { cwd: '/srv/server', env: { ...process.env, ...env }, timeout: 60000 },
       (err, stdout, stderr) => {
-        resolve({ code: err && 'code' in err ? Number((err as { code: unknown }).code) : 0, out: `${stdout}\n${stderr}` });
+        resolve({
+          code: err && 'code' in err ? Number((err as { code: unknown }).code) : 0,
+          out: `${stdout}\n${stderr}`,
+        });
       },
     );
   });
@@ -125,7 +128,12 @@ describe('bootstrap concurrency and silence', () => {
   it('returns safe output containing neither password nor hash', async () => {
     await clearAdmins();
     const created = await bootstrapFirstAdmin(
-      { displayName: 'Quiet Admin', email: uniqueEmail(), phone: uniquePhone(), password: 'silent secret twelve words' },
+      {
+        displayName: 'Quiet Admin',
+        email: uniqueEmail(),
+        phone: uniquePhone(),
+        password: 'silent secret twelve words',
+      },
       { prisma: world.prisma, argon2: { memoryKb: 8192, timeCost: 2, parallelism: 1 } },
     );
     expect(created.role).toBe('ADMIN');
@@ -140,7 +148,12 @@ describe('admin creation endpoint', () => {
   it('lets an authenticated ADMIN create another ADMIN', async () => {
     await clearAdmins();
     const admin = await bootstrapFirstAdmin(
-      { displayName: 'Root Admin', email: uniqueEmail(), phone: uniquePhone(), password: 'root secret twelve words' },
+      {
+        displayName: 'Root Admin',
+        email: uniqueEmail(),
+        phone: uniquePhone(),
+        password: 'root secret twelve words',
+      },
       { prisma: world.prisma, argon2: { memoryKb: 8192, timeCost: 2, parallelism: 1 } },
     );
     const session = await loginWith(world.app, admin.email, 'root secret twelve words');
@@ -168,7 +181,12 @@ describe('admin creation endpoint', () => {
       .post('/admin/users')
       .set('Origin', TEST_ORIGIN)
       .set('X-Forwarded-For', uniqueIp())
-      .send({ displayName: 'X', email: uniqueEmail(), phone: uniquePhone(), password: TEST_PASSWORD });
+      .send({
+        displayName: 'X',
+        email: uniqueEmail(),
+        phone: uniquePhone(),
+        password: TEST_PASSWORD,
+      });
     expect(anon.status).toBe(401);
 
     const student = await registerStudent(world.app);
@@ -185,7 +203,12 @@ describe('admin creation endpoint', () => {
   it('rejects client-supplied roles and duplicate identifiers', async () => {
     await clearAdmins();
     const admin = await bootstrapFirstAdmin(
-      { displayName: 'Root Two', email: uniqueEmail(), phone: uniquePhone(), password: 'root two secret twelve' },
+      {
+        displayName: 'Root Two',
+        email: uniqueEmail(),
+        phone: uniquePhone(),
+        password: 'root two secret twelve',
+      },
       { prisma: world.prisma, argon2: { memoryKb: 8192, timeCost: 2, parallelism: 1 } },
     );
     const session = await loginWith(world.app, admin.email, 'root two secret twelve');
@@ -213,7 +236,8 @@ describe('admin creation endpoint', () => {
 describe('two-role invariant', () => {
   it('the database rejects any third role', async () => {
     await expect(
-      world.prisma.$executeRaw`INSERT INTO "User"(id, email, phone, "displayName", "passwordHash", role) VALUES ('x', 'x@x.test', '+10000000000', 'X', 'h', 'SUPER')`,
+      world.prisma
+        .$executeRaw`INSERT INTO "User"(id, email, phone, "displayName", "passwordHash", role) VALUES ('x', 'x@x.test', '+10000000000', 'X', 'h', 'SUPER')`,
     ).rejects.toThrow();
   });
 

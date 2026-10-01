@@ -43,7 +43,11 @@ function clampPercent(value: number): number {
  * because an invented label would misattribute the session.
  */
 export function isWatermarkVisible(watermark: PlaybackGrant['watermark']): boolean {
-  return watermark !== null && typeof watermark.maskedIdentity === 'string' && watermark.maskedIdentity !== '';
+  return (
+    watermark !== null &&
+    typeof watermark.maskedIdentity === 'string' &&
+    watermark.maskedIdentity !== ''
+  );
 }
 
 /**

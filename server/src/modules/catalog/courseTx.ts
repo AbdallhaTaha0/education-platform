@@ -13,7 +13,11 @@ import { assertUuid } from './validation.js';
  * Pure input-shape validation (unknown fields, string shapes, price bounds)
  * stays outside; anything that depends on database state happens under lock.
  */
-export async function withCourseLock<T>(prisma: PrismaClient, courseId: string, fn: (tx: TxClient) => Promise<T>): Promise<T> {
+export async function withCourseLock<T>(
+  prisma: PrismaClient,
+  courseId: string,
+  fn: (tx: TxClient) => Promise<T>,
+): Promise<T> {
   assertUuid(courseId, 'courseId');
   return prisma.$transaction(async (tx) => {
     await lockCourseRow(tx, courseId);
@@ -23,7 +27,11 @@ export async function withCourseLock<T>(prisma: PrismaClient, courseId: string, 
 
 /** Purchase-side counterpart: shared locks allow concurrent buyers but block
  * archive, plan mutation and deletion until the purchase snapshot commits. */
-export async function withCourseReadLock<T>(prisma: PrismaClient, courseId: string, fn: (tx: TxClient) => Promise<T>): Promise<T> {
+export async function withCourseReadLock<T>(
+  prisma: PrismaClient,
+  courseId: string,
+  fn: (tx: TxClient) => Promise<T>,
+): Promise<T> {
   assertUuid(courseId, 'courseId');
   return prisma.$transaction(async (tx) => {
     await lockCourseRowShared(tx, courseId);
@@ -34,21 +42,30 @@ export async function withCourseReadLock<T>(prisma: PrismaClient, courseId: stri
 /** Lookup-only resolvers (no state decisions) to find the owning course before locking. */
 export async function courseIdForSection(prisma: PrismaClient, sectionId: string): Promise<string> {
   assertUuid(sectionId, 'sectionId');
-  const section = await prisma.courseSection.findUnique({ where: { id: sectionId }, select: { courseId: true } });
+  const section = await prisma.courseSection.findUnique({
+    where: { id: sectionId },
+    select: { courseId: true },
+  });
   if (section === null) throw new ApiError(404, 'NOT_FOUND', 'Section not found.');
   return section.courseId;
 }
 
 export async function courseIdForLesson(prisma: PrismaClient, lessonId: string): Promise<string> {
   assertUuid(lessonId, 'lessonId');
-  const lesson = await prisma.lesson.findUnique({ where: { id: lessonId }, select: { section: { select: { courseId: true } } } });
+  const lesson = await prisma.lesson.findUnique({
+    where: { id: lessonId },
+    select: { section: { select: { courseId: true } } },
+  });
   if (lesson === null) throw new ApiError(404, 'NOT_FOUND', 'Lesson not found.');
   return lesson.section.courseId;
 }
 
 export async function courseIdForPlan(prisma: PrismaClient, planId: string): Promise<string> {
   assertUuid(planId, 'planId');
-  const plan = await prisma.subscriptionPlan.findUnique({ where: { id: planId }, select: { courseId: true } });
+  const plan = await prisma.subscriptionPlan.findUnique({
+    where: { id: planId },
+    select: { courseId: true },
+  });
   if (plan === null) throw new ApiError(404, 'NOT_FOUND', 'Plan not found.');
   return plan.courseId;
 }

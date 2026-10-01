@@ -28,7 +28,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function fail(): never {
-  throw new LearningError('DRM_DEPENDENCY_FAILED', 'The media service returned an unusable response.');
+  throw new LearningError(
+    'DRM_DEPENDENCY_FAILED',
+    'The media service returned an unusable response.',
+  );
 }
 
 function isoDate(value: unknown): string {
@@ -45,7 +48,8 @@ export function validatePlaybackSession(body: unknown): ValidatedPlaybackSession
   const token = body['playbackToken'];
   if (typeof token !== 'string' || token.length < 8 || token.length > 4096) fail();
   const manifestUrl = body['manifestUrl'];
-  if (typeof manifestUrl !== 'string' || manifestUrl.length === 0 || manifestUrl.length > 2048) fail();
+  if (typeof manifestUrl !== 'string' || manifestUrl.length === 0 || manifestUrl.length > 2048)
+    fail();
   const licenseUrl = body['licenseUrl'];
   if (typeof licenseUrl !== 'string' || licenseUrl.length === 0 || licenseUrl.length > 2048) fail();
   const provider = body['drmProvider'];
@@ -105,9 +109,7 @@ export function validateRenewal(body: unknown): ValidatedRenewal {
  * render. The trace code and the signature are dropped: a visible overlay must
  * never expose signing material.
  */
-export function toWatermarkPresentation(
-  watermark: Record<string, unknown> | null,
-): {
+export function toWatermarkPresentation(watermark: Record<string, unknown> | null): {
   type: string;
   maskedIdentity: string;
   positions: Array<{ x: number; y: number }>;
@@ -117,7 +119,8 @@ export function toWatermarkPresentation(
   // The real DRM returns { payload, signature }; legacy contract fixtures
   // used a flat policy. Read the policy only and project its safe fields.
   watermark = isRecord(watermark['payload']) ? watermark['payload'] : watermark;
-  const type = typeof watermark['type'] === 'string' ? (watermark['type'] as string).slice(0, 32) : 'MASKED';
+  const type =
+    typeof watermark['type'] === 'string' ? (watermark['type'] as string).slice(0, 32) : 'MASKED';
   const identity =
     typeof watermark['maskedIdentity'] === 'string'
       ? (watermark['maskedIdentity'] as string).slice(0, 128)
@@ -136,8 +139,11 @@ export function toWatermarkPresentation(
     }
   }
   const expiry = watermark['expiresAt'];
-  const expiresAt = typeof expiry === 'string' ? expiry :
-    typeof expiry === 'number' && Number.isFinite(expiry) && expiry >= 0 && expiry <= 8.64e12
-      ? new Date(expiry * 1000).toISOString() : null;
+  const expiresAt =
+    typeof expiry === 'string'
+      ? expiry
+      : typeof expiry === 'number' && Number.isFinite(expiry) && expiry >= 0 && expiry <= 8.64e12
+        ? new Date(expiry * 1000).toISOString()
+        : null;
   return { type, maskedIdentity: identity, positions, expiresAt };
 }

@@ -59,12 +59,7 @@ export class S3Client {
 
   /** Credentials are read from the environment and never echoed. */
   static fromEnv(env) {
-    const required = [
-      'S3_ENDPOINT',
-      'S3_BUCKET',
-      'S3_ACCESS_KEY_ID',
-      'S3_SECRET_ACCESS_KEY',
-    ];
+    const required = ['S3_ENDPOINT', 'S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'];
     const missing = required.filter((name) => !env[name]);
     if (missing.length > 0) {
       throw new Error(`missing S3 configuration: ${missing.join(', ')}`);

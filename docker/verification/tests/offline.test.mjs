@@ -31,18 +31,10 @@ const fakeSecrets = {
 
 test('direct object mutations reject keys outside the exact run scope', () => {
   assert.throws(() =>
-    assertKeyWithinPrefix(
-      `${root}run-b/media/object.txt`,
-      `${root}run-a/media/`,
-      root,
-    ),
+    assertKeyWithinPrefix(`${root}run-b/media/object.txt`, `${root}run-a/media/`, root),
   );
   assert.equal(
-    assertKeyWithinPrefix(
-      `${root}run-a/media/object.txt`,
-      `${root}run-a/media/`,
-      root,
-    ),
+    assertKeyWithinPrefix(`${root}run-a/media/object.txt`, `${root}run-a/media/`, root),
     `${root}run-a/media/object.txt`,
   );
 });
@@ -66,7 +58,10 @@ test('logger redacts allowed-field URLs, signed queries, bearer values, and conf
   ]) {
     assert.equal(sanitizeRecord({ step: 'probe', note: value }).note, '[redacted]');
   }
-  assert.equal(sanitizeRecord({ step: 'probe', unexpectedSecret: 'value' }).unexpectedSecret, undefined);
+  assert.equal(
+    sanitizeRecord({ step: 'probe', unexpectedSecret: 'value' }).unexpectedSecret,
+    undefined,
+  );
 });
 
 test('relative manifest, numbered segment, UUID KID and ClearKey challenge match public contracts', () => {
@@ -113,9 +108,15 @@ test('poll response adapters accept only successful documented envelopes', () =>
 
 test('CORS acceptance rejects wildcard and requires the exact approved origin', () => {
   const base = { methods: ['GET', 'HEAD', 'PUT'], headers: ['Content-Type'] };
-  assert.equal(isNarrowCorsRule({ ...base, origins: ['https://app.example'] }, 'https://app.example'), true);
+  assert.equal(
+    isNarrowCorsRule({ ...base, origins: ['https://app.example'] }, 'https://app.example'),
+    true,
+  );
   assert.equal(isNarrowCorsRule({ ...base, origins: ['*'] }, 'https://app.example'), false);
-  assert.equal(isNarrowCorsRule({ ...base, origins: ['https://other.example'] }, 'https://app.example'), false);
+  assert.equal(
+    isNarrowCorsRule({ ...base, origins: ['https://other.example'] }, 'https://app.example'),
+    false,
+  );
 });
 
 test('presigned upload key extraction is exact for virtual and path-style endpoints', () => {

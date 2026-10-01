@@ -47,13 +47,21 @@ export async function probeApplication(baseUrl, clientId, clientSecret) {
   try {
     response = await fetch(`${baseUrl}/v1/media`, {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-client-id': clientId, 'x-client-secret': clientSecret },
+      headers: {
+        'content-type': 'application/json',
+        'x-client-id': clientId,
+        'x-client-secret': clientSecret,
+      },
       body: '{}',
     });
   } catch {
     return { networkError: true };
   }
-  try { await response.text().then(() => {}); } catch { /* body irrelevant */ }
+  try {
+    await response.text().then(() => {});
+  } catch {
+    /* body irrelevant */
+  }
   return { ok: response.status === 400, status: response.status };
 }
 
@@ -64,7 +72,16 @@ export async function probeApplication(baseUrl, clientId, clientSecret) {
  * Returns { created: boolean, reused: boolean }. Throws sanitized errors.
  */
 export async function bootstrapTenant(opts) {
-  const { platformEnvPath, adminToken, appName, idVar, secretVar, idPrefix, baseUrl, extraValues = {} } = opts;
+  const {
+    platformEnvPath,
+    adminToken,
+    appName,
+    idVar,
+    secretVar,
+    idPrefix,
+    baseUrl,
+    extraValues = {},
+  } = opts;
   const stored = parseEnv(platformEnvPath);
   const storedId = stored.get(idVar);
   const storedSecret = stored.get(secretVar);
@@ -90,9 +107,18 @@ export async function bootstrapTenant(opts) {
     const response = await fetch(`${baseUrl}/v1/applications`, {
       method: 'POST',
       headers: { authorization: `Bearer ${adminToken}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ name: appName, client_id: candidateId, client_secret: candidateSecret, drm_provider: 'CLEAR_KEY' }),
+      body: JSON.stringify({
+        name: appName,
+        client_id: candidateId,
+        client_secret: candidateSecret,
+        drm_provider: 'CLEAR_KEY',
+      }),
     });
-    try { await response.text().then(() => {}); } catch { /* body irrelevant */ }
+    try {
+      await response.text().then(() => {});
+    } catch {
+      /* body irrelevant */
+    }
     createStatus = response.status;
   } catch {
     throw new Error(`tenant service unreachable at bootstrap (local file unchanged)`);
@@ -108,10 +134,14 @@ export async function bootstrapTenant(opts) {
   if (!probe.ok) {
     throw new Error(
       `stored credentials for ${idVar} do not authenticate (status ${probe.status}); ` +
-      `kept local file unchanged — restore the matching secret or remove both ${idVar}/${secretVar} for a fresh identity`,
+        `kept local file unchanged — restore the matching secret or remove both ${idVar}/${secretVar} for a fresh identity`,
     );
   }
 
-  setEnvValues(platformEnvPath, { [idVar]: candidateId, [secretVar]: candidateSecret, ...extraValues });
+  setEnvValues(platformEnvPath, {
+    [idVar]: candidateId,
+    [secretVar]: candidateSecret,
+    ...extraValues,
+  });
   return { created: createStatus === 201 && !preExisting, reused: preExisting };
 }

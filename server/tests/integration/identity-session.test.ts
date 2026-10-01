@@ -34,7 +34,9 @@ describe('csrf session lifetime', () => {
     const res = await authedPost(clocked.app, '/auth/refresh', reg.jar);
     expect(res.status).toBe(200);
     const setCookies = res.headers['set-cookie'] as unknown as string[];
-    expect(maxAgeOf(setCookies, 'edu_csrf')).toBeLessThanOrEqual(maxAgeOf(setCookies, 'edu_refresh'));
+    expect(maxAgeOf(setCookies, 'edu_csrf')).toBeLessThanOrEqual(
+      maxAgeOf(setCookies, 'edu_refresh'),
+    );
   });
 
   it('bootstrap during an active session rebinds without breaking refresh', async () => {
@@ -93,9 +95,13 @@ describe('csrf session lifetime', () => {
     const res = await authedPost(clocked.app, '/auth/refresh', reg.jar);
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('CSRF_INVALID');
-    const session = await clocked.prisma.authSession.findUniqueOrThrow({ where: { id: sessionId } });
+    const session = await clocked.prisma.authSession.findUniqueOrThrow({
+      where: { id: sessionId },
+    });
     expect(session.revokedAt).toBeNull();
-    const outstanding = await clocked.prisma.refreshToken.count({ where: { sessionId, consumed: false } });
+    const outstanding = await clocked.prisma.refreshToken.count({
+      where: { sessionId, consumed: false },
+    });
     expect(outstanding).toBe(1);
   });
 });
