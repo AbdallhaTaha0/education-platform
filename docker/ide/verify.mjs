@@ -31,7 +31,10 @@ try {
   if (process.argv.includes('--build')) run('build', ['build', 'test', 'client-test']);
   run('start', ['up', '-d', '--wait', 'migrate', 'redis']);
   run('server-types', ['run', '--rm', '--no-deps', 'test', 'npm', 'run', 'typecheck']);
-  if (process.argv.includes('--focused')) {
+  if (process.argv.includes('--support')) {
+    run('support-tests', ['run', '--rm', '--no-deps', 'test', 'npx', 'vitest', 'run', 'tests/integration/support-contact.test.ts', 'tests/integration/ux-profile.test.ts']);
+    run('client-types', ['run', '--rm', '--no-deps', 'client-test', 'npm', 'run', 'typecheck']);
+  } else if (process.argv.includes('--focused')) {
     run('m9-focused-tests', ['run', '--rm', '--no-deps', 'test', 'npx', 'vitest', 'run', 'tests/unit/m9-contracts.test.ts', 'tests/integration/m9-assessments.test.ts']);
   } else {
     run('server-tests', ['run', '--rm', '--no-deps', 'test', 'npm', 'run', 'test:ci']);

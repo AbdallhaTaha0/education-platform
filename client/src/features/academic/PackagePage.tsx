@@ -3,6 +3,7 @@ import { apiFetch, ApiError, useAuth } from '../../auth';
 import { useLang } from '../../i18n';
 import { Card, Container } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { FormActions } from '../../components/ui/FormActions';
 import { Loading, Notice } from '../../components/ui/Notice';
 import { fetchWallet } from '../wallet/api/client';
 import { formatEgp } from '../catalog/types/models';
@@ -186,9 +187,9 @@ export function PackagePage({ id }: { id: string }): JSX.Element {
                   {t.goRecharge}
                 </a>
               ) : (
-                <Button disabled={busy || !review} onClick={() => void buy()}>
+                <FormActions><Button disabled={busy || !review} onClick={() => void buy()}>
                   {busy ? t.loading : ar ? 'تأكيد شراء الباقة' : 'Confirm package purchase'}
-                </Button>
+                </Button></FormActions>
               )}
             </Card>
           ) : null}

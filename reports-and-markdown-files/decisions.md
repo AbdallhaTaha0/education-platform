@@ -1,5 +1,9 @@
 # Decision register
 
+## Owner commit/push authorization (2026-10-02)
+
+After the completed platform UX, profile/dashboard navigation, support settings and final login/logout placement were verified and served on localhost:8080, the owner explicitly requested "commit and push". Commit and push the completed platform work and its sanitized verification reports. Earlier pending commit/push statements are historical. Preserve private local settings, backups, retained data and the unchanged independent DRM repository. This delivery authorization does not adopt draft legal policies, approve production deployment or certify capacity.
+
 ## D28 — Railway and delegated recovery baseline (2026-10-01)
 
 Owner selected Railway; custom domain is undecided. Owner delegated recovery choices to the manager. Selected objectives: RPO at most 15 minutes, RTO at most four hours, Railway PostgreSQL PITR and separately protected daily logical exports retained 30 days. These are selected preparation requirements, not provider setup, measured guarantees, spend authorization or production acceptance. [Runbook](m7-railway-runbook.md) and [local evidence](m7-08-railway-preparation-report.md). External commercial DRM and capacity workload choices remain unanswered.
@@ -181,6 +185,22 @@ Owner JavaScript-only follow-up (2026-10-01): defer HTML/CSS editing and visible
 2026-10-02: owner requested easier ADMIN coding quiz/assignment authoring with explicit output-value types and clearer check selection. The delivered UI uses typed value/input controls and nested object/array builders over the existing private console/function contracts. Console remains displayed-text comparison; strict typed/structured answers use function returns. No grading-policy change or automatic conversion of existing revisions is inferred.
 
 
+
+
+## Website UX and account follow-up (2026-10-02)
+
+The owner explicitly requested implementation of all recommendations in [the UX review](ux-review-20261002/report.md), including optional features after collecting decisions. Password recovery remains through admin assistance until a delivery provider is ready. Account editing permits display name and password only; password changes require the current password and sign out other sessions. Login email and phone remain unchanged. Support contact details will follow. Prepare bilingual terms/privacy/refund drafts for owner review, clearly labelled and never presented as adopted policies. No legal entitlement, refund deadline, support address, identifier-verification process or admin password-reset process is inferred. The existing one-backend, cookie-session, two-role and external DRM boundaries remain. This does not constitute milestone acceptance or authorize commit/push.
+
 ## Input/output problem follow-up (2026-10-02)
 
 The owner approved the proposed Codeforces-style JavaScript input/output workflow. New coding questions default to PROGRAM: public bilingual input/output descriptions and samples, a separate private reference solution, and integer-range or isolated custom input generation. Students use readline() and console.log(); local sample input never controls official grading. Save → prepare in restricted execution → review → publish freezes generated cases. The reference must match public samples and give identical output on two executions per input. Every frozen case must pass. Whole-output comparers are whitespace-separated tokens, normalized exact text or strict JSON. Existing CODING/function/console and CHOICE questions remain compatible, with unchanged passes/history/privacy/quota/progression. See [the input/output guide](m9-input-output-guide.md). This authorizes bounded local implementation, not DRM changes, deployment, capacity qualification or milestone acceptance.
+
+## Editable support contact follow-up (2026-10-02)
+
+The owner supplied aliibrahim3600@gmail.com and 01062419263 and explicitly requested both be changeable. Public support contacts may be persisted in platform PostgreSQL and edited by ADMIN with existing cookie/origin/CSRF protections. This does not change login identifiers, introduce provider-backed recovery, adopt legal/refund drafts, accept a milestone or authorize commit/push.
+
+## Dashboard/navigation follow-up (2026-10-02)
+
+The owner selected the unified workspace and explicitly requested a reference-style four-item mobile dock, a retained desktop top navbar, and Profile opening the role-appropriate dashboard with sidebar navigation. Student learning and personal profile/security belong in one workspace; ADMIN retains every existing management destination and its personal profile. Standalone form submit/page-action groups are centred in Arabic and English, including profile saves/logout, rather than only login. Contextual row/editor/navigation controls remain attached to their context.
+
+After dispatching the prepared OpenCode prompt, the owner stopped OpenCode and assigned this agent to complete its actual changes without waiting for further input, then explicitly requested all website changes on localhost:8080. This authorizes bounded local completion, Docker verification, guarded preview update and restoration of unchanged local runtime dependencies; no DRM source edit, new backend/schema policy, owner data rewrite, milestone acceptance or commit/push is inferred. See [the completion report](dashboard-navigation-20261002/worker-report.md).

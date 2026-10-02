@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ApiError } from '../../../auth';
 import { localizeCode, useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
+import { FormActions } from '../../../components/ui/FormActions';
 import { Card, Container } from '../../../components/ui/Card';
 import { Loading, Notice, EmptyState } from '../../../components/ui/Notice';
 import { fetchPublicCourses } from '../../catalog/api/client';
@@ -27,6 +28,7 @@ export function PurchasePage({
   const [mode, setMode] = useState<AccessMode>('DURATION');
   const [deadline, setDeadline] = useState<string | null>(null);
   const [courseTitle, setCourseTitle] = useState('');
+  const [courseId,setCourseId]=useState('');
   const [balance, setBalance] = useState<number | null>(null);
   const [receipt, setReceipt] = useState<PurchaseReceipt | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
@@ -41,6 +43,7 @@ export function PurchasePage({
         for (const course of courses) {
           const plan = course.plans.find((p) => p.id === planId);
           if (plan) {
+            setCourseId(course.id); setCourseTitle(lang === 'ar' ? course.titleAr : course.titleEn);
             if (subscriptions.some((s) => s.courseId === course.id && (s.expiresAt === null || new Date(s.expiresAt).getTime() > Date.now()))) {
               setErrorCode('COURSE_ALREADY_SUBSCRIBED'); setPhase('failed'); return;
             }
@@ -128,12 +131,13 @@ export function PurchasePage({
                   </dd>
                 </div>
               </dl>
-              <div className="mt-6 flex flex-wrap gap-3">
+              <FormActions>
+                <Button onClick={()=>go(`#/learn/${receipt.courseId}`)}>{lang==='ar'?'تابع التعلم':'Continue learning'}</Button>
                 <Button onClick={() => go('#/courses')}>{t.backToCourses}</Button>
                 <Button variant="secondary" onClick={() => go('#/wallet')}>
                   {t.backToWallet}
                 </Button>
-              </div>
+              </FormActions>
             </Card>
           </Container>
         </section>
@@ -147,6 +151,7 @@ export function PurchasePage({
         <section className="py-8">
           <Container>
             <h1 className="text-2xl font-bold">{t.purchaseTitle}</h1>
+            {courseId && errorCode==='COURSE_ALREADY_SUBSCRIBED' ? <a href={`#/learn/${courseId}`} className="my-4 inline-block rounded-control bg-primary px-5 py-3 font-bold text-primary-ink">{lang==='ar'?'تابع التعلم':'Continue learning'}</a>:null}
             <div className="mt-4">
               <Notice kind="error">
                 {errorCode === 'COURSE_ALREADY_SUBSCRIBED'
@@ -158,11 +163,11 @@ export function PurchasePage({
                   : localizeCode(t, errorCode ?? 'SERVICE_ERROR')}
               </Notice>
             </div>
-            <div className="mt-4 flex flex-wrap gap-3">
+            <FormActions className="mt-4">
               <Button variant="secondary" onClick={() => go('#/courses')}>
                 {t.backToCourses}
               </Button>
-            </div>
+            </FormActions>
           </Container>
         </section>
       </main>
@@ -232,11 +237,11 @@ export function PurchasePage({
             {errorCode === 'INSUFFICIENT_FUNDS' ? (
               <div className="mt-4">
                 <Notice kind="error">{localizeCode(t, 'INSUFFICIENT_FUNDS')}</Notice>
-                <div className="mt-3">
+                <FormActions className="mt-3">
                   <Button variant="secondary" onClick={() => go('#/wallet/recharge')}>
                     {t.goRecharge}
                   </Button>
-                </div>
+                </FormActions>
               </div>
             ) : null}
             {errorCode !== null && errorCode !== 'INSUFFICIENT_FUNDS' ? (
@@ -245,14 +250,14 @@ export function PurchasePage({
               </div>
             ) : null}
             {!short ? (
-              <div className="mt-6 flex flex-wrap gap-3">
+              <FormActions>
                 <Button onClick={() => void confirm()} disabled={phase === 'confirming'}>
                   {phase === 'confirming' ? <Loading text={t.confirming} /> : t.confirmPurchase}
                 </Button>
                 <Button variant="secondary" onClick={() => go('#/courses')}>
                   {t.cancel}
                 </Button>
-              </div>
+              </FormActions>
             ) : null}
           </Card>
         </Container>

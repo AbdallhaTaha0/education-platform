@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Button } from './Button';
+import { FormActions } from './FormActions';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -21,9 +22,9 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps): JSX.Element | null {
-  const confirmRef = useRef<HTMLButtonElement>(null);
+  const confirmRef = useRef<HTMLSpanElement>(null);
   useEffect(() => {
-    if (open) confirmRef.current?.focus();
+    if (open) confirmRef.current?.querySelector('button')?.focus();
   }, [open]);
   if (!open) return null;
   return (
@@ -36,8 +37,8 @@ export function ConfirmDialog({
       <div className="w-full max-w-md rounded-card border border-border bg-surface p-6 shadow-rest">
         <h2 className="mb-2 text-xl font-bold">{title}</h2>
         <p className="mb-6 text-muted">{body}</p>
-        <div className="flex flex-wrap gap-3">
-          <span ref={confirmRef as never} tabIndex={-1} className="contents">
+        <FormActions className="mt-0">
+          <span ref={confirmRef} className="contents">
             <Button variant="primary" onClick={onConfirm}>
               {confirmLabel}
             </Button>
@@ -45,7 +46,7 @@ export function ConfirmDialog({
           <Button variant="secondary" onClick={onCancel}>
             {cancelLabel}
           </Button>
-        </div>
+        </FormActions>
       </div>
     </div>
   );

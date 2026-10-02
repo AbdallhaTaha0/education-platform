@@ -16,6 +16,7 @@ const KEYS: Record<Route, string | null> = {
   register: 'registerTitle',
   login: 'loginTitle',
   account: 'navAccount',
+  'account-profile': 'navAccount',
   admin: 'navAdmin',
   'admin-catalog': 'navCatalog',
   'admin-course': 'navCatalog',
@@ -33,6 +34,7 @@ const KEYS: Record<Route, string | null> = {
   practice: 'learningTitle',
   assessment: 'learningTitle',
   'admin-practice': 'navAdmin',
+  'admin-students':'navAdmin', 'admin-policies':'navAdmin', 'admin-support':'navAdmin', support:null, terms:null, privacy:null, refunds:null, 'not-found':null,
 };
 
 /** Resolve the document title for a route from localized labels. */

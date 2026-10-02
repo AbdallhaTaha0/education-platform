@@ -1,6 +1,11 @@
 # Owner's persistent HTTP preview. Combine with compose.dev.yml.
 # External volumes keep existing data through container/image replacement.
 services:
+  postgres:
+    environment:
+      # Match the transferred volume's original PGDATA layout. Never infer
+      # that an empty alternate directory means the retained database is empty.
+      PGDATA: ${LOCAL_PLATFORM_PGDATA_PATH:-/var/lib/postgresql/data/pgdata}
   migrate:
     image: fayq-platform-migrate:0.9.0-m9
   server:

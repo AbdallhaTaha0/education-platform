@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ApiError } from '../../../auth';
 import { localizeCode, useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
+import { FormActions } from '../../../components/ui/FormActions';
 import { ConfirmDialog } from '../../../components/ui/Dialog';
 import { Notice } from '../../../components/ui/Notice';
 import { archiveCourse, unarchiveCourse } from '../api/client';
@@ -37,6 +38,7 @@ export function ArchiveControls({
   return (
     <div className="mt-4">
       {error !== null ? <Notice kind="error">{localizeCode(t, error)}</Notice> : null}
+      <FormActions className="mt-4">
       {!archived ? (
         <Button variant="secondary" disabled={busy} onClick={() => setConfirming(true)}>
           {t.actionArchive}
@@ -50,6 +52,7 @@ export function ArchiveControls({
           {t.actionUnarchive}
         </Button>
       )}
+      </FormActions>
       <ConfirmDialog
         open={confirming}
         title={t.actionArchive}

@@ -23,6 +23,7 @@ import { csrfDigest, CSRF_HEADER, issueCsrfToken, verifyAnonymousCsrf } from './
 import { ApiError } from './errors.js';
 import { bindSessionCsrf, getActiveSession } from './store.js';
 import { verifyAccessToken } from './tokens.js';
+import { updateProfile, studentDirectory } from './profile.js';
 import { ADMIN_CREATE_LIMIT, LOGIN_LIMIT, REFRESH_LIMIT, REGISTER_LIMIT } from './rateLimit.js';
 import {
   rateLimit as limit,
@@ -205,6 +206,9 @@ export function createAuthRouter(ctx: IdentityContext): Router {
       res.status(200).json(ok({ user: req.auth?.user ?? null }));
     }),
   );
+  router.patch('/profile',limit('profile-edit',LOGIN_LIMIT),requireOrigin,requireAuth,requireSessionCsrf,asyncRoute(async(req,res)=>{
+    res.json(ok(await updateProfile(ctx,req.auth!.userId,req.auth!.sessionId,req.body)));
+  }));
 
   return router;
 }
@@ -212,6 +216,7 @@ export function createAuthRouter(ctx: IdentityContext): Router {
 /** Authenticated ADMIN-only identity administration. */
 export function createAdminRouter(ctx: IdentityContext): Router {
   const router = Router();
+  router.get('/students',requireAuth,requireAdmin,asyncRoute(async(req,res)=>{res.json(ok(await studentDirectory(ctx,req.query)));}));
 
   router.post(
     '/users',

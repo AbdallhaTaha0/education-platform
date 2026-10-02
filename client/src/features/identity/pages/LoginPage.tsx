@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError, apiFetch, useAuth } from '../../../auth';
 import { Button } from '../../../components/ui/Button';
+import { FormActions } from '../../../components/ui/FormActions';
 import { BrandMark } from '../../../components/ui/BrandMark';
 import { Container } from '../../../components/ui/Card';
 import { Field, textInputClassName } from '../../../components/ui/Field';
@@ -9,11 +10,12 @@ import { useLang } from '../../../i18n';
 import { localize, useTitleFocus } from '../components/IdentityForm';
 
 export function LoginScreen({ onDone }: { onDone: () => void }): JSX.Element {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { reload } = useAuth();
   const titleRef = useTitleFocus();
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword,setShowPassword]=useState(false);
   const [busy, setBusy] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
 
@@ -64,7 +66,7 @@ export function LoginScreen({ onDone }: { onDone: () => void }): JSX.Element {
             <input
               id="login-password"
               name="current-password"
-              type="password"
+              type={showPassword?'text':'password'}
               autoComplete="current-password"
               required
               value={password}
@@ -72,12 +74,18 @@ export function LoginScreen({ onDone }: { onDone: () => void }): JSX.Element {
               className={textInputClassName(false)}
             />
           </Field>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <FormActions>
+            <Button type="button" variant="secondary" aria-pressed={showPassword} onClick={()=>setShowPassword(v=>!v)}>{lang==='ar'?(showPassword?'إخفاء كلمة المرور':'إظهار كلمة المرور'):(showPassword?'Hide password':'Show password')}</Button>
+          </FormActions>
+          <FormActions>
             <Button type="submit" disabled={busy}>
               {t.submitLogin}
             </Button>
-          </div>
+          </FormActions>
         </form>
+        <p className="mt-5"><a href="#/register" className="underline">{lang==='ar'?'ليس لديك حساب؟ أنشئ حساب طالب':'New here? Create a student account'}</a></p>
+        <p className="mt-3 text-sm text-muted">{lang==='ar'?'استعادة كلمة المرور حاليًا بمساعدة الإدارة.':'Password recovery requires admin assistance.'}</p>
+        <a href="#/support" className="mt-2 inline-block underline">{lang==='ar'?'المساعدة في استعادة الحساب':'Account recovery help'}</a>
       </div>
     </Container>
   );

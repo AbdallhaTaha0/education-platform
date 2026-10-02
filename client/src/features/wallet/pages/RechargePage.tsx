@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { ApiError } from '../../../auth';
 import { localizeCode, useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
+import { FormActions } from '../../../components/ui/FormActions';
 import { Card, Container } from '../../../components/ui/Card';
 import { Field } from '../../../components/ui/Field';
 import { Notice, Loading } from '../../../components/ui/Notice';
@@ -32,8 +33,8 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Element {
-  const { t } = useLang();
-  const { instructions } = useWallet();
+  const { t, lang } = useLang();
+  const { instructions, instructionsError, reload } = useWallet();
   const [amount, setAmount] = useState('');
   const [channel, setChannel] = useState<RechargeChannel | ''>('');
   const [reference, setReference] = useState('');
@@ -52,7 +53,7 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
 
   async function onSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
-    if (busy) return;
+    if (busy || !channelOptions.length) return;
     setErrorCode(null);
     if (file === null) {
       setFileError(t.proofRequired);
@@ -102,9 +103,9 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
             <Card className="mx-auto max-w-[640px]">
               <h1 className="text-2xl font-bold">{t.rechargeSubmitted}</h1>
               <p className="mt-2 text-muted">{t.rechargeSubmittedBody}</p>
-              <div className="mt-6 flex flex-wrap gap-3">
+              <FormActions>
                 <Button onClick={() => go('#/wallet')}>{t.backToWallet}</Button>
-              </div>
+              </FormActions>
             </Card>
           </Container>
         </section>
@@ -119,8 +120,9 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
           <div className="form-card mx-auto max-w-[640px] rounded-card border border-border bg-surface p-6 shadow-rest">
             <h1 className="text-2xl font-bold">{t.rechargeTitle}</h1>
             <p className="mt-2 text-muted">{t.rechargeNoAutoCredit}</p>
+            {instructions===null ? <><Notice kind={instructionsError?'error':'info'}>{instructionsError?(lang==='ar'?'تعذر تحميل طرق التحويل. أعد المحاولة.':'Could not load transfer methods. Please retry.') : t.loading}</Notice>{instructionsError?<Button variant="secondary" onClick={()=>void reload()}>{t.retry}</Button>:null}</>:!channelOptions.length?<Notice kind="info">{lang==='ar'?'الشحن غير متاح حاليًا؛ لم تُضف الإدارة طريقة تحويل. لا تحول أي مبلغ حتى تظهر التعليمات.':'Recharge is temporarily unavailable because no transfer method is configured. Wait for transfer instructions before sending money.'}</Notice>:null}
             {errorCode !== null ? <Notice kind="error">{localizeCode(t, errorCode)}</Notice> : null}
-            <form onSubmit={(e) => void onSubmit(e)} noValidate>
+            <form onSubmit={(e) => void onSubmit(e)} noValidate><fieldset disabled={busy || !channelOptions.length}>
               <Field id="rch-amount" label={t.fieldAmount}>
                 <input
                   id="rch-amount"
@@ -218,15 +220,16 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
                   className="w-full rounded-control border border-border bg-surface px-3 py-2"
                 />
               </Field>
-              <div className="mt-6 flex flex-wrap gap-3">
+              {file ? <p role="status" className="w-full text-sm">{lang==='ar'?'الإثبات المحدد':'Selected proof'}: {file.name} · {Math.ceil(file.size/1024)} KB. {lang==='ar'?'يُرفق عند إرسال الطلب؛ الرصيد يتغير بعد المراجعة فقط.':'Attached when you submit; credit follows admin verification only.'}</p>:null}
+              <FormActions>
                 <Button type="submit" disabled={busy}>
                   {busy ? <Loading text={t.submitting} /> : t.submitRecharge}
                 </Button>
                 <Button variant="secondary" onClick={() => go('#/wallet')}>
                   {t.cancel}
                 </Button>
-              </div>
-            </form>
+              </FormActions>
+            </fieldset></form>
           </div>
         </Container>
       </section>

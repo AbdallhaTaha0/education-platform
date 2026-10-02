@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError, apiFetch, useAuth, type SafeUser } from '../../../auth';
 import { Button } from '../../../components/ui/Button';
+import { FormActions } from '../../../components/ui/FormActions';
 import { Container } from '../../../components/ui/Card';
 import { Field, textInputClassName } from '../../../components/ui/Field';
 import { Notice } from '../../../components/ui/Notice';
@@ -8,7 +9,7 @@ import { useLang } from '../../../i18n';
 import { localize, useTitleFocus } from '../components/IdentityForm';
 
 export function AdminScreen({ go }: { go: (route: string) => void }): JSX.Element {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { status, user } = useAuth();
   const titleRef = useTitleFocus();
   const [name, setName] = useState('');
@@ -32,14 +33,14 @@ export function AdminScreen({ go }: { go: (route: string) => void }): JSX.Elemen
       <Container>
         <div className="form-card mx-auto max-w-[640px] rounded-card border border-border bg-surface p-6 shadow-rest">
           <h1 ref={titleRef} tabIndex={-1}>
-            {t.adminTitle}
+            {lang==='ar'?'إنشاء حساب مسؤول':'Create an admin account'}
           </h1>
           <Notice kind="info">{t.adminLoginRequired}</Notice>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <FormActions>
             <Button variant="secondary" onClick={() => go('#/login')}>
               {t.navLogin}
             </Button>
-          </div>
+          </FormActions>
         </div>
       </Container>
     );
@@ -86,7 +87,7 @@ export function AdminScreen({ go }: { go: (route: string) => void }): JSX.Elemen
     <Container>
       <div className="form-card mx-auto max-w-[640px] rounded-card border border-border bg-surface p-6 shadow-rest">
         <h1 ref={titleRef} tabIndex={-1}>
-          {t.adminTitle}
+          {lang==='ar'?'إنشاء حساب مسؤول':'Create an admin account'}
         </h1>
         <p className="text-muted">{t.adminBody}</p>
         <Notice kind="error">{errorCode ? localize(t, errorCode) : null}</Notice>
@@ -150,11 +151,11 @@ export function AdminScreen({ go }: { go: (route: string) => void }): JSX.Elemen
               {t.passwordHint}
             </p>
           </Field>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <FormActions>
             <Button type="submit" disabled={busy}>
               {t.submitAdminCreate}
             </Button>
-          </div>
+          </FormActions>
         </form>
       </div>
     </Container>

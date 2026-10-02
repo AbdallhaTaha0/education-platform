@@ -1,5 +1,6 @@
 /** Small presentational pieces shared by the learning pages (M5). */
 import type { ReactNode } from 'react';
+import { FormActions } from '../../../components/ui/FormActions';
 import { StatusBadge } from '../../../components/ui/Dialog';
 import { BrandMark } from '../../../components/ui/BrandMark';
 import type { DashboardSubscription, OutlineSection } from '../types/models';
@@ -79,9 +80,9 @@ export function SubscriptionCard({
           {labels.lessonCount}: {item.completedLessons}/{item.totalLessons}
         </p>
       </div>
-      <div className="mt-4 flex flex-wrap gap-3">
+      <FormActions className="mt-4">
         {isActive && item.availableForLearning === false ? (
-          <p className="text-sm text-muted">
+          <p className="w-full text-sm text-muted">
             {lang === 'ar'
               ? 'المشاهدة غير متاحة حاليًا؛ ستظهر بعد نشر الكورس.'
               : 'Viewing is currently unavailable; it opens when the course is published.'}
@@ -94,7 +95,7 @@ export function SubscriptionCard({
             onClick={() => onContinue(item.slug)}
           >
             {item.lastLessonId ? labels.resume : labels.continueLearning}
-          </button>
+                    </button>
         ) : null}
         {!isActive && onRenew ? (
           <button
@@ -105,7 +106,7 @@ export function SubscriptionCard({
             {labels.renew}
           </button>
         ) : null}
-      </div>
+      </FormActions>
     </li>
   );
 }
@@ -167,8 +168,9 @@ export function CourseOutline({
                         : state === 'current'
                           ? labels.resume
                           : labels.notStarted}
-                    </span>
-                  </button>
+                      </span>
+                    </button>
+                    {lesson.locked && !disabled ? <ul className="mt-2 space-y-1">{lesson.blockingAssessmentIds?.map((id,i)=><li key={id}><a href={`#/assessment/${id}`} className="inline-block min-h-[44px] px-3 py-2 text-sm font-semibold underline">{lang==='ar'?'حل التقييم المطلوب لفتح الدرس':'Solve the required assessment to unlock this lesson'} {i+1}</a></li>)}</ul>:null}
                 </li>
               );
             })}

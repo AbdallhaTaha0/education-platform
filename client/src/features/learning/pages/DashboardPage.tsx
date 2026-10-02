@@ -1,6 +1,7 @@
 /** Student learning dashboard (M5). Active and expired subscriptions. */
 import { useMemo } from 'react';
 import { Container } from '../../../components/ui/Card';
+import { FormActions } from '../../../components/ui/FormActions';
 import { useDashboard } from '../hooks/useLearning';
 import { ErrorBlock, LoadingBlock, SectionHeading, SubscriptionCard } from '../components/Learning';
 import { useLang, useTranslate } from '../../../i18n';
@@ -100,13 +101,13 @@ export function DashboardPage({ onContinue, onRenew, onBrowse }: DashboardPagePr
                 className="rounded-card border border-border bg-surface p-6"
               >
                 <p className="text-muted">{labels.noSubscription}</p>
-                <button
+                <FormActions><button
                   type="button"
-                  className="mt-4 min-h-[44px] rounded-control bg-primary px-4 py-2 font-bold text-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                  className="min-h-[44px] rounded-control bg-primary px-4 py-2 font-bold text-primary-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
                   onClick={onBrowse}
                 >
                   {labels.browseCourses}
-                </button>
+                </button></FormActions>
               </div>
             ) : null}
           </div>

@@ -3,6 +3,7 @@ import { apiFetch, useAuth } from '../../auth';
 import { useLang } from '../../i18n';
 import { Card, Container } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { FormActions } from '../../components/ui/FormActions';
 import { Loading, Notice } from '../../components/ui/Notice';
 import { formatEgp } from '../catalog/types/models';
 import { displayDeadline } from './model';
@@ -18,7 +19,7 @@ type Summary = {
   walletBalancePiastres: number;
   activeCourseAccess: number;
 };
-export function AdminSummaryPage(): JSX.Element {
+export function AdminSummaryPage({ accountOverview = false }: { accountOverview?: boolean } = {}): JSX.Element {
   const { t, lang } = useLang();
   const ar = lang === 'ar';
   const { status, user } = useAuth();
@@ -66,7 +67,13 @@ export function AdminSummaryPage(): JSX.Element {
     <main id="main">
       <Container>
         <section className="py-10">
-          <h1 className="section-title">{ar ? 'نظرة على المنصة' : 'Platform overview'}</h1>
+          <h1 className="section-title">{accountOverview
+            ? (ar ? 'مساحة الإدارة وحسابي' : 'Management and my account')
+            : (ar ? 'نظرة على المنصة' : 'Platform overview')}</h1>
+          {accountOverview && status === 'authenticated' && user?.role === 'ADMIN' ? (
+            <p className="mt-3 text-muted">{user.displayName} · <a className="underline" href="#/account/profile">
+              {ar ? 'الملف والأمان' : 'Profile & security'}</a></p>
+          ) : null}
           {status === 'loading' ? (
             <Loading text={t.loading} />
           ) : status !== 'authenticated' ? (
@@ -89,9 +96,11 @@ export function AdminSummaryPage(): JSX.Element {
                   {ar ? 'إضافة مسؤول' : 'Create admin'}
                 </a>
               </nav>
-              <Button variant="secondary" onClick={() => setRetry((v) => v + 1)} disabled={loading}>
-                {ar ? 'تحديث الملخص' : 'Refresh overview'}
-              </Button>
+              <FormActions className="mt-4">
+                <Button variant="secondary" onClick={() => setRetry((v) => v + 1)} disabled={loading}>
+                  {ar ? 'تحديث الملخص' : 'Refresh overview'}
+                </Button>
+              </FormActions>
               {loading ? (
                 <Loading text={t.loading} />
               ) : failed ? (
@@ -106,6 +115,7 @@ export function AdminSummaryPage(): JSX.Element {
                     {ar ? 'آخر تحديث بتوقيت القاهرة:' : 'Last updated, Cairo:'}{' '}
                     {displayDeadline(data.asOf, lang)}
                   </p>
+                  <a href="#/admin/recharge" className="mb-5 block rounded-card border border-primary bg-elevated p-5 font-bold">{ar?`${data.pendingRecharges} طلب شحن يحتاج المراجعة — افتح قائمة الطلبات`:`${data.pendingRecharges} recharge requests need review — open the queue`}</a>
                   <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {metrics.map(([key, label]) => (
                       <Card key={key}>
@@ -115,6 +125,7 @@ export function AdminSummaryPage(): JSX.Element {
                             ? formatEgp(data[key], lang)
                             : data[key].toLocaleString(ar ? 'ar-EG' : 'en-GB')}
                         </dd>
+                        {['students','publishedCourses','draftCourses','publishedPackages','pendingRecharges'].includes(key) ? <a className="mt-3 inline-block underline" href={key==='students'?'#/admin/students':key==='publishedPackages'?'#/admin/packages':key==='pendingRecharges'?'#/admin/recharge':'#/admin/catalog'}>{ar?'فتح الإدارة':'Open management'}</a>:null}
                       </Card>
                     ))}
                   </dl>

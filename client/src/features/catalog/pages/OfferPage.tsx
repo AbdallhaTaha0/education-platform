@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ApiError, apiFetch } from '../../../auth';
+import { ApiError, apiFetch, useAuth } from '../../../auth';
+import { fetchMySubscriptions } from '../../purchase/api/client';
 import { localizeCode, useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
+import { FormActions } from '../../../components/ui/FormActions';
 import { Card, Container } from '../../../components/ui/Card';
 import { Loading, Notice } from '../../../components/ui/Notice';
 import { PriceDisplay } from '../components/PriceDisplay';
@@ -12,6 +14,8 @@ export function OfferPage({ slug, onBack }: { slug: string; onBack: () => void }
   const [loading, setLoading] = useState(true);
   const [course, setCourse] = useState<PublicCourse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const {user}=useAuth(); const [owned,setOwned]=useState(false);
+  useEffect(()=>{let live=true;setOwned(false); if(user?.role==='STUDENT' && course) void fetchMySubscriptions().then(rows=>{if(live)setOwned(rows.some(s=>s.courseId===course.id && (!s.expiresAt || Date.parse(s.expiresAt)>Date.now())));}).catch(()=>undefined);return()=>{live=false;};},[user?.id,course?.id]);
 
   useEffect(() => {
     let live = true;
@@ -38,9 +42,11 @@ export function OfferPage({ slug, onBack }: { slug: string; onBack: () => void }
     <main id="main">
       <section className="py-8">
         <Container>
-          <Button variant="secondary" onClick={onBack}>
-            {t.courseDetailBack}
-          </Button>
+          <FormActions className="mt-0">
+            <Button variant="secondary" onClick={onBack}>
+              {t.courseDetailBack}
+            </Button>
+          </FormActions>
           {loading ? <Loading text={t.loading} /> : null}
           {error !== null ? <Notice kind="error">{localizeCode(t, error)}</Notice> : null}
           {course !== null ? (
@@ -49,7 +55,7 @@ export function OfferPage({ slug, onBack }: { slug: string; onBack: () => void }
                 {lang === 'ar' ? course.titleAr : course.titleEn}
               </h1>
               <p className="mt-2">{lang === 'ar' ? course.descriptionAr : course.descriptionEn}</p>
-              {course.plans.map((p) => (
+              {owned ? <a href={`#/learn/${course.id}`} className="my-4 inline-block rounded-control bg-primary px-5 py-3 font-bold text-primary-ink">{lang==='ar'?'تابع التعلم':'Continue learning'}</a> : course.plans.map((p) => (
                 <div key={p.id} className="mt-3 flex flex-wrap items-center gap-3">
                   <PriceDisplay
                     current={p.currentPricePiastres}
@@ -68,8 +74,8 @@ export function OfferPage({ slug, onBack }: { slug: string; onBack: () => void }
               ))}
               <p className="mt-4 text-muted">
                 {lang === 'ar'
-                  ? 'لا تعرض قوائم الدروس قبل الاشتراك.'
-                  : 'Lesson lists require a subscription.'}
+                  ? 'بعد الاشتراك ستجد الدروس المسجلة وتمارين البرمجة داخل مساحة التعلم الخاصة بك.'
+                  : 'After subscribing, you can open the recorded lessons and programming exercises in your learning space.'}
               </p>
             </Card>
           ) : null}

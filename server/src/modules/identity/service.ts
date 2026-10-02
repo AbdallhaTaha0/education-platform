@@ -114,6 +114,7 @@ async function establishSession(
   user: SafeUser,
   role: 'STUDENT' | 'ADMIN',
   csrfToken: string,
+  expectedPasswordHash: string,
 ): Promise<SessionCookies> {
   const now = nowOf(ctx);
   const timing = newSessionTiming(now);
@@ -123,6 +124,7 @@ async function establishSession(
     csrfHash: csrfDigest(csrfToken),
     absoluteExpiresAt: timing.absoluteExpiresAt,
     refreshSecret: timing.refreshSecret,
+    expectedPasswordHash,
   });
   getLogger().info({ userId: user.id, sessionId: timing.sessionId }, 'session established');
   return {
@@ -257,7 +259,7 @@ export async function login(
     throw new ApiError(401, 'INVALID_CREDENTIALS', 'Email/phone or password is incorrect.');
   }
   getLogger().info({ userId: user.id }, 'login succeeded');
-  return establishSession(ctx, toSafeUser(user), user.role, csrfToken);
+  return establishSession(ctx, toSafeUser(user), user.role, csrfToken, user.passwordHash);
 }
 
 export interface RefreshInput {

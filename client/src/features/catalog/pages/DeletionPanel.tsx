@@ -2,16 +2,18 @@ import { useEffect, useState } from 'react';
 import { ApiError } from '../../../auth';
 import { localizeCode, useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
-import { Card } from '../../../components/ui/Card';
+import { FormActions } from '../../../components/ui/FormActions';
 import { Field, textInputClassName } from '../../../components/ui/Field';
 import { Notice } from '../../../components/ui/Notice';
 import { fetchDeletion, requestDeletion, retryDeletion } from '../api/client';
 import type { DeletionOperation } from '../types/models';
+import { businessState } from '../../../components/ui/AdminNavigation';
 
 interface DeletionPanelProps {
   kind: 'courses' | 'sections' | 'lessons';
   targetId: string;
   expectedConfirmation: string;
+  entityName?: string;
   onChanged: () => Promise<void>;
 }
 
@@ -19,9 +21,10 @@ export function DeletionPanel({
   kind,
   targetId,
   expectedConfirmation,
+  entityName,
   onChanged,
 }: DeletionPanelProps): JSX.Element {
-  const { t } = useLang();
+  const { t, lang } = useLang(); const ar = lang === 'ar';
   const [confirmation, setConfirmation] = useState('');
   const [operation, setOperation] = useState<DeletionOperation | null>(null);
   const [busy, setBusy] = useState(false);
@@ -71,11 +74,11 @@ export function DeletionPanel({
   }
 
   return (
-    <Card className="mt-4" data-testid={`deletion-${targetId}`}>
-      <h2 className="text-xl font-bold">{t.actionDelete}</h2>
-      <p className="mt-1 text-muted">{t.confirmDelete}</p>
+    <details className="mt-4 rounded-control border border-border p-3" data-testid={`deletion-${targetId}`}>
+      <summary className="cursor-pointer font-bold text-error-fg">{ar?'حذف':'Delete'} {kind==='courses'?(ar?'الكورس':'course'):kind==='sections'?(ar?'القسم':'section'):(ar?'الدرس':'lesson')}: {entityName ?? targetId}</summary>
+      <p className="my-3 text-muted">{ar ? (kind==='courses'?'سيُمنع الوصول إلى الكورس وتُحذف دروسه وفيديوهاته نهائيًا. تبقى السجلات المالية.':kind==='sections'?'سيُحذف هذا القسم وكل دروسه وفيديوهاته نهائيًا.':'سيُحذف هذا الدرس وفيديوه نهائيًا.') : (kind==='courses'?'Access stops and the course, lessons and videos are permanently removed. Financial records remain.':kind==='sections'?'This section and all its lessons/videos are permanently removed.':'This lesson and its video are permanently removed.')} {t.confirmDelete}</p>
       {error !== null ? <Notice kind="error">{localizeCode(t, error)}</Notice> : null}
-      <Field id={`del-${targetId}`} label={t.fieldSlug} dir="ltr">
+      <Field id={`del-${targetId}`} label={kind==='courses'?t.fieldSlug:(ar?'معرّف التأكيد (UUID)':'Confirmation ID (UUID)')} dir="ltr">
         <input
           id={`del-${targetId}`}
           dir="ltr"
@@ -86,10 +89,10 @@ export function DeletionPanel({
           placeholder={expectedConfirmation}
         />
       </Field>
-      <div className="flex flex-wrap items-center gap-2">
+      <FormActions className="mt-4">
         <Button
           variant="danger"
-          disabled={busy}
+          disabled={busy || confirmation !== expectedConfirmation}
           onClick={() => void request()}
           data-testid="deletion-submit"
         >
@@ -106,16 +109,16 @@ export function DeletionPanel({
           </Button>
         ) : null}
         {operation !== null ? (
-          <span role="status" aria-live="polite" className="text-sm font-semibold">
+          <span role="status" aria-live="polite" className="w-full text-sm font-semibold">
             {operation.status === 'COMPLETED'
               ? t.deleteCompleted
               : operation.status === 'FAILED'
                 ? t.deleteFailed
                 : t.deleteProgress}{' '}
-            ({operation.status})
+            ({businessState(operation.status,ar)})
           </span>
         ) : null}
-      </div>
-    </Card>
+      </FormActions>
+    </details>
   );
 }

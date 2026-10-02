@@ -1,6 +1,8 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from './auth';
 import { Container } from './components/ui/Card';
+import { ErrorFeedbackProvider } from './components/ui/ErrorFeedback';
+import { UnsavedChangesProvider, useConfirmNavigation } from './components/ui/UnsavedChanges';
 import { useLang } from './i18n';
 import { routeDocumentTitle } from './pageTitles';
 import { ThemeProvider } from './theme';
@@ -17,7 +19,10 @@ import {
 import { PackagePage } from './features/academic/PackagePage';
 import { AdminPackagesPage } from './features/academic/AdminPackagesPage';
 import { AdminSummaryPage } from './features/academic/AdminSummaryPage';
-import { AccountScreen, AdminScreen, LoginScreen, RegisterScreen } from './screens';
+import { AdminScreen, LoginScreen, RegisterScreen } from './screens';
+import { AccountWorkspace } from './features/identity/pages/AccountWorkspace';
+import { AccountOverview } from './features/identity/pages/AccountOverview';
+import { AccountProfile } from './features/identity/pages/AccountProfile';
 import { PublicCatalogPage } from './features/catalog/pages/PublicCatalogPage';
 import { OfferPage } from './features/catalog/pages/OfferPage';
 import { AdminListPage } from './features/catalog/pages/AdminListPage';
@@ -37,11 +42,15 @@ const CourseLearningPage = lazy(() =>
 );
 import { NotificationsProvider } from './features/notifications/context';
 import { NotificationsPage } from './features/notifications/pages/NotificationsPage';
+import { StudentDirectoryPage } from './features/identity/pages/StudentDirectoryPage';
+import { SupportPage, PolicyPage, NotFoundPage } from './features/identity/pages/HelpPages';
+import { SupportSettings } from './features/identity/pages/SupportSettings';
 const PracticePage = lazy(() => import('./features/ide/PracticePage').then((m) => ({ default: m.PracticePage })));
 const AssessmentPage = lazy(() => import('./features/assessments/AssessmentPage').then((m) => ({ default: m.AssessmentPage })));
 const AdminQuotaPage = lazy(() => import('./features/assessments/AdminQuotaPage').then((m) => ({ default: m.AdminQuotaPage })));
 
 function Shell(): JSX.Element {
+  const confirmNavigation = useConfirmNavigation();
   const { lang, t, setLang } = useLang();
   const { user } = useAuth();
   const [route, setRoute] = useState<Route>(() => routeFromHash());
@@ -49,13 +58,17 @@ function Shell(): JSX.Element {
 
   useEffect(() => {
     const onHash = (): void => {
+      if (window.location.hash !== hash && !confirmNavigation()) {
+        window.history.replaceState(window.history.state, '', hash || window.location.pathname);
+        return;
+      }
       setHash(window.location.hash);
       setRoute(routeFromHash());
       window.scrollTo(0, 0);
     };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
-  }, []);
+  }, [hash, confirmNavigation]);
 
   // Document title follows the route and the language, always from the
   // centralized FAYQ identity.
@@ -90,6 +103,12 @@ function Shell(): JSX.Element {
         {t.skipToContent}
       </a>
       <Header onSwitch={setLang} route={route} />
+      {route==='admin-students'?<AccountWorkspace route={route}><StudentDirectoryPage/></AccountWorkspace>:null}
+      {route==='support'?<SupportPage/>:null}
+      {route==='admin-support'?<AccountWorkspace route={route}><SupportSettings/></AccountWorkspace>:null}
+      {route==='admin-policies'?<AccountWorkspace route={route}><PolicyPage kind={route} review={true}/></AccountWorkspace>:null}
+      {['terms','privacy','refunds'].includes(route)?<PolicyPage kind={route} review={false}/>:null}
+      {route==='not-found'?<NotFoundPage/>:null}
       {route === 'home' ? (
         <HomePage onSelectCourse={(slug) => go(`#/courses/${encodeURIComponent(slug)}`)} />
       ) : null}
@@ -99,13 +118,13 @@ function Shell(): JSX.Element {
       {route === 'course-detail' ? (
         <OfferPage slug={slugFromHash()} onBack={() => go('#/courses')} />
       ) : null}
-      {route === 'admin-catalog' ? <AdminListPage go={go} /> : null}
-      {route === 'admin-packages' ? <AdminPackagesPage /> : null}
-      {route === 'admin-summary' ? <AdminSummaryPage /> : null}
+      {route === 'admin-catalog' ? <AccountWorkspace route={route}><AdminListPage go={go} /></AccountWorkspace> : null}
+      {route === 'admin-packages' ? <AccountWorkspace route={route}><AdminPackagesPage /></AccountWorkspace> : null}
+      {route === 'admin-summary' ? <AccountWorkspace route={route}><AdminSummaryPage /></AccountWorkspace> : null}
       {route === 'package' ? (
         <PackagePage key={packageIdFromHash()} id={packageIdFromHash()} />
       ) : null}
-      {route === 'admin-course' ? <AdminDetailPage courseId={adminCourseIdFromHash()} /> : null}
+      {route === 'admin-course' ? <AccountWorkspace route={route}><AdminDetailPage courseId={adminCourseIdFromHash()} /></AccountWorkspace> : null}
       {route === 'register' ? (
         <main id="main">
           <section className="py-8">
@@ -121,36 +140,50 @@ function Shell(): JSX.Element {
         </main>
       ) : null}
       {route === 'account' ? (
-        <main id="main">
-          <section className="py-8">
-            <AccountScreen go={go} />
-          </section>
-        </main>
+        <AccountWorkspace route={route}>
+          <AccountOverview key={user?.id ?? 'anonymous'} go={go} />
+        </AccountWorkspace>
+      ) : null}
+      {route === 'account-profile' ? (
+        <AccountWorkspace route={route}>
+          <AccountProfile go={go} />
+        </AccountWorkspace>
       ) : null}
       {route === 'admin' ? (
-        <main id="main">
-          <section className="py-8">
-            <AdminScreen go={go} />
-          </section>
-        </main>
+        <AccountWorkspace route={route}>
+          <main id="main">
+            <section className="py-8">
+              <AdminScreen go={go} />
+            </section>
+          </main>
+        </AccountWorkspace>
       ) : null}
-      {route === 'wallet' ? <WalletPage go={go} /> : null}
-      {route === 'wallet-recharge' ? <RechargePage go={go} /> : null}
-      {route === 'purchases' ? <PurchaseHistoryPage /> : null}
+      {route === 'wallet' ? <AccountWorkspace route={route}><WalletPage go={go} /></AccountWorkspace> : null}
+      {route === 'wallet-recharge' ? <AccountWorkspace route={route}><RechargePage go={go} /></AccountWorkspace> : null}
+      {route === 'purchases' ? <AccountWorkspace route={route}><PurchaseHistoryPage /></AccountWorkspace> : null}
       {route === 'purchase' ? (
         <PurchasePage key={planIdFromHash()} planId={planIdFromHash()} go={go} />
       ) : null}
-      {route === 'admin-recharge' ? <AdminRechargePage /> : null}
+      {route === 'admin-recharge' ? <AccountWorkspace route={route}><AdminRechargePage /></AccountWorkspace> : null}
       {route === 'dashboard' ? (
-        <DashboardPage
-          onContinue={(slug) => go(`#/learn/${encodeURIComponent(slug)}`)}
-          onRenew={() => go('#/wallet')}
-          onBrowse={() => go('#/courses')}
-        />
+        <AccountWorkspace route={route}>
+          <DashboardPage
+            onContinue={(slug) => go(`#/learn/${encodeURIComponent(slug)}`)}
+            onRenew={() => go('#/wallet')}
+            onBrowse={() => go('#/courses')}
+          />
+        </AccountWorkspace>
       ) : null}
-      {route === 'notifications' ? <NotificationsPage /> : null}
-      {['practice', 'assessment', 'admin-practice'].includes(route) ? <Suspense fallback={<main id="main"><Container><Loading text={t.loading} /></Container></main>}>
-        {route === 'practice' ? <PracticePage key={user?.id ?? 'anonymous'} /> : route === 'admin-practice' ? <AdminQuotaPage key={user?.id ?? 'anonymous'} /> : <AssessmentPage key={`${user?.id ?? 'anonymous'}:${hash}`} id={decodeURIComponent(hash.slice('#/assessment/'.length))} />}
+      {route === 'notifications' ? <AccountWorkspace route={route}><NotificationsPage /></AccountWorkspace> : null}
+      {route === 'admin-practice' ? (
+        <AccountWorkspace route={route}>
+          <Suspense fallback={<main id="main"><Container><Loading text={t.loading} /></Container></main>}>
+            <AdminQuotaPage key={user?.id ?? 'anonymous'} />
+          </Suspense>
+        </AccountWorkspace>
+      ) : null}
+      {['practice', 'assessment'].includes(route) ? <Suspense fallback={<main id="main"><Container><Loading text={t.loading} /></Container></main>}>
+        {route === 'practice' ? <PracticePage key={user?.id ?? 'anonymous'} /> : <AssessmentPage key={`${user?.id ?? 'anonymous'}:${hash}`} id={decodeURIComponent(hash.slice('#/assessment/'.length))} />}
       </Suspense> : null}
       {route === 'learn' ? (
         <Suspense
@@ -173,6 +206,7 @@ function Shell(): JSX.Element {
               {t.navCourses} ↗
             </a>
             <p>{t.slogan}</p>
+            <nav className="flex flex-wrap gap-4" aria-label={lang==='ar'?'المساعدة والسياسات':'Help and policies'}>{[['support','المساعدة','Help'],['terms','الشروط','Terms'],['privacy','الخصوصية','Privacy'],['refunds','الاسترداد','Refunds']].map(([id,a,e])=><a key={id} href={`#/${id}`} className="underline">{lang==='ar'?a:e}</a>)}</nav>
           </div>
         </Container>
       </footer>
@@ -185,7 +219,7 @@ export default function App(): JSX.Element {
     <ThemeProvider>
       <AuthProvider>
         <NotificationsProvider>
-          <Shell />
+          <ErrorFeedbackProvider><UnsavedChangesProvider><Shell /></UnsavedChangesProvider></ErrorFeedbackProvider>
         </NotificationsProvider>
       </AuthProvider>
     </ThemeProvider>

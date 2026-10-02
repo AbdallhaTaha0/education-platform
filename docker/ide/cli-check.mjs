@@ -3,7 +3,7 @@ import { lookup } from 'node:dns/promises';
 const host = (await lookup('host.docker.internal')).address;
 function cli(args) {
   const r = spawnSync('agent-browser', ['--args', `--no-sandbox,--disable-dev-shm-usage,--host-resolver-rules=MAP localhost ${host}`, ...args], { encoding: 'utf8', timeout: 30000 });
-  if (r.status !== 0) throw new Error('Browser verification CLI failed.'); return r.stdout;
+  if (r.status !== 0) { console.error(r.stderr?.slice(0, 2000)); throw new Error('Browser verification CLI failed.'); } return r.stdout;
 }
 try {
   cli(['open', 'http://localhost:8084']);

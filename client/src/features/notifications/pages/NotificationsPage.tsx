@@ -3,13 +3,14 @@ import { useAuth } from '../../../auth';
 import { useLang } from '../../../i18n';
 import { Container, Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
+import { FormActions } from '../../../components/ui/FormActions';
 import { Loading, Notice } from '../../../components/ui/Notice';
 import { useNotifications } from '../context';
 import { BellIcon } from '../components/NotificationEntry';
 import { notificationHref } from '../inbox';
 
 export function NotificationsPage(): JSX.Element {
-  const { status } = useAuth();
+  const { status, user } = useAuth();
   const { t, lang } = useLang();
   const { store, state, connection } = useNotifications();
   const heading = useRef<HTMLHeadingElement>(null);
@@ -57,12 +58,14 @@ export function NotificationsPage(): JSX.Element {
           ) : status !== 'authenticated' ? (
             <Card>
               <p className="mb-4">{t.notificationsSignIn}</p>
-              <a
-                href="#/login"
-                className="inline-flex min-h-[44px] items-center rounded-control bg-primary px-6 font-bold text-primary-ink no-underline"
-              >
-                {t.navLogin}
-              </a>
+              <FormActions className="mt-0">
+                <a
+                  href="#/login"
+                  className="inline-flex min-h-[44px] items-center rounded-control bg-primary px-6 font-bold text-primary-ink no-underline"
+                >
+                  {t.navLogin}
+                </a>
+              </FormActions>
             </Card>
           ) : (
             <>
@@ -171,6 +174,7 @@ export function NotificationsPage(): JSX.Element {
                     {state.unreadOnly ? t.notificationsEmptyUnread : t.notificationsEmpty}
                   </h2>
                   <p className="mt-2 text-muted">{t.notificationsEmptyBody}</p>
+                  <a className="mt-4 inline-block underline" href={user?.role==='ADMIN'?'#/admin/summary':'#/dashboard'}>{lang==='ar'?'العودة إلى مهامك':'Return to your tasks'}</a>
                 </Card>
               ) : null}
               <ul
@@ -261,7 +265,7 @@ export function NotificationsPage(): JSX.Element {
                 })}
               </ul>
               {state.nextCursor !== null ? (
-                <div className="mt-6 text-center">
+                <FormActions className="mt-6">
                   <Button
                     variant="secondary"
                     disabled={state.loading || state.loadingMore || busy}
@@ -269,7 +273,7 @@ export function NotificationsPage(): JSX.Element {
                   >
                     {state.loadingMore ? t.notificationsLoading : t.notificationsMore}
                   </Button>
-                </div>
+                </FormActions>
               ) : null}
             </>
           )}

@@ -3,6 +3,7 @@ import { ApiError, useAuth } from '../../auth';
 import { useLang } from '../../i18n';
 import { Card, Container } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
+import { FormActions } from '../../components/ui/FormActions';
 import { Field, textInputClassName } from '../../components/ui/Field';
 import { Loading, Notice } from '../../components/ui/Notice';
 import { fetchAdminCourses } from '../catalog/api/client';
@@ -37,6 +38,7 @@ export function AdminPackagesPage(): JSX.Element {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [showForm,setShowForm]=useState(false);
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -54,6 +56,7 @@ export function AdminPackagesPage(): JSX.Element {
     if (status === 'authenticated' && user?.role === 'ADMIN') void load();
   }, [status, user?.role, load]);
   function edit(p: AdminPackage) {
+    setShowForm(true);
     setEditing(p);
     setError('');
     setForm({
@@ -87,6 +90,7 @@ export function AdminPackagesPage(): JSX.Element {
       await saveSchoolPackage(editing?.id ?? null, body);
       setEditing(null);
       setForm(blank);
+      setShowForm(false);
       await load();
     } catch (e) {
       setError(e instanceof ApiError ? e.code : 'VALIDATION_ERROR');
@@ -144,10 +148,14 @@ export function AdminPackagesPage(): JSX.Element {
                 </Notice>
               ) : null}
               <Button variant="secondary" onClick={() => void load()} disabled={busy}>
-                {t.retryLabel}
+                {error ? t.retryLabel : ar?'تحديث الباقات':'Refresh packages'}
               </Button>
               {loading ? <Loading text={t.loading} /> : null}
-              <Card className="mt-6">
+              {!loading && eligible.length < 3 ? <Notice kind="info">{ar?'تحتاج الباقة إلى ٣ كورسات شرح شهرية مختلفة ومصنفة لنفس الصف والسنة والترم. صنّف الكورسات من إدارة الكورسات أولًا.':'A package needs three distinct monthly courses classified for the same grade, year and term. Set their academic classification in course management first.'} <a href="#/admin/catalog" className="underline">{ar?'إدارة الكورسات':'Manage courses'}</a></Notice>:null}
+              <FormActions>
+                <Button disabled={busy || eligible.length<3} onClick={()=>{setEditing(null);setForm(blank);setShowForm(true);}}>{ar?'إنشاء باقة':'Create package'}</Button>
+              </FormActions>
+              {showForm ? <Card className="mt-6">
                 <h2 className="text-xl font-bold">
                   {editing
                     ? ar
@@ -289,22 +297,26 @@ export function AdminPackagesPage(): JSX.Element {
                         ? 'يمكن إضافة كورس لم يُنشر بعد. سيرى الطالب تنبيهًا، ولن يستطيع مشاهدته قبل النشر. موعد الباقة لا يتغيّر.'
                         : 'Unpublished courses are allowed. Students see a notice and cannot watch until publication. The deadline stays the same.'}
                     </Notice>
-                    <Button type="submit" disabled={busy}>
-                      {busy ? t.loading : ar ? 'حفظ الباقة' : 'Save package'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => {
-                        setEditing(null);
-                        setForm(blank);
-                      }}
-                    >
-                      {t.cancel}
-                    </Button>
+                    <FormActions>
+                      <Button type="submit" disabled={busy}>
+                        {busy ? t.loading : ar ? 'حفظ الباقة' : 'Save package'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => {
+                          setEditing(null);
+                          setForm(blank);
+                          setShowForm(false); setError('');
+                        }}
+                      >
+                        {t.cancel}
+                      </Button>
+                    </FormActions>
                   </fieldset>
                 </form>
-              </Card>
+              </Card> : null}
+              {!loading && !rows.length ? <p className="my-6 text-muted">{ar?'لا توجد باقات بعد. جهّز الكورسات الشهرية ثم أنشئ أول باقة.':'No packages yet. Prepare the monthly courses, then create your first package.'}</p>:null}
               <ul className="mt-6 grid gap-4 md:grid-cols-2">
                 {rows.map((p) => (
                   <li key={p.id}>

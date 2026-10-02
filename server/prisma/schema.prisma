@@ -572,6 +572,15 @@ model CoursePackage {
   members PackageMember[]
 }
 
+/// Owner-editable public support details. No credentials or recovery tokens.
+model SupportContact {
+  id Int @id
+  email String
+  phone String
+  version Int @default(1)
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
 model PackageMember {
   packageId String
   package CoursePackage @relation(fields: [packageId], references: [id], onDelete: Cascade)

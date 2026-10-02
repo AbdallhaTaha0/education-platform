@@ -43,6 +43,7 @@ export interface OutlineLesson {
   position: number;
   playable: boolean;
   locked?: boolean;
+  blockingAssessmentIds?: string[];
   completed: boolean;
   resumePositionSeconds: number;
 }

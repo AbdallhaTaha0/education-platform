@@ -1,0 +1,14 @@
+import { useEffect, useState } from 'react';
+import { apiFetch, useAuth } from '../../../auth';
+import { useLang } from '../../../i18n';
+import { Card, Container } from '../../../components/ui/Card';
+import { Button } from '../../../components/ui/Button';
+import { Loading, Notice } from '../../../components/ui/Notice';
+import { textInputClassName } from '../../../components/ui/Field';
+interface Page {students:Array<{id:string;displayName:string;email:string;createdAt:string}>;nextCursor:string|null}
+export function StudentDirectoryPage():JSX.Element {
+  const {user}=useAuth(); const {lang}=useLang(); const ar=lang==='ar';const [search,setSearch]=useState('');const [cursors,setCursors]=useState<Array<string|null>>([null]);const [data,setData]=useState<Page|null>(null);const [error,setError]=useState(false);const [retry,setRetry]=useState(0);
+  const cursor=cursors[cursors.length-1];
+  useEffect(()=>{if(user?.role!=='ADMIN')return;let active=true;setData(null);setError(false);const timer=setTimeout(()=>{void apiFetch<{data:Page}>(`/admin/students?q=${encodeURIComponent(search)}${cursor?`&cursor=${encodeURIComponent(cursor)}`:''}`).then(r=>{if(active)setData(r.data);}).catch(()=>{if(active)setError(true);});},250);return()=>{active=false;clearTimeout(timer);};},[search,cursor,retry,user?.role]);
+  return <Container><main id="main" className="py-8"><h1 className="text-3xl font-bold">{ar?'دليل الطلاب':'Student directory'}</h1>{user?.role!=='ADMIN'?<Notice kind="error">{ar?'للإدارة فقط':'ADMIN only'}</Notice>:<><label className="my-5 block">{ar?'البحث بالاسم أو البريد':'Search by name or email'}<input maxLength={100} className={textInputClassName(false)} value={search} onChange={e=>{setSearch(e.target.value);setCursors([null]);}}/></label>{error?<><Notice kind="error">{ar?'تعذر تحميل الطلاب.':'Could not load students.'}</Notice><Button onClick={()=>setRetry(v=>v+1)}>{ar?'إعادة المحاولة':'Retry'}</Button></>:!data?<Loading text={ar?'تحميل…':'Loading…'}/>:<><p>{ar?'صفحة':'Page'} {cursors.length} · {data.students.length} {ar?'طالب':'students'}</p><ul className="my-5 grid gap-3 md:grid-cols-2">{data.students.map(s=><li key={s.id}><Card><h2 className="font-bold">{s.displayName}</h2><p dir="ltr" className="break-all text-sm">{s.email}</p><p className="mt-2 text-sm text-muted">{new Date(s.createdAt).toLocaleDateString(ar?'ar-EG':'en-GB')}</p><a className="mt-2 inline-block underline" href="#/admin/practice">{ar?'إدارة حدود التدريب':'Manage practice limits'}</a></Card></li>)}</ul>{!data.students.length?<p>{ar?'لا توجد نتائج. غيّر البحث.':'No matching students. Change the search.'}</p>:null}<nav className="flex gap-3"><Button variant="secondary" disabled={cursors.length===1} onClick={()=>setCursors(c=>c.slice(0,-1))}>{ar?'السابق':'Previous'}</Button><Button variant="secondary" disabled={!data.nextCursor} onClick={()=>setCursors(c=>[...c,data.nextCursor])}>{ar?'التالي':'Next'}</Button></nav></>}</>}</main></Container>;
+}

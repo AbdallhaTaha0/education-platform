@@ -6,6 +6,7 @@ import { Field } from '../../../components/ui/Field';
 import { Notice } from '../../../components/ui/Notice';
 import { completeMedia, registerMedia, syncLessonMedia } from '../api/client';
 import { isSupportedVideoMime } from '../types/models';
+import { businessState } from '../../../components/ui/AdminNavigation';
 
 function mimeFor(file: File): string {
   if (file.type === 'video/quicktime' || file.name.toLowerCase().endsWith('.mov'))
@@ -23,7 +24,7 @@ export function MediaUploader({
   mediaStatus: string | null;
   onChanged: () => Promise<void>;
 }): JSX.Element {
-  const { t } = useLang();
+  const { t,lang } = useLang();
   const fileRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<string | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
@@ -115,13 +116,13 @@ export function MediaUploader({
       </Button>
       {phase !== null ? (
         <span role="status" aria-live="polite" className="text-sm text-muted">
-          {phase}
+          {({registering:lang==='ar'?'تسجيل الفيديو':'Registering video',uploading:lang==='ar'?'رفع الفيديو':'Uploading video',completing:lang==='ar'?'تأكيد الرفع':'Confirming upload',syncing:lang==='ar'?'تحديث الحالة':'Updating status',done:lang==='ar'?'اكتمل الرفع':'Upload completed',failed:lang==='ar'?'فشل الرفع':'Upload failed'} as Record<string,string>)[phase] ?? (lang==='ar'?'تحديث الفيديو':'Updating video')}
           {progress !== null ? ` ${progress}%` : ''}
-          {mediaStatus !== null ? ` (${mediaStatus})` : ''}
+          {mediaStatus !== null ? ` (${businessState(mediaStatus,lang==='ar')})` : ''}
         </span>
       ) : (
         <span className="text-sm text-muted">
-          {t.mediaStatusLabel}: ({mediaStatus ?? '—'})
+          {t.mediaStatusLabel}: ({mediaStatus ? businessState(mediaStatus,lang==='ar') : '—'})
         </span>
       )}
       {error !== null ? <Notice kind="error">{localizeCode(t, error)}</Notice> : null}

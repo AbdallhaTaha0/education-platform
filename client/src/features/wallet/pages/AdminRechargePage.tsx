@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ApiError } from '../../../auth';
 import { localizeCode, useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
+import { FormActions } from '../../../components/ui/FormActions';
 import { Card, Container } from '../../../components/ui/Card';
 import { Dialog } from '../../../components/ui/Dialog';
 import { Field } from '../../../components/ui/Field';
@@ -14,7 +15,7 @@ import type { AdminRechargeRow, RechargeStatus } from '../types/models';
 type Filter = '' | RechargeStatus;
 
 export function AdminRechargePage(): JSX.Element {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [filter, setFilter] = useState<Filter>('PENDING');
   const [rows, setRows] = useState<AdminRechargeRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +27,8 @@ export function AdminRechargePage(): JSX.Element {
   const [busy, setBusy] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [dialogDone, setDialogDone] = useState<string | null>(null);
+  const [search,setSearch]=useState(''); const [date,setDate]=useState('');
+  const shown=rows.filter(r=>(!search || `${r.senderName} ${r.referenceNorm}`.toLowerCase().includes(search.toLowerCase())) && (!date || r.transferDate.slice(0,10)===date));
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -81,6 +84,8 @@ export function AdminRechargePage(): JSX.Element {
         <Container>
           <h1 className="text-3xl font-bold">{t.adminRechargeTitle}</h1>
           <p className="mt-2 text-muted">{t.adminRechargeBody}</p>
+          <div className="my-4 grid gap-3 sm:grid-cols-2"><label>{lang==='ar'?'بحث في الطلبات المحمّلة بالاسم أو المرجع':'Search loaded requests by name/reference'}<input className="w-full rounded-control border border-border bg-surface p-3" value={search} onChange={e=>setSearch(e.target.value)}/></label><label>{lang==='ar'?'تاريخ التحويل':'Transfer date'}<input type="date" className="w-full rounded-control border border-border bg-surface p-3" value={date} onChange={e=>setDate(e.target.value)}/></label></div><Button variant="secondary" onClick={()=>{setSearch('');setDate('');}}>{lang==='ar'?'مسح التصفية':'Clear filters'}</Button>
+          <Button className="my-4" variant="secondary" disabled={loading || busy} onClick={()=>void reload()}>{lang==='ar'?'تحديث الطلبات':'Refresh requests'}</Button>
           <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label={t.filterStatus}>
             {(['PENDING', 'APPROVED', 'REJECTED', ''] as Filter[]).map((value) => (
               <Button
@@ -110,7 +115,8 @@ export function AdminRechargePage(): JSX.Element {
             </div>
           ) : null}
           <ul className="mt-4 space-y-3">
-            {rows.map((row) => (
+            {rows.length>0 && !shown.length ? <li>{lang==='ar'?'لا توجد طلبات مطابقة بين الطلبات المحملة. امسح البحث أو التاريخ.':'No matching loaded requests. Clear search or date.'}</li>:null}
+            {shown.map((row) => (
               <li key={row.id}>
                 <Card className="flex flex-wrap items-center justify-between gap-3">
                   <div>
@@ -141,6 +147,7 @@ export function AdminRechargePage(): JSX.Element {
                 <p className="mt-1 text-sm text-muted" dir="ltr">
                   {selected.referenceNorm}
                 </p>
+                <dl className="my-4 grid gap-2 text-sm"><div><dt>{lang==='ar'?'تاريخ التحويل':'Transfer date'}</dt><dd>{new Date(selected.transferDate).toLocaleString(lang==='ar'?'ar-EG':'en-GB',{timeZone:'Africa/Cairo'})}</dd></div><div><dt>{lang==='ar'?'رقم الطلب':'Request reference'}</dt><dd dir="ltr" className="break-all">{selected.id}</dd></div><div><dt>{lang==='ar'?'حجم الإثبات':'Proof size'}</dt><dd>{Math.ceil(selected.proofSize/1024)} KB</dd></div></dl>
                 <a
                   className="mt-2 inline-block underline"
                   href={proofUrl(selected.id)}
@@ -149,6 +156,7 @@ export function AdminRechargePage(): JSX.Element {
                 >
                   {t.proofOpen} ({selected.proofFilename})
                 </a>
+                {/\.(png|jpe?g|webp)$/i.test(selected.proofFilename)?<img src={proofUrl(selected.id)} alt={lang==='ar'?'إثبات التحويل المرسل؛ تحقق من الاستلام بشكل مستقل':'Submitted transfer proof; verify receipt independently'} className="my-4 max-h-72 w-full rounded-control object-contain"/>:null}
                 {dialogDone !== null ? (
                   <div className="mt-3">
                     <Notice kind="success">
@@ -206,17 +214,17 @@ export function AdminRechargePage(): JSX.Element {
                 <p className="mt-1 text-sm text-muted">
                   {decision === 'APPROVE' ? t.approveEffect : t.rejectEffect}
                 </p>
-                <div className="mt-4 flex flex-wrap gap-3">
+                <FormActions className="mt-4">
                   <Button
                     onClick={() => void submitReview()}
-                    disabled={busy || dialogDone !== null}
+                    disabled={busy || dialogDone !== null || (decision==='APPROVE' && !verified)}
                   >
                     {t.confirmReview}
                   </Button>
                   <Button variant="secondary" onClick={() => setSelected(null)}>
                     {t.close}
                   </Button>
-                </div>
+                </FormActions>
               </div>
             ) : null}
           </Dialog>

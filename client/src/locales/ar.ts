@@ -228,7 +228,7 @@ export const ar = {
   subscribeAction: 'اشترك',
   // ---- M5 protected learning ----
   learningDashboardTitle: 'لوحة التعلم',
-  learningDashboardSubtitle: 'اشتراكاتك النشطة والمنتهية مع возможность متابعة التعلم.',
+  learningDashboardSubtitle: 'اشتراكاتك النشطة والمنتهية مع إمكانية متابعة التعلم.',
   learningTitle: 'تعلم الدورة',
   learningOutline: 'محتوى الدورة',
   learningActiveHeading: 'اشتراكات نشطة',

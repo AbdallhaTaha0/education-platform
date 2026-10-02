@@ -425,9 +425,14 @@ html[data-theme='light'] .hero-grid::before {
 }
 .site-header__inner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 20px;
   min-height: 84px;
+}
+.header-auth-actions {
+  display: flex;
+  justify-content: center;
 }
 .site-brand {
   margin-inline-end: auto;
@@ -832,6 +837,10 @@ html[data-theme='light'] .hero-grid::before {
     border-radius: 28px;
     box-shadow: var(--shadow-lift);
   }
+  .site-header__inner { gap: 8px; padding-block: 8px; }
+  .site-header__tools { gap: 4px; }
+  .site-brand .fayq-wordmark__letters { width: 80px; height: 34px; }
+  .header-auth-actions a, .header-auth-actions button { font-size: 14px; padding-inline: 8px; }
   .mobile-dock a {
     min-height: 64px;
     display: flex;
@@ -1001,3 +1010,196 @@ html[data-virtual-keyboard='open'] .mobile-dock {
 /* IDE syntax colors: contrast against the elevated surface in both themes. */
 :root { --ide-keyword: #c4b5fd; --ide-string: #86efac; --ide-number: #fdba74; --ide-comment: #a7b7a8; --ide-function: #7dd3fc; --ide-operator: #cbd5e1; }
 html[data-theme="light"] { --ide-keyword: #6d28d9; --ide-string: #166534; --ide-number: #9a3412; --ide-comment: #526155; --ide-function: #075985; --ide-operator: #334155; }
+
+.error-feedback-stack {
+  position: fixed;
+  z-index: 60;
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  inset-inline-end: 1rem;
+  width: min(28rem, calc(100vw - 2rem));
+  max-height: min(45vh, 24rem);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  pointer-events: none;
+}
+.error-feedback-message {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-error-fg);
+  border-radius: 8px;
+  background: var(--color-error-bg);
+  color: var(--color-error-fg);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
+  pointer-events: auto;
+}
+.error-feedback-close {
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 8px;
+  font-size: 1.5rem;
+}
+@media (max-width: 1023px) {
+  .error-feedback-stack { bottom: calc(7rem + env(safe-area-inset-bottom, 0px)); }
+}
+/* Centred standalone form/page action groups (dashboard-navigation 2026-10-02).
+ * Centres the group relative to its containing form/panel at every width and
+ * in both directions, including when buttons wrap. Applied via .form-actions
+ * or the FormActions component only; never globally on Button. Contextual
+ * table/row/filter/toolbar/disclosure/editor controls remain attached. */
+.form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  text-align: center;
+}
+/* Keep centred actions visible above the fixed mobile dock when scrolled
+ * into view at short viewport heights. */
+.form-actions > * {
+  scroll-margin-bottom: calc(112px + env(safe-area-inset-bottom, 0px));
+}
+.form-actions--start {
+  justify-content: flex-start;
+  text-align: start;
+}
+
+/* Role-aware account workspace: sidebar on desktop, compact inline section
+ * menu on mobile. The mobile menu is static content, never a second floating
+ * dock. The workspace itself provides no <main> landmark; inner pages keep
+ * their single <main>. */
+.account-workspace {
+  max-width: 1200px;
+  margin-inline: auto;
+  width: 100%;
+  padding-inline: 24px;
+  padding-block: 32px;
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+.workspace-sidebar {
+  display: none;
+  position: sticky;
+  top: 100px;
+  max-height: calc(100dvh - 116px);
+  overflow-y: auto;
+}
+.workspace-sidebar__card {
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  padding: 16px;
+}
+.workspace-sidebar__title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--color-muted);
+  margin-bottom: 12px;
+}
+.workspace-sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.workspace-sidebar a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--color-muted);
+  font-weight: 700;
+  font-size: 14px;
+}
+.workspace-sidebar a[aria-current='page'] {
+  background: var(--color-interactive);
+  color: var(--color-primary-strong);
+}
+.workspace-mobile-menu {
+  display: block;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+  padding: 8px 12px;
+}
+.workspace-mobile-menu summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  font-weight: 800;
+  list-style: none;
+}
+.workspace-mobile-menu summary::-webkit-details-marker {
+  display: none;
+}
+.workspace-mobile-menu nav ul {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.workspace-mobile-menu nav a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--color-muted);
+  font-weight: 700;
+}
+.workspace-mobile-menu nav a[aria-current='page'] {
+  background: var(--color-interactive);
+  color: var(--color-primary-strong);
+}
+.workspace-content {
+  min-width: 0;
+}
+@media (min-width: 1024px) {
+  .account-workspace {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+  .workspace-sidebar {
+    display: block;
+  }
+  .workspace-mobile-menu {
+    display: none;
+  }
+}
+@media (max-width: 480px) {
+  .account-workspace {
+    padding-inline: 16px;
+    padding-block: 24px;
+  }
+}
+
+/* Field feedback stays with the admin control while its action popup is visible. */
+.admin-focused-workspace {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--color-bg);
+  padding: 1rem max(1rem, calc((100vw - 1100px) / 2));
+  padding-bottom: 8rem;
+}
+[data-editor-invalid="true"] {
+  outline: 2px solid var(--color-error-fg);
+  outline-offset: 2px;
+}

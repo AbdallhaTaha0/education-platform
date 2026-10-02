@@ -16,6 +16,9 @@ async function login(email) {
   await page.evaluateOnNewDocument(() => { if (window.top === window) localStorage.setItem('edu-platform-lang', 'en'); });
   await page.goto('http://localhost:8084/#/login', { waitUntil: 'networkidle2' });
   await page.type('#login-id', email); await page.type('#login-password', 'm9 fixture password twelve words');
+  // The fixed mobile dock can cover the centred submit at short viewport
+  // heights; centre the control in view so the click reaches the button.
+  await page.$eval('form button[type="submit"]', (b) => b.scrollIntoView({ block: 'center' }));
   await page.click('form button[type="submit"]'); await page.waitForFunction(() => location.hash === '#/account'); return page;
 }
 async function api(page, method, path, body) {
@@ -31,7 +34,7 @@ async function clickText(page, text, scope = 'main') {
 }
 async function fillLabel(page, label, value, scope) {
   const selector = await page.evaluate(({ label, scope }) => {
-    const field = [...document.querySelector(scope).querySelectorAll('label')].find((x) => x.textContent.trim() === label)?.querySelector('input,textarea');
+    const field = [...document.querySelector(scope).querySelectorAll('label')].find((x) => { const name = x.cloneNode(true); name.querySelectorAll('[data-testid="admin-field-error"]').forEach((e) => e.remove()); return name.textContent.trim() === label; })?.querySelector('input,textarea');
     if (!field) return null; const id = `probe-${crypto.randomUUID()}`; field.id = id; return `#${id}`;
   }, { label, scope });
   assert(selector, `Field missing: ${label}`); await page.type(selector, value);
@@ -44,6 +47,7 @@ async function editCode(page, code) {
 }
 try {
   const student = await login('m9-student@example.test'); const admin = await login('m9-admin@example.test');
+  await admin.setViewport({width:1280,height:900});
   pass('cookie-authenticated STUDENT and ADMIN');
   await student.goto('http://localhost:8084/#/practice'); await student.waitForSelector('[data-testid="web-ide"]');
   pass('standalone reusable IDE loads for active subscription');
@@ -78,7 +82,8 @@ try {
   pass('admin code is not seeded into the new student editor', !await student.$eval('.cm-content', (e) => e.textContent.includes('function sum')));
   const initialSubmissionCount = (await api(student, 'GET', `/assessments/${fixture.assessmentId}/history`)).body.data.submissions.length;
   await editCode(student, 'console.log("discard me")');
-  await clickText(student, 'Reset to starter'); await clickText(student, 'Cancel');
+  await clickText(student, 'Reset to starter');
+  await clickText(student, 'Cancel');
   pass('cancelled starter reset preserves the student draft', await student.$eval('.cm-content', (e) => e.textContent.includes('discard me')));
   await clickText(student, 'Reset to starter'); await clickText(student, 'Confirm reset');
   pass('starter reset restores private-by-default blank source', await student.$eval('.cm-content', (e) => e.textContent === ''));
@@ -91,7 +96,7 @@ try {
   pass('real worker returns incorrect for wrong source');
   await student.evaluate(() => { window.__gradeHints = 0; window.addEventListener('fayq-assessment-completed', () => window.__gradeHints++); });
   await editCode(student, 'function broken('); const unfinishedCode = await student.$eval('.cm-content', (e) => e.textContent); await clickText(student, 'Format code');
-  await student.waitForFunction(() => document.querySelector('[data-testid=web-ide]').textContent.includes('Could not format'), { polling: 100 });
+  await student.waitForFunction(() => document.querySelector('[data-testid="error-feedback-stack"]')?.textContent.includes('Could not format'), { polling: 100 });
   pass('Prettier syntax failure preserves unfinished code', (await student.$eval('.cm-content', (e) => e.textContent)) === unfinishedCode);
   await editCode(student, 'function sum(a,b){return a+b}'); await clickText(student, 'Format code');
   await student.waitForFunction(() => document.querySelector('.cm-content').textContent.includes('return a + b;'), { polling: 100 });
@@ -138,6 +143,51 @@ try {
   const panel = `[data-testid="assessment-admin-${fixture.lessonId}"]`;
   await admin.waitForSelector(panel); await clickText(admin, 'Assignments and quizzes', panel); await clickText(admin, 'Add assessment', panel);
   const editor = `${panel} [data-testid="assessment-editor"]`;
+  const beforeInvalidSave = (await api(admin, 'GET', '/admin/assessments/lessons/' + fixture.lessonId)).body.data.assessments.length;
+  await clickText(admin, 'Save draft', editor);
+  await admin.waitForSelector('[data-testid="admin-field-error"]');
+  await admin.$eval(editor, (e) => e.scrollIntoView({block:'start'}));
+  await admin.screenshot({path:'/evidence/m9-admin-editor-errors-en.png'});
+  pass('blank admin draft shows exact required fields and question context', await admin.$eval('[data-testid="error-feedback-stack"]', (e) => e.textContent.includes('Title in English') && e.textContent.includes('Required to continue?') && e.textContent.includes('Question 1')));
+  pass('invalid draft sends no assessment write', (await api(admin, 'GET', '/admin/assessments/lessons/' + fixture.lessonId)).body.data.assessments.length === beforeInvalidSave);
+  pass('admin field messages are associated with highlighted controls', await admin.$eval(editor, (e) => [...e.querySelectorAll('[data-editor-invalid="true"]')].every((c) => c.getAttribute('aria-invalid') === 'true' && document.getElementById(c.getAttribute('aria-describedby').split(' ').at(-1)))));
+  await admin.click('[data-testid="error-feedback-stack"] li button');
+  pass('popup error action focuses its field', await admin.evaluate(() => document.activeElement.matches('[data-testid="assessment-editor"] input')));
+  await fillLabel(admin, 'Title in English', 'Keep this unsaved text', editor);
+  await admin.waitForSelector('[data-testid="error-feedback-stack"]', {hidden:true});
+  pass('correcting a field clears obsolete action feedback', !await admin.$('[data-testid="admin-field-error"]'));
+  await admin.waitForFunction(() => document.querySelector('[data-testid="admin-draft-status"]')?.textContent.includes('Unsaved changes'));
+  pass('admin marks edited draft as unsaved', await admin.$eval('[data-testid="admin-draft-status"]', (e) => e.textContent.includes('Unsaved changes')));
+  let acceptDiscard = false; const discardPrompts = [];
+  const discardDialog = async (dialog) => { discardPrompts.push(dialog.message()); if (acceptDiscard) await dialog.accept(); else await dialog.dismiss(); };
+  admin.on('dialog', discardDialog);
+  await admin.evaluate(()=>document.querySelector('header a[href="#/admin/catalog"]').click());
+  await admin.waitForFunction((id) => location.hash === '#/admin/courses/' + id, {}, fixture.courseId);
+  pass('cancelled navigation keeps admin editor and source', discardPrompts.length === 1 && await admin.$eval(editor + ' input[dir="ltr"]', (e) => e.value === 'Keep this unsaved text'));
+  await clickText(admin, 'Cancel', editor);
+  pass('cancelled discard keeps the same edited draft', discardPrompts.length === 2 && !!await admin.$(editor));
+  // The cancelled link leaves a same-route history entry. Go past it to
+  // exercise Back to a different route rather than asserting a needless prompt.
+  const backWarning = new Promise((resolve) => admin.once('dialog', resolve));
+  await admin.evaluate(() => history.go(-2)); await backWarning;
+  await admin.waitForFunction((id) => location.hash === '#/admin/courses/' + id, {}, fixture.courseId);
+  pass('browser back also guards unsaved admin changes', discardPrompts.length === 3 && !!await admin.$(editor));
+  pass('reload and close have a beforeunload guard for dirty drafts', await admin.evaluate(() => { const event = new Event('beforeunload', {cancelable:true}); window.dispatchEvent(event); return event.defaultPrevented; }));
+  await clickText(admin, 'Save draft', editor); await admin.waitForSelector('[data-testid="error-feedback-stack"]');
+  acceptDiscard = true; await clickText(admin, 'Cancel', editor); await admin.waitForSelector(editor, {hidden:true});
+  await admin.waitForSelector('[data-testid="error-feedback-stack"]', {hidden:true});
+  pass('confirmed cancel closes editor and removes field and popup errors', !await admin.$('[data-testid="admin-field-error"]'));
+  await clickText(admin, 'Add assessment', panel);
+  pass('fresh editor has no inherited errors and indicates unsaved new draft', await admin.$eval('[data-testid="admin-draft-status"]', (e) => e.textContent.includes('New draft')));
+  admin.off('dialog', discardDialog);
+  await admin.click(`${editor} [aria-label="التبديل إلى العربية"]`);
+  await admin.setViewport({width:390,height:844});
+  await clickText(admin, 'حفظ مسودة', editor); await admin.waitForSelector('[data-testid="error-feedback-stack"]');
+  pass('Arabic admin errors describe the question and correction', await admin.$eval('[data-testid="error-feedback-stack"]', (e) => e.dir === 'rtl' && e.textContent.includes('السؤال 1') && e.textContent.includes('هذا الحقل مطلوب')));
+  pass('admin errors fit mobile width', await admin.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  pass('admin error popup stays visible above the mobile navigation', await admin.$eval('[data-testid="error-feedback-stack"]', (e) => { const r=e.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight-90; }));
+  await admin.screenshot({path:'/evidence/m9-admin-editor-errors-ar-mobile.png'});
+  await admin.click(`${editor} [aria-label="Switch to English"]`); await admin.setViewport({width:1280,height:900});
   await fillLabel(admin, 'العنوان بالعربية', 'اختبار اختياري', editor); await fillLabel(admin, 'Title in English', 'Optional quiz', editor);
   await fillLabel(admin, 'Arabic instructions', 'اختر الصحيح', editor); await fillLabel(admin, 'English instructions', 'Choose the right answer', editor);
   await admin.evaluate((scope) => { const labels = [...document.querySelector(scope).querySelectorAll('label')]; for (const [name, value] of [['Assessment type', 'QUIZ'], ['Required to continue?', 'false']]) { const select = labels.find((l) => l.textContent.startsWith(name)).querySelector('select'); const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set; setter.call(select, value); select.dispatchEvent(new Event('change', { bubbles: true })); } }, editor);
@@ -146,9 +196,18 @@ try {
   const arabicChoices = await admin.$$(`${editor} label input[dir="rtl"]`); const englishChoices = await admin.$$(`${editor} label input[dir="ltr"]`);
   // Choice fields are the final two input pairs, after titles/question text.
   await arabicChoices.at(-2).type('الأول'); await arabicChoices.at(-1).type('الثاني'); await englishChoices.at(-2).type('First'); await englishChoices.at(-1).type('Second');
-  await admin.click(`${editor} input[type="radio"]`); await clickText(admin, 'Save draft', editor);
+  await admin.click(`${editor} input[type="radio"]`);
+  await admin.setRequestInterception(true);
+  const failDraftSave = (request) => { if (request.method() === 'POST' && request.url().endsWith('/admin/assessments/lessons/' + fixture.lessonId)) void request.respond({status:503,contentType:'application/json',body:JSON.stringify({error:{code:'SERVICE_UNAVAILABLE',message:'Temporary save failure'}})}); else void request.continue(); };
+  admin.on('request', failDraftSave);
+  await clickText(admin, 'Save draft', editor); await admin.waitForSelector('[data-testid="error-feedback-stack"]');
+  pass('failed server save leaves all question and choice content editable', await admin.$eval(editor, (e) => !e.inert && e.querySelector('input[dir="ltr"]').value === 'Optional quiz' && [...e.querySelectorAll('input')].some((i) => i.value === 'Second') && e.querySelector('input[type="radio"]').checked));
+  pass('failed save is identified as a save action and stays unsaved', await admin.$eval('[data-testid="error-feedback-stack"]', (e) => e.textContent.includes('Save draft')) && await admin.$eval('[data-testid="admin-draft-status"]', (e) => e.textContent.includes('Unsaved changes')));
+  await admin.setRequestInterception(false); admin.off('request', failDraftSave);
+  await clickText(admin, 'Save draft', editor);
   await admin.waitForFunction((scope) => !document.querySelector(`${scope} [data-testid="assessment-editor"]`), {}, panel);
   await admin.waitForFunction((scope) => [...document.querySelector(scope).querySelectorAll('strong')].some((e) => e.textContent === 'Optional quiz'), {}, panel);
+  pass('successful save confirms the draft is on the server', await admin.$eval(panel, (e) => e.textContent.includes('Draft saved on the server.')));
   await admin.evaluate((scope) => { const row = [...document.querySelector(scope).querySelectorAll('strong')].find((e) => e.textContent === 'Optional quiz').parentElement; [...row.querySelectorAll('button')].find((b) => b.textContent === 'Publish revision').click(); }, panel);
   await admin.waitForFunction((scope) => [...document.querySelector(scope).querySelectorAll('strong')].find((e) => e.textContent === 'Optional quiz')?.parentElement.textContent.includes('Published'), {}, panel);
   pass('ADMIN authors and publishes bilingual optional multiple-choice quiz through UI');
@@ -203,6 +262,13 @@ try {
   await property('score', 'number'); await setField(admin, `${editor} input[aria-label="score"]`, 'invalid');
   await clickText(admin, 'Save draft', editor);
   pass('invalid typed number prevents saving a stale expected value', !!await admin.$(editor) && await admin.$eval(editor, (e) => !!e.querySelector('[aria-invalid="true"]')));
+  await admin.waitForSelector('[data-testid="error-feedback-stack"]');
+  pass('admin question validation displays a visible popup', await admin.$eval('[data-testid="error-feedback-stack"]', (e) => { const r = e.getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight && e.textContent.includes('Correct the values'); }));
+  await admin.click('button[aria-label="Dismiss error message"]');
+  await admin.waitForSelector('[data-testid="error-feedback-stack"]', { hidden: true });
+  await clickText(admin, 'Save draft', editor);
+  await admin.waitForSelector('[data-testid="error-feedback-stack"]');
+  pass('repeated invalid admin saves redisplay a dismissed popup');
   await setField(admin, `${editor} input[aria-label="score"]`, '5');
   await property('passed', 'boolean'); await admin.select(`${editor} select[aria-label="passed"]`, 'true');
   await property('labels', 'array'); await clickText(admin, 'Add item', editor);
@@ -236,6 +302,14 @@ try {
   const square = adminAssessments.body.data.assessments.find((a) => a.content.titleEn === 'Generated square'); assert(square);
   const premature = await api(admin, 'POST', '/admin/assessments/' + square.id + '/publish', {});
   pass('unprepared input/output problems cannot be published', premature.status === 409 && premature.body.error.code === 'TESTS_NOT_READY');
+  pass('PROGRAM publication is disabled before exact-draft preparation and review', await admin.evaluate((scope) => { const row = [...document.querySelector(scope).querySelectorAll('strong')].find((e) => e.textContent === 'Generated square').parentElement; return [...row.querySelectorAll('button')].find((b) => b.textContent === 'Publish revision').disabled; }, panel));
+  await admin.setRequestInterception(true);
+  const failPreparationStatus = (request) => { if (request.url().endsWith(`/admin/assessments/${square.id}/preparation`)) void request.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { state: 'FAILED', error: 'SAMPLE_MISMATCH' } }) }); else void request.continue(); };
+  admin.on('request', failPreparationStatus);
+  await admin.evaluate((scope) => { const row = [...document.querySelector(scope).querySelectorAll('strong')].find((e) => e.textContent === 'Generated square').parentElement; [...row.querySelectorAll('button')].find((b) => b.textContent === 'Prepare and review tests').click(); }, panel);
+  await admin.waitForFunction(() => document.querySelector('[data-testid="error-feedback-stack"]')?.textContent.includes('Test preparation failed'));
+  pass('asynchronous admin preparation failure displays a popup');
+  await admin.setRequestInterception(false); admin.off('request', failPreparationStatus);
   await admin.evaluate((scope) => { const row = [...document.querySelector(scope).querySelectorAll('strong')].find((e) => e.textContent === 'Generated square').parentElement; [...row.querySelectorAll('button')].find((b) => b.textContent === 'Prepare and review tests').click(); }, panel);
   await admin.waitForFunction((scope) => [...document.querySelector(scope).querySelectorAll('strong')].find((e) => e.textContent === 'Generated square')?.parentElement.textContent.includes('Tests ready to publish'), { timeout: 90000 }, panel);
   pass('private reference prepares generated tests in the isolated controller');
@@ -276,15 +350,16 @@ try {
   await admin.setViewport({ width: 390, height: 844 });
   pass('compact submission review fits mobile width', await admin.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
   await admin.screenshot({ path: '/evidence/m9-submission-review-mobile.png', fullPage: true });
+  await clickText(admin,'Close','[data-testid="submission-review"]');
   await admin.setViewport({ width: 1280, height: 900 });
   await student.goto(`http://localhost:8084/#/purchase/${fixture.planId}`);
-  await student.waitForFunction(() => document.querySelector('main').textContent.includes('You already have access'));
+  await student.waitForFunction(() => document.querySelector('[data-testid="error-feedback-stack"]')?.textContent.includes('You already have access'));
   pass('owned course cannot reach payment confirmation', !await student.evaluate(() => [...document.querySelectorAll('main button')].some((b) => b.textContent.includes('Confirm purchase'))));
   const duplicate = await api(student, 'POST', '/wallet/purchases', { planId: fixture.planId, idempotencyKey: crypto.randomUUID() });
   pass('API also refuses owned-course payment with a new key', duplicate.status === 409 && duplicate.body.error.code === 'COURSE_ALREADY_SUBSCRIBED');
   await student.evaluate((id) => { location.hash = `#/assessment/${id}`; }, fixture.assessmentId);
   await student.waitForSelector('[data-testid="web-ide"]'); pass('switching assessment IDs remounts the correct editor without stale answers');
-  const inactive = await login('m9-inactive@example.test'); await inactive.goto('http://localhost:8084/#/practice'); await inactive.waitForFunction(() => document.querySelector('main').textContent.includes('active course subscription'));
+  const inactive = await login('m9-inactive@example.test'); await inactive.goto('http://localhost:8084/#/practice'); await inactive.waitForFunction(() => document.querySelector('[data-testid="error-feedback-stack"]')?.textContent.includes('active course subscription'));
   pass('inactive student cannot open standalone practice', !await inactive.$('[data-testid="web-ide"]'));
   pass('student cannot use ADMIN quota API', (await api(student, 'GET', '/admin/assessments/students')).status === 403);
   pass('no authentication data in browser storage', await student.evaluate(() => Object.keys(localStorage).every((k) => ['edu-platform-lang', 'edu-platform-theme'].includes(k)) && sessionStorage.length === 0));

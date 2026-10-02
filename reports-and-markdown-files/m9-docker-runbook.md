@@ -26,6 +26,15 @@ docker build -f docker/ide/controller.Dockerfile -t fayq-assessment-controller:0
 
 Build server before controller; its base is the built local server image. The existing nginx image/config remains unchanged. Execution has its own dependency lock/image and no ORM or credentials. The controller uses Docker CLI 29.8.1 so it can communicate with the current daemon.
 
+On a machine without the earlier browser-tool image, build its repository prerequisite before the M9 inspection image:
+
+```text
+docker build -f docker/browser/Dockerfile -t fayq-review-browser:0.8.0-local .
+docker build -f docker/ide/browser.Dockerfile -t fayq-m9-browser:0.9.0 .
+```
+
+Before attaching retained PostgreSQL volumes, inspect the original container's `PGDATA` and mount destination. The local override accepts `LOCAL_PLATFORM_PGDATA_PATH` in the ignored root `.env`; its default remains `/var/lib/postgresql/data/pgdata`. A transferred volume originally using `/var/lib/postgresql/data` must explicitly retain that path. A healthy empty database at another directory is not evidence that owner data is absent. Stop the old database container before attaching the same volume to its replacement; never run two PostgreSQL instances against the same data directory. Preserve any alternate directory and investigate without deletion.
+
 ## Retained local preview
 
 ```text
@@ -52,6 +61,8 @@ node docker/ide/ui-review.mjs
 ```
 
 `verify` builds test images when requested, typechecks/tests against isolated real PG/Redis, saves evidence and always guards its own `down -v`. `--focused` checks M9 backend only using already rebuilt test images. `ui-review` uses synthetic accounts/catalog, dedicated localhost:8084 and separate project volumes; browser → API → real queue → actual isolated grading → result/progression are tested. No real video/R2 operation. Recovery proof requires no other active grading containers before advancing a fixture-only clock. Do not run it during owner grading.
+
+If the optional `agent-browser` inspection CLI is unavailable, `node docker/ide/ui-review.mjs --flow-only` explicitly skips that probe and still runs the direct Puppeteer ADMIN/student/controller checks with identical isolation and cleanup. Report the CLI as skipped/unavailable, never as passing. CLI failure diagnostics are bounded and saved in the ignored evidence log.
 
 All wrappers verify project labels and mounts before removing owned test containers/networks/volumes, including failure paths. Preserved preview data and independent DRM must never be included in test cleanup. No global prune. Evidence includes failed runs and diagnostic repairs, not only green summaries.
 

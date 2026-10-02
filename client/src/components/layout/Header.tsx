@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAuth } from '../../auth';
 import { useLang, type Lang } from '../../i18n';
 import { useTheme } from '../../theme';
@@ -5,6 +6,9 @@ import { Container } from '../ui/Card';
 import type { Route } from '../../routes';
 import { Wordmark } from '../ui/Wordmark';
 import { NotificationEntry } from '../../features/notifications/components/NotificationEntry';
+import { Button } from '../ui/Button';
+import { Notice } from '../ui/Notice';
+import { useConfirmNavigation } from '../ui/UnsavedChanges';
 
 type Icon = 'home' | 'discover' | 'learning' | 'account' | 'courses' | 'recharge';
 function NavIcon({ kind }: { kind: Icon }): JSX.Element {
@@ -39,11 +43,24 @@ export function Header({
 }): JSX.Element {
   const { lang, t } = useLang();
   const { theme, toggleTheme } = useTheme();
-  const { status, user } = useAuth();
+  const { status, user, logout } = useAuth();
+  const confirmLeave = useConfirmNavigation();
+  const [signingOut, setSigningOut] = useState(false);
+  const [logoutError, setLogoutError] = useState(false);
+  async function signOut(): Promise<void> {
+    if (signingOut || !confirmLeave()) return;
+    setSigningOut(true);
+    setLogoutError(false);
+    try { setLogoutError((await logout()) !== null); }
+    finally { setSigningOut(false); }
+  }
   const signedIn = status === 'authenticated';
   const admin = signedIn && user?.role === 'ADMIN';
   const label = (ar: string, en: string): string => (lang === 'ar' ? ar : en);
-  const entries: { href: string; label: string; icon: Icon; active: boolean }[] = admin
+  // Desktop keeps the full top navbar (including practice + wallet shortcuts).
+  // Mobile uses exactly four dock destinations per the owner reference; practice
+  // lives in the account workspace while preserving its entitlement behavior.
+  const desktopEntries: { href: string; label: string; icon: Icon; active: boolean }[] = admin
     ? [
         { href: '#/admin/practice', label: label('التدريب', 'Practice'), icon: 'learning', active: route === 'admin-practice' },
         {
@@ -69,7 +86,7 @@ export function Header({
           href: '#/account',
           label: label('حسابي', 'Account'),
           icon: 'account',
-          active: route === 'account',
+          active: route === 'account' || (route as string) === 'account-profile',
         },
       ]
     : [
@@ -85,7 +102,7 @@ export function Header({
           href: signedIn ? '#/dashboard' : '#/login',
           label: label('تعلّمي', 'My learning'),
           icon: 'learning',
-          active: route === 'dashboard' || route === 'learn',
+          active: route === 'dashboard' || route === 'learn' || route === 'assessment',
         },
         {
           href: '#/account',
@@ -93,12 +110,87 @@ export function Header({
           icon: 'account',
           active: [
             'account',
+            'account-profile',
             'login',
             'register',
             'wallet',
             'wallet-recharge',
             'purchases',
-          ].includes(route),
+            'notifications',
+          ].includes(route as string),
+        },
+      ];
+  // Mobile dock: exactly four evenly spaced destinations, icon above label.
+  // Anonymous protected destinations lead through the existing login flow.
+  const mobileEntries: { href: string; label: string; icon: Icon; active: boolean }[] = admin
+    ? [
+        {
+          href: '#/admin/summary',
+          label: label('نظرة عامة', 'Overview'),
+          icon: 'home',
+          active: route === 'admin-summary',
+        },
+        {
+          href: '#/admin/catalog',
+          label: label('الكورسات', 'Courses'),
+          icon: 'courses',
+          active:
+            route === 'admin-catalog' || route === 'admin-course' || route === 'admin-packages',
+        },
+        {
+          href: '#/admin/recharge',
+          label: label('الشحن', 'Recharge'),
+          icon: 'recharge',
+          active: route === 'admin-recharge',
+        },
+        {
+          href: '#/account',
+          label: t.navAccount,
+          icon: 'account',
+          active: ((): boolean => {
+            const r = route as string;
+            return [
+              'account',
+              'account-profile',
+              'admin-practice',
+              'admin-students',
+              'admin',
+              'admin-policies',
+              'admin-support',
+              'notifications',
+              'register',
+            ].includes(r);
+          })(),
+        },
+      ]
+    : [
+        { href: '#/', label: t.navHome, icon: 'home', active: route === 'home' },
+        {
+          href: '#/courses',
+          label: label('اكتشف', 'Discover'),
+          icon: 'discover',
+          active: ['courses', 'course-detail', 'purchase', 'package'].includes(route),
+        },
+        {
+          href: signedIn ? '#/dashboard' : '#/login',
+          label: label('تعلّمي', 'My learning'),
+          icon: 'learning',
+          active: signedIn && ['dashboard', 'learn', 'practice', 'assessment'].includes(route),
+        },
+        {
+          href: '#/account',
+          label: t.navAccount,
+          icon: 'account',
+          active: [
+            'account',
+            'account-profile',
+            'login',
+            'register',
+            'wallet',
+            'wallet-recharge',
+            'purchases',
+            'notifications',
+          ].includes(route as string),
         },
       ];
   return (
@@ -113,7 +205,7 @@ export function Header({
               className="desktop-navigation"
               aria-label={label('التنقل الرئيسي', 'Main navigation')}
             >
-              {entries.map((entry) => (
+              {desktopEntries.map((entry) => (
                 <a
                   key={entry.href}
                   href={entry.href}
@@ -135,6 +227,15 @@ export function Header({
             </nav>
             <div className="site-header__tools">
               {signedIn ? <NotificationEntry current={route === 'notifications'} compact /> : null}
+              <div className="header-auth-actions">
+                {status === 'anonymous' ? <a href="#/login" data-testid="header-login" aria-label={t.navLogin}
+                  className="inline-flex min-h-[44px] items-center justify-center rounded-control bg-primary px-4 py-2 font-bold text-primary-ink whitespace-nowrap">
+                  <span className="hidden lg:inline">{t.navLogin}</span><span className="lg:hidden">{label('دخول', 'Login')}</span>
+                </a> : signedIn ? <Button variant="secondary" className="whitespace-nowrap px-4" aria-label={t.logout}
+                  data-testid="header-logout" disabled={signingOut} onClick={() => void signOut()}>
+                  <span className="hidden lg:inline">{signingOut ? t.loading : t.logout}</span><span className="lg:hidden">{label('خروج', 'Logout')}</span>
+                </Button> : null}
+              </div>
               <button
                 type="button"
                 className="header-tool"
@@ -156,15 +257,16 @@ export function Header({
               </button>
             </div>
           </div>
+          {logoutError ? <Notice kind="error">{label('تعذّر تسجيل الخروج. حاول مرة أخرى.', 'Could not log out. Please retry.')}</Notice> : null}
         </Container>
       </header>
       <nav
         className="mobile-dock"
-        style={{ gridTemplateColumns: `repeat(${entries.length}, minmax(0, 1fr))` }}
+        style={{ gridTemplateColumns: `repeat(${mobileEntries.length}, minmax(0, 1fr))` }}
         aria-label={label('التنقل الرئيسي', 'Main navigation')}
         data-testid="mobile-dock"
       >
-        {entries.map((entry) => (
+        {mobileEntries.map((entry) => (
           <a key={entry.href} href={entry.href} aria-current={entry.active ? 'page' : undefined}>
             <span className="mobile-dock__icon">
               <NavIcon kind={entry.icon} />

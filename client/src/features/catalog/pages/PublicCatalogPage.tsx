@@ -158,6 +158,7 @@ export function PublicCatalogSections({
             ) : null}
           </div>
           {loading ? <Loading text={t.catalogLoading} /> : null}
+          {!compact && !loading ? <div className="my-4 flex flex-wrap items-center gap-3"><p role="status">{lang==='ar'?`${filtered.length} من ${courses.length} كورس`:`${filtered.length} of ${courses.length} courses`}</p><Button variant="secondary" onClick={()=>{setQuery('');setGrade('');setTerm('');setYear('');setKind('');}}>{lang==='ar'?'مسح البحث والتصفية':'Clear search and filters'}</Button></div>:null}
           {error !== null ? (
             <div>
               <Notice kind="error">{localizeCode(t, error)}</Notice>
@@ -167,7 +168,7 @@ export function PublicCatalogSections({
             </div>
           ) : null}
           {!loading && error === null && filtered.length === 0 ? (
-            <EmptyState text={t.catalogEmpty} />
+            <EmptyState text={compact?t.catalogEmpty:lang==='ar'?'لا توجد كورسات مطابقة. غيّر البحث أو امسح التصفية.':'No matching courses. Change your search or clear the filters.'} />
           ) : null}
           <div className="mt-6 grid grid-cols-3 gap-6 max-lg:grid-cols-2 max-sm:grid-cols-1">
             {filtered.slice(0, compact ? 3 : filtered.length).map((c, index) => (

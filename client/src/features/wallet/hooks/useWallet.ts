@@ -37,7 +37,8 @@ export function useWallet(): WalletState {
       setInstructions(await fetchInstructions());
       setInstructionsError(null);
     } catch (err) {
-      setInstructionsError(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
+      if (err instanceof ApiError && err.code === 'PAYMENT_UNCONFIGURED') { setInstructions([]); setInstructionsError(null); }
+      else setInstructionsError(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
     }
   }, []);
 

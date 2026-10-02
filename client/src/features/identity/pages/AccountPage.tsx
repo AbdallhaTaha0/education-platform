@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useAuth, type SafeUser } from '../../../auth';
 import { Button } from '../../../components/ui/Button';
+import { FormActions } from '../../../components/ui/FormActions';
 import { Container } from '../../../components/ui/Card';
 import { Notice } from '../../../components/ui/Notice';
 import { useLang } from '../../../i18n';
 import { localize, useTitleFocus } from '../components/IdentityForm';
+import { AccountSettings } from './AccountSettings';
 
 function formatDate(value: string, lang: string): string {
   try {
@@ -42,11 +44,11 @@ export function AccountScreen({ go }: { go: (route: string) => void }): JSX.Elem
           <Notice kind="info">
             {lastAuthCode === 'SESSION_EXPIRED' ? t.sessionExpiredNotice : t.needLogin}
           </Notice>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <FormActions>
             <Button variant="secondary" onClick={() => go('#/login')}>
               {t.navLogin}
             </Button>
-          </div>
+          </FormActions>
         </div>
       </Container>
     );
@@ -90,7 +92,7 @@ export function AccountScreen({ go }: { go: (route: string) => void }): JSX.Elem
         >
           {person.role === 'STUDENT' ? (
             <>
-              <a href="#/dashboard">{t.navDashboard}</a>
+              <a href="#/dashboard" className="font-bold text-primary-strong">{t.navDashboard}</a>
               <a href="#/wallet">{t.navWallet}</a>
               <a href="#/purchases">{lang === 'ar' ? 'مشترياتي' : 'My purchases'}</a>
             </>
@@ -100,6 +102,7 @@ export function AccountScreen({ go }: { go: (route: string) => void }): JSX.Elem
               <a href="#/admin/packages">{lang === 'ar' ? 'الباقات' : 'Packages'}</a>
               <a href="#/admin/catalog">{t.navCatalog}</a>
               <a href="#/admin/recharge">{t.navRecharge}</a>
+              <a href="#/admin/practice">{lang==='ar'?'حدود التدريب':'Practice limits'}</a>
             </>
           )}
           <a href="#/notifications">{t.navNotifications}</a>
@@ -135,7 +138,8 @@ export function AccountScreen({ go }: { go: (route: string) => void }): JSX.Elem
             </dd>
           </div>
         </dl>
-        <div className="mt-6 flex flex-wrap gap-3">
+        <AccountSettings key={person.id} displayName={person.displayName}/>
+        <FormActions>
           <Button variant="secondary" onClick={() => void doLogout()} disabled={busy}>
             {t.logout}
           </Button>
@@ -147,7 +151,7 @@ export function AccountScreen({ go }: { go: (route: string) => void }): JSX.Elem
               {t.navAdmin}
             </Button>
           ) : null}
-        </div>
+        </FormActions>
       </div>
     </Container>
   );

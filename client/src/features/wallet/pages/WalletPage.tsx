@@ -1,5 +1,6 @@
 import { localizeCode, useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
+import { FormActions } from '../../../components/ui/FormActions';
 import { Card, Container } from '../../../components/ui/Card';
 import { Loading, Notice, EmptyState } from '../../../components/ui/Notice';
 import { useWallet } from '../hooks/useWallet';
@@ -20,11 +21,11 @@ export function WalletPage({ go }: { go: (hash: string) => void }): JSX.Element 
           {error !== null ? (
             <div className="mt-4">
               <Notice kind="error">{localizeCode(t, error)}</Notice>
-              <div className="mt-3">
+              <FormActions className="mt-3">
                 <Button variant="secondary" onClick={() => void reload()}>
                   {t.retry}
                 </Button>
-              </div>
+              </FormActions>
             </div>
           ) : null}
           {wallet !== null ? (
@@ -33,15 +34,17 @@ export function WalletPage({ go }: { go: (hash: string) => void }): JSX.Element 
               <p className="mt-1 text-4xl font-bold text-accent">
                 <Money piastres={wallet.balancePiastres} />
               </p>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <Button onClick={() => go('#/wallet/recharge')}>{t.rechargeNew}</Button>
+              <FormActions className="mt-4">
+                <Button disabled={!instructions?.length} onClick={() => go('#/wallet/recharge')}>{t.rechargeNew}</Button>
+                <Button variant="secondary" onClick={()=>go('#/courses')}>{lang==='ar'?'اختَر كورسك بعد الشحن':'Choose your course after recharge'}</Button>
                 <Button variant="secondary" onClick={() => go('#/purchases')}>
                   {t.purchaseHistory}
                 </Button>
-              </div>
+              </FormActions>
             </Card>
           ) : null}
           <h2 className="mt-8 text-2xl font-bold">{t.instructionsTitle}</h2>
+          {instructions?.length===0 ? <Notice kind="info">{lang==='ar'?'الشحن غير متاح مؤقتًا؛ لم تُضف طرق التحويل بعد.':'Recharge is temporarily unavailable; transfer methods have not been configured.'}</Notice>:null}
           {instructionsError !== null ? (
             <div className="mt-2">
               <Notice kind="error">{localizeCode(t, instructionsError)}</Notice>

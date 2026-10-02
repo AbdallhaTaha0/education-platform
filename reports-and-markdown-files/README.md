@@ -1,5 +1,21 @@
 # Education platform documentation
 
+Owner delivery authorization (2026-10-02): the owner explicitly requested "commit and push" for the completed platform changes, including the UX, account/dashboard navigation and editable support contacts. This supersedes earlier pending commit/push statements below. Verification and preservation evidence are recorded in the linked reports; legal-policy adoption, production deployment and capacity qualification remain deferred.
+
+Dashboard navigation completed (2026-10-02): [manager continuation report and screenshots](dashboard-navigation-20261002/worker-report.md) records the four-item mobile dock, desktop navbar/account sidebar, integrated student/ADMIN profiles and centred form actions. OpenCode was stopped by the owner; the manager completed/reproduced its changes and updated localhost:8080 with preserved data. [The worker prompt](dashboard-navigation-opencode-worker-prompt-20261002.md) is retained as the assignment record. Source remains uncommitted; milestone acceptance is pending.
+
+Editable support contacts (2026-10-02): [owner-provided email/phone, ADMIN settings and verification](support-contact-settings-20261002.md). Contacts are saved in PostgreSQL and changeable without rebuilding. Policy drafts still await owner review.
+
+Website UX implementation (2026-10-02): [complete audit-to-implementation checklist, account decisions and verification](ux-improvements-20261002/report.md). Includes the approved optional directory, account settings and labelled policy drafts. Policy adoption remains an owner input; no milestone acceptance or commit/push.
+
+Admin question-editing safety (2026-10-02): [implementation, screenshots and 96 browser/controller checks](m9-admin-editor-safety-report.md) covers actionable field errors, preserved drafts, unsaved-change warnings and cancellation cleanup. The retained preview and owner data are preserved; milestone acceptance and commit/push remain pending.
+
+Website UX review (2026-10-02): [admin priorities and complete page inventory](ux-review-20261002/report.md), supported by 33 screenshots and browser/source inspection, separates proposed improvements from deferred features. The synthetic Docker review environment was cleaned; owner data and existing work were preserved.
+
+Visible error feedback (2026-10-02): [popup notification implementation and checks](m9-error-feedback-report.md) records persistent, dismissible errors visible where the user is working, with Arabic/mobile support and preserved form values.
+
+Local handoff review (2026-10-02): [actual checkout and Docker readiness](m9-local-handoff-review-20261002.md) records transferred M9 work at `1113aab`, retained-volume inspection, the local PostgreSQL data-directory correction, fresh verification and release boundaries.
+
 M9 input/output problems (2026-10-02): [authoring guide](m9-input-output-guide.md) covers private reference solutions, generated/frozen hidden cases, `readline()` and `console.log()`. [Implementation and Docker evidence](m9-input-output-implementation-report.md) records the delivered flow and preserved local preview. New problems use this mode; existing quizzes remain intact.
 
 ADMIN JavaScript authoring: [typed check guide](m9-admin-check-authoring-guide.md) explains value types, function inputs and object/array builders.

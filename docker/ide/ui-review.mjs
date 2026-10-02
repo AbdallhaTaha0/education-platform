@@ -7,7 +7,7 @@ const project = 'fayq-m9-ui'; const compose = ['compose', '-p', project, '-f', '
 const evidence = join(root, 'docker/browser/evidence/m9'); mkdirSync(evidence, { recursive: true });
 function capture(args, input) {
   const r = spawnSync(docker, args, { cwd: root, input, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 });
-  if (r.status !== 0) throw new Error('Docker inspection/fixture failed (diagnostics suppressed).'); return r.stdout;
+  if (r.status !== 0) { if(input) writeFileSync(join(evidence,'ui-fixture-failure.log'),r.stderr ?? '',{mode:0o600}); throw new Error('Docker inspection/fixture failed; synthetic fixture diagnostics saved privately.'); } return r.stdout;
 }
 function guard() {
   const c = JSON.parse(capture([...compose, 'config', '--format', 'json']));
@@ -33,10 +33,19 @@ function browser(script, label) {
 let code = 0, fixtureWritten = false; guard();
 try {
   run('ui-start', [...compose, 'up', '-d', '--wait']);
-  browser('docker/ide/cli-check.mjs', 'ui-cli');
+  // The direct Puppeteer flow is independently runnable when the optional
+  // inspection CLI is unavailable; never report its skipped probe as passing.
+  if (!process.argv.includes('--flow-only')) browser('docker/ide/cli-check.mjs', 'ui-cli');
+  else console.log('Inspection CLI skipped explicitly; verifying direct browser/controller flow.');
   const fixture = capture([...compose, 'exec', '-T', 'server', 'node', '-e', "eval(require('fs').readFileSync(0,'utf8'))"], readFileSync(join(root, 'docker/ide/ui-fixtures.cjs'), 'utf8'));
   JSON.parse(fixture.trim()); writeFileSync(join(evidence, 'm9-fixtures.json'), fixture, { mode: 0o600 }); fixtureWritten = true;
-  browser('docker/ide/ui-flow.mjs', 'ui-flow');
+  if (!process.argv.includes('--ux-only') && !process.argv.includes('--support-only') && !process.argv.includes('--navigation-only') && !process.argv.includes('--auth-only')) browser('docker/ide/ui-flow.mjs', 'ui-flow');
+  if (process.argv.includes('--auth-only')) browser('docker/ide/auth-navigation-flow.mjs', 'auth-navigation-flow');
+  // Navigation uses the initial fixture credentials; UX checks intentionally
+  // change a fixture password. Run read-only navigation before that mutation.
+  if (process.argv.includes('--navigation-only') || process.argv.includes('--navigation')) browser('docker/ide/navigation-flow.mjs','navigation-flow');
+  if (process.argv.includes('--ux')) browser('docker/ide/ux-flow.mjs','ux-flow');
+  if (process.argv.includes('--support-only')) browser('docker/ide/support-flow.mjs','support-flow');
 } catch (error) { code = 1; console.error(error.message); }
 finally {
   if (fixtureWritten) rmSync(join(evidence, 'm9-fixtures.json'), { force: true });

@@ -145,6 +145,7 @@ export async function loadOutline(
       position: number;
       playable: boolean;
       locked: boolean;
+      blockingAssessmentIds: string[];
       completed: boolean;
       resumePositionSeconds: number;
     }>;
@@ -180,6 +181,7 @@ export async function loadOutline(
         position: lesson.position,
         playable: !locks.get(lesson.id)?.length && lesson.media?.status === 'READY' && lesson.media.externalAssetId !== '',
         locked: !!locks.get(lesson.id)?.length,
+        blockingAssessmentIds: locks.get(lesson.id) ?? [],
         completed: p?.completedAt !== null && p?.completedAt !== undefined,
         resumePositionSeconds: p?.completedAt ? 0 : (p?.positionSeconds ?? 0),
       };

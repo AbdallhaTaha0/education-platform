@@ -34,7 +34,7 @@ describe('M9 grading, privacy and progression', () => {
   });
   it('gates the outline, next lesson and direct playback server-side', async () => {
     const outline = await studentGet(w.app, `/learning/courses/${c.slug}/outline`, w.studentJar);
-    expect(outline.status).toBe(200); expect(outline.body.data.sections[0].lessons[1]).toMatchObject({ locked: true, playable: false });
+    expect(outline.status).toBe(200); expect(outline.body.data.sections[0].lessons[1]).toMatchObject({ locked: true, playable: false, blockingAssessmentIds:[a] });
     expect((await studentGet(w.app, `/assessments/lessons/${c.lessonIds[1]}`, w.studentJar)).status).toBe(403);
     expect((await studentPost(w.app, `/learning/courses/${c.slug}/lessons/${c.lessonIds[1]}/playback`, w.studentJar, { deviceId: randomUUID() })).status).toBe(403);
   });

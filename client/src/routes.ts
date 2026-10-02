@@ -3,6 +3,7 @@ export type Route =
   | 'register'
   | 'login'
   | 'account'
+  | 'account-profile'
   | 'admin'
   | 'courses'
   | 'course-detail'
@@ -21,15 +22,23 @@ export type Route =
   | 'learn'
   | 'practice'
   | 'assessment'
-  | 'admin-practice';
+  | 'admin-practice' | 'admin-students' | 'admin-policies' | 'admin-support' | 'support' | 'terms' | 'privacy' | 'refunds' | 'not-found';
 
 export function routeFromHash(): Route {
   const hash = window.location.hash;
+  if (hash === '#/admin/support') return 'admin-support';
+  if (hash === '#/admin/students') return 'admin-students';
+  if (hash === '#/admin/policies') return 'admin-policies';
+  if (hash === '#/support') return 'support';
+  if (hash === '#/terms') return 'terms';
+  if (hash === '#/privacy') return 'privacy';
+  if (hash === '#/refunds') return 'refunds';
   if (hash === '#/practice') return 'practice';
   if (hash === '#/admin/practice') return 'admin-practice';
   if (hash.startsWith('#/assessment/')) return 'assessment';
   if (hash === '#/register') return 'register';
   if (hash === '#/login') return 'login';
+  if (hash === '#/account/profile') return 'account-profile';
   if (hash === '#/account') return 'account';
   if (hash === '#/admin') return 'admin';
   if (hash.startsWith('#/package/')) return 'package';
@@ -47,7 +56,7 @@ export function routeFromHash(): Route {
   if (hash === '#/courses') return 'courses';
   if (hash.startsWith('#/admin/courses/')) return 'admin-course';
   if (hash === '#/admin/catalog') return 'admin-catalog';
-  return 'home';
+  return !hash || hash==='#/' || hash==='#' ? 'home' : 'not-found';
 }
 
 export function planIdFromHash(): string {

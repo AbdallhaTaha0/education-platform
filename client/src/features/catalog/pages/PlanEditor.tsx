@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { ApiError } from '../../../auth';
 import { localizeCode, useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
+import { FormActions } from '../../../components/ui/FormActions';
 import { Card } from '../../../components/ui/Card';
 import { Field, textInputClassName } from '../../../components/ui/Field';
 import { Notice } from '../../../components/ui/Notice';
@@ -10,6 +11,7 @@ import { createPlan, patchPlan, removePlan } from '../api/client';
 import type { AdminPlan } from '../types/models';
 import { AccessFields, type AccessDraft } from '../../academic/AccessFields';
 import { cairoDeadlineInput, cairoWallTime, moneyInput } from '../../academic/model';
+import { useUnsavedChanges } from '../../../components/ui/UnsavedChanges';
 const initialAccess: AccessDraft = { mode: 'DURATION', duration: '90', deadline: '' };
 export function PlanEditor({
   courseId,
@@ -28,13 +30,18 @@ export function PlanEditor({
   const [access, setAccess] = useState<AccessDraft>(initialAccess);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [baseline,setBaseline]=useState(JSON.stringify({current:'',previous:'',access:initialAccess}));
+  const discard=useUnsavedChanges(JSON.stringify({current,previous,access})!==baseline,ar?'عرض السعر والوصول غير محفوظ. هل تريد تركه؟':'The price/access offer is unsaved. Leave without saving?');
   function reset() {
     setEditing(null);
     setCurrent('');
     setPrevious('');
     setAccess(initialAccess);
+    setBaseline(JSON.stringify({current:'',previous:'',access:initialAccess}));
   }
   function edit(plan: AdminPlan) {
+    if(!discard())return;
+    setBaseline(JSON.stringify({current:(plan.currentPricePiastres/100).toFixed(2),previous:plan.previousPricePiastres===null?'':(plan.previousPricePiastres/100).toFixed(2),access:{mode:plan.accessMode??'DURATION',duration:String(plan.durationDays??''),deadline:plan.accessEndsAt?cairoWallTime(plan.accessEndsAt):''}}));
     setEditing(plan.id);
     setCurrent((plan.currentPricePiastres / 100).toFixed(2));
     setPrevious(
@@ -143,16 +150,16 @@ export function PlanEditor({
           </Field>
         </div>
         <AccessFields value={access} onChange={setAccess} prefix="plan" />
-        <div className="flex flex-wrap gap-3">
+        <FormActions>
           <Button disabled={busy} type="submit">
             {editing ? t.submitSave : t.actionAddPlan}
           </Button>
           {editing ? (
-            <Button disabled={busy} variant="secondary" onClick={reset}>
+            <Button disabled={busy} type="button" variant="secondary" onClick={()=>{if(discard()){reset();setError(null);}}}>
               {t.actionCancel}
             </Button>
           ) : null}
-        </div>
+        </FormActions>
       </form>
     </Card>
   );

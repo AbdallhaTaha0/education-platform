@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react';
 import { useLang } from '../../../i18n';
 import { Card, Container } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
+import { FormActions } from '../../../components/ui/FormActions';
 import { EmptyState, Loading, Notice } from '../../../components/ui/Notice';
 import { Money } from '../../wallet/components/Money';
 import { fetchMyPurchases } from '../api/client';
 import { packageHistory, type PackageReceipt } from '../../academic/api';
 import { displayDeadline } from '../../academic/model';
+import { learningApi } from '../../learning/api/client';
 
 export function PurchaseHistoryPage(): JSX.Element {
   const { t, lang } = useLang();
@@ -16,10 +18,12 @@ export function PurchaseHistoryPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
   const [retry, setRetry] = useState(0);
+  const [courseNames,setCourseNames]=useState<Record<string,{titleAr:string;titleEn:string}>>({});
   useEffect(() => {
     let live = true;
     setLoading(true);
     setFailed(false);
+    void learningApi.dashboard().then(d=>{if(live)setCourseNames(Object.fromEntries([...d.active,...d.expired].map(c=>[c.courseId,c])));}).catch(()=>undefined);
     Promise.all([fetchMyPurchases(), packageHistory()])
       .then(([c, p]) => {
         if (live) {
@@ -49,9 +53,11 @@ export function PurchaseHistoryPage(): JSX.Element {
               <Notice kind="error">
                 {ar ? 'تعذّر تحميل المشتريات.' : 'Could not load purchases.'}
               </Notice>
-              <Button variant="secondary" onClick={() => setRetry((v) => v + 1)}>
-                {t.retryLabel}
-              </Button>
+              <FormActions>
+                <Button variant="secondary" onClick={() => setRetry((v) => v + 1)}>
+                  {t.retryLabel}
+                </Button>
+              </FormActions>
             </>
           ) : (
             <>
@@ -88,6 +94,9 @@ export function PurchaseHistoryPage(): JSX.Element {
                   <li key={`course-${row.id}`}>
                     <Card className="flex flex-wrap items-center justify-between gap-3">
                       <div>
+                        <h2 className="mb-2 text-xl font-bold">{courseNames[row.courseId] ? ar?courseNames[row.courseId].titleAr:courseNames[row.courseId].titleEn : ar?'كورس غير متاح حاليًا':'Course currently unavailable'}</h2>
+                        <p className="text-xs text-muted">{ar?'اسم الكورس الحالي؛ السعر والشروط أدناه من إيصال الشراء.':'Current course name; the price and terms below are from your receipt.'}</p>
+                        <p className="my-2 break-all text-xs" dir="ltr">{ar?'مرجع الإيصال':'Receipt reference'}: {row.id}</p>
                         <h2 className="font-bold">
                           <Money piastres={row.pricePiastres} />
                         </h2>
@@ -104,6 +113,7 @@ export function PurchaseHistoryPage(): JSX.Element {
                         </p>
                       </div>
                       <p className="text-sm text-muted">{displayDeadline(row.createdAt, lang)}</p>
+                      {courseNames[row.courseId] ? <a href={`#/learn/${row.courseId}`} className="inline-block min-h-[44px] py-2 underline">{ar?'فتح مساحة التعلم':'Open learning space'}</a>:null}
                     </Card>
                   </li>
                 ))}

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { ApiError } from '../../../auth';
 import { localizeCode, useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
+import { FormActions } from '../../../components/ui/FormActions';
 import { Card } from '../../../components/ui/Card';
 import { Field, textInputClassName } from '../../../components/ui/Field';
 import { Notice } from '../../../components/ui/Notice';
@@ -10,6 +11,10 @@ import { createLesson, patchLesson, reorderLessons } from '../api/client';
 import type { AdminLesson } from '../types/models';
 import { MediaUploader } from './MediaUploader';
 import { AdminAssessmentPanel } from '../../assessments/AdminAssessmentPanel';
+import { DeletionPanel } from './DeletionPanel';
+import { businessState } from '../../../components/ui/AdminNavigation';
+import { EntityRename } from './EntityRename';
+import { useUnsavedChanges } from '../../../components/ui/UnsavedChanges';
 
 export function LessonList({
   sectionId,
@@ -25,6 +30,7 @@ export function LessonList({
   const [titleEn, setTitleEn] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useUnsavedChanges(!!(titleAr || titleEn),lang==='ar'?'اسم الدرس الجديد غير محفوظ. هل تريد تركه؟':'The new lesson name is unsaved. Leave without saving?');
 
   async function submit(e: FormEvent): Promise<void> {
     e.preventDefault();
@@ -68,7 +74,7 @@ export function LessonList({
               <span className="font-semibold">
                 #{l.position} {lang === 'ar' ? l.titleAr : l.titleEn}
               </span>
-              <LessonRename lessonId={l.id} onChanged={onChanged} />
+              <EntityRename titleAr={l.titleAr} titleEn={l.titleEn} onSave={async body=>{await patchLesson(l.id,body);await onChanged();}} />
               <OrderingControls
                 onMoveUp={() => void move(i, -1)}
                 onMoveDown={() => void move(i, 1)}
@@ -78,7 +84,7 @@ export function LessonList({
               />
             </div>
             <div className="mt-2 text-sm text-muted">
-              {t.mediaStatusLabel}: {l.media?.status ?? '—'}
+              {t.mediaStatusLabel}: {l.media ? businessState(l.media.status, lang==='ar') : '—'}
             </div>
             <MediaUploader
               lessonId={l.id}
@@ -86,6 +92,7 @@ export function LessonList({
               onChanged={onChanged}
             />
             <AdminAssessmentPanel lessonId={l.id} />
+            <DeletionPanel kind="lessons" targetId={l.id} entityName={lang==='ar'?l.titleAr:l.titleEn} expectedConfirmation={l.id} onChanged={onChanged}/>
           </li>
         ))}
       </ul>
@@ -113,62 +120,15 @@ export function LessonList({
             onChange={(e) => setTitleEn(e.target.value)}
           />
         </Field>
-        <div className="col-span-2">
-          <Button type="submit" disabled={busy}>
-            {t.actionAddLesson}
-          </Button>
+        <div className="col-span-2 max-sm:col-span-1">
+          <FormActions className="mt-0">
+            <Button type="submit" disabled={busy}>
+              {t.actionAddLesson}
+            </Button>
+          </FormActions>
         </div>
       </form>
     </div>
-  );
-}
-
-function LessonRename({
-  lessonId,
-  onChanged,
-}: {
-  lessonId: string;
-  onChanged: () => Promise<void>;
-}): JSX.Element {
-  const { t } = useLang();
-  const [editing, setEditing] = useState(false);
-  const [titleAr, setTitleAr] = useState('');
-  const [titleEn, setTitleEn] = useState('');
-  if (!editing) {
-    return (
-      <Button variant="secondary" onClick={() => setEditing(true)}>
-        {t.actionEdit}
-      </Button>
-    );
-  }
-  return (
-    <span className="inline-flex flex-wrap items-end gap-2">
-      <input
-        aria-label={t.fieldTitleAr}
-        className={textInputClassName(false)}
-        value={titleAr}
-        onChange={(e) => setTitleAr(e.target.value)}
-      />
-      <input
-        aria-label={t.fieldTitleEn}
-        dir="ltr"
-        className={textInputClassName(false)}
-        value={titleEn}
-        onChange={(e) => setTitleEn(e.target.value)}
-      />
-      <Button
-        variant="primary"
-        onClick={() => {
-          void (async () => {
-            await patchLesson(lessonId, { titleAr, titleEn });
-            setEditing(false);
-            await onChanged();
-          })();
-        }}
-      >
-        {t.submitSave}
-      </Button>
-    </span>
   );
 }
 

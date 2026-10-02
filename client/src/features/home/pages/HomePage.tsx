@@ -1,6 +1,7 @@
 import { Container } from '../../../components/ui/Card';
 import { PublicCatalogSections } from '../../catalog/pages/PublicCatalogPage';
 import { useLang } from '../../../i18n';
+import { useAuth } from '../../../auth';
 import heroSmall from '../../../assets/fayq-learning-640.webp';
 import heroLarge from '../../../assets/fayq-learning-1280.webp';
 
@@ -10,6 +11,7 @@ export function HomePage({
   onSelectCourse: (slug: string) => void;
 }): JSX.Element {
   const { t, lang } = useLang();
+  const {user}=useAuth();
   const c = (ar: string, en: string): string => (lang === 'ar' ? ar : en);
   const how = (): void => {
     const title = document.getElementById('how-title');
@@ -118,6 +120,7 @@ export function HomePage({
                 )}
               </p>
               <div className="hero-actions">
+                {!user ? <a className="fayq-action fayq-action--quiet" href="#/register">{c('أنشئ حساب طالب','Create a student account')}</a>:null}
                 <a className="fayq-action" href="#/courses">
                   {c('اكتشف الدورات', 'Explore courses')}
                   <span aria-hidden="true">↗</span>

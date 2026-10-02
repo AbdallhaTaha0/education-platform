@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { BrandMark } from './BrandMark';
+import { ErrorFeedback } from './ErrorFeedback';
 
 type Kind = 'error' | 'success' | 'info' | 'pending';
 
@@ -18,13 +19,14 @@ export function Notice({
   children: ReactNode;
 }): JSX.Element | null {
   if (children === null || children === undefined || children === '') return null;
+  if (kind === 'error') return <ErrorFeedback>{children}</ErrorFeedback>;
   return (
     <div
       className={`mb-4 flex items-start gap-3 rounded-control border px-4 py-3 font-semibold [&:empty]:hidden ${CLASSES[kind]}`}
-      role={kind === 'error' ? 'alert' : 'status'}
+      role="status"
     >
       <span aria-hidden="true" className="mt-0.5 text-lg">
-        {kind === 'error' ? '!' : kind === 'success' ? '✓' : kind === 'pending' ? '…' : 'i'}
+        {kind === 'success' ? '✓' : kind === 'pending' ? '…' : 'i'}
       </span>
       {children}
     </div>

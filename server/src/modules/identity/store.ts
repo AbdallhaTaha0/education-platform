@@ -50,8 +50,19 @@ export async function createSessionFamily(
     csrfHash: string | null;
     absoluteExpiresAt: Date;
     refreshSecret: string;
+    expectedPasswordHash?: string;
   },
 ): Promise<void> {
+  if (input.expectedPasswordHash !== undefined) {
+    await prisma.$transaction(async tx => {
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${input.userId} FOR UPDATE`;
+      const user = await tx.user.findUnique({where:{id:input.userId},select:{passwordHash:true}});
+      if (user?.passwordHash !== input.expectedPasswordHash) throw new ApiError(401,'INVALID_CREDENTIALS','Email/phone or password is incorrect.');
+      await tx.authSession.create({data:{id:input.sessionId,userId:input.userId,csrfHash:input.csrfHash,absoluteExpiresAt:input.absoluteExpiresAt}});
+      await tx.refreshToken.create({data:{sessionId:input.sessionId,tokenHash:sha256Hex(input.refreshSecret)}});
+    });
+    return;
+  }
   await prisma.$transaction([
     prisma.authSession.create({
       data: {

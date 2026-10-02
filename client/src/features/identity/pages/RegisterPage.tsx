@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError, apiFetch, useAuth } from '../../../auth';
 import { Button } from '../../../components/ui/Button';
+import { FormActions } from '../../../components/ui/FormActions';
 import { BrandMark } from '../../../components/ui/BrandMark';
 import { Container } from '../../../components/ui/Card';
 import { Field, textInputClassName } from '../../../components/ui/Field';
@@ -9,7 +10,7 @@ import { useLang } from '../../../i18n';
 import { fieldError, localize, useTitleFocus } from '../components/IdentityForm';
 
 export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const { reload } = useAuth();
   const titleRef = useTitleFocus();
   const [name, setName] = useState('');
@@ -17,6 +18,7 @@ export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element 
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [showPassword,setShowPassword]=useState(false);
   const [busy, setBusy] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [errorField, setErrorField] = useState<string | undefined>(undefined);
@@ -111,6 +113,7 @@ export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element 
               id="reg-email"
               name="email"
               type="email"
+              placeholder="student@example.com"
               autoComplete="email"
               required
               value={email}
@@ -133,6 +136,7 @@ export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element 
               id="reg-phone"
               name="phone"
               type="tel"
+              placeholder="+201012345678"
               inputMode="tel"
               autoComplete="tel"
               required
@@ -155,7 +159,7 @@ export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element 
             <input
               id="reg-password"
               name="new-password"
-              type="password"
+              type={showPassword?'text':'password'}
               autoComplete="new-password"
               required
               minLength={12}
@@ -174,7 +178,7 @@ export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element 
             <input
               id="reg-confirm"
               name="confirm-password"
-              type="password"
+              type={showPassword?'text':'password'}
               autoComplete="new-password"
               required
               value={confirm}
@@ -182,12 +186,16 @@ export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element 
               className={textInputClassName(false)}
             />
           </Field>
-          <div className="mt-6 flex flex-wrap gap-3">
+          <FormActions>
+            <Button type="button" variant="secondary" aria-pressed={showPassword} onClick={()=>setShowPassword(v=>!v)}>{lang==='ar'?(showPassword?'إخفاء كلمات المرور':'إظهار كلمات المرور'):(showPassword?'Hide passwords':'Show passwords')}</Button>
+          </FormActions>
+          <FormActions>
             <Button type="submit" disabled={busy}>
               {t.submitRegister}
             </Button>
-          </div>
+          </FormActions>
         </form>
+        <p className="mt-5"><a href="#/login" className="underline">{lang==='ar'?'لديك حساب؟ سجل الدخول':'Already have an account? Sign in'}</a></p>
       </div>
     </Container>
   );

@@ -3,6 +3,7 @@ import { EditorView, basicSetup } from 'codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { useLang } from '../../i18n';
 import { Button } from '../../components/ui/Button';
+import { Notice } from '../../components/ui/Notice';
 import { previewDocument } from './preview';
 import type { SourceFiles } from './types';
 import { javaScriptHighlight } from './highlight';
@@ -75,7 +76,7 @@ export function WebIDE({ value, onChange, beforeRun, disabled = false, starter, 
       {starter ? <Button data-testid="ide-reset" variant="secondary" onClick={() => setResetting(true)} disabled={formatting || busy}>{label('استعادة الكود الابتدائي', 'Reset to starter')}</Button> : null}
     </div>
     {resetting && starter ? <div role="alert" className="mb-3 rounded-control border border-border p-3"><p>{label('سيتم استبدال الكود الحالي بالكود الابتدائي لهذا السؤال. المحاولات والنتائج السابقة لن تتغير.', 'Replace your current code with this question’s starter code? Previous submissions and results will stay unchanged.')}</p><div className="mt-2 flex flex-wrap gap-2"><Button data-testid="ide-reset-confirm" disabled={formatting || busy} onClick={() => { runId.current = ''; setDocument(null); setLines([]); setFormatError(''); callback.current({ ...starter }); setResetting(false); }}>{label('تأكيد الاستعادة', 'Confirm reset')}</Button><Button variant="secondary" onClick={() => setResetting(false)}>{label('إلغاء', 'Cancel')}</Button></div></div> : null}
-    {formatError ? <p role="alert" className="mb-3 text-error-fg">{formatError}</p> : null}
+    {formatError ? <Notice kind="error">{formatError}</Notice> : null}
     <label className="mb-3 block text-sm font-semibold">{label('المدخلات (كل readline يقرأ سطرًا)', 'Input (each readline reads one line)')}<textarea data-testid="ide-input" dir="ltr" rows={3} maxLength={8192} value={input} onChange={(event) => setInput(event.target.value)} className="mt-2 w-full rounded-control border border-border bg-elevated p-3 font-mono text-ink" /></label>
     <div data-testid="ide-workspace" className="grid min-w-0 gap-4 lg:grid-cols-2">
       <div ref={host} data-testid="ide-editor" dir="ltr" className="ide-editor min-h-[420px] min-w-0 overflow-hidden rounded-control border border-border bg-elevated text-ink" />
