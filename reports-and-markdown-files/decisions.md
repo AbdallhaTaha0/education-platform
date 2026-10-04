@@ -1,5 +1,9 @@
 # Decision register
 
+## Later owner instruction — finish materials, push both, shut down (2026-10-04)
+
+The owner asked to finish the remaining integration, commit/push/report and shut down the laptop, then explicitly clarified "push both the drm and the platform". This authorizes delivery of the completed platform materials integration and existing bounded DRM recovery. It supersedes the earlier pending-material preservation/DRM no-push restriction for this delivery; no new nested DRM implementation or production permission is inferred. See [completed integration](course-materials-and-dual-repository-delivery-20261004.md).
+
 ## Owner delivery instruction — 2026-10-04
 
 After the playback recovery correction handoff, the owner asked the coordinator to fix any remaining bugs directly, then commit and push completed work and make a report. This authorizes the verified platform recovery/website UX delivery documented in [the completed-work report](completed-work-and-playback-delivery-20261004.md). Preserve unfinished materials changes outside that commit, the retained preview and the independent nested DRM repository. No production deployment, milestone acceptance or new DRM maintenance is inferred.

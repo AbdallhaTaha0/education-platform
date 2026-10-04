@@ -112,6 +112,14 @@ services:
       DRM_ASSERTION_SECRET: ${DRM_ASSERTION_SECRET:-}
       DRM_ASSERTION_MAX_LIFETIME_SEC: ${DRM_ASSERTION_MAX_LIFETIME_SEC:-120}
       DRM_PUBLIC_BASE_URL: ${DRM_PUBLIC_BASE_URL:-}
+      # Optional platform-owned private materials storage (never DRM objects).
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-}
+      STORAGE_REGION: ${STORAGE_REGION:-}
+      STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:-}
+      STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:-}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-}
+      STORAGE_REQUEST_TIMEOUT_MS: ${STORAGE_REQUEST_TIMEOUT_MS:-5000}
+      STORAGE_MAX_RETRIES: ${STORAGE_MAX_RETRIES:-2}
       # M4 manual funding (server-only deployment config): JSON array of
       # approved receiving channels. Unset = explicitly unconfigured (M4
       # endpoints answer 503 PAYMENT_UNCONFIGURED). Never commit real

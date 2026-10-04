@@ -212,7 +212,7 @@ export class DrmFixture {
             }
             const payload: Record<string, unknown> = { id, status: asset.status };
             if (asset.durationSeconds !== undefined) {
-              payload.durationSeconds = asset.durationSeconds;
+              payload.duration = asset.durationSeconds;
             }
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(payload));

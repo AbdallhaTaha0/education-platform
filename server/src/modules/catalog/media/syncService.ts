@@ -40,16 +40,17 @@ export async function syncLessonMedia(
     data: {
       status: nextLocal,
       lastSyncedAt: new Date(),
+      durationSeconds: remote.durationSeconds ?? null,
       ...(nextLocal === 'FAILED' ? { errorCategory: 'DRM_SERVER' } : { errorCategory: null }),
     },
   });
-  if (prev !== nextLocal) {
+  if (prev !== nextLocal || updated.durationSeconds !== lesson.media.durationSeconds) {
     await audit(prisma, {
       actorUserId: actorId,
       action: 'MEDIA_SYNCED',
       entityType: 'Lesson',
       entityId: lessonId,
-      metadata: { from: prev, to: nextLocal },
+      metadata: { from: prev, to: nextLocal, durationSeconds: remote.durationSeconds ?? null },
     });
   }
   return updated;
@@ -69,26 +70,26 @@ export async function syncCourseMedia(
     include: { sections: { include: { lessons: { include: { media: true } } } } },
   });
   if (course === null) throw new ApiError(404, 'NOT_FOUND', 'Course not found.');
-  const details: { lessonId: string; from: string; to: string }[] = [];
+  const details: { lessonId: string; from: string; to: string; durationSeconds?: number | null }[] = [];
   for (const s of course.sections) {
     for (const l of s.lessons) {
       if (l.media?.assetId == null) continue;
       try {
         const remote = await drm.mediaStatus(l.media.assetId);
         const nextLocal = mapDrmStatusToLocal(remote.status) as MediaState;
-        if (nextLocal !== l.media.status) {
+        if (nextLocal !== l.media.status || remote.durationSeconds !== l.media.durationSeconds) {
           await prisma.mediaMapping.update({
             where: { id: l.media.id },
-            data: { status: nextLocal, lastSyncedAt: new Date() },
+            data: { status: nextLocal, lastSyncedAt: new Date(), durationSeconds: remote.durationSeconds ?? null },
           });
           await audit(prisma, {
             actorUserId: actorId,
             action: 'MEDIA_SYNCED',
             entityType: 'Lesson',
             entityId: l.id,
-            metadata: { from: l.media.status, to: nextLocal },
+            metadata: { from: l.media.status, to: nextLocal, durationSeconds: remote.durationSeconds ?? null },
           });
-          details.push({ lessonId: l.id, from: l.media.status, to: nextLocal });
+          details.push({ lessonId: l.id, from: l.media.status, to: nextLocal, durationSeconds: remote.durationSeconds ?? null });
         }
       } catch {
         await prisma.mediaMapping.update({

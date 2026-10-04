@@ -1,5 +1,7 @@
 # Course-learning handoff review
 
+**Final follow-up (2026-10-04):** The blockers documented below were corrected and verified. [The integrated delivery report](course-materials-and-dual-repository-delivery-20261004.md) maps every finding to its correction and distinguishes real evidence from the historical worker claims. The retained preview is now upgraded with preserved data.
+
 2026-10-04, Africa/Cairo. **Backend handoff requires corrections; combined integration is not ready.** Frontend mocked-harness delivery remains distinct from real-API acceptance. Owner data/preview and both workers' source changes were preserved.
 
 Later checkpoint: the playback-recovery worker corrected the four historical typecheck errors below and added migration `20261004010541_playback_recovery_materials_sync`. The current server typecheck and 223 unit tests independently pass. Those two original findings need current migration validation rather than a claim that the file is still absent. Other materials contract/transport/lifecycle blockers remain. See [current playback coordinator review](playback-recovery-coordinator-review-20261004.md) and its separate correction gate.

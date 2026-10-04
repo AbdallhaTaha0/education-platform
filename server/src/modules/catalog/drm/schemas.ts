@@ -74,11 +74,20 @@ export function validateCompletionResponse(body: unknown): ValidatedCompletion {
 
 export interface ValidatedMediaStatus {
   status: string;
+  durationSeconds?: number;
 }
 
 export function validateMediaStatusResponse(body: unknown): ValidatedMediaStatus {
   if (!isRecord(body)) fail();
-  return { status: assertStatusField(body['status'], KNOWN_MEDIA_STATUSES) };
+  const status = assertStatusField(body['status'], KNOWN_MEDIA_STATUSES);
+  const out: ValidatedMediaStatus = { status };
+  if (body['durationSeconds'] !== undefined || body['duration'] !== undefined) {
+    const dur = body['durationSeconds'] ?? body['duration'];
+    if (status === 'READY' && typeof dur === 'number' && Number.isFinite(dur) && dur >= 0 && dur <= 2147483647) {
+      out.durationSeconds = Math.round(dur);
+    }
+  }
+  return out;
 }
 
 export interface ValidatedDeletionRequest {

@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: materials, POSTGRES_PASSWORD: synthetic_materials_test_only, POSTGRES_DB: course_learning_test }
+    volumes: [pg:/var/lib/postgresql/data]
+    healthcheck: { test: [CMD-SHELL, 'pg_isready -U materials -d course_learning_test'], interval: 2s, timeout: 3s, retries: 30 }
+  redis:
+    image: redis:7-alpine
+    volumes: [redis:/data]
+    healthcheck: { test: [CMD, redis-cli, ping], interval: 2s, timeout: 3s, retries: 30 }
+  minio:
+    image: fayq-materials-minio-fixture:20261004
+    environment: { MINIO_ROOT_USER: materials-test, MINIO_ROOT_PASSWORD: synthetic_materials_storage_only }
+    volumes: [objects:/data]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://localhost:9000/minio/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+volumes: { pg: {}, redis: {}, objects: {} }

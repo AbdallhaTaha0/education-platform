@@ -18,6 +18,8 @@ const config: ServerConfig = {
   readyTimeoutMs: 1000,
   drmRequestTimeoutMs: 1000,
   drmMaxRetries: 2,
+  storageRequestTimeoutMs: 1000,
+  storageMaxRetries: 2,
   drmAssertionMaxLifetimeSec: 120,
   isProduction: false,
   jwtSecret: 'test-secret-that-is-long-enough-32',

@@ -25,6 +25,7 @@ import {
 } from '../playback/service.js';
 import { detectCrossedSubscriptions } from '../expiry/reconciler.js';
 import { asyncRoute, ctxOf, studentOf, type LearningRouteContext } from './shared.js';
+import { createMaterialsRouter } from '../materials/routes.js';
 import { listOwnSessions } from '../sessions/service.js';
 
 const PLAYBACK_LIMIT: RateLimit = { windowSec: 60, max: 30 };
@@ -247,6 +248,9 @@ export function createLearningRouter(ctx: LearningRouteContext): Router {
       res.status(200).json(ok({ sessions: await listOwnSessions(c.prisma, student.userId) }));
     }),
   );
+
+  // Mount materials sub-router (captions + resources)
+  router.use('/', createMaterialsRouter(ctx));
 
   return router;
 }

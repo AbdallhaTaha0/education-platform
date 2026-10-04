@@ -18,6 +18,8 @@ services:
       OWNER_PREVIEW: '1'
       DRM_BASE_URL: http://host.docker.internal:3000
       DRM_PUBLIC_BASE_URL: http://localhost:3000
+      STORAGE_ENDPOINT: http://materials-minio:9000
+    networks: [default, materials]
   client:
     image: fayq-platform-client:0.9.0-m9
   grading:
@@ -47,4 +49,8 @@ volumes:
     external: true
   redisdata:
     name: ${LOCAL_REDISDATA_NAME:?configure retained platform cache volume}
+    external: true
+networks:
+  materials:
+    name: fayq-local-materials
     external: true

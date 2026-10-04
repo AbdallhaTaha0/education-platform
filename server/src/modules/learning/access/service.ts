@@ -148,6 +148,7 @@ export async function loadOutline(
       blockingAssessmentIds: string[];
       completed: boolean;
       resumePositionSeconds: number;
+      durationSeconds: number | null;
     }>;
   }>
 > {
@@ -157,7 +158,7 @@ export async function loadOutline(
     include: {
       lessons: {
         orderBy: { position: 'asc' },
-        include: { media: { select: { status: true, externalAssetId: true } } },
+        include: { media: { select: { status: true, externalAssetId: true, durationSeconds: true } } },
       },
     },
   });
@@ -184,6 +185,7 @@ export async function loadOutline(
         blockingAssessmentIds: locks.get(lesson.id) ?? [],
         completed: p?.completedAt !== null && p?.completedAt !== undefined,
         resumePositionSeconds: p?.completedAt ? 0 : (p?.positionSeconds ?? 0),
+        durationSeconds: lesson.media?.durationSeconds ?? null,
       };
     }),
   }));

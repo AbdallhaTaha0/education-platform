@@ -5,15 +5,19 @@
  * service. Mounted under /learning; the reconciler is a timer in the existing
  * process, using the platform's existing Redis convention.
  */
+import { createAdminMaterialsRouter } from './materials/routes.js';
+import { reconcileMaterialObjects } from './materials/service.js';
 import { Router } from 'express';
 import type { PrismaClient } from '@prisma/client';
 import type Redis from 'ioredis';
 import type { ServerConfig } from '../../config.js';
 import type { DrmClient } from '../catalog/drmClient.js';
+import type { StorageClient } from '../../infra/storage.js';
 import { getLogger } from '../../logger.js';
 import { createLearningRouter } from './routes/index.js';
 import { createLearningAdminRouter } from './routes/admin.js';
 import { reconcileExpiredSessions } from './expiry/reconciler.js';
+import { createStorageClient } from '../../infra/storage.js';
 import type { LearningRouteContext } from './types.js';
 
 export const EXPIRY_RECONCILE_INTERVAL_MS = 30_000;
@@ -33,9 +37,11 @@ export function createLearningModule(deps: LearningModuleDeps): {
 } {
   const now = deps.clock ?? (() => Date.now());
   const drm = deps.drmFactory(deps.config);
+  const storage = createStorageClient(deps.config);
   const context: LearningRouteContext = {
     prisma: deps.prisma,
     drm,
+    storage,
     playback: {
       prisma: deps.prisma,
       drm: drm as NonNullable<typeof drm>,
@@ -54,7 +60,7 @@ export function createLearningModule(deps: LearningModuleDeps): {
   };
   return {
     router: createLearningRouter(context),
-    adminRouter: createLearningAdminRouter(context),
+    adminRouter: Router().use(createLearningAdminRouter(context)).use(createAdminMaterialsRouter(context)),
     context,
   };
 }
@@ -65,7 +71,11 @@ export function createLearningModule(deps: LearningModuleDeps): {
  */
 export function startExpiryReconciler(deps: LearningModuleDeps): () => void {
   const now = deps.clock ?? (() => Date.now());
+  const storage = createStorageClient(deps.config);
+  let running = false;
   const timer = setInterval(() => {
+    if (running) return;
+    running = true;
     void (async () => {
       try {
         const result = await reconcileExpiredSessions(
@@ -94,9 +104,18 @@ export function startExpiryReconciler(deps: LearningModuleDeps): () => void {
           { module: 'learning-expiry', code: (err as { code?: string }).code ?? 'unknown' },
           'expiry reconciliation pass failed',
         );
-      }
+      } finally { running = false; }
     })();
   }, EXPIRY_RECONCILE_INTERVAL_MS);
+  let cleaning = false;
+  const materialTimer = storage ? setInterval(() => {
+    if (cleaning) return;
+    cleaning = true;
+    void reconcileMaterialObjects({ prisma: deps.prisma, storage, now }).catch(() => {
+      getLogger().warn({ module: 'material-cleanup' }, 'owned-object cleanup remains pending');
+    }).finally(() => { cleaning = false; });
+  }, EXPIRY_RECONCILE_INTERVAL_MS) : null;
+  materialTimer?.unref?.();
   timer.unref?.();
-  return () => clearInterval(timer);
+  return () => { clearInterval(timer); if (materialTimer) clearInterval(materialTimer); };
 }

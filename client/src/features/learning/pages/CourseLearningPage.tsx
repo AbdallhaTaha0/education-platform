@@ -13,6 +13,8 @@ import { DashLessonPlayer } from '../player/Player';
 import { clear as clearSession } from '../player/session';
 import { LessonAssessments } from '../../assessments/LessonAssessments';
 import { CoursePlan, useLearningLabels } from '../components/CoursePlan';
+import { CaptionControls, ResourcesPanel } from '../materials/LessonMaterials';
+import { useLessonMaterials } from '../materials/useLessonMaterials';
 import { OwnSessionRecovery } from '../sessions/OwnSessionRecovery';
 import { Button } from '../../../components/ui/Button';
 
@@ -123,6 +125,29 @@ export function CourseLearningPage({ courseSlug, onRenew, initialLessonId }: Cou
     [playback, selectedLessonId],
   );
 
+  // Lesson materials (captions/resources) for the currently selected lesson.
+  // This hook is called unconditionally before every early return so the hook
+  // order stays stable across loading/error/ready renders. It fetches only the
+  // entitlement-checked materials payload and validates caption bytes; the
+  // server re-checks access on every request.
+  const accessLost =
+    errorCode === 'LESSON_NOT_FOUND' ||
+    errorCode === 'FORBIDDEN' ||
+    playback.errorCode === 'LESSON_NOT_FOUND' ||
+    playback.errorCode === 'SUBSCRIPTION_REQUIRED' ||
+    playback.errorCode === 'FORBIDDEN' ||
+    errorCode === 'SUBSCRIPTION_EXPIRED' ||
+    errorCode === 'SUBSCRIPTION_REQUIRED' ||
+    playback.errorCode === 'PLAYBACK_SESSION_EXPIRED' ||
+    playback.errorCode === 'SUBSCRIPTION_EXPIRED';
+  const preselectedLessonId =
+    sections === null
+      ? null
+      : (sections
+          .flatMap((section) => section.lessons)
+          .find((lesson) => lesson.lessonId === selectedLessonId)?.lessonId ?? null);
+  const lessonMaterials = useLessonMaterials(preselectedLessonId, accessLost);
+
   if (loading) {
     return (
       <Container id="main">
@@ -218,6 +243,20 @@ export function CourseLearningPage({ courseSlug, onRenew, initialLessonId }: Cou
                 grant={playback.grant}
                 entitlementLost={entitlementLost}
                 labels={playerLabels(t)}
+                captionUrls={lessonMaterials.captionUrls}
+                captionChoice={lessonMaterials.captionChoice}
+                captionControls={
+                  <CaptionControls
+                    lang={lang}
+                    choice={lessonMaterials.captionChoice}
+                    onChoice={lessonMaterials.setCaptionChoice}
+                    hasAr={(lessonMaterials.materials?.captions ?? []).some((c) => c.language === 'ar')}
+                    hasEn={(lessonMaterials.materials?.captions ?? []).some((c) => c.language === 'en')}
+                    loading={lessonMaterials.captionLoading}
+                    errorCode={lessonMaterials.captionErrorCode}
+                    onRetry={lessonMaterials.retryCaptions}
+                  />
+                }
                 onRetry={() => void playback.start(selectedLesson.lessonId)}
                 onProgress={(position, duration, completed) =>
                   playback.reportProgress(position, duration, completed)
@@ -274,6 +313,17 @@ export function CourseLearningPage({ courseSlug, onRenew, initialLessonId }: Cou
               {nextLesson?.locked ? <p className="w-full text-sm text-muted">{lang === 'ar' ? 'اجتز التقييمات المطلوبة أدناه قبل الانتقال للدرس التالي.' : 'Pass the required assessments below before moving to the next lesson.'}</p> : null}
             </div> : null}
             {selectedLesson !== null ? <LessonAssessments key={selectedLesson.lessonId} lessonId={selectedLesson.lessonId} /> : null}
+            {selectedLesson !== null ? (
+              <ResourcesPanel
+                key={`resources-${preselectedLessonId}`}
+                onAccessLost={lessonMaterials.clearAccess}
+                lang={lang}
+                loading={lessonMaterials.loading}
+                errorCode={lessonMaterials.errorCode}
+                resources={lessonMaterials.resources}
+                onRetry={lessonMaterials.retry}
+              />
+            ) : null}
           </div>
 
           <div id="course-plan" className="course-plan-sidebar min-w-0 scroll-mt-24">

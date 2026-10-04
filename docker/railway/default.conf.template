@@ -15,7 +15,7 @@ server {
   index index.html;
   resolver ${DNS_RESOLVER} valid=10s;
   set $backend http://${BACKEND_HOST}:${BACKEND_PORT};
-  client_max_body_size 8m;
+  client_max_body_size 11m;
   add_header X-Content-Type-Options nosniff always;
   add_header Referrer-Policy no-referrer always;
   location = /edge-health { access_log off; return 200 'ok'; }

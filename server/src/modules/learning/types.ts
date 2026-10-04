@@ -2,12 +2,14 @@
 import type { PrismaClient } from '@prisma/client';
 import type { DrmClient } from '../catalog/drmClient.js';
 import type { PlaybackDeps } from './playback/service.js';
+import type { StorageClient } from '../../infra/storage.js';
 
 /** Route context stashed on the Express app under the `learning` key. */
 export interface LearningRouteContext {
   prisma: PrismaClient;
   drm: DrmClient | null;
   playback: PlaybackDeps;
+  storage: StorageClient | null;
   /** Backend time in ms. Browser time is display-only. */
   now: () => number;
 }
@@ -64,4 +66,37 @@ export interface WatermarkPresentation {
   maskedIdentity: string;
   positions: Array<{ x: number; y: number }>;
   expiresAt: string | null;
+}
+
+/** Caption metadata returned to students (no storage keys). */
+export interface CaptionMetadata {
+  id: string;
+  language: 'ar' | 'en';
+  labelAr: string;
+  labelEn: string;
+  byteSize: number;
+}
+
+/** Resource metadata returned to students (no storage keys). */
+export interface ResourceMetadata {
+  id: string;
+  labelAr: string;
+  labelEn: string;
+  fileName: string;
+  mimeType: string;
+  byteSize: number;
+}
+
+/** Materials response for a lesson. */
+export interface LessonMaterials {
+  lessonId: string;
+  durationSeconds: number | null;
+  captions: CaptionMetadata[];
+  resources: ResourceMetadata[];
+}
+
+/** Admin-facing materials response includes validation state. */
+export interface AdminLessonMaterials extends LessonMaterials {
+  captions: (CaptionMetadata & { state: string; errorCategory?: string | null })[];
+  resources: ResourceMetadata[];
 }

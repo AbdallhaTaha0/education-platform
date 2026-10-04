@@ -309,6 +309,14 @@ model CourseSection {
   @@index([courseId, position])
 }
 
+/// Platform-owned caption state for a lesson. Both languages must be validated
+/// together before either becomes available.
+enum CaptionState {
+  PENDING
+  VALIDATED
+  FAILED
+}
+
 model Lesson {
   id        String        @id @default(uuid())
   sectionId String
@@ -324,9 +332,59 @@ model Lesson {
 
   assessments Assessment[]
   preservedUnlocks PreservedLessonUnlock[]
+  captions    LessonCaption[]
+  resources   LessonResource[]
 
   @@unique([sectionId, position])
   @@index([sectionId, position])
+}
+
+/// Bilingual WebVTT caption pair for a lesson. Storage key is platform-owned and
+/// private; never exposed to clients. Both languages are required for availability.
+// Object intents survive lesson/course cascades and process crashes.
+model MaterialObject {
+  storageKey String @id
+  state String @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([state, updatedAt])
+}
+
+model LessonCaption {
+  id           String        @id @default(uuid())
+  lessonId     String
+  lesson       Lesson        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  language     String        // 'ar' | 'en'
+  labelAr      String
+  labelEn      String
+  storageKey   String        @unique
+  byteSize     Int
+  cueCount     Int
+  state        CaptionState  @default(PENDING)
+  errorCategory String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  validatedAt  DateTime?
+
+  @@unique([lessonId, language])
+  @@index([lessonId])
+}
+
+/// Platform-owned lesson resource (attachment). Separate from DRM video storage.
+model LessonResource {
+  id           String   @id @default(uuid())
+  lessonId     String
+  lesson       Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  labelAr      String
+  labelEn      String
+  fileName     String
+  mimeType     String
+  byteSize     Int
+  storageKey   String   @unique
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([lessonId])
 }
 
 /// Exact EGP prices in piastres (integer only, no floats) + fixed days.
@@ -361,6 +419,7 @@ model MediaMapping {
   uploadCompletedAt DateTime?
   lastSyncedAt      DateTime?
   errorCategory     String?
+  durationSeconds   Int?
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
 
@@ -385,7 +444,7 @@ model CatalogDeletionOperation {
   completedAt   DateTime?
   assets        CatalogDeletionAsset[]
 
-  @@index([targetType, targetId])
+  @@index([targetType, targetId], map: "CatalogDeletionOperation_target_idx")
   @@index([status])
   @@index([courseId])
 }
@@ -634,7 +693,7 @@ model AuditEvent {
   metadata   Json?
 
   @@index([actorUserId])
-  @@index([entityType, entityId])
+  @@index([entityType, entityId], map: "AuditEvent_entity_idx")
   @@index([createdAt])
 }
 

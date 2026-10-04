@@ -1,5 +1,7 @@
 # Completed website work and playback delivery — 2026-10-04
 
+**Later follow-up:** Pending materials were correctly excluded from this earlier delivery. The owner subsequently authorized finishing them and pushing both repositories; [the separate final report](course-materials-and-dual-repository-delivery-20261004.md) records that integration.
+
 The owner instructed the coordinator to repair remaining playback bugs directly, then commit, push and report the completed work. This delivery includes verified platform recovery and the previously completed website UX. It preserves unfinished course-material changes in the working tree and does not deploy or update localhost:8080.
 
 ## What we completed

@@ -25,6 +25,14 @@ export const DRM_ASSERTION_MAX_LIFETIME_MIN_SEC = 30;
 export const DRM_ASSERTION_MAX_LIFETIME_CEILING_SEC = 300;
 export const DRM_RETRIES_MAX = 3;
 
+/** Private storage defaults. */
+export const STORAGE_TIMEOUT_DEFAULT_MS = 5000;
+export const STORAGE_TIMEOUT_MIN_MS = 250;
+export const STORAGE_TIMEOUT_MAX_MS = 30000;
+export const STORAGE_RETRIES_DEFAULT = 2;
+export const STORAGE_RETRIES_MIN = 0;
+export const STORAGE_RETRIES_MAX = 3;
+
 /** M4 approved manual-funding channel identifier. */
 export type PaymentChannelId = 'INSTAPAY' | 'BANK_TRANSFER' | 'MOBILE_WALLET';
 
@@ -64,6 +72,15 @@ export interface ServerConfig {
   /** Bounded DRM HTTP timeout (ms) and retry budget (M3). */
   drmRequestTimeoutMs: number;
   drmMaxRetries: number;
+  /** Platform-owned private object storage (S3-compatible). Separate from DRM video storage. */
+  storageEndpoint?: string;
+  storageRegion?: string;
+  storageAccessKeyId?: string;
+  storageSecretAccessKey?: string;
+  storageBucket?: string;
+  /** Bounded storage HTTP timeout (ms) and retry budget. */
+  storageRequestTimeoutMs: number;
+  storageMaxRetries: number;
   /** Identity/auth settings below. Production fails closed on any weakness. */
   isProduction: boolean;
   /** Strong server-only access-token signing secret (min 32 chars). */
@@ -323,6 +340,57 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     DRM_RETRIES_MAX,
     'DRM_MAX_RETRIES',
   );
+
+  const storageEndpoint = optionalEnv(env, 'STORAGE_ENDPOINT');
+  const storageRegion = optionalEnv(env, 'STORAGE_REGION');
+  const storageAccessKeyId = optionalEnv(env, 'STORAGE_ACCESS_KEY_ID');
+  const storageSecretAccessKey = optionalEnv(env, 'STORAGE_SECRET_ACCESS_KEY');
+  const storageBucket = optionalEnv(env, 'STORAGE_BUCKET');
+  const storageConfiguredCount = [storageEndpoint, storageRegion, storageAccessKeyId, storageSecretAccessKey, storageBucket].filter(
+    (v) => v !== undefined,
+  ).length;
+  // All-or-none: partial storage configuration fails startup in every env.
+  if (storageConfiguredCount > 0 && storageConfiguredCount < 5) {
+    throw new Error(
+      'Invalid storage configuration (STORAGE_ENDPOINT, STORAGE_REGION, STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY and STORAGE_BUCKET are all-or-none).',
+    );
+  }
+  const storageRequestTimeoutMs = parseBoundedInt(
+    env['STORAGE_REQUEST_TIMEOUT_MS'],
+    STORAGE_TIMEOUT_DEFAULT_MS,
+    STORAGE_TIMEOUT_MIN_MS,
+    STORAGE_TIMEOUT_MAX_MS,
+    'STORAGE_REQUEST_TIMEOUT_MS',
+  );
+  const storageMaxRetries = parseBoundedInt(
+    env['STORAGE_MAX_RETRIES'],
+    STORAGE_RETRIES_DEFAULT,
+    STORAGE_RETRIES_MIN,
+    STORAGE_RETRIES_MAX,
+    'STORAGE_MAX_RETRIES',
+  );
+  if (storageConfiguredCount === 5) {
+    let storageUrl: URL;
+    try {
+      storageUrl = new URL(storageEndpoint as string);
+    } catch {
+      throw new Error('Invalid STORAGE_ENDPOINT (must be a parseable HTTP/HTTPS URL).');
+    }
+    if (storageUrl.protocol !== 'http:' && storageUrl.protocol !== 'https:') {
+      throw new Error('Invalid STORAGE_ENDPOINT (must be an HTTP/HTTPS URL).');
+    }
+    if (storageUrl.username || storageUrl.password || storageUrl.search || storageUrl.hash) throw new Error('Invalid STORAGE_ENDPOINT (credentials/query/fragment are not permitted).');
+    if (!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(storageBucket as string)) throw new Error('Invalid STORAGE_BUCKET.');
+    if (isProduction && storageUrl.protocol !== 'https:') {
+      throw new Error('Invalid STORAGE_ENDPOINT (production requires an HTTPS base URL).');
+    }
+  }
+  // Storage is optional in all environments (local dev, test, production).
+  // Production deployments must configure it explicitly, but the application
+  // does not fail startup without it to maintain compatibility with existing
+  // test fixtures and local development workflows.
+  // TODO: Make required in production after owner approval for storage deployment.
+
   if (drmConfiguredCount === 3) {
     let drmUrl: URL;
     try {
@@ -454,6 +522,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     drmClientSecret,
     drmRequestTimeoutMs,
     drmMaxRetries,
+    storageEndpoint,
+    storageRegion,
+    storageAccessKeyId,
+    storageSecretAccessKey,
+    storageBucket,
+    storageRequestTimeoutMs,
+    storageMaxRetries,
     isProduction,
     jwtSecret,
     authIssuer: parseIdentifierValue(env['AUTH_ISSUER'], 'AUTH_ISSUER'),

@@ -1,5 +1,7 @@
 # Course-learning UI handoff (agent 2 — frontend)
 
+**Coordinator follow-up (2026-10-04):** Combined real-API integration is now complete. [The final report](course-materials-and-dual-repository-delivery-20261004.md) records boundary/CRLF/stale-state fixes, the duplicate React-key fix, 19 real browser checks and the retained demo update. Mocked worker checks below remain distinct historical evidence.
+
 2026-10-04, Africa/Cairo. Frontend half of the course-learning enhancements,
 implemented against the frozen shared API contract
 (`course-learning-parallel-contract.md`) while agent 1 builds the real

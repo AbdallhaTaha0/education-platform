@@ -1,5 +1,7 @@
 # Course learning enhancements — proposed for owner approval
 
+**Owner-authorized completion (2026-10-04):** This planning/dispatch record is historical. The owner later instructed the coordinator to finish pending work and push both repositories. Search, truthful durations, bilingual captions and protected resources are now implemented and integrated; see [final delivery and verification](course-materials-and-dual-repository-delivery-20261004.md).
+
 Status: **PENDING APPROVAL**, 2026-10-04. These four enhancements are a proposal, not implemented features. The curriculum/progress/fullscreen changes are already available on the retained local preview; see [their report](course-ux-20261004/report.md).
 
 ## Proposed student experience

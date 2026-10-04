@@ -1,0 +1,23 @@
+# Persistent owner-local materials only. No published ports or DRM objects.
+services:
+  materials-minio:
+    image: fayq-materials-minio-fixture:20261004
+    environment:
+      MINIO_ROOT_USER: ${STORAGE_ACCESS_KEY_ID:?configure local storage credentials}
+      MINIO_ROOT_PASSWORD: ${STORAGE_SECRET_ACCESS_KEY:?configure local storage credentials}
+    volumes: [objects:/data]
+    networks: [materials]
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://localhost:9000/minio/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+volumes:
+  objects:
+    name: fayq-local-materials-objects
+    external: true
+networks:
+  materials:
+    name: fayq-local-materials
+    external: true
