@@ -11,6 +11,10 @@ Hello lesson
 `;
 
 describe('course-learning caption validation', () => {
+  it('accepts server-validated positioned and tab-delimited cues', () => {
+    expect(isValidWebVtt('WEBVTT\n\n00:00.000 --> 00:02.000 align:start position:10%\nCaption\n')).toBe(true);
+    expect(isValidWebVtt('WEBVTT\n\n100:00:00.000\t-->\t100:00:02.000\tposition:25.5%,line-left\nCaption\n')).toBe(true);
+  });
   it('accepts validated bilingual WebVTT', () => {
     expect(isValidWebVtt(VALID)).toBe(true);
   });

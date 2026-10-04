@@ -1,20 +1,29 @@
 /* IDE-specific tokens stay independent of the site's translated direction. */
 [data-testid='web-ide'] {
-  --ide-javascript: #f7df1e;
-  --ide-javascript-ink: #18181b;
+  --ide-language: #f7df1e;
+  --ide-language-ink: #18181b;
   --ide-run: #166534;
   --ide-run-hover: #14532d;
   --ide-run-pressed: #052e16;
   --ide-run-ink: #ffffff;
 }
 
+[data-testid='web-ide'][data-ide-mode='web'] {
+  --ide-language: #9a3412;
+  --ide-language-ink: #ffffff;
+}
+[data-testid='web-ide'][data-ide-mode='python'] {
+  --ide-language: #306998;
+  --ide-language-ink: #ffffff;
+}
+
 [data-testid='web-ide'] .ide-language {
-  background: var(--ide-javascript);
-  color: var(--ide-javascript-ink);
+  background: var(--ide-language);
+  color: var(--ide-language-ink);
 }
 [data-testid='web-ide'] .ide-language svg {
-  color: var(--ide-javascript);
-  border: 1px solid var(--ide-javascript-ink);
+  color: var(--ide-language);
+  border: 1px solid var(--ide-language-ink);
   border-radius: 3px;
 }
 [data-testid='web-ide'] .ide-run {
@@ -30,4 +39,72 @@
 }
 [data-testid='web-ide'] .ide-action button:disabled {
   cursor: not-allowed;
+}
+
+/* Scoped syntax tokens: embedded editors and admin reference editors share them.
+ * Keep the FAYQ surface; language palettes change code, not the surrounding UI.
+ */
+.ide-editor {
+  --ide-tag: #fdba74;
+  --ide-attribute: #7dd3fc;
+  --ide-property: #7dd3fc;
+  --ide-selector: #f9a8d4;
+  --ide-builtin: #c4b5fd;
+  --ide-meta: #f9a8d4;
+  --ide-invalid: #fda4af;
+}
+.ide-editor[data-ide-language='html'] {
+  --ide-keyword: #fdba74;
+  --ide-string: #a7f3d0;
+  --ide-tag: #fdba74;
+  --ide-attribute: #7dd3fc;
+  --ide-meta: #c4b5fd;
+}
+.ide-editor[data-ide-language='css'] {
+  --ide-keyword: #c4b5fd;
+  --ide-string: #a7f3d0;
+  --ide-number: #fde68a;
+  --ide-tag: #f9a8d4;
+  --ide-selector: #f9a8d4;
+  --ide-property: #7dd3fc;
+}
+.ide-editor[data-ide-language='python'] {
+  --ide-keyword: #93c5fd;
+  --ide-function: #fde68a;
+  --ide-string: #a7f3d0;
+  --ide-number: #fdba74;
+  --ide-builtin: #c4b5fd;
+  --ide-meta: #f9a8d4;
+}
+html[data-theme='light'] .ide-editor {
+  --ide-tag: #9a3412;
+  --ide-attribute: #075985;
+  --ide-property: #075985;
+  --ide-selector: #9d174d;
+  --ide-builtin: #6d28d9;
+  --ide-meta: #9d174d;
+  --ide-invalid: #be123c;
+}
+html[data-theme='light'] .ide-editor[data-ide-language='html'] {
+  --ide-keyword: #9a3412;
+  --ide-string: #065f46;
+  --ide-tag: #9a3412;
+  --ide-attribute: #075985;
+  --ide-meta: #6d28d9;
+}
+html[data-theme='light'] .ide-editor[data-ide-language='css'] {
+  --ide-keyword: #6d28d9;
+  --ide-string: #065f46;
+  --ide-number: #854d0e;
+  --ide-tag: #9d174d;
+  --ide-selector: #9d174d;
+  --ide-property: #075985;
+}
+html[data-theme='light'] .ide-editor[data-ide-language='python'] {
+  --ide-keyword: #1d4ed8;
+  --ide-function: #854d0e;
+  --ide-string: #065f46;
+  --ide-number: #9a3412;
+  --ide-builtin: #6d28d9;
+  --ide-meta: #9d174d;
 }

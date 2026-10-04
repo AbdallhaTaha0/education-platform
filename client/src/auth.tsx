@@ -116,22 +116,26 @@ export interface ApiOptions {
 
 const REFRESHABLE = new Set(['SESSION_EXPIRED', 'TOKEN_INVALID', 'TOKEN_MISSING']);
 
-export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
-  const method = options.method ?? 'GET';
-  const headers: Record<string, string> = { Accept: 'application/json' };
-  if (options.body !== undefined) headers['Content-Type'] = 'application/json';
-  if (STATE_CHANGING.has(method)) headers[CSRF_HEADER] = await ensureCsrf();
-
-  const attempt = async (): Promise<Response> =>
-    fetch(`${API_BASE}${path}`, {
-      method,
-      credentials: 'include',
-      headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    });
+/** Cookie transport shared by JSON, downloads and replayable FormData.
+ * Mutations may opt in only when a refreshable 401 comes from authentication
+ * middleware before business logic. Network/5xx failures are never replayed.
+ */
+export async function apiResponse(
+  path: string,
+  options: RequestInit & { retryOnAuth?: boolean } = {},
+): Promise<Response> {
+  const { retryOnAuth, ...init } = options;
+  const method = (init.method ?? 'GET').toUpperCase();
+  const attempt = async (): Promise<Response> => {
+    const headers = new Headers(init.headers);
+    if (!headers.has('Accept')) headers.set('Accept', 'application/json');
+    // Refresh may rebind the CSRF cookie. Read it again for the retry.
+    if (STATE_CHANGING.has(method)) headers.set(CSRF_HEADER, await ensureCsrf());
+    return fetch(`${API_BASE}${path}`, { ...init, method, credentials: 'include', headers });
+  };
 
   let res = await attempt();
-  const retry = options.retryOnAuth ?? method === 'GET';
+  const retry = retryOnAuth ?? method === 'GET';
   if (res.status === 401 && retry) {
     const failure = await parseFailure(res.clone());
     if (REFRESHABLE.has(failure.code) && (await refreshOnce())) {
@@ -144,6 +148,18 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promi
     const failure = await parseFailure(res);
     throw new ApiError(res.status, failure.code, failure.message, failure.details);
   }
+  return res;
+}
+
+export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
+  const res = await apiResponse(path, {
+    method: options.method,
+    retryOnAuth: options.retryOnAuth,
+    ...(options.body === undefined ? {} : {
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(options.body),
+    }),
+  });
   return (await res.json()) as T;
 }
 

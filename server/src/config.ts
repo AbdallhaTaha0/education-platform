@@ -7,6 +7,7 @@
  */
 
 import { createPrivateKey } from 'node:crypto';
+import { parseStudentDataKeys, type StudentDataKeys } from './modules/identity/student-data.js';
 import type { Argon2Params } from './modules/identity/password.js';
 import {
   ARGON2_MAXIMUMS,
@@ -56,6 +57,7 @@ export interface PaymentChannelConfig {
 }
 
 export interface ServerConfig {
+  studentDataKeys?: StudentDataKeys;
   nodeEnv: string;
   port: number;
   databaseUrl: string;
@@ -260,6 +262,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   }
   const nodeEnv = env['NODE_ENV'] ?? 'development';
   const isProduction = nodeEnv === 'production';
+  const studentDataKeys = parseStudentDataKeys(env);
 
   const jwtSecret = requiredEnv(env, 'AUTH_JWT_SECRET', 'server-only access-token signing secret');
   if (jwtSecret.length < 32) {
@@ -509,6 +512,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
     drmPublicBaseUrl = drmPublicBaseUrlRaw.replace(/\/+$/, '');
   }
   return {
+    ...(studentDataKeys ? { studentDataKeys } : {}),
     nodeEnv,
     port: parsePort(env['PORT']),
     databaseUrl,

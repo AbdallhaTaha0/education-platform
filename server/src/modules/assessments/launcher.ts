@@ -1,10 +1,14 @@
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
+import { executePythonAssessment } from './python.js';
+import type { Question, Answer } from './contracts.js';
 
 /** Only the trusted grading controller uses this launcher. Serving replicas
  * never mount a Docker socket, and executable source travels via stdin. */
 export async function executeIsolated(payload: unknown): Promise<{ correct: boolean; results: unknown[] }> {
+  const request = payload as { questions: Question[]; answers: Answer[]; mode?: string; seed?: string };
+  if (request.questions.some((q) => q.runtime === 'python')) return executePythonAssessment(request);
   const profile = process.env.GRADING_SECCOMP_FILE ?? '/srv/server/seccomp.chromium.json';
   const runtime = process.env.GRADING_RUNTIME ?? '';
   if (!existsSync(profile)) throw new Error('GRADING_PROFILE_MISSING');

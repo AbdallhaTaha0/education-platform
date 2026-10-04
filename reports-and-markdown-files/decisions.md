@@ -216,3 +216,18 @@ After dispatching the prepared OpenCode prompt, the owner stopped OpenCode and a
 ## Bounded device recovery owner authorization (2026-10-04)
 
 The owner explicitly answered **yes** to the quoted [bounded DRM recovery assignment](course-video-device-limit-20261004.md), then requested an improvement search. This permits only the external application's protected tenant-scoped device inspection/inactive ACTIVE registration release API, concurrency/audit regressions, named local synthetic-account recovery through that API and Docker/browser verification. Preserve active playback, revoked-device bans, configured limits, existing data and the API-only persistence boundary. No production deployment, unrelated DRM maintenance, feature-agent launch, acceptance or commit/push is inferred. [Outcome and recommendations](course-video-recovery-20261004.md) distinguish verified playback from browser-harness cleanup failures and additional proposed work.
+
+## IDE modes clarification — 2026-10-04
+
+Owner approved three independent IDE tabs/categories: HTML/CSS/JavaScript,
+JavaScript and Python, sharing the existing practice allowance. Python uses
+input()/print() problems, private reference solutions/generated tests, no
+external packages/network initially and isolated Docker execution. Existing
+exercise exemptions, unlimited retries, admin limit/reset controls and required
+or optional progression remain. See ide-modes-implementation-20261004.md.
+
+## Student registration details — 2026-10-04
+
+The owner required national ID for new students and rejected duplicate IDs, then approved the recommended required guardian phone, school year and governorate, optional school name and existing full-name field. Historical accounts retain access with voluntary completion; students edit contacts/education and ADMIN corrects existing national IDs. Shape validation is not official identity verification. See [the contract and evidence](student-registration-data-contract-20261004.md). No DRM maintenance, deployment, capacity certification, milestone acceptance or commit/push is inferred.
+
+Owner follow-up (2026-10-04): school-year choices and new/update API validation are restricted to SECONDARY_1 (أولى ثانوي) and SECONDARY_2 (تانية ثانوي). Existing saved records are not rewritten or used to block historical access.

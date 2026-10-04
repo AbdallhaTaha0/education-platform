@@ -1,20 +1,23 @@
 import { ApiError } from '../identity/errors.js';
 import { programSpec, type ProgramSpec } from './program-contracts.js';
 
-export interface SourceFiles { html: string; css: string; javascript: string }
+export type IDEMode = 'javascript' | 'web' | 'python';
+export function ideMode(v: unknown): IDEMode { if (v === undefined) return 'javascript'; if (v === 'javascript' || v === 'web' || v === 'python') return v; return invalid(); }
+export interface SourceFiles { html: string; css: string; javascript: string; python?: string }
 export type CheckType = 'exists' | 'text' | 'value' | 'attribute' | 'style' | 'function' | 'console';
 export interface Check {
   type: CheckType; selector?: string; name?: string; expected?: unknown; args?: unknown[];
   steps?: Array<{ action: 'click' | 'input'; selector: string; value?: string }>;
 }
 export interface Question {
+  runtime?: 'python';
   id: string; type: 'CODING' | 'CHOICE' | 'PROGRAM'; titleAr: string; titleEn: string;
   program?: ProgramSpec;
   starter?: SourceFiles; shareStarter?: boolean; checks?: Check[];
   choices?: Array<{ id: string; textAr: string; textEn: string }>;
   correctChoiceId?: string;
 }
-export interface Content { titleAr: string; titleEn: string; instructionsAr: string; instructionsEn: string; questions: Question[] }
+export interface Content { ide?: IDEMode; titleAr: string; titleEn: string; instructionsAr: string; instructionsEn: string; questions: Question[] }
 export interface Answer { questionId: string; source?: SourceFiles; choiceId?: string }
 export interface CheckResult { questionId: string; correct: boolean; checksPassed: number; checksTotal: number; error?: string }
 export const invalid = (): never => { throw new ApiError(400, 'VALIDATION_ERROR', 'Assessment input is invalid.'); };
@@ -32,7 +35,8 @@ export function key(v: unknown): string {
 export function files(v: unknown): SourceFiles {
   const o = object(v);
   for (const k of ['html', 'css', 'javascript']) if (typeof o[k] !== 'string' || (o[k] as string).length > 32768) invalid();
-  return { html: o.html as string, css: o.css as string, javascript: o.javascript as string };
+  if (o.python !== undefined && (typeof o.python !== 'string' || o.python.length > 32768)) return invalid();
+  return { html: o.html as string, css: o.css as string, javascript: o.javascript as string, ...(o.python !== undefined ? { python: o.python as string } : {}) };
 }
 function check(v: unknown): Check {
   const o = object(v); const type = o.type as CheckType;
@@ -60,14 +64,16 @@ function check(v: unknown): Check {
 }
 export function content(v: unknown): Content {
   const o = object(v);
+  const mode = ideMode(o.ide);
   if (!Array.isArray(o.questions) || o.questions.length < 1 || o.questions.length > 10) return invalid();
   const questions = o.questions.map((entry): Question => {
-    const q = object(entry); const base = { id: key(q.id), titleAr: text(q.titleAr, 2000), titleEn: text(q.titleEn, 2000) };
+    const q = object(entry); const base = { id: key(q.id), titleAr: text(q.titleAr, 2000), titleEn: text(q.titleEn, 2000), ...(mode === 'python' ? { runtime: 'python' as const } : {}) };
     if (q.type === 'PROGRAM') {
       if (q.shareStarter !== undefined && typeof q.shareStarter !== 'boolean') return invalid();
       return { ...base, type: 'PROGRAM', starter: files(q.starter), shareStarter: q.shareStarter === true, program: programSpec(q.program) };
     }
     if (q.type === 'CODING') {
+      if (mode === 'python') return invalid(); // Python uses input/output tests, never browser DOM/function checks.
       if (!Array.isArray(q.checks) || !q.checks.length || q.checks.length > 20) return invalid();
       if (q.shareStarter !== undefined && typeof q.shareStarter !== 'boolean') return invalid();
       return { ...base, type: 'CODING', starter: files(q.starter), shareStarter: q.shareStarter === true, checks: q.checks.map(check) };
@@ -81,14 +87,14 @@ export function content(v: unknown): Content {
   if (new Set(questions.map((q) => q.id)).size !== questions.length) return invalid();
   const planned = questions.filter((q) => q.type === 'PROGRAM').reduce((n, q) => n + q.program!.samples.length + (q.program!.generator?.mode === 'integer' ? q.program!.generator.count : 1), 0);
   if (planned > 20) return invalid();
-  const c = { titleAr: text(o.titleAr), titleEn: text(o.titleEn), instructionsAr: text(o.instructionsAr, 16000), instructionsEn: text(o.instructionsEn, 16000), questions };
+  const c = { ...(o.ide !== undefined ? { ide: mode } : {}), titleAr: text(o.titleAr), titleEn: text(o.titleEn), instructionsAr: text(o.instructionsAr, 16000), instructionsEn: text(o.instructionsEn, 16000), questions };
   if (Buffer.byteLength(JSON.stringify(c)) > 200_000) return invalid();
   return c;
 }
 export function publicContent(c: Content): Omit<Content, 'questions'> & { questions: Omit<Question, 'checks' | 'correctChoiceId'>[] } {
   return { ...c, questions: c.questions.map(({ checks: _checks, correctChoiceId: _correct, shareStarter, program, ...q }) => {
     const safeProgram = program ? (({ reference: _reference, generator: _generator, tests: _tests, ...safe }) => safe)(program) : undefined;
-    return { ...q, ...(safeProgram ? { program: safeProgram } : {}), ...(q.type !== 'CHOICE' ? { starter: shareStarter === true ? q.starter : { html: '', css: '', javascript: '' } } : {}) };
+    return { ...q, ...(safeProgram ? { program: safeProgram } : {}), ...(q.type !== 'CHOICE' ? { starter: shareStarter === true ? q.starter : { html: '', css: '', javascript: '', ...(c.ide === 'python' ? { python: '' } : {}) } } : {}) };
   }) };
 }
 export function answers(v: unknown, c: Content, draft = false): Answer[] {
@@ -96,7 +102,11 @@ export function answers(v: unknown, c: Content, draft = false): Answer[] {
   const out = c.questions.map((q) => {
     const matches = v.filter((x) => object(x).questionId === q.id); if (matches.length !== 1) return invalid();
     const a = object(matches[0]);
-    if (q.type !== 'CHOICE') return { questionId: q.id, source: files(a.source) };
+    if (q.type !== 'CHOICE') {
+      const source = files(a.source);
+      if (q.runtime === 'python' && (typeof source.python !== 'string' || source.html || source.css || source.javascript)) return invalid();
+      return { questionId: q.id, source };
+    }
     const choiceId = draft && a.choiceId === '' ? '' : key(a.choiceId);
     if (choiceId && !q.choices!.some((choice) => choice.id === choiceId)) return invalid();
     return { questionId: q.id, choiceId };

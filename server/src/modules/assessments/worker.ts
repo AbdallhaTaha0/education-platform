@@ -6,6 +6,7 @@ import { PrismaClient, type Prisma } from '@prisma/client';
 import { executeIsolated, cleanupExpiredExecutions } from './launcher.js';
 import type { Content, Answer } from './contracts.js';
 import { processPreparation } from './preparation.js';
+import { processPythonRun } from './python-runs.js';
 
 export async function processSubmission(db: PrismaClient, id: string, execute = executeIsolated): Promise<void> {
   const token = randomUUID(); const now = new Date();
@@ -62,13 +63,16 @@ export async function reconcilePreparations(db: PrismaClient, queue: Queue, now 
 /** Bounded retention; earned passes and progression snapshots are independent. */
 export async function retainGradingHistory(db: PrismaClient, now = Date.now()): Promise<boolean> {
   const cutoff = new Date(now - 180 * 86400000);
+  // Preview code/input is cleared on completion; short-lived output is not a submission.
+  const previews = await db.pythonRun.findMany({ where: { createdAt: { lt: new Date(now - 86400000) }, state: { notIn: ['PENDING', 'RUNNING'] } }, select: { id: true }, take: 1000 });
+  await db.pythonRun.deleteMany({ where: { id: { in: previews.map((p) => p.id) } } });
   const history = await db.assessmentSubmission.findMany({ where: { createdAt: { lt: cutoff }, state: { notIn: ['PENDING', 'RUNNING'] } }, select: { id: true }, take: 1000 });
   await db.assessmentSubmission.deleteMany({ where: { id: { in: history.map((s) => s.id) } } });
   const preparations = await db.assessmentPreparation.findMany({ where: { createdAt: { lt: cutoff }, state: { in: ['READY', 'FAILED'] } }, select: { id: true }, take: 1000 });
   await db.assessmentPreparation.deleteMany({ where: { id: { in: preparations.map((p) => p.id) } } });
   const runs = await db.practiceRun.findMany({ where: { createdAt: { lt: cutoff } }, select: { studentId: true, idempotencyKey: true }, take: 1000 });
   if (runs.length) await db.practiceRun.deleteMany({ where: { OR: runs } });
-  return history.length < 1000 && preparations.length < 1000 && runs.length < 1000;
+  return previews.length < 1000 && history.length < 1000 && preparations.length < 1000 && runs.length < 1000;
 }
 
 export async function startGradingWorker() {
@@ -77,6 +81,9 @@ export async function startGradingWorker() {
   const db = new PrismaClient(); const connection = new Redis(process.env.REDIS_URL!, { maxRetriesPerRequest: null });
   const queue = new Queue('fayq-assessment-grading', { connection: connection as never });
   const preparationQueue = new Queue('fayq-assessment-preparation', { connection: connection as never });
+  const pythonQueue = new Queue('fayq-python-preview', { connection: connection as never });
+  const pythonWorker = new Worker('fayq-python-preview', async (job) => { await processPythonRun(db, job.id!); }, { connection: connection as never, concurrency: 1 });
+  pythonWorker.on('error', () => { process.stderr.write('PYTHON_QUEUE_UNAVAILABLE\n'); });
   const preparer = new Worker('fayq-assessment-preparation', async (job) => { await processPreparation(db, job.id!); }, { connection: connection as never, concurrency: 1 });
   preparer.on('error', () => { process.stderr.write('PREPARATION_QUEUE_UNAVAILABLE\n'); });
   const worker = new Worker('fayq-assessment-grading', async (job) => {
@@ -94,6 +101,12 @@ export async function startGradingWorker() {
     if (Date.now() - lastCleanup > 30000) { await cleanupExpiredExecutions(); lastCleanup = Date.now(); }
     await reconcileGrading(db, queue);
     await reconcilePreparations(db, preparationQueue);
+    const previews = await db.pythonRun.findMany({ where: { OR: [{ state: 'PENDING' }, { state: 'RUNNING', leasedUntil: { lt: new Date() } }] }, orderBy: { createdAt: 'asc' }, take: 100, select: { id: true } });
+    for (const preview of previews) {
+      const existing = await pythonQueue.getJob(preview.id);
+      if (existing) { const state = await existing.getState(); if (state === 'completed' || state === 'failed') await existing.remove(); else continue; }
+      await pythonQueue.add('run', { id: preview.id }, { jobId: preview.id, removeOnComplete: true, removeOnFail: 100 });
+    }
     if (Date.now() - lastRetention > 3600000 && await retainGradingHistory(db)) lastRetention = Date.now();
   };
   let pending: Promise<void> | null = null, stopped = false;
@@ -106,5 +119,5 @@ export async function startGradingWorker() {
     return pending;
   };
   await tick(); const timer = setInterval(() => { void tick(); }, 2000);
-  return { stop: async (): Promise<void> => { if (stopped) return; stopped = true; clearInterval(timer); await pending; rmSync(healthFile, { force: true }); await Promise.all([worker.close(), preparer.close()]); await Promise.all([queue.close(), preparationQueue.close()]); await connection.quit(); await db.$disconnect(); } };
+  return { stop: async (): Promise<void> => { if (stopped) return; stopped = true; clearInterval(timer); await pending; rmSync(healthFile, { force: true }); await Promise.all([worker.close(), preparer.close(), pythonWorker.close()]); await Promise.all([queue.close(), preparationQueue.close(), pythonQueue.close()]); await connection.quit(); await db.$disconnect(); } };
 }

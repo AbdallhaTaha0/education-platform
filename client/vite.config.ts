@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 // so no dev-time backend URL is baked into the bundle.
 export default defineConfig({
   plugins: [react()],
+  // The formatter worker lazily loads its Python WASM formatter chunk.
+  worker: { format: 'es' },
   resolve: {
     alias: {
       dashjs: fileURLToPath(

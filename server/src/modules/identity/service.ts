@@ -4,6 +4,7 @@ import type Redis from 'ioredis';
 import { getLogger } from '../../logger.js';
 import { ensureRedis } from '../../infra/redis.js';
 import { ApiError, ok } from './errors.js';
+import { protectNationalId, validateStudentDetails, type StudentDataKeys } from './student-data.js';
 import {
   normalizeDisplayName,
   normalizeEmail,
@@ -45,6 +46,7 @@ import {
 } from './store.js';
 
 export interface AuthConfig extends TokenConfig {
+  studentDataKeys?: StudentDataKeys;
   allowedOrigins: string[];
   cookieSecure: boolean;
   argon2: Argon2Params;
@@ -142,6 +144,11 @@ async function establishSession(
 }
 
 export interface RegisterInput {
+  nationalId: unknown;
+  parentPhone: unknown;
+  schoolYear: unknown;
+  governorate: unknown;
+  schoolName?: unknown;
   displayName: unknown;
   email: unknown;
   phone: unknown;
@@ -160,6 +167,9 @@ export async function register(
   const email = normalizeEmail(body.email);
   const phone = normalizePhone(body.phone);
   const password = validatePassword(body.password);
+  const userId = randomUUID();
+  const details = validateStudentDetails(body as unknown as Record<string, unknown>, true);
+  const protectedId = protectNationalId(body.nationalId, ctx.auth.studentDataKeys, userId);
 
   const conflict = await ctx.prisma.user.findFirst({
     where: { OR: [{ email }, { phone }] },
@@ -173,11 +183,10 @@ export async function register(
   const passwordHash = await hashPassword(password, ctx.auth.argon2);
   const now = nowOf(ctx);
   const timing = newSessionTiming(now);
-  const userId = randomUUID();
   try {
     await ctx.prisma.$transaction([
       ctx.prisma.user.create({
-        data: { id: userId, email, phone, displayName, passwordHash, role: 'STUDENT' },
+        data: { id: userId, email, phone, displayName, passwordHash, role: 'STUDENT', studentProfile: { create: { ...details, ...protectedId } } },
       }),
       ctx.prisma.authSession.create({
         data: {
@@ -194,7 +203,7 @@ export async function register(
   } catch (err) {
     const mapped = mapUniqueViolation(err);
     if (mapped) throw mapped;
-    throw err;
+    throw new ApiError(500, 'STUDENT_PROFILE_UNAVAILABLE', 'Could not create your account.');
   }
   const created = await ctx.prisma.user.findUniqueOrThrow({ where: { id: userId } });
   getLogger().info({ userId }, 'student registered');

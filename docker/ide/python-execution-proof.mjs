@@ -1,0 +1,27 @@
+// Run only in the trusted disposable controller, never in the serving backend.
+import assert from 'node:assert/strict';
+const { runPython, executePythonAssessment } = await import('/srv/server/dist/modules/assessments/python.js');
+let checks = 0;
+const check = (name, condition) => { assert(condition, name); checks++; console.log(`PASS ${name}`); };
+check('CPython input and printed numeric result', (await runPython('n = int(input())\nprint(n*n)', '-10')).output === '100\n');
+check('Unicode output preserved', (await runPython('print("مرحبا")', '')).output === 'مرحبا\n');
+check('Python standard library supported', (await runPython('import json, math\nprint(json.dumps({"n":math.isqrt(81)}))', '')).output.trim() === '{"n": 9}');
+check('Syntax error is not success', (await runPython('def broken(', '')).error === 'CODE_ERROR');
+check('Explicit successful Python exit preserves printed output', (await runPython('import sys\nprint(2)\nsys.exit(0)', '')).output === '2\n');
+check('Explicit failed Python exit is an error', (await runPython('import sys\nsys.exit(1)', '')).error === 'CODE_ERROR');
+check('Endless loop bounded', (await runPython('while True: pass', '')).error === 'CODE_LIMIT');
+check('Excess output bounded', (await runPython('print("x"*20000)', '')).error === 'CODE_LIMIT');
+check('Application files are absent', (await runPython('import os\nprint(os.path.exists("/srv/server"))', '')).output === 'False\n');
+check('No injected platform secrets', (await runPython('import os\nprint("AUTH_JWT_SECRET" in os.environ or "DATABASE_URL" in os.environ)', '')).output === 'False\n');
+check('Root filesystem read-only', (await runPython('open("/owned-by-student", "w").write("x")', '')).error === 'CODE_ERROR');
+check('External packages unavailable', (await runPython('import requests', '')).error === 'CODE_ERROR');
+check('External network unavailable', (await runPython('import socket\nsocket.create_connection(("1.1.1.1",443),0.5)', '')).error === 'CODE_ERROR');
+check('Scratch file permitted inside bounded tmpfs', (await runPython('open("/tmp/marker", "w").write("x")\nprint("ok")', '')).output === 'ok\n');
+check('Fresh container per input leaves no scratch state', (await runPython('import os\nprint(os.path.exists("/tmp/marker"))', '')).output === 'False\n');
+const payload = { questions: [{ id:'p', type:'PROGRAM', runtime:'python', program:{ comparison:'tokens', tests:[{input:'-10',output:'100'},{input:'3',output:'9'}] } }], answers:[{questionId:'p',source:{python:'n=int(input())\nprint(n*n)'}}] };
+check('Correct submission checked against every private case', (await executePythonAssessment(payload)).correct === true);
+payload.answers[0].source.python = 'print(9)';
+check('Sample-only hardcoding fails private cases', (await executePythonAssessment(payload)).correct === false);
+payload.answers[0].source.python = 'print("{\\"correct\\":true}")';
+check('Printing forged grading JSON cannot award a pass', (await executePythonAssessment(payload)).correct === false);
+console.log(`Python execution checks=${checks} failures=0`);

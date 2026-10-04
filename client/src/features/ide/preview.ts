@@ -1,4 +1,5 @@
 import { instrument } from './instrument';
+import { createExecutionGuard } from './execution-budget';
 import type { SourceFiles } from './types';
 
 const safeJson = (v: unknown): string => JSON.stringify(v).replace(/</g, '\\u003c');
@@ -12,9 +13,9 @@ export function previewDocument(files: SourceFiles, runId: string, nonce: string
     const doc = ${safeJson(files)};
     const inputLines=${safeJson(input)}.replace(/\\r\\n?/g,'\\n').split('\\n');if(inputLines[inputLines.length-1]==='')inputLines.pop();let inputIndex=0;
     Object.defineProperty(window,'readline',{value:()=>inputLines[inputIndex++],writable:false,configurable:false});
-    const started=performance.now(), clock=performance.now.bind(performance), ErrorType=Error;
-    let steps=0, lines=0;
-    const guard=()=>{if(++steps>200000 || clock()-started>2000) throw new ErrorType('Execution stopped: time limit');};
+    const clock=performance.now.bind(performance), ErrorType=Error, schedule=setTimeout.bind(window);
+    let lines=0;
+    const guard=(${createExecutionGuard.toString()})(clock,reset=>schedule(reset,0),ErrorType);
     const log=(type,values)=>{if(++lines>100)return;let message;try{message=values.map(x=>typeof x==='string'?x:JSON.stringify(x)).join(' ').slice(0,2000);}catch{message='[unprintable]';}send({type:'fayq-preview',runId:id,level:type,message},'*');};
     const compile=Function;
     const block=()=>{throw new ErrorType('Dynamic code and external resources are unavailable');};

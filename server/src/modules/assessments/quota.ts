@@ -22,7 +22,9 @@ export async function practiceEligible(db: PrismaClient, studentId: string, now:
 }
 export async function quotaLocked(tx: Prisma.TransactionClient, studentId: string, now: number) {
   const win = quotaWindow(now, null);
-  await tx.practiceQuota.upsert({ where: { studentId }, create: { studentId, windowStart: win.start, windowEnd: win.end }, update: {} });
+  // All three IDEs load together. INSERT ON CONFLICT avoids concurrent
+  // first-visit upserts racing before the row lock is acquired.
+  await tx.practiceQuota.createMany({ data: [{ studentId, windowStart: win.start, windowEnd: win.end }], skipDuplicates: true });
   await tx.$queryRaw`SELECT "studentId" FROM "PracticeQuota" WHERE "studentId"=${studentId} FOR UPDATE`;
   let q = await tx.practiceQuota.findUniqueOrThrow({ where: { studentId } });
   if (q.windowEnd.getTime() <= now) { const w = quotaWindow(now, q.anchor); q = await tx.practiceQuota.update({ where: { studentId }, data: { windowStart: w.start, windowEnd: w.end, used: 0, epoch: { increment: 1 } } }); }

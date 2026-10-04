@@ -285,6 +285,8 @@ export function mapUniqueViolation(err: unknown): ApiError | null {
       ? ((err as { meta?: { target?: unknown } }).meta?.target as string[] | undefined)
       : undefined;
   if (!target) return null;
+  if (target.includes('nationalIdFingerprint'))
+    return new ApiError(409, 'NATIONAL_ID_TAKEN', 'National ID is already registered.', { field: 'nationalId' });
   if (target.includes('email'))
     return new ApiError(409, 'EMAIL_TAKEN', 'Email is already registered.');
   if (target.includes('phone'))

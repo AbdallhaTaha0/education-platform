@@ -5,8 +5,6 @@
  * No ZIP extraction or execution - ZIP is downloadable only.
  */
 
-import type { Readable } from 'node:stream';
-
 export interface WebVTTValidationResult {
   valid: boolean;
   cueCount: number;
@@ -76,27 +74,50 @@ export function validateWebVTT(content: Uint8Array): WebVTTValidationResult {
 }
 
 function validateTimestampLine(line: string): boolean {
-  // Format: HH:MM:SS.mmm --> HH:MM:SS.mmm
-  const parts = line.split('-->');
-  if (parts.length !== 2) return false;
-
-  const start = parts[0].trim();
-  const end = parts[1].trim();
-
-  if (!isValidTimestamp(start) || !isValidTimestamp(end)) return false;
-
-  const startMs = parseTimestamp(start);
-  const endMs = parseTimestamp(end);
-
-  if (startMs >= endMs) return false;
-
-  return true;
+  return parseTimingLine(line) !== null;
 }
 
-function isValidTimestamp(ts: string): boolean {
-  // HH:MM:SS.mmm or MM:SS.mmm or H:MM:SS.mmm
-  const regex = /^(\d{1,2}:)?([0-5]?\d):([0-5]\d)\.(\d{3})$/;
-  return regex.test(ts);
+function parseTimingLine(line: string): { start: number; end: number } | null {
+  // Separate the end timestamp from the optional space/tab-delimited settings.
+  const parts = /^([^ \t]+)[ \t]+-->[ \t]+([^ \t]+)(?:[ \t]+(.*))?$/.exec(line.trim());
+  if (!parts) return null;
+  const timestamp = /^(?:\d{2,}:)?[0-5]\d:[0-5]\d\.\d{3}$/;
+  if (!timestamp.test(parts[1]) || !timestamp.test(parts[2])) return null;
+  const start = parseTimestamp(parts[1]), end = parseTimestamp(parts[2]);
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start >= end) return null;
+  const settings = parts[3]?.trim().split(/[ \t]+/).filter(Boolean) ?? [];
+  const seen = new Set<string>();
+  for (const setting of settings) {
+    const colon = setting.indexOf(':');
+    if (colon < 1) return null;
+    const name = setting.slice(0, colon), value = setting.slice(colon + 1);
+    if (seen.has(name) || !validCueSetting(name, value)) return null;
+    seen.add(name);
+  }
+  return { start, end };
+}
+
+/** WebVTT cue settings, https://www.w3.org/TR/webvtt1/#webvtt-cue-settings */
+function validCueSetting(name: string, value: string): boolean {
+  const percentage = (v: string) => /^\d+(?:\.\d+)?%$/.test(v) && Number(v.slice(0, -1)) <= 100;
+  switch (name) {
+    case 'vertical': return value === 'rl' || value === 'lr';
+    case 'align': return ['start', 'center', 'end', 'left', 'right'].includes(value);
+    case 'size': return percentage(value);
+    case 'line': {
+      const [offset, alignment, extra] = value.split(',');
+      return extra === undefined &&
+        (alignment === undefined || ['start', 'center', 'end'].includes(alignment)) &&
+        (percentage(offset) || (/^-?\d+$/.test(offset) && Number.isSafeInteger(Number(offset))));
+    }
+    case 'position': {
+      const [offset, alignment, extra] = value.split(',');
+      return extra === undefined && percentage(offset) &&
+        (alignment === undefined || ['line-left', 'center', 'line-right'].includes(alignment));
+    }
+    case 'region': return value.length > 0 && !/[\u0000-\u0020\u007f]/.test(value) && !value.includes('-->');
+    default: return false;
+  }
 }
 
 function parseTimestamp(ts: string): number {
@@ -161,9 +182,10 @@ export function parseWebVTTCues(content: Uint8Array): Array<{ start: number; end
     }
 
     if (!inCue && line.includes('-->')) {
-      const parts = line.split('-->');
-      cueStart = parseTimestamp(parts[0].trim());
-      cueEnd = parseTimestamp(parts[1].trim());
+      const timing = parseTimingLine(line);
+      if (timing === null) continue;
+      cueStart = timing.start;
+      cueEnd = timing.end;
       inCue = true;
       cueTextLines = [];
     } else if (inCue) {

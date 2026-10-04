@@ -4,7 +4,8 @@ import { ApiError, ok } from '../identity/errors.js';
 import { requireAuth, requireAdmin, requireOrigin, requireSessionCsrf } from '../identity/middleware.js';
 import { resolveCourse } from '../learning/access/service.js';
 import { assertLessonUnlocked } from './progression.js';
-import { key, object, files, invalid, answers, type Content } from './contracts.js';
+import { key, object, files, invalid, answers, ideMode, type Content } from './contracts.js';
+import { requestPythonRun } from './python-runs.js';
 import { adminLesson, assessmentAccess, publishAssessment, saveAssessment, saveDraft, studentAssessment, submitAssessment } from './service.js';
 import { practiceEligible, readQuota, reserveRun, adjustQuota } from './quota.js';
 import { LearningError } from '../learning/errors.js';
@@ -27,7 +28,8 @@ export function assessmentRouters(db: PrismaClient, now: () => number = Date.now
   const writes = [requireOrigin, requireSessionCsrf];
   r.get('/practice', asyncRoute(async (req, res) => {
     const id = student(req); await practiceEligible(db, id, now());
-    const [quota, draft] = await Promise.all([readQuota(db, id, now()), db.assessmentDraft.findUnique({ where: { studentId_context: { studentId: id, context: 'practice' } } })]);
+    const mode = ideMode(req.query.mode); const context = mode === 'javascript' ? 'practice' : `practice:${mode}`;
+    const [quota, draft] = await Promise.all([readQuota(db, id, now()), db.assessmentDraft.findUnique({ where: { studentId_context: { studentId: id, context } } })]);
     res.json(ok({ quota, draft }));
   }));
   r.post('/practice/run', ...writes, asyncRoute(async (req, res) => {
@@ -35,7 +37,16 @@ export function assessmentRouters(db: PrismaClient, now: () => number = Date.now
   }));
   r.put('/practice/draft', ...writes, asyncRoute(async (req, res) => {
     const id = student(req); await practiceEligible(db, id, now()); const b = object(req.body);
-    res.json(ok(await saveDraft(db, id, 'practice', files(b.content), b.revision)));
+    const mode = ideMode(req.query.mode); const context = mode === 'javascript' ? 'practice' : `practice:${mode}`;
+    res.json(ok(await saveDraft(db, id, context, files(b.content), b.revision)));
+  }));
+  r.post('/python/run', ...writes, asyncRoute(async (req, res) => {
+    res.status(202).json(ok(await requestPythonRun(db, req.auth!.userId, req.auth!.role, req.body, now())));
+  }));
+  r.get('/python/runs/:id', asyncRoute(async (req, res) => {
+    const job = await db.pythonRun.findFirst({ where: { id: uuid(req.params.id), userId: req.auth!.userId }, select: { id: true, state: true, output: true, error: true } });
+    if (!job) throw new ApiError(404, 'NOT_FOUND', 'Run not found.');
+    res.json(ok(job));
   }));
   r.get('/lessons/:lessonId', asyncRoute(async (req, res) => {
     const studentId = student(req); const lessonId = uuid(req.params.lessonId);
@@ -46,7 +57,7 @@ export function assessmentRouters(db: PrismaClient, now: () => number = Date.now
     const list = await db.assessment.findMany({ where: { lessonId, status: 'PUBLISHED' }, orderBy: { createdAt: 'asc' } });
     const passes = new Set((await db.assessmentPass.findMany({ where: { studentId, assessmentId: { in: list.map((a) => a.id) } } })).map((p) => p.assessmentId));
     const versions = await db.assessmentVersion.findMany({ where: { OR: list.map((a) => ({ assessmentId: a.id, version: a.version })) }, select: { assessmentId: true, content: true } });
-    res.json(ok({ assessments: list.map((a) => { const c = versions.find((v) => v.assessmentId === a.id)!.content as { titleAr: string; titleEn: string }; return { id: a.id, kind: a.kind, required: a.required, titleAr: c.titleAr, titleEn: c.titleEn, passed: passes.has(a.id) }; }) }));
+    res.json(ok({ assessments: list.map((a) => { const c = versions.find((v) => v.assessmentId === a.id)!.content as unknown as Content; return { id: a.id, ide: c.ide ?? 'javascript', kind: a.kind, required: a.required, titleAr: c.titleAr, titleEn: c.titleEn, passed: passes.has(a.id) }; }) }));
   }));
   r.get('/submissions/:id', asyncRoute(async (req, res) => {
     const found = await db.assessmentSubmission.findFirst({ where: { id: uuid(req.params.id), studentId: student(req) }, select: { id: true, assessmentId: true, state: true, result: true, createdAt: true, answers: true } });

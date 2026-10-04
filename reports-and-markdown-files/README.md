@@ -1,5 +1,13 @@
 # Education platform documentation
 
+Interactive IDE preview correction (2026-10-04): [per-task execution budget and Docker/browser evidence](ide-interactive-preview-fix-20261004.md) fixes counter/text/timer callbacks failing after two seconds of idle time. All 14 browser checks pass while preserving infinite-loop protection and the opaque/network-denying sandbox.
+
+Three IDE modes (2026-10-04): [implementation, owner decisions, schema/API, isolation evidence and Docker runbook](ide-modes-implementation-20261004.md). JavaScript, web and Python have separate drafts/assessments and share practice allowance. Local preview updated through additive guarded migration; capacity/production qualification and milestone acceptance remain separate.
+
+Material follow-up fixes (2026-10-04): [session refresh and positioned-caption corrections](material-refresh-caption-fixes-20261004.md) resolve both findings from the independent teammate review. Docker verification passes 252 server unit, 134 client unit, 2 DASH compatibility and 75 integration checks, plus typechecks/build. Disposable test resources are removed; the owner preview remains on its existing images. No commit, push or milestone acceptance is inferred.
+
+Independent teammate-delivery review (2026-10-04): [historical pre-fix evidence for two material defects](teammate-changes-review-20261004.md). Backend/frontend checks and 73 isolated integration tests passed; additional probes reproduced missing material-transport session refresh and rejection of valid positioned WebVTT captions. Both findings are addressed by the follow-up above. Review fixtures are removed.
+
 Completed integration and both-repository delivery (2026-10-04): [final report](course-materials-and-dual-repository-delivery-20261004.md). The owner subsequently instructed the coordinator to finish pending materials and push both repositories. Captions/resources/real durations now pass real Docker/private-storage/browser gates and are available on the retained demo. Previous pending-material statements below are historical. Existing DRM recovery is pushed; platform delivery includes its gitlink. No production or milestone acceptance is inferred.
 
 Owner-authorized completed-work delivery (2026-10-04): [website improvements, direct playback bug fixes, independent commit-tree verification and preserved pending work](completed-work-and-playback-delivery-20261004.md). The coordinator repaired audit starvation/real database-error recovery, StrictMode player rejection handling and remaining cleanup gaps. The reviewed tree passes 196 server/111 client unit tests, 51 playback integration checks, 10 guard tests and 52 browser recovery checks plus four StrictMode checks. Pending materials/schema/authoring wiring remains outside the commit; localhost:8080 is preserved. Commit/push is authorized; production and milestone acceptance are not inferred.
@@ -222,3 +230,5 @@ close the external gates.
   owner decisions on host, secrets injection, replicas and TLS termination.
 
 Both reports still end `NOT READY FOR MILESTONE 5`, and nothing here softens that.
+
+- [Student registration data contract and verification](student-registration-data-contract-20261004.md): required new-student fields, encrypted unique national IDs, legacy access, protected profile editing and Docker evidence.

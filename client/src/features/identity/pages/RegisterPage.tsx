@@ -8,6 +8,7 @@ import { Field, textInputClassName } from '../../../components/ui/Field';
 import { Notice } from '../../../components/ui/Notice';
 import { useLang } from '../../../i18n';
 import { fieldError, localize, useTitleFocus } from '../components/IdentityForm';
+import { StudentDetailsFields, emptyStudentDetails, studentDataError } from '../components/StudentDetailsFields';
 
 export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element {
   const { t, lang } = useLang();
@@ -16,6 +17,7 @@ export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [details, setDetails] = useState({...emptyStudentDetails});
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPassword,setShowPassword]=useState(false);
@@ -40,7 +42,7 @@ export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element 
       await apiFetch('/auth/register', {
         method: 'POST',
         retryOnAuth: false,
-        body: { displayName: name, email, phone, password },
+        body: { displayName: name, email, phone, password, ...details },
       });
       await reload();
       onDone();
@@ -71,14 +73,14 @@ export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element 
           {errorCode === 'MISMATCH'
             ? t.passwordsMismatch
             : errorCode
-              ? localize(t, errorCode)
+              ? (['NATIONAL_ID_TAKEN','STUDENT_DATA_UNCONFIGURED','STUDENT_PROFILE_UNAVAILABLE'].includes(errorCode)?studentDataError(errorCode,lang==='ar'):localize(t, errorCode))
               : null}
         </Notice>
         <Notice kind="success">{null}</Notice>
         <form onSubmit={(e) => void submit(e)} noValidate>
           <Field
             id="reg-name"
-            label={t.fieldName}
+            label={lang==='ar'?'اسم الطالب بالكامل':'Student full name'}
             error={
               errorField === 'displayName'
                 ? fieldError(t, errorCode ?? undefined, errorField)
@@ -146,6 +148,7 @@ export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element 
               className={textInputClassName(errorField === 'phone' || errorCode === 'PHONE_TAKEN')}
             />
           </Field>
+          <StudentDetailsFields prefix="reg" value={details} onChange={setDetails} disabled={busy} errorField={errorField} errorCode={errorCode??undefined}/>
           <Field
             id="reg-password"
             label={t.fieldPassword}

@@ -5,11 +5,9 @@
  * Auth is cookies (`credentials: include`); mutations carry the readable
  * CSRF synchronizer. No provider credentials are ever embedded in the client.
  */
-import { apiFetch as authApiFetch, readCsrfCookie } from '../../../auth';
+import { apiFetch as authApiFetch, apiResponse as authApiResponse } from '../../../auth';
 import { LearningApiError } from '../api/client';
 import type { AdminLessonMaterials, LessonMaterials, MaterialResource } from './types';
-
-const API_BASE: string = (import.meta.env['VITE_API_BASE'] as string | undefined) || '/api';
 
 async function apiFetch<T>(...args: Parameters<typeof authApiFetch<T>>): Promise<T> {
   try { return await authApiFetch<T>(...args); }
@@ -19,22 +17,12 @@ async function apiFetch<T>(...args: Parameters<typeof authApiFetch<T>>): Promise
   }
 }
 
-async function parseJsonError(response: Response): Promise<never> {
-  let code = 'UNKNOWN';
-  try {
-    const payload = (await response.json()) as { error?: { code?: unknown } };
-    if (typeof payload.error?.code === 'string' && payload.error.code.length > 0) {
-      code = payload.error.code;
-    }
-  } catch {
-    // Keep the safe fallback code.
+async function apiResponse(...args: Parameters<typeof authApiResponse>): Promise<Response> {
+  try { return await authApiResponse(...args); }
+  catch (err) {
+    const error = err as { code?: string; status?: number };
+    throw new LearningApiError(error.code ?? 'UNKNOWN', error.status ?? 0);
   }
-  throw new LearningApiError(code, response.status);
-}
-
-function csrfHeaders(): Record<string, string> {
-  const token = readCsrfCookie() ?? '';
-  return token ? { 'x-csrf-token': token } : {};
 }
 
 export const lessonMaterialsApi = {
@@ -49,21 +37,19 @@ export const lessonMaterialsApi = {
 
   /** Authenticated WebVTT bytes; caller validates and creates a Blob URL. */
   async fetchCaptionText(captionId: string): Promise<string> {
-    const response = await fetch(
-      `${API_BASE}/learning/captions/${encodeURIComponent(captionId)}`,
-      { credentials: 'include', headers: { Accept: 'text/vtt' } },
+    const response = await apiResponse(
+      `/learning/captions/${encodeURIComponent(captionId)}`,
+      { headers: { Accept: 'text/vtt' } },
     );
-    if (!response.ok) await parseJsonError(response);
     return response.text();
   },
 
   /** Authenticated resource download through a short-lived Blob URL. */
   async downloadResource(resourceId: string): Promise<{ blob: Blob; fileName: string; mimeType: string }> {
-    const response = await fetch(
-      `${API_BASE}/learning/resources/${encodeURIComponent(resourceId)}/download`,
-      { credentials: 'include', headers: { Accept: '*/*' } },
+    const response = await apiResponse(
+      `/learning/resources/${encodeURIComponent(resourceId)}/download`,
+      { headers: { Accept: '*/*' } },
     );
-    if (!response.ok) await parseJsonError(response);
     const blob = await response.blob();
     const disposition = response.headers.get('content-disposition') ?? '';
     const match = /filename\*=UTF-8''([^;\n]+)/i.exec(disposition) ?? /filename="([^"\n]+)"/i.exec(disposition);
@@ -89,11 +75,10 @@ export const adminLessonMaterialsApi = {
     const form = new FormData();
     form.append('ar', ar, ar.name);
     form.append('en', en, en.name);
-    const response = await fetch(
-      `${API_BASE}/admin/learning/lessons/${encodeURIComponent(lessonId)}/captions`,
-      { method: 'POST', credentials: 'include', headers: { ...csrfHeaders() }, body: form },
+    const response = await apiResponse(
+      `/admin/learning/lessons/${encodeURIComponent(lessonId)}/captions`,
+      { method: 'POST', retryOnAuth: true, body: form },
     );
-    if (!response.ok) await parseJsonError(response);
     const payload = (await response.json()) as { data: AdminLessonMaterials };
     return payload.data;
   },
@@ -101,7 +86,7 @@ export const adminLessonMaterialsApi = {
   async deleteCaptions(lessonId: string): Promise<{ removed: boolean }> {
     const body = await apiFetch<{ data: { removed: boolean } }>(
       `/admin/learning/lessons/${encodeURIComponent(lessonId)}/captions`,
-      { method: 'DELETE', retryOnAuth: false },
+      { method: 'DELETE', retryOnAuth: true },
     );
     return body.data;
   },
@@ -114,11 +99,10 @@ export const adminLessonMaterialsApi = {
     const form = new FormData();
     form.append('metadata', JSON.stringify({ labelAr: input.labelAr, labelEn: input.labelEn }));
     form.append('file', file, file.name);
-    const response = await fetch(
-      `${API_BASE}/admin/learning/lessons/${encodeURIComponent(lessonId)}/resources`,
-      { method: 'POST', credentials: 'include', headers: { ...csrfHeaders() }, body: form },
+    const response = await apiResponse(
+      `/admin/learning/lessons/${encodeURIComponent(lessonId)}/resources`,
+      { method: 'POST', retryOnAuth: true, body: form },
     );
-    if (!response.ok) await parseJsonError(response);
     const payload = (await response.json()) as { data: { resource: MaterialResource } };
     return payload.data;
   },
@@ -126,7 +110,7 @@ export const adminLessonMaterialsApi = {
   async deleteResource(resourceId: string): Promise<{ removed: boolean }> {
     const body = await apiFetch<{ data: { removed: boolean } }>(
       `/admin/learning/resources/${encodeURIComponent(resourceId)}`,
-      { method: 'DELETE', retryOnAuth: false },
+      { method: 'DELETE', retryOnAuth: true },
     );
     return body.data;
   },

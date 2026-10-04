@@ -24,6 +24,7 @@ import { ApiError } from './errors.js';
 import { bindSessionCsrf, getActiveSession } from './store.js';
 import { verifyAccessToken } from './tokens.js';
 import { updateProfile, studentDirectory } from './profile.js';
+import { readStudentProfile, editStudentProfile } from './student-profile.js';
 import { ADMIN_CREATE_LIMIT, LOGIN_LIMIT, REFRESH_LIMIT, REGISTER_LIMIT } from './rateLimit.js';
 import {
   rateLimit as limit,
@@ -209,6 +210,12 @@ export function createAuthRouter(ctx: IdentityContext): Router {
   router.patch('/profile',limit('profile-edit',LOGIN_LIMIT),requireOrigin,requireAuth,requireSessionCsrf,asyncRoute(async(req,res)=>{
     res.json(ok(await updateProfile(ctx,req.auth!.userId,req.auth!.sessionId,req.body)));
   }));
+  router.get('/student-profile',requireAuth,asyncRoute(async(req,res)=>{
+    res.setHeader('Cache-Control','no-store');res.json(ok(await readStudentProfile(ctx,req.auth!.userId)));
+  }));
+  router.patch('/student-profile',limit('student-profile-edit',LOGIN_LIMIT),requireOrigin,requireAuth,requireSessionCsrf,asyncRoute(async(req,res)=>{
+    res.setHeader('Cache-Control','no-store');res.json(ok(await editStudentProfile(ctx,req.auth!.userId,req.auth!.userId,req.auth!.sessionId,req.body)));
+  }));
 
   return router;
 }
@@ -217,6 +224,12 @@ export function createAuthRouter(ctx: IdentityContext): Router {
 export function createAdminRouter(ctx: IdentityContext): Router {
   const router = Router();
   router.get('/students',requireAuth,requireAdmin,asyncRoute(async(req,res)=>{res.json(ok(await studentDirectory(ctx,req.query)));}));
+  router.get('/students/:studentId/profile',requireAuth,requireAdmin,asyncRoute(async(req,res)=>{
+    res.setHeader('Cache-Control','no-store');res.json(ok(await readStudentProfile(ctx,String(req.params.studentId),req.auth!.userId)));
+  }));
+  router.patch('/students/:studentId/profile',limit('admin-student-profile-edit',LOGIN_LIMIT),requireOrigin,requireAuth,requireAdmin,requireSessionCsrf,asyncRoute(async(req,res)=>{
+    res.setHeader('Cache-Control','no-store');res.json(ok(await editStudentProfile(ctx,String(req.params.studentId),req.auth!.userId,req.auth!.sessionId,req.body,true)));
+  }));
 
   router.post(
     '/users',

@@ -12,6 +12,7 @@ import {
   issuedSecrets,
   loginWith,
   registerStudent,
+  studentDetailsFixture,
   sessionIdFromJar,
   uniqueEmail,
   uniqueIp,
@@ -189,6 +190,7 @@ describe('profile and cookies', () => {
       .set('X-Csrf-Token', token)
       .send({
         displayName: 'Cookie Check',
+        ...studentDetailsFixture(),
         email: uniqueEmail(),
         phone: uniquePhone(),
         password: TEST_PASSWORD,
@@ -218,6 +220,7 @@ describe('profile and cookies', () => {
         .set('X-Csrf-Token', token)
         .send({
           displayName: 'Secure Check',
+          ...studentDetailsFixture(),
           email: uniqueEmail(),
           phone: uniquePhone(),
           password: TEST_PASSWORD,

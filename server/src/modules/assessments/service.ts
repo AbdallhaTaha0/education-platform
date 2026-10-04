@@ -105,6 +105,6 @@ export async function saveDraft(db: PrismaClient, studentId: string, context: st
     await tx.$queryRaw`SELECT id FROM "User" WHERE id=${studentId} FOR UPDATE`;
     const old = await tx.assessmentDraft.findUnique({ where: { studentId_context: { studentId, context } } });
     if ((old?.revision ?? 0) !== revision) throw new ApiError(409, 'DRAFT_CONFLICT', 'A newer draft exists. Reload before saving.');
-    return old ? tx.assessmentDraft.update({ where: { id: old.id }, data: { content: json(data), revision: { increment: 1 } } }) : tx.assessmentDraft.create({ data: { studentId, context, assessmentId: context === 'practice' ? null : context, content: json(data) } });
+    return old ? tx.assessmentDraft.update({ where: { id: old.id }, data: { content: json(data), revision: { increment: 1 } } }) : tx.assessmentDraft.create({ data: { studentId, context, assessmentId: ['practice', 'practice:web', 'practice:python'].includes(context) ? null : context, content: json(data) } });
   });
 }

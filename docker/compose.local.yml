@@ -18,7 +18,9 @@ services:
       OWNER_PREVIEW: '1'
       DRM_BASE_URL: http://host.docker.internal:3000
       DRM_PUBLIC_BASE_URL: http://localhost:3000
-      STORAGE_ENDPOINT: http://materials-minio:9000
+      # Keep optional materials storage all-or-none after Docker recreation.
+      # The ignored .env supplies the endpoint when its other settings exist.
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-}
     networks: [default, materials]
   client:
     image: fayq-platform-client:0.9.0-m9

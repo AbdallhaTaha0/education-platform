@@ -15,6 +15,7 @@ import { createPostgresPool, closePostgres } from '../../src/infra/postgres.js';
 import { createRedisClient, closeRedis } from '../../src/infra/redis.js';
 import { hashPassword } from '../../src/modules/identity/password.js';
 import type { Clock } from '../../src/modules/identity/tokens.js';
+import { randomInt } from 'node:crypto';
 
 export const TEST_ORIGIN = 'http://localhost:8080';
 
@@ -111,6 +112,9 @@ export function uniqueIp(): string {
 }
 
 export const TEST_PASSWORD = 'correct horse battery staple m2';
+export function studentDetailsFixture() {
+  return { nationalId: `2${randomInt(1000000000000,10000000000000)}`, parentPhone: uniquePhone(), schoolYear: 'SECONDARY_1', governorate: 'CAIRO', schoolName: 'Synthetic school' };
+}
 
 /**
  * Create an ADMIN owned by exactly this world, without touching any other admin.
@@ -157,7 +161,7 @@ export interface Credential {
 /** Register a fresh STUDENT, returning the session jar + safe user. */
 export async function registerStudent(
   app: Express,
-  overrides: { email?: string; phone?: string; password?: string; displayName?: string } = {},
+  overrides: { email?: string; phone?: string; password?: string; displayName?: string; nationalId?: string; parentPhone?: string; schoolYear?: string; governorate?: string; schoolName?: string } = {},
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Credential & { status: number; body: any }> {
   const { jar, token } = await csrfBootstrap(app);
@@ -168,6 +172,8 @@ export async function registerStudent(
     .set('Cookie', jar.header())
     .set('X-Csrf-Token', token)
     .send({
+      ...studentDetailsFixture(),
+      ...overrides,
       displayName: overrides.displayName ?? 'Test Student',
       email: overrides.email ?? uniqueEmail(),
       phone: overrides.phone ?? uniquePhone(),

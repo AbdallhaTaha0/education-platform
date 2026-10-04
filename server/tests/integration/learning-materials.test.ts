@@ -44,6 +44,40 @@ describe('real material contract', () => {
       expect(response.headers['x-content-type-options']).toBe('nosniff');
     }
   });
+  it('uploads and downloads positioned captions byte-exactly and preserves them on malformed settings', async () => {
+    const positioned = Buffer.from('WEBVTT\n\n00:00:00.000 --> 00:00:02.000 align:start position:10% line:-1,end size:80%\nمرحبا\n');
+    const response = await post(captionPath()).attach('ar', positioned, 'ar.vtt').attach('en', positioned, 'en.vtt');
+    expect(response.status).toBe(200);
+    const before = (await materials()).body.data.captions;
+    for (const caption of before) {
+      const bytes = await studentGet(world.app, `/learning/captions/${caption.id}`, world.studentJar);
+      expect(bytes.status).toBe(200); expect(Buffer.from(bytes.text)).toEqual(positioned);
+    }
+    const malformed = Buffer.from('WEBVTT\n\n00:00.000 --> 00:02.000 position:101%\nInvalid\n');
+    const invalid = await post(captionPath()).attach('ar', malformed, 'ar.vtt').attach('en', positioned, 'en.vtt');
+    expect(invalid.status).toBe(400); expect((await materials()).body.data.captions).toEqual(before);
+    expect((await pair()).status).toBe(200);
+  });
+  it('refreshes a still-valid session after its access cookie is gone, then reads and uploads materials', async () => {
+    for (const [jar, admin] of [[world.studentJar, false], [world.adminJar, true]] as const) {
+      const noAccess = jar.header().split('; ').filter(c => !c.startsWith('edu_access=')).join('; ');
+      if (admin) {
+        const rejected = await request(world.app).post(captionPath()).set('Origin', TEST_ORIGIN).set('Cookie', noAccess).set('X-CSRF-Token', jar.csrf()).attach('ar', vtt, 'ar.vtt').attach('en', english, 'en.vtt');
+        expect(rejected.status).toBe(401); expect(rejected.body.error.code).toBe('TOKEN_MISSING');
+      } else {
+        const caption = (await materials()).body.data.captions[0];
+        const rejected = await request(world.app).get(`/learning/captions/${caption.id}`).set('Cookie', noAccess);
+        expect(rejected.status).toBe(401); expect(rejected.body.error.code).toBe('TOKEN_MISSING');
+      }
+      const refresh = await request(world.app).post('/auth/refresh').set('Origin', TEST_ORIGIN).set('Cookie', noAccess).set('X-CSRF-Token', jar.csrf()).send({});
+      expect(refresh.status).toBe(200); jar.setFrom(refresh);
+      if (admin) expect((await pair()).status).toBe(200);
+      else {
+        const caption = (await materials()).body.data.captions[0];
+        expect((await studentGet(world.app, `/learning/captions/${caption.id}`, jar)).status).toBe(200);
+      }
+    }
+  });
   it('preserves the old pair on malformed, duplicate, missing or extra multipart fields', async () => {
     const before = (await materials()).body.data.captions;
     const bad = await post(captionPath()).attach('ar', Buffer.from('bad'), 'ar.vtt').attach('en', english, 'en.vtt'); expect(bad.status).toBe(400);

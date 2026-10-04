@@ -21,12 +21,14 @@ export const LOG_REDACT_PATHS = [
   'req.headers["x-client-secret"]',
   'req.headers["x-csrf-token"]',
   'res.headers["set-cookie"]',
+  'nationalId', 'parentPhone', 'req.body.nationalId', 'req.body.parentPhone',
+  '*.nationalId', '*.parentPhone', '*.nationalIdCipher', '*.nationalIdFingerprint',
   'req.headers["x-csrf-token"]',
 ] as const;
 
 /** Keys that must never appear with raw values in logs or audit metadata. */
 const SENSITIVE_KEY_PATTERN =
-  /(token|secret|key|assertion|signature|credential|cookie|authorization|uploadurl|upload_url|storage|confirmation)/i;
+  /(token|secret|key|assertion|signature|credential|cookie|authorization|uploadurl|upload_url|storage|confirmation|national.?id|parent.?phone)/i;
 
 /**
  * Sanitize an arbitrary value for logs/audit: replaces sensitive keys with

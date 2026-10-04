@@ -93,6 +93,7 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
       allowedOrigins: deps.config.allowedOrigins,
       cookieSecure: deps.config.cookieSecure,
       argon2: deps.config.argon2,
+      studentDataKeys: deps.config.studentDataKeys,
     },
     ...(tunables.clock ? { clock: tunables.clock } : {}),
   });
