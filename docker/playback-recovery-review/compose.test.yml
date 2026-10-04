@@ -1,0 +1,31 @@
+# Disposable playback-recovery harness (task-owned only).
+# Project/images/ports are unique: fayq-playback-recovery-* and 127.0.0.1:8092/5434/6381.
+# Never touches localhost:8080, shared tags, or another worker's stack.
+# PG/Redis are disposable; external DRM is NOT in this compose (labeled fixture only).
+name: fayq-playback-recovery-20261004
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: playback_test
+      POSTGRES_PASSWORD: playback_test_pw_0123456789
+      POSTGRES_DB: playback_recovery_test
+    ports: ['127.0.0.1:5434:5432']
+    volumes: ['pg-playback-recovery:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U playback_test -d playback_recovery_test']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    ports: ['127.0.0.1:6381:6379']
+    volumes: ['redis-playback-recovery:/data']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+volumes:
+  pg-playback-recovery:
+  redis-playback-recovery:

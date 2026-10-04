@@ -1,5 +1,5 @@
 /**
- * Learning routes (M5).
+ * Learning routes (M5 + course-learning enhancements).
  *
  * Every route resolves a trusted binding before touching data, and every
  * state-changing route carries the same origin + session-CSRF guards used by
@@ -25,6 +25,7 @@ import {
 } from '../playback/service.js';
 import { detectCrossedSubscriptions } from '../expiry/reconciler.js';
 import { asyncRoute, ctxOf, studentOf, type LearningRouteContext } from './shared.js';
+import { listOwnSessions } from '../sessions/service.js';
 
 const PLAYBACK_LIMIT: RateLimit = { windowSec: 60, max: 30 };
 const PROGRESS_LIMIT: RateLimit = { windowSec: 60, max: 600 };
@@ -230,6 +231,20 @@ export function createLearningRouter(ctx: LearningRouteContext): Router {
         c.now(),
       );
       res.status(200).json(ok({ ended: true, closure: outcome }));
+    }),
+  );
+
+  // GET /learning/sessions — student's own bounded playback references.
+  // Safe labels only; never external ids, tokens or URLs. Used by the
+  // explicit own-session recovery flow after a concurrent-stream denial.
+  router.get(
+    '/sessions',
+    ...studentReadGuard,
+    limit('learning-sessions', PLAYBACK_LIMIT),
+    asyncRoute(async (req, res) => {
+      const c = ctxOf(req);
+      const student = studentOf(req);
+      res.status(200).json(ok({ sessions: await listOwnSessions(c.prisma, student.userId) }));
     }),
   );
 

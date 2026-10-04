@@ -8,7 +8,7 @@
 import type { Express } from 'express';
 import { DrmFixture } from '../fixtures/drmFixture.js';
 import { DrmPlaybackFixture } from '../fixtures/drmPlaybackFixture.js';
-import { createCatalogWorld, adminPost, type CatalogWorld } from './catalog-helpers.js';
+import { createCatalogWorld, type CatalogWorld } from './catalog-helpers.js';
 import { createDrmClient, type DrmClient } from '../../src/modules/catalog/drmClient.js';
 import { TEST_ORIGIN, uniqueIp, type Jar } from './identity-helpers.js';
 import request from 'supertest';
@@ -73,6 +73,7 @@ export async function makeLessonPlayable(
   world: LearningWorld,
   courseId: string,
   lessonId: string,
+  durationSeconds?: number,
 ): Promise<{ externalAssetId: string }> {
   const reg = await adminPost(
     world.app,
@@ -93,7 +94,7 @@ export async function makeLessonPlayable(
   );
   if (complete.status !== 200) throw new Error(`media complete failed ${complete.status}`);
   const mapping = await world.prisma.mediaMapping.findFirstOrThrow({ where: { lessonId } });
-  world.fixture!.markReady(mapping.assetId as string);
+  world.fixture!.markReady(mapping.assetId as string, durationSeconds);
   const sync = await adminPost(
     world.app,
     `/admin/catalog/lessons/${lessonId}/media/sync`,
@@ -150,7 +151,7 @@ export async function createPublishedCourse(
     },
   );
   const lessonId = lesson.body.data.lesson.id as string;
-  await makeLessonPlayable(world, courseId, lessonId);
+  await makeLessonPlayable(world, courseId, lessonId, 600);
   const lessonIds = [lessonId];
   for (let i = 0; i < (options.extraLessons ?? 0); i += 1) {
     const extra = await adminPost(
@@ -163,7 +164,7 @@ export async function createPublishedCourse(
       },
     );
     const extraId = extra.body.data.lesson.id as string;
-    await makeLessonPlayable(world, courseId, extraId);
+    await makeLessonPlayable(world, courseId, extraId, 600);
     lessonIds.push(extraId);
   }
   await adminPost(world.app, `/admin/catalog/courses/${courseId}/transitions`, world.adminJar, {
@@ -281,4 +282,39 @@ export function studentPost(
   if (options.withOrigin !== false) req.set('Origin', TEST_ORIGIN);
   if (options.withCsrf !== false) req.set('X-Csrf-Token', jar.csrf());
   return req.send(body);
+}
+
+export function adminGet(app: Express, path: string, jar: Jar) {
+  return request(app).get(path).set('X-Forwarded-For', uniqueIp()).set('Cookie', jar.header());
+}
+
+export function adminPost(
+  app: Express,
+  path: string,
+  jar: Jar,
+  body: Record<string, unknown> = {},
+  options: { withOrigin?: boolean; withCsrf?: boolean } = {},
+) {
+  const req = request(app)
+    .post(path)
+    .set('X-Forwarded-For', uniqueIp())
+    .set('Cookie', jar.header());
+  if (options.withOrigin !== false) req.set('Origin', TEST_ORIGIN);
+  if (options.withCsrf !== false) req.set('X-Csrf-Token', jar.csrf());
+  return req.send(body);
+}
+
+export function adminDelete(
+  app: Express,
+  path: string,
+  jar: Jar,
+  options: { withOrigin?: boolean; withCsrf?: boolean } = {},
+) {
+  const req = request(app)
+    .delete(path)
+    .set('X-Forwarded-For', uniqueIp())
+    .set('Cookie', jar.header());
+  if (options.withOrigin !== false) req.set('Origin', TEST_ORIGIN);
+  if (options.withCsrf !== false) req.set('X-Csrf-Token', jar.csrf());
+  return req.send({});
 }

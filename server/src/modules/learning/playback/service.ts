@@ -212,6 +212,9 @@ async function recheckEntitlement(
 
 function mapDependencyError(err: unknown): LearningError {
   const code = (err as { code?: string }).code;
+  if (code === 'DRM_DEVICE_LIMIT') return new LearningError('PLAYBACK_DEVICE_LIMIT');
+  if (code === 'DRM_DEVICE_REVOKED') return new LearningError('PLAYBACK_DEVICE_REVOKED');
+  if (code === 'DRM_STREAM_LIMIT') return new LearningError('PLAYBACK_STREAM_LIMIT');
   if (code === 'DRM_UNAUTHORIZED') {
     return new LearningError(
       'PLAYBACK_UNAVAILABLE',

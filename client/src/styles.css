@@ -430,6 +430,32 @@ html[data-theme='light'] .hero-grid::before {
   gap: 20px;
   min-height: 84px;
 }
+.learning-video-frame--expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  width: 100%;
+  height: 100dvh;
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: 0;
+}
+.learning-video-frame:-webkit-full-screen {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 0;
+}
+.learning-theatre-active .mobile-dock { display: none; }
+@media (min-width: 1024px) {
+  .course-plan-sidebar { position: sticky; top: 6rem; }
+  .course-plan-sidebar .course-plan__sections {
+    max-height: calc(100dvh - 20rem);
+    min-height: 12rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
 .header-auth-actions {
   display: flex;
   justify-content: center;
@@ -1202,4 +1228,35 @@ html[data-theme="light"] { --ide-keyword: #6d28d9; --ide-string: #166534; --ide-
 [data-editor-invalid="true"] {
   outline: 2px solid var(--color-error-fg);
   outline-offset: 2px;
+}
+
+/* Course-learning enhancements: search, durations, captions, resources.
+ * All colors consume FAYQ semantic tokens so owner color review applies
+ * globally. Captions render through the native track engine inside the
+ * whole-player frame (video element), never via HTML insertion. */
+.course-plan input[type='search'] {
+  max-width: 100%;
+}
+.course-plan input[type='search']::-webkit-search-cancel-button {
+  cursor: pointer;
+}
+.learning-video-frame video::cue {
+  background: rgb(0 0 0 / 0.8);
+  color: #ffffff;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+.learning-video-frame [data-testid='caption-controls'] {
+  max-width: 100%;
+  border-radius: 8px;
+  background: rgb(0 0 0 / 0.55);
+  padding: 4px 8px;
+}
+@media (max-width: 640px) {
+  .learning-video-frame [data-testid='caption-controls'] {
+    max-width: calc(100vw - 8rem);
+  }
+  .learning-video-frame [data-testid='caption-controls'] select {
+    max-width: 8rem;
+  }
 }

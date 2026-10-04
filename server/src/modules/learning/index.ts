@@ -1,5 +1,5 @@
 /**
- * Learning module factory (M5) and the periodic expiry reconciler.
+ * Learning module factory (M5 + course-learning enhancements) and the periodic expiry reconciler.
  *
  * Learning is an internal module of the same Express application, never a new
  * service. Mounted under /learning; the reconciler is a timer in the existing
@@ -12,6 +12,7 @@ import type { ServerConfig } from '../../config.js';
 import type { DrmClient } from '../catalog/drmClient.js';
 import { getLogger } from '../../logger.js';
 import { createLearningRouter } from './routes/index.js';
+import { createLearningAdminRouter } from './routes/admin.js';
 import { reconcileExpiredSessions } from './expiry/reconciler.js';
 import type { LearningRouteContext } from './types.js';
 
@@ -27,6 +28,7 @@ export interface LearningModuleDeps {
 
 export function createLearningModule(deps: LearningModuleDeps): {
   router: Router;
+  adminRouter: Router;
   context: LearningRouteContext;
 } {
   const now = deps.clock ?? (() => Date.now());
@@ -50,7 +52,11 @@ export function createLearningModule(deps: LearningModuleDeps): {
     },
     now,
   };
-  return { router: createLearningRouter(context), context };
+  return {
+    router: createLearningRouter(context),
+    adminRouter: createLearningAdminRouter(context),
+    context,
+  };
 }
 
 /**

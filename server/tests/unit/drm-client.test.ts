@@ -19,7 +19,9 @@ let behavior:
   | 'slow'
   | 'delete-ok'
   | 'status-ready'
-  | 'deletion-completed' = 'ok-register';
+  | 'deletion-completed'
+  | 'playback-denial' = 'ok-register';
+let denialCode = 'DEVICE_LIMIT_EXCEEDED';
 let requestCount = 0;
 
 async function startFixture(): Promise<string> {
@@ -32,6 +34,11 @@ async function startFixture(): Promise<string> {
       data += c;
     });
     req.on('end', () => {
+      if (behavior === 'playback-denial') {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ code: denialCode, error: 'private upstream token and database detail' }));
+        return;
+      }
       try {
         lastBody = data ? JSON.parse(data) : null;
       } catch {
@@ -135,6 +142,20 @@ function clientFor(
 }
 
 describe('DRM adapter contract', () => {
+  it('maps only approved playback denials without leaking upstream bodies or retrying', async () => {
+    const client = clientFor(await startFixture()); behavior = 'playback-denial';
+    const input = { externalUserId: 'student', externalAssetId: 'asset', deviceId: 'browser', assertion: 'private-signed-assertion' };
+    for (const [upstream, expected] of [['DEVICE_LIMIT_EXCEEDED', 'DRM_DEVICE_LIMIT'], ['DEVICE_REVOKED', 'DRM_DEVICE_REVOKED'], ['CONCURRENT_LIMIT_EXCEEDED', 'DRM_STREAM_LIMIT']]) {
+      denialCode = upstream!;
+      const before = requestCount;
+      await expect(client.createPlaybackSession(input)).rejects.toMatchObject({ code: expected, message: 'External media request failed.' });
+      expect(requestCount).toBe(before + 1);
+    }
+    denialCode = 'DEVICE_LIMIT_EXCEEDED';
+    await expect(client.mediaStatus('asset')).rejects.toMatchObject({ code: 'DRM_UNAUTHORIZED' });
+    denialCode = 'PRIVATE_ARBITRARY_UPSTREAM_DETAIL';
+    await expect(client.createPlaybackSession(input)).rejects.toMatchObject({ code: 'DRM_UNAUTHORIZED', message: 'External media request failed.' });
+  });
   it('sends required headers + stable idempotency body', async () => {
     const baseUrl = await startFixture();
     behavior = 'ok-register';

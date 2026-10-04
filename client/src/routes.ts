@@ -87,6 +87,10 @@ export function adminCourseIdFromHash(): string {
 /** Course slug for the protected learning route (#/learn/:slug). */
 export function learnSlugFromHash(): string {
   const hash = window.location.hash;
-  if (hash.startsWith('#/learn/')) return decodeURIComponent(hash.slice('#/learn/'.length));
+  if (hash.startsWith('#/learn/')) return decodeURIComponent(hash.slice('#/learn/'.length).split('?')[0] ?? '');
   return '';
+}
+
+export function learnLessonFromHash(): string | null {
+  return new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('lesson');
 }

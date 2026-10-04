@@ -23,6 +23,22 @@ export interface PlayerLabels {
   unsupported: string;
   fullscreen: string;
   exitFullscreen: string;
+  needsGesture?: string;
+  unsupportedDetail?: string;
+  networkDetail?: string;
+  expiredDetail?: string;
+  deviceDetail?: string;
+  revokedDetail?: string;
+  streamDetail?: string;
+}
+
+export function errorDetail(code: string | null, labels: PlayerLabels): string | null {
+  if (!code) return null;
+  if (code === 'UNSUPPORTED_PROVIDER') return labels.unsupportedDetail ?? labels.unsupported;
+  if (code === 'PLAYBACK_GESTURE_REQUIRED') return labels.needsGesture ?? null;
+  if (code === 'PLAYBACK_ERROR' || code.startsWith('DASH_') || code === 'STREAM_SETUP_ERROR' || code === 'PLAYER_INIT_FAILED')
+    return labels.networkDetail ?? null;
+  return null;
 }
 
 export function phaseLabel(phase: PlayerPhase, labels: PlayerLabels): string {
@@ -114,14 +130,16 @@ export function PlayerOverlay({
     );
   }
   if (phase === 'error') {
+    const detail = errorDetail(code, labels);
     return (
       <div
         data-testid="player-state"
         data-phase="error"
         data-code={code ?? 'UNKNOWN'}
-        className="absolute inset-0 flex items-center justify-center learning-video-overlay px-4 text-center text-sm font-bold text-white"
+        className="absolute inset-0 flex flex-col items-center justify-center gap-2 learning-video-overlay px-4 text-center text-sm font-bold text-white"
       >
-        {code === 'UNSUPPORTED_PROVIDER' ? labels.unsupported : labels.error}
+        <span>{code === 'UNSUPPORTED_PROVIDER' ? labels.unsupported : labels.error}</span>
+        {detail ? <span className="max-w-md text-xs font-normal opacity-90">{detail}</span> : null}
       </div>
     );
   }

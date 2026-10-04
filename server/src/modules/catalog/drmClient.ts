@@ -9,8 +9,11 @@ import {
   validateCompletionResponse,
   validateDeletionRequestResponse,
   validateDeletionStatusResponse,
+  validateDeviceInspectionResponse,
+  validateDeviceReleaseResponse,
   validateMediaStatusResponse,
   validateRegistrationResponse,
+  type ValidatedDeviceInspection,
 } from './drm/schemas.js';
 
 export type DrmErrorCategory =
@@ -114,9 +117,27 @@ export class DrmClient {
             >,
             'drm request failed',
           );
+          let playbackDenial: string | undefined;
+          if (path === '/v1/playback/sessions' && opts.method === 'POST' && res.status === 403) {
+            try {
+              const parsed: unknown = JSON.parse(text);
+              const code = parsed && typeof parsed === 'object' && 'code' in parsed ? (parsed as { code: unknown }).code : null;
+              if (code === 'DEVICE_LIMIT_EXCEEDED') playbackDenial = 'DRM_DEVICE_LIMIT';
+              if (code === 'DEVICE_REVOKED') playbackDenial = 'DRM_DEVICE_REVOKED';
+              if (code === 'CONCURRENT_LIMIT_EXCEEDED') playbackDenial = 'DRM_STREAM_LIMIT';
+            } catch { /* Unknown dependency bodies keep their generic category. */ }
+          }
+          if (/^\/v1\/admin\/users\/.+\/devices(\/.+\/release)?$/.test(path) && res.status === 409) {
+            try {
+              const parsed: unknown = JSON.parse(text);
+              const code = parsed && typeof parsed === 'object' && 'code' in parsed ? (parsed as { code: unknown }).code : null;
+              if (code === 'DEVICE_ACTIVE') playbackDenial = 'DRM_DEVICE_ACTIVE';
+              if (code === 'DEVICE_REVOKED') playbackDenial = 'DRM_DEVICE_REVOKED';
+            } catch { /* Unknown dependency bodies keep their generic category. */ }
+          }
           throw new ApiError(
             res.status === 404 ? 404 : res.status >= 500 ? 502 : res.status,
-            category,
+            playbackDenial ?? category,
             'External media request failed.',
           );
         }
@@ -200,7 +221,7 @@ export class DrmClient {
     );
   }
 
-  async mediaStatus(assetId: string): Promise<{ status: string }> {
+  async mediaStatus(assetId: string): Promise<{ status: string; durationSeconds?: number }> {
     return validateMediaStatusResponse(
       await this.request(`/v1/admin/media/${encodeURIComponent(assetId)}/status`, {
         method: 'GET',
@@ -337,6 +358,41 @@ export class DrmClient {
       method: 'POST',
       idempotent: true,
     });
+  }
+
+  /**
+   * Inspect device registrations for one external user. Application
+   * credentials only; tenant is derived server-side. Bounded to 100 entries;
+   * callers must honor the truncation flag and never invent a complete count.
+   */
+  async inspectUserDevices(externalUserId: string): Promise<ValidatedDeviceInspection> {
+    if (externalUserId.length === 0 || externalUserId.length > 255) {
+      throw new ApiError(400, 'DRM_VALIDATION', 'External media request failed.');
+    }
+    return validateDeviceInspectionResponse(
+      await this.request(`/v1/admin/users/${encodeURIComponent(externalUserId)}/devices`, {
+        method: 'GET',
+        idempotent: true,
+      }),
+    );
+  }
+
+  /**
+   * Release one inactive ACTIVE registration. Idempotent: a missing or
+   * already-released reference returns `{released:false}`. Refuses active
+   * playback and all REVOKED registrations with distinct safe codes; the
+   * external service rechecks inactivity under its lock.
+   */
+  async releaseUserDevice(
+    externalUserId: string,
+    deviceReference: string,
+  ): Promise<{ released: boolean }> {
+    return validateDeviceReleaseResponse(
+      await this.request(
+        `/v1/admin/users/${encodeURIComponent(externalUserId)}/devices/${encodeURIComponent(deviceReference)}/release`,
+        { method: 'POST', body: {}, idempotent: true },
+      ),
+    );
   }
 
   /**

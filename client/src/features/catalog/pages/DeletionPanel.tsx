@@ -92,7 +92,7 @@ export function DeletionPanel({
       <FormActions className="mt-4">
         <Button
           variant="danger"
-          disabled={busy || confirmation !== expectedConfirmation}
+          disabled={busy || confirmation !== expectedConfirmation} disabledReason={busy ? undefined : { ar: `اكتب نص التأكيد بالضبط: ${expectedConfirmation}`, en: `Type the confirmation exactly: ${expectedConfirmation}` }}
           onClick={() => void request()}
           data-testid="deletion-submit"
         >

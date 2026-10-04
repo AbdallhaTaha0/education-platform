@@ -16,6 +16,7 @@ export interface FixtureAsset {
   internalId: string;
   externalAssetId: string;
   status: string;
+  durationSeconds?: number;
   deletionId?: string;
   deletionStatus?: string;
 }
@@ -40,6 +41,20 @@ export class DrmFixture {
   reissuePendingUploadUrl = false;
   completeConflictOnce = false;
   delayMs = 0;
+  /** Labeled device-recovery surface for playback-recovery tests. */
+  devices = new Map<string, { reference: string; externalUserId: string; status: string; createdAt: string; lastSeenAt: string; activePlayback: boolean }>();
+  deviceMaxDevices = 2;
+  deviceTruncated = false;
+  failNextDeviceInspection = 0;
+  failNextDeviceRelease = 0;
+  /**
+   * Labeled ambiguous-outcome mode for one reference: the release succeeds
+   * server-side, then every response fails (timeout-after-success on every
+   * attempt, including the client's idempotent retries). Clear it explicitly
+   * before retrying: the next identical request then observes the reference
+   * already gone (`released:false`).
+   */
+  timeoutAfterDeviceRelease = false;
   /**
    * M5 playback surface. Populated by enablePlayback(); kept as a separate
    * module so this file stays focused on the catalog contract.
@@ -195,8 +210,12 @@ export class DrmFixture {
               res.end(JSON.stringify({ error: 'Asset not found' }));
               return;
             }
+            const payload: Record<string, unknown> = { id, status: asset.status };
+            if (asset.durationSeconds !== undefined) {
+              payload.durationSeconds = asset.durationSeconds;
+            }
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ id, status: asset.status }));
+            res.end(JSON.stringify(payload));
             return;
           }
           // DELETE /v1/media/:id
@@ -268,6 +287,74 @@ export class DrmFixture {
             res.end(JSON.stringify({ deletionId: delId, status: del.status, attempts: del.polls }));
             return;
           }
+          // GET /v1/admin/users/:externalUserId/devices
+          const devicesMatch = url.match(/^\/v1\/admin\/users\/([^/]+)\/devices$/);
+          if (devicesMatch && req.method === 'GET') {
+            if (this.failNextDeviceInspection > 0) {
+              this.failNextDeviceInspection -= 1;
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'transient device inspection failure' }));
+              return;
+            }
+            const externalUserId = decodeURIComponent(devicesMatch[1] as string);
+            const owned = [...this.devices.values()].filter((d) => d.externalUserId === externalUserId);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(
+              JSON.stringify({
+                devices: owned.slice(0, 100).map((d) => ({
+                  id: d.reference,
+                  status: d.status,
+                  createdAt: d.createdAt,
+                  lastSeenAt: d.lastSeenAt,
+                  activePlayback: d.activePlayback,
+                  releasable: d.status === 'ACTIVE' && !d.activePlayback,
+                })),
+                truncated: this.deviceTruncated,
+                maxDevices: this.deviceMaxDevices,
+              }),
+            );
+            return;
+          }
+          // POST /v1/admin/users/:externalUserId/devices/:ref/release
+          const releaseMatch = url.match(/^\/v1\/admin\/users\/([^/]+)\/devices\/([^/]+)\/release$/);
+          if (releaseMatch && req.method === 'POST') {
+            if (this.failNextDeviceRelease > 0) {
+              this.failNextDeviceRelease -= 1;
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'transient device release failure' }));
+              return;
+            }
+            const externalUserId = decodeURIComponent(releaseMatch[1] as string);
+            const ref = decodeURIComponent(releaseMatch[2] as string);
+            const key = `${externalUserId}:${ref}`;
+            if (this.timeoutAfterDeviceRelease) {
+              const pending = this.devices.get(key);
+              if (pending) this.devices.delete(key);
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'timeout after successful release' }));
+              return;
+            }
+            const entry = this.devices.get(key);
+            if (!entry) {
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ released: false }));
+              return;
+            }
+            if (entry.status !== 'ACTIVE') {
+              res.writeHead(409, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Revoked devices cannot be released', code: 'DEVICE_REVOKED' }));
+              return;
+            }
+            if (entry.activePlayback) {
+              res.writeHead(409, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Device has active playback', code: 'DEVICE_ACTIVE' }));
+              return;
+            }
+            this.devices.delete(key);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ released: true }));
+            return;
+          }
           res.writeHead(404, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'unknown' }));
         };
@@ -281,9 +368,12 @@ export class DrmFixture {
     return this.url;
   }
 
-  markReady(internalId: string): void {
+  markReady(internalId: string, durationSeconds?: number): void {
     const a = this.assets.get(internalId);
-    if (a) a.status = 'READY';
+    if (a) {
+      a.status = 'READY';
+      if (durationSeconds !== undefined) a.durationSeconds = durationSeconds;
+    }
   }
 
   /**
@@ -300,9 +390,22 @@ export class DrmFixture {
     if (a) a.status = 'FAILED';
   }
 
+  seedDevice(externalUserId: string, reference: string, overrides: Partial<{ status: string; activePlayback: boolean }> = {}): void {
+    const now = new Date().toISOString();
+    this.devices.set(`${externalUserId}:${reference}`, {
+      reference,
+      externalUserId,
+      status: overrides.status ?? 'ACTIVE',
+      createdAt: now,
+      lastSeenAt: now,
+      activePlayback: overrides.activePlayback ?? false,
+    });
+  }
+
   reset(): void {
     this.assets.clear();
     this.deletions.clear();
+    this.devices.clear();
     this.requests = [];
     this.failNextStatusCount = 0;
     this.failNextDeletes = 0;
@@ -310,6 +413,11 @@ export class DrmFixture {
     this.completeConflictOnce = false;
     this.delayMs = 0;
     this.mode = 'healthy';
+    this.deviceMaxDevices = 2;
+    this.deviceTruncated = false;
+    this.timeoutAfterDeviceRelease = false;
+    this.failNextDeviceInspection = 0;
+    this.failNextDeviceRelease = 0;
     this.playback?.reset();
   }
 

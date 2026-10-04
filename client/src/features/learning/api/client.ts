@@ -70,6 +70,9 @@ import type {
   PlaybackGrant,
   PlaybackRenewal,
   LessonProgressState,
+  OwnSession,
+  DeviceInspection,
+  DeviceRelease,
 } from '../types/models.js';
 
 export const learningApi = {
@@ -102,9 +105,27 @@ export const learningApi = {
       mutationInit(input),
     ).then((body) => body.progress);
   },
-  endPlayback(referenceId: string): Promise<PlaybackEnd> {
+  endPlayback(referenceId: string, opts: { keepalive?: boolean } = {}): Promise<PlaybackEnd> {
+    const init = mutationInit({});
     return request<PlaybackEnd>(
       `/learning/playback/${encodeURIComponent(referenceId)}/end`,
+      opts.keepalive ? { ...init, keepalive: true } : init,
+    );
+  },
+  /** Student's own bounded playback references for explicit recovery. */
+  listOwnSessions(): Promise<{ sessions: OwnSession[] }> {
+    return request<{ sessions: OwnSession[] }>('/learning/sessions');
+  },
+  /** ADMIN device inspection for one STUDENT (platform id only). */
+  adminDevices(studentId: string): Promise<{ devices: DeviceInspection }> {
+    return request<{ devices: DeviceInspection }>(
+      `/admin/learning/students/${encodeURIComponent(studentId)}/devices`,
+    );
+  },
+  /** ADMIN release of one inactive registration; empty body, CSRF guarded. */
+  adminReleaseDevice(studentId: string, deviceReference: string): Promise<{ release: DeviceRelease }> {
+    return request<{ release: DeviceRelease }>(
+      `/admin/learning/students/${encodeURIComponent(studentId)}/devices/${encodeURIComponent(deviceReference)}/release`,
       mutationInit({}),
     );
   },

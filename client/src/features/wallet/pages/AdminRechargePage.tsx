@@ -217,7 +217,7 @@ export function AdminRechargePage(): JSX.Element {
                 <FormActions className="mt-4">
                   <Button
                     onClick={() => void submitReview()}
-                    disabled={busy || dialogDone !== null || (decision==='APPROVE' && !verified)}
+                    disabled={busy || dialogDone !== null || (decision==='APPROVE' && !verified)} disabledReason={busy ? undefined : dialogDone !== null ? { ar: "تمت معالجة هذا الطلب. أغلق النافذة للاطلاع على النتيجة.", en: "This request has been processed. Close this dialog to view the result." } : { ar: "تحقق من استلام التحويل وحدد مربع التأكيد قبل الموافقة.", en: "Verify the transfer was received and check the confirmation box before approving." }}
                   >
                     {t.confirmReview}
                   </Button>

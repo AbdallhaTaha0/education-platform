@@ -151,6 +151,7 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
   const learning = createLearningModule(learningDeps);
   app.set('learning', learning.context);
   app.use('/learning', learning.router);
+  app.use('/admin', learning.adminRouter);
 
   const assessments = assessmentRouters(deps.prisma, tunables.clock ?? Date.now);
   app.use('/assessments', assessments.studentRouter);

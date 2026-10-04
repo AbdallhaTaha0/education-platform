@@ -112,3 +112,59 @@ export function validateDeletionStatusResponse(body: unknown): ValidatedDeletion
   if (!isRecord(body)) fail();
   return { status: assertStatusField(body['status'], KNOWN_DELETION_STATUSES) };
 }
+
+export interface ValidatedDeviceEntry {
+  reference: string;
+  status: string;
+  createdAt: string;
+  lastSeenAt: string;
+  activePlayback: boolean;
+  releasable: boolean;
+}
+
+export interface ValidatedDeviceInspection {
+  devices: ValidatedDeviceEntry[];
+  truncated: boolean;
+  maxDevices: number;
+}
+
+function assertIsoDate(value: unknown): string {
+  if (typeof value !== 'string') fail();
+  const parsed = Date.parse(value as string);
+  if (!Number.isFinite(parsed)) fail();
+  return new Date(parsed).toISOString();
+}
+
+function assertBool(value: unknown): boolean {
+  if (typeof value !== 'boolean') fail();
+  return value as boolean;
+}
+
+export function validateDeviceInspectionResponse(body: unknown): ValidatedDeviceInspection {
+  if (!isRecord(body)) fail();
+  const rawDevices = body['devices'];
+  if (!Array.isArray(rawDevices) || rawDevices.length > 100) fail();
+  const devices: ValidatedDeviceEntry[] = (rawDevices as unknown[]).map((entry) => {
+    if (!isRecord(entry)) fail();
+    const r = entry as Record<string, unknown>;
+    return {
+      reference: assertUuidField(r['id']),
+      status: typeof r['status'] === 'string' ? (r['status'] as string).slice(0, 32) : (() => { fail(); return ''; })(),
+      createdAt: assertIsoDate(r['createdAt'] ?? r['created_at']),
+      lastSeenAt: assertIsoDate(r['lastSeenAt'] ?? r['last_seen_at']),
+      activePlayback: assertBool(r['activePlayback'] ?? r['active_playback']),
+      releasable: assertBool(r['releasable'] ?? false),
+    };
+  });
+  const truncated = body['truncated'];
+  if (typeof truncated !== 'boolean') fail();
+  const maxDevices = body['maxDevices'];
+  if (typeof maxDevices !== 'number' || !Number.isSafeInteger(maxDevices) || maxDevices <= 0 || maxDevices > 1000) fail();
+  return { devices, truncated: truncated as boolean, maxDevices: maxDevices as number };
+}
+
+export function validateDeviceReleaseResponse(body: unknown): { released: boolean } {
+  if (!isRecord(body)) fail();
+  if (typeof body['released'] !== 'boolean') fail();
+  return { released: body['released'] as boolean };
+}

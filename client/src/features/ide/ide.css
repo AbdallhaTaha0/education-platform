@@ -1,0 +1,33 @@
+/* IDE-specific tokens stay independent of the site's translated direction. */
+[data-testid='web-ide'] {
+  --ide-javascript: #f7df1e;
+  --ide-javascript-ink: #18181b;
+  --ide-run: #166534;
+  --ide-run-hover: #14532d;
+  --ide-run-pressed: #052e16;
+  --ide-run-ink: #ffffff;
+}
+
+[data-testid='web-ide'] .ide-language {
+  background: var(--ide-javascript);
+  color: var(--ide-javascript-ink);
+}
+[data-testid='web-ide'] .ide-language svg {
+  color: var(--ide-javascript);
+  border: 1px solid var(--ide-javascript-ink);
+  border-radius: 3px;
+}
+[data-testid='web-ide'] .ide-run {
+  background: var(--ide-run);
+  color: var(--ide-run-ink);
+  border-color: var(--ide-run-hover);
+}
+[data-testid='web-ide'] .ide-run:hover:not(:disabled) {
+  background: var(--ide-run-hover);
+}
+[data-testid='web-ide'] .ide-run:active:not(:disabled) {
+  background: var(--ide-run-pressed);
+}
+[data-testid='web-ide'] .ide-action button:disabled {
+  cursor: not-allowed;
+}

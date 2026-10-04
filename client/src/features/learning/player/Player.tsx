@@ -1,3 +1,4 @@
+import { Button } from '../../../components/ui/Button';
 /**
  * DASH/EME lesson player (M5).
  *
@@ -17,7 +18,9 @@ import { authHeaders, clear as clearSession, isExpired, setSession } from './ses
 import { emeKeyForProvider, isUnsupportedProvider } from './eme';
 import { PlayerOverlay, WatermarkOverlay, phaseLabel, type PlayerLabels } from './PlayerChrome';
 import { protectedRequestUrl } from './requests';
+import { classifyPlayRejection } from './playRejection';
 import { awaitsEncryptionInitData } from './errors';
+import { usePlayerFullscreen } from './fullscreen';
 import type { PlaybackGrant, PlayerState } from '../types/models';
 
 type MediaPlayerClass = ReturnType<ReturnType<typeof dashjs.MediaPlayer>['create']>;
@@ -31,6 +34,11 @@ export interface PlayerProps {
   labels: PlayerLabels;
   /** True when entitlement is known to have lapsed; forces the expired state. */
   entitlementLost?: boolean;
+  /** Short-lived caption Blob URLs; revoked by the materials hook. */
+  captionUrls?: { ar: string | null; en: string | null };
+  captionChoice?: 'off' | 'ar' | 'en';
+  /** Caption language selector rendered inside the whole-player fullscreen frame. */
+  captionControls?: React.ReactNode;
   onProgress?: (
     positionSeconds: number,
     durationSeconds: number | null,
@@ -50,6 +58,9 @@ export function DashLessonPlayer({
   grant,
   labels,
   entitlementLost = false,
+  captionUrls,
+  captionChoice = 'off',
+  captionControls,
   onProgress,
   onEnded,
   onError,
@@ -63,24 +74,7 @@ export function DashLessonPlayer({
   const resumeApplied = useRef(false);
   const [state, setState] = useState<PlayerState>(INITIAL_PLAYER_STATE);
   const [canPlay, setCanPlay] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
-
-  useEffect(() => {
-    const changed = () => setFullscreen(document.fullscreenElement === frameRef.current);
-    document.addEventListener('fullscreenchange', changed);
-    return () => document.removeEventListener('fullscreenchange', changed);
-  }, []);
-
-  const toggleFullscreen = useCallback(async () => {
-    const frame = frameRef.current;
-    if (!frame) return;
-    try {
-      if (document.fullscreenElement === frame) await document.exitFullscreen();
-      else await frame.requestFullscreen();
-    } catch {
-      /* Unsupported fullscreen leaves the ordinary player usable. */
-    }
-  }, []);
+  const { fullscreen, expanded, toggle: toggleFullscreen } = usePlayerFullscreen(frameRef);
 
   // The reducer needs the current phase, so it is read through a ref to keep
   // every effect stable instead of re-subscribing on each state change.
@@ -331,18 +325,64 @@ export function DashLessonPlayer({
     };
   }, [reportProgress]);
 
+  const [needsGesture, setNeedsGesture] = useState(false);
+  const [playFailure, setPlayFailure] = useState<string | null>(null);
+  // Guards stale play-promise results after teardown or a lesson change: the
+  // captured grant reference must still be current when the promise settles.
+  const grantIdRef = useRef<string | null>(null);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    grantIdRef.current = grant.referenceId;
+    setNeedsGesture(false);
+    setPlayFailure(null);
+  }, [grant.referenceId]);
+  useEffect(
+    () => {
+      // React StrictMode replays setup/cleanup in development. A replayed
+      // setup must restore the flag so rejection handling remains active.
+      mountedRef.current = true;
+      return () => { mountedRef.current = false; };
+    },
+    [],
+  );
+
   const toggle = useCallback(() => {
     const video = videoRef.current;
     if (video === null) return;
-    if (video.paused) void video.play();
-    else video.pause();
-  }, []);
+    if (!video.paused) {
+      video.pause();
+      return;
+    }
+    setNeedsGesture(false);
+    setPlayFailure(null);
+    const capturedGrantId = grantIdRef.current;
+    const attempt = video.play();
+    if (attempt && typeof (attempt as Promise<void>).catch === 'function') {
+      (attempt as Promise<void>).catch((err: unknown) => {
+        // Ignore results that arrive after teardown or a lesson/grant switch.
+        if (!mountedRef.current || grantIdRef.current !== capturedGrantId) return;
+        const outcome = classifyPlayRejection((err as { name?: string })?.name ?? '');
+        if (outcome.action === 'gesture') {
+          // Browser gesture/autoplay refusal is not a media failure: the
+          // grant is preserved and the viewer is asked for an explicit
+          // gesture. No uncaught rejection.
+          setNeedsGesture(true);
+          return;
+        }
+        // Unsupported media vs generic playback failure carry different next
+        // actions (supported-browser guidance vs bounded retry).
+        setPlayFailure(outcome.code);
+        dispatch({ type: 'FAILED', code: outcome.code });
+        onErrorRef.current?.(outcome.code);
+      });
+    }
+  }, [dispatch]);
 
   return (
     <div className="w-full">
       <div
         ref={frameRef}
-        className="relative aspect-video w-full overflow-hidden rounded-card border border-border learning-video-surface learning-video-frame"
+        className={`relative aspect-video w-full overflow-hidden rounded-card border border-border learning-video-surface learning-video-frame ${expanded ? 'learning-video-frame--expanded' : ''}`}
         // The platform-side reference id is a non-secret row identifier, already
         // visible in the API response the browser received. The playback bearer
         // token is NEVER placed in the DOM.
@@ -364,41 +404,70 @@ export function DashLessonPlayer({
           onCanPlay={handleReady}
           onLoadedMetadata={handleLoadedMetadata}
           onEnded={handleEnded}
-        />
+          onDoubleClick={() => void toggleFullscreen()}
+        >
+          {captionChoice !== 'off' && captionUrls?.[captionChoice] ? (
+            <track
+              key={captionChoice}
+              kind="subtitles"
+              srcLang={captionChoice}
+              label={captionChoice === 'ar' ? 'العربية' : 'English'}
+              src={captionUrls[captionChoice] as string}
+              default
+            />
+          ) : null}
+        </video>
+        {captionControls ? (
+          <div className="absolute start-3 top-3 z-40 max-w-[calc(100%-7rem)]">
+            {captionControls}
+          </div>
+        ) : null}
         <PlayerOverlay
           phase={state.phase}
           labels={labels}
-          code={state.errorCode}
+          code={state.errorCode ?? playFailure}
           canPlay={canPlay}
         />
-        {document.fullscreenEnabled ? (
+        {(
           <button
             type="button"
             data-testid="player-fullscreen"
             aria-pressed={fullscreen}
-            className="absolute end-3 top-3 z-30 min-h-[44px] rounded-control bg-black/80 px-3 text-sm text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+            title={fullscreen ? labels.exitFullscreen : labels.fullscreen}
+            className="absolute end-3 top-3 z-40 inline-flex min-h-[44px] items-center gap-2 rounded-control border border-white/30 bg-black/80 px-3 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
             onClick={() => void toggleFullscreen()}
           >
+            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={fullscreen ? 'M9 3v6H3m18 0h-6V3M3 15h6v6m6 0v-6h6' : 'M9 3H3v6m12-6h6v6M3 15v6h6m6 0h6v-6'} /></svg>
             {fullscreen ? labels.exitFullscreen : labels.fullscreen}
           </button>
-        ) : null}
+        )}
+        {/* In-frame playback control: inside the whole-player fullscreen frame
+            alongside captions and watermark, with safe-area spacing above the
+            native controls. Single accessible control; no duplicate outside. */}
+        <div
+          className="absolute inset-x-0 bottom-0 z-40 flex items-center gap-2 px-3 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-2"
+          style={{ pointerEvents: 'none' }}
+        >
+          <Button unstyled
+            type="button"
+            style={{ pointerEvents: 'auto' }}
+            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-control border border-white/30 bg-black/80 px-4 py-2 text-sm font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+            data-testid="player-toggle-playback"
+            aria-label={state.phase === 'playing' ? labels.pause : state.phase === 'paused' ? labels.resume : labels.play}
+            aria-pressed={state.phase === 'playing'}
+            onClick={toggle}
+            disabled={state.phase === 'expired' || state.phase === 'error'} disabledReason={state.phase === 'expired' ? { ar: "انتهت صلاحية جلسة المشاهدة. أعد بدء الدرس إن كان اشتراكك ساريًا.", en: "This playback session expired. Start the lesson again if your subscription is active." } : { ar: "توقف التشغيل بسبب خطأ. راجع رسالة الخطأ وأعد المحاولة.", en: "Playback stopped after an error. Review the error message and retry." }}
+          >
+            {state.phase === 'playing' ? labels.pause : state.phase === 'paused' ? labels.resume : labels.play}
+          </Button>
+          <span aria-live="polite" className="rounded bg-black/60 px-2 py-1 text-xs text-white">
+            {needsGesture && labels.needsGesture ? labels.needsGesture : phaseLabel(state.phase, labels)}
+          </span>
+        </div>
         {/* Watermark last: it must stay visible over every state overlay. */}
         <WatermarkOverlay grant={grant} />
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          className="min-h-[44px] rounded-control border border-border px-4 py-2 font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
-          data-testid="player-toggle-playback"
-          onClick={toggle}
-          disabled={state.phase === 'expired' || state.phase === 'error'}
-        >
-          {state.phase === 'playing'
-            ? labels.pause
-            : state.phase === 'paused'
-              ? labels.resume
-              : labels.play}
-        </button>
         {state.phase === 'error' && onRetry ? (
           <button
             type="button"
@@ -410,7 +479,7 @@ export function DashLessonPlayer({
           </button>
         ) : null}
         <span aria-live="polite" className="text-sm text-muted">
-          {phaseLabel(state.phase, labels)}
+          {needsGesture && labels.needsGesture ? labels.needsGesture : phaseLabel(state.phase, labels)}
         </span>
       </div>
     </div>

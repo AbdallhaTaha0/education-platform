@@ -1,5 +1,19 @@
 # Education Platform — Design v1
 
+## IDE direction and controls follow-up (2026-10-04)
+
+Owner clarification: keep the desktop code editor physically on the left and console on the right in both Arabic and English. Arabic labels retain RTL; code and console output remain LTR. Narrow layouts stack code above output. The shared IDE shows a yellow JavaScript/JS badge and an accessible green Run control with a play icon, with scoped colors easy to revise. [Local implementation and visual verification](ide-polish-20261004/report.md).
+
+## Course curriculum and viewing follow-up (2026-10-04)
+
+The owner requested course-page UI/UX improvements and clickable fullscreen, clarified that “plan” means curriculum and learning progress, and explicitly required compliance with this directory's rules. The subscribed course offer displays the protected ordered curriculum and saved progress; lesson links open the selected authorized lesson in the learning page. Before subscription, lesson details remain protected under D11.
+
+The learning page shows the selected lesson title/position, a start/resume action inside the player placeholder, previous/next navigation, expandable sections and course/section completion counts. Desktop curriculum stays alongside the player with its own scrolling; mobile has a keyboard-accessible curriculum jump that preserves the application route. Required-assessment locks remain visible and enforceable. Completion measures recorded lesson completion, never fabricated assessment passes.
+
+Fullscreen targets the complete video frame, including watermark, controls and state overlays. A visible text/icon control supports native fullscreen, the WebKit frame API, and an expanded viewport fallback with Escape, keyboard containment and scroll/focus restoration. Double-clicking the video toggles this view. Preserve external DRM enforcement and never substitute native video-only fullscreen that drops the platform overlay.
+
+Arabic/English, RTL/LTR and semantic dark/light tokens remain mandatory. Lesson search, duration labels, captions and resources are future proposals only. [Implementation and verification](course-ux-20261004/report.md).
+
 Owner academic clarification, 2026-10-01: [D27's academic catalog/access contract](m8-school-catalog-contract.md) governs subsequent M8 discovery and course editing. Lead with first/second secondary selection; first secondary has two terms; each teaching month is a course, revisions are distinct and three-month packages contain three specific courses. ADMIN-selectable access is duration-based or until term/year end; never label package membership as an automatic 90-day duration. Earlier generic demo courses are historical visual examples.
 
 Status: the owner approved the FAYQ identity and supplied brand board on 2026-09-30. Earlier Stitch layouts remain historical references; the FAYQ system below governs current visual implementation. This is a UI specification, not a backend contract.
@@ -127,6 +141,10 @@ The owner will review and tune colors inside Stitch before final visual implemen
 - Admin bilingual requirements and review controls are understandable.
 - Placeholder data, brand and palette remain editable.
 - Designs are a first visual pass; production functionality and runtime/accessibility tests are not claimed.
+
+## Owner clarification — disabled website actions (2026-10-04)
+
+The owner clarified that disabled-action explanations apply across the website, including STUDENT and ADMIN pages. Show the actual condition and next step in Arabic and English beside the action label, without requiring hover or keyboard focus. Associate the explanation with the disabled control for assistive technology and remove it when the action becomes available. Pending requests may share a waiting message; prerequisites, boundaries, authoring limits, confirmation requirements and unavailable content need their own explanation. Preserve native disabling, server protections and the existing visual tokens. See [implementation and verification](disabled-actions-20261004/report.md).
 
 ## Owner clarification — optional course expiry (2026-10-01)
 

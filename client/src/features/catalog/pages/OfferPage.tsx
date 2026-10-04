@@ -8,6 +8,9 @@ import { Card, Container } from '../../../components/ui/Card';
 import { Loading, Notice } from '../../../components/ui/Notice';
 import { PriceDisplay } from '../components/PriceDisplay';
 import type { PublicCourse } from '../types/models';
+import { CoursePlan } from '../../learning/components/CoursePlan';
+import { useOutline } from '../../learning/hooks/useLearning';
+import { ErrorBlock } from '../../learning/components/Learning';
 
 export function OfferPage({ slug, onBack }: { slug: string; onBack: () => void }): JSX.Element {
   const { t, lang } = useLang();
@@ -21,6 +24,8 @@ export function OfferPage({ slug, onBack }: { slug: string; onBack: () => void }
     let live = true;
     (async () => {
       setLoading(true);
+      setError(null);
+      setCourse(null);
       try {
         const body = await apiFetch<{ data: { course: PublicCourse } }>(
           `/catalog/courses/${encodeURIComponent(slug)}`,
@@ -55,7 +60,7 @@ export function OfferPage({ slug, onBack }: { slug: string; onBack: () => void }
                 {lang === 'ar' ? course.titleAr : course.titleEn}
               </h1>
               <p className="mt-2">{lang === 'ar' ? course.descriptionAr : course.descriptionEn}</p>
-              {owned ? <a href={`#/learn/${course.id}`} className="my-4 inline-block rounded-control bg-primary px-5 py-3 font-bold text-primary-ink">{lang==='ar'?'تابع التعلم':'Continue learning'}</a> : course.plans.map((p) => (
+              {owned ? <a href={`#/learn/${encodeURIComponent(course.slug)}`} className="my-4 inline-flex min-h-[44px] items-center rounded-control bg-primary px-5 py-3 font-bold text-primary-ink">{lang==='ar'?'تابع التعلم':'Continue learning'}</a> : course.plans.map((p) => (
                 <div key={p.id} className="mt-3 flex flex-wrap items-center gap-3">
                   <PriceDisplay
                     current={p.currentPricePiastres}
@@ -72,15 +77,25 @@ export function OfferPage({ slug, onBack }: { slug: string; onBack: () => void }
                   </a>
                 </div>
               ))}
-              <p className="mt-4 text-muted">
+              {!owned ? <p className="mt-4 text-muted">
                 {lang === 'ar'
                   ? 'بعد الاشتراك ستجد الدروس المسجلة وتمارين البرمجة داخل مساحة التعلم الخاصة بك.'
                   : 'After subscribing, you can open the recorded lessons and programming exercises in your learning space.'}
-              </p>
+              </p> : null}
             </Card>
           ) : null}
+          {course !== null && owned ? <div className="mx-auto mt-6 max-w-[800px]"><OwnedCurriculum key={course.id} slug={course.slug} /></div> : null}
         </Container>
       </section>
     </main>
   );
+}
+
+/** The outline is fetched only for a subscribed student; the API enforces access. */
+function OwnedCurriculum({ slug }: { slug: string }): JSX.Element {
+  const { t, lang } = useLang();
+  const { data, loading, errorCode, reload } = useOutline(slug);
+  if (loading) return <Loading text={t.loading} />;
+  if (errorCode || !data) return <ErrorBlock message={lang === 'ar' ? 'تعذّر تحميل خطة الكورس. تحقق من الاشتراك وحاول مرة أخرى.' : 'Could not load the course plan. Check your subscription and try again.'} retryLabel={t.retry} onRetry={reload} />;
+  return <CoursePlan sections={data.sections} selectedLessonId={null} onSelect={id => { window.location.hash = `#/learn/${encodeURIComponent(slug)}?lesson=${encodeURIComponent(id)}`; }} />;
 }

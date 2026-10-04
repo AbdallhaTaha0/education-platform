@@ -35,7 +35,7 @@ export function WalletPage({ go }: { go: (hash: string) => void }): JSX.Element 
                 <Money piastres={wallet.balancePiastres} />
               </p>
               <FormActions className="mt-4">
-                <Button disabled={!instructions?.length} onClick={() => go('#/wallet/recharge')}>{t.rechargeNew}</Button>
+                <Button disabled={!instructions?.length} disabledReason={instructionsError ? { ar: "تعذر تحميل طرق الشحن. أعد المحاولة من رسالة الخطأ.", en: "Transfer methods could not load. Retry using the error message." } : instructions === null ? { ar: "جارٍ تحميل طرق الشحن.", en: "Loading transfer methods." } : { ar: "لم تضف الإدارة طرق تحويل بعد. تواصل مع الدعم.", en: "Transfer methods have not been configured. Contact support." }} onClick={() => go('#/wallet/recharge')}>{t.rechargeNew}</Button>
                 <Button variant="secondary" onClick={()=>go('#/courses')}>{lang==='ar'?'اختَر كورسك بعد الشحن':'Choose your course after recharge'}</Button>
                 <Button variant="secondary" onClick={() => go('#/purchases')}>
                   {t.purchaseHistory}

@@ -39,7 +39,8 @@ try {
   else console.log('Inspection CLI skipped explicitly; verifying direct browser/controller flow.');
   const fixture = capture([...compose, 'exec', '-T', 'server', 'node', '-e', "eval(require('fs').readFileSync(0,'utf8'))"], readFileSync(join(root, 'docker/ide/ui-fixtures.cjs'), 'utf8'));
   JSON.parse(fixture.trim()); writeFileSync(join(evidence, 'm9-fixtures.json'), fixture, { mode: 0o600 }); fixtureWritten = true;
-  if (!process.argv.includes('--ux-only') && !process.argv.includes('--support-only') && !process.argv.includes('--navigation-only') && !process.argv.includes('--auth-only')) browser('docker/ide/ui-flow.mjs', 'ui-flow');
+  if (!process.argv.includes('--ux-only') && !process.argv.includes('--support-only') && !process.argv.includes('--navigation-only') && !process.argv.includes('--auth-only') && !process.argv.includes('--course-only')) browser('docker/ide/ui-flow.mjs', 'ui-flow');
+  if (process.argv.includes('--course-only')) browser('docker/ide/course-flow.mjs', 'course-flow');
   if (process.argv.includes('--auth-only')) browser('docker/ide/auth-navigation-flow.mjs', 'auth-navigation-flow');
   // Navigation uses the initial fixture credentials; UX checks intentionally
   // change a fixture password. Run read-only navigation before that mutation.

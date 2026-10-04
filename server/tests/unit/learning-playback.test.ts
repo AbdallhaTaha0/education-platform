@@ -18,6 +18,8 @@ import {
 } from '../../src/modules/learning/playback/schemas.js';
 import { LearningError } from '../../src/modules/learning/errors.js';
 import type { LearningBinding } from '../../src/modules/learning/types.js';
+import { ApiError } from '../../src/modules/identity/errors.js';
+import { createPlaybackSession, type PlaybackDeps } from '../../src/modules/learning/playback/service.js';
 
 const NOW = Date.parse('2026-09-30T12:00:00.000Z');
 const { privateKey: PRIVATE_KEY, publicKey: PUBLIC_KEY } = generateKeyPairSync('rsa', {
@@ -50,6 +52,12 @@ function decode(token: string): Record<string, unknown> {
 }
 
 describe('playback assertion', () => {
+  it('preserves safe device and stream denials without creating a playback reference', async () => {
+    for (const [upstream, expected] of [['DRM_DEVICE_LIMIT', 'PLAYBACK_DEVICE_LIMIT'], ['DRM_DEVICE_REVOKED', 'PLAYBACK_DEVICE_REVOKED'], ['DRM_STREAM_LIMIT', 'PLAYBACK_STREAM_LIMIT']]) {
+      const deps = { prisma: {}, assertion: config, drmPublicBaseUrl: 'https://drm.example.com', drm: { createPlaybackSession: async () => { throw new ApiError(403, upstream!, 'private dependency detail'); } } } as unknown as PlaybackDeps;
+      await expect(createPlaybackSession(deps, { binding, deviceId: 'device-1', nowMs: NOW, resumePositionSeconds: 0 })).rejects.toMatchObject({ code: expected, status: 403 });
+    }
+  });
   it('carries exactly the documented claims from trusted records', () => {
     const { token } = mintAssertion(config, binding, NOW, 'device-1');
     const claims = decode(token);

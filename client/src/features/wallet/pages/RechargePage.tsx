@@ -222,7 +222,7 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
               </Field>
               {file ? <p role="status" className="w-full text-sm">{lang==='ar'?'الإثبات المحدد':'Selected proof'}: {file.name} · {Math.ceil(file.size/1024)} KB. {lang==='ar'?'يُرفق عند إرسال الطلب؛ الرصيد يتغير بعد المراجعة فقط.':'Attached when you submit; credit follows admin verification only.'}</p>:null}
               <FormActions>
-                <Button type="submit" disabled={busy}>
+                <Button type="submit" disabled={busy || !channelOptions.length} disabledReason={busy ? undefined : { ar: "لا توجد طريقة تحويل متاحة. تواصل مع الدعم قبل إرسال طلب شحن.", en: "No transfer method is available. Contact support before sending a recharge request." }}>
                   {busy ? <Loading text={t.submitting} /> : t.submitRecharge}
                 </Button>
                 <Button variant="secondary" onClick={() => go('#/wallet')}>

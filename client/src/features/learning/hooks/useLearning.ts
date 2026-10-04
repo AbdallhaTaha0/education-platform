@@ -1,6 +1,7 @@
 /** Learning hooks (M5). Each hook owns one responsibility and no globals. */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { learningApi, LearningApiError } from '../api/client';
+import { deviceId } from './device';
 import { clear as clearSession, renewSession } from '../player/session';
 import type {
   DashboardPayload,
@@ -89,7 +90,7 @@ export interface PlaybackController {
   requesting: boolean;
   errorCode: string | null;
   start: (lessonId: string) => Promise<void>;
-  end: () => Promise<void>;
+  end: (opts?: { keepalive?: boolean }) => Promise<void>;
   reportProgress: (
     positionSeconds: number,
     durationSeconds: number | null,
@@ -128,9 +129,10 @@ export function usePlayback(courseRef: string): PlaybackController {
    * End the external session. Always a best-effort keepalive: local credential
    * disposal happens first and never depends on the request succeeding, and the
    * durable server reference guarantees a retry if the external revocation
-   * fails. Repeated calls are idempotent.
+   * fails. Repeated calls are idempotent. Closing/unloading cannot guarantee
+   * delivery; the durable retry is the guarantee.
    */
-  const end = useCallback(async (): Promise<void> => {
+  const end = useCallback(async (opts: { keepalive?: boolean } = {}): Promise<void> => {
     if (renewTimer.current !== null) {
       clearTimeout(renewTimer.current);
       renewTimer.current = null;
@@ -144,7 +146,7 @@ export function usePlayback(courseRef: string): PlaybackController {
     setGrant(null);
     if (current === null) return;
     try {
-      await learningApi.endPlayback(current.referenceId);
+      await learningApi.endPlayback(current.referenceId, opts);
     } catch {
       // Best effort only: the durable reference owns the guaranteed closure.
     }
@@ -314,12 +316,4 @@ export function usePlayback(courseRef: string): PlaybackController {
   );
 }
 
-/** Stable per-browser device id. Not a credential; scoped to this tab. */
-function deviceId(): string {
-  const key = 'edu-learning-device';
-  const existing = window.sessionStorage.getItem(key);
-  if (existing !== null) return existing;
-  const generated = `web-${Math.random().toString(36).slice(2, 10)}`;
-  window.sessionStorage.setItem(key, generated);
-  return generated;
-}
+// Non-credential identity is shared across tabs so tabs do not consume devices.

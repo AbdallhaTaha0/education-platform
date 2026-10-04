@@ -20,6 +20,10 @@ persistence or internals into the platform backend.
 
 Use reports-and-markdown-files/design.md as the current UI specification. The earlier generated Stitch pages are not an implementation source. Keep visual tokens easy to revise when the owner reviews colors.
 
+On 2026-10-04 the owner explicitly approved the bounded DRM device recovery in reports-and-markdown-files/course-video-device-limit-20261004.md: application/tenant-scoped protected inspection and inactive ACTIVE registration release, audit/concurrency regressions, and recovery of the named local synthetic student through the API. Preserve active playback and REVOKED registrations; no limit increase, external persistence access from platform code, unrelated DRM maintenance, production release or commit/push. Outcome and limits: reports-and-markdown-files/course-video-recovery-20261004.md.
+
+Later on 2026-10-04 the owner instructed the coordinator to fix remaining playback-handoff bugs directly, then commit and push the completed work and make a report. This authorizes delivery of verified platform fixes and previously completed website UX in this task; it does not accept unfinished course-material integrations, authorize nested DRM changes or production deployment. Preserve pending worker changes outside the delivered commit.
+
 M6 notification functionality was independently reviewed and explicitly accepted by the owner on 2026-10-01, with commit/push authorized. Read reports-and-markdown-files/m6-owner-acceptance.md and m7-01-open-code-worker-prompt.md for the accepted scope and bounded M7 readiness handoff. This does not imply formal M5 acceptance or production/capacity approval and grants no new DRM maintenance scope.
 
 On 2026-10-01 the owner explicitly assigned the bounded recorded-video DRM packaging repair: emit a static, finite-duration DASH manifest using Shaka Packager, add affected processing regressions, and verify real-browser playback. This permits only that worker/test maintenance; the external API-only architecture and persistence boundary remain unchanged. See reports-and-markdown-files/drm-recorded-manifest-repair-proposal.md.

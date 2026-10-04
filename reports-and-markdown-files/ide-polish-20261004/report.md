@@ -1,0 +1,13 @@
+# IDE layout and JavaScript styling
+
+Owner request, 2026-10-04: keep code on the left when switching English/Arabic; color the Run button and show the JavaScript logo/color.
+
+Implemented in the shared `WebIDE`, so practice and assessment/admin editors inherit the same behavior. The desktop workspace grid is explicitly LTR with code on the left and console on the right. Arabic console labels remain RTL; code/input/output text remains LTR. Narrow layouts keep code above the console. JavaScript now has a yellow `#F7DF1E` badge and decorative JS mark. Run has a green `#166534` background, white text/play icon and hover/pressed states. Scoped CSS variables make colors easy to revise. Existing disabled behavior and execution/format/assessment logic remain.
+
+Changed source: `client/src/features/ide/WebIDE.tsx`, new `client/src/features/ide/ide.css`. Docker typecheck and production build passed. Browser verification on localhost:8080 confirmed editor-left in English and Arabic, Arabic console direction, both icons, unchanged code through language switching, and light/dark visuals. [Arabic dark](ar-dark.png), [Arabic light](ar-light.png). The existing 123/123 practice allowance remained unchanged; no Run, grading submission, code edit or progress reset was performed for visual verification.
+
+Local preview updated only the static frontend and recreated Nginx after existing project/retained-volume guards passed. Backend, databases, migrations and external DRM were not changed. Because the course-material handoff has unresolved review findings, `docker/ide/ide-polish.Dockerfile` builds from the retained verified `fayq-course-video-client-test:20261004` source image and overlays only these IDE files. Pending frontend materials work remains in the workspace for later coordinated integration. This local snapshot build is not the general release pipeline; a later verified full frontend build includes the same IDE source changes.
+
+Serving image: `fayq-ide-polish-client:20261004`, selected under the ordinary preview client tag; image `sha256:00b1d04b77fd3ddcdc19cbe8eba8f3c211cf602f3ea5449006bd721541d93148`. Rollback image: `fayq-platform-client:before-ide-polish-20261004`. Restore its preview tag and recreate only client/Nginx with the existing guarded compose/env; no database action. No disposable services/volumes were created, and the agent browser tab is closed after verification. No commit/push or production deployment.
+
+Build command: `docker build -f docker/ide/ide-polish.Dockerfile -t fayq-ide-polish-client:20261004 .`. Verification initially saw an already-mounted older browser bundle; a fresh entry-document navigation loaded the new bundle and all recorded layout/icon checks then passed.

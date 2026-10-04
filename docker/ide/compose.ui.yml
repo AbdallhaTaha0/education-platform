@@ -54,7 +54,7 @@ services:
       timeout: 3s
       retries: 20
   client:
-    image: fayq-platform-client:0.9.0-m9
+    image: ${COURSE_UI_CLIENT_IMAGE:-fayq-platform-client:0.9.0-m9}
   nginx:
     image: fayq-platform-nginx:0.8.0-local
     ports: ['127.0.0.1:8084:8080']

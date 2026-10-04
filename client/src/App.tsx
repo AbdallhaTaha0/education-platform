@@ -10,6 +10,7 @@ import { Header } from './components/layout/Header';
 import {
   adminCourseIdFromHash,
   learnSlugFromHash,
+  learnLessonFromHash,
   planIdFromHash,
   packageIdFromHash,
   routeFromHash,
@@ -195,7 +196,7 @@ function Shell(): JSX.Element {
             </main>
           }
         >
-          <CourseLearningPage courseSlug={learnSlugFromHash()} onRenew={() => go('#/wallet')} />
+          <CourseLearningPage key={`${user?.id ?? 'anonymous'}:${learnSlugFromHash()}`} courseSlug={learnSlugFromHash()} initialLessonId={learnLessonFromHash()} onRenew={() => go('#/wallet')} />
         </Suspense>
       ) : null}
       <footer className="mt-auto border-t border-border bg-surface py-8 text-sm text-muted">

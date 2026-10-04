@@ -1,0 +1,68 @@
+# Disposable playback-recovery UI stack (task-owned only).
+# Unique project/port: fayq-playback-recovery-ui-20261004 on 127.0.0.1:8092.
+# Never touches localhost:8080, shared tags, or another worker's stack.
+name: fayq-playback-recovery-ui-20261004
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: education_platform_test
+    volumes: ['pg-playback-recovery-ui:/var/lib/postgresql/data']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d education_platform_test']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  redis:
+    image: redis:7-alpine
+    volumes: ['redis-playback-recovery-ui:/data']
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  migrate:
+    image: ${PLAYBACK_RECOVERY_MIGRATE_IMAGE:-fayq-playback-recovery-migrate:20261004}
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_test
+    command: ['npx', 'prisma', 'migrate', 'deploy']
+    depends_on:
+      postgres: { condition: service_healthy }
+  server:
+    image: ${PLAYBACK_RECOVERY_SERVER_IMAGE:-fayq-playback-recovery-server:20261004}
+    environment:
+      NODE_ENV: test
+      PORT: 3000
+      SERVICE_VERSION: 0.9.0-playback-recovery
+      LOG_LEVEL: warn
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_test
+      REDIS_URL: redis://redis:6379
+      AUTH_JWT_SECRET: playback-recovery-only-secret-012345678901234567890
+      AUTH_ISSUER: playback-recovery
+      AUTH_AUDIENCE: playback-recovery-browser
+      ALLOWED_ORIGINS: http://localhost:8092
+      COOKIE_SECURE: 'false'
+      ARGON2_MEMORY_KB: 8192
+      ARGON2_TIME_COST: 2
+      ARGON2_PARALLELISM: 1
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  client:
+    image: ${PLAYBACK_RECOVERY_UI_IMAGE:-fayq-playback-recovery-client:20261004}
+  nginx:
+    image: fayq-platform-nginx:0.8.0-local
+    ports: ['127.0.0.1:8092:8080']
+    depends_on:
+      server: { condition: service_healthy }
+      client: { condition: service_started }
+volumes:
+  pg-playback-recovery-ui:
+  redis-playback-recovery-ui:

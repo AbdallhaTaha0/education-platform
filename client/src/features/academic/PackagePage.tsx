@@ -187,7 +187,7 @@ export function PackagePage({ id }: { id: string }): JSX.Element {
                   {t.goRecharge}
                 </a>
               ) : (
-                <FormActions><Button disabled={busy || !review} onClick={() => void buy()}>
+                <FormActions><Button disabled={busy || !review} disabledReason={busy ? undefined : { ar: "انتظر تحميل مراجعة الباقة قبل تأكيد الشراء.", en: "Wait for the package review to load before confirming purchase." }} onClick={() => void buy()}>
                   {busy ? t.loading : ar ? 'تأكيد شراء الباقة' : 'Confirm package purchase'}
                 </Button></FormActions>
               )}

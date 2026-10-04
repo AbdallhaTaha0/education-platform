@@ -1,5 +1,9 @@
 # Decision register
 
+## Owner delivery instruction — 2026-10-04
+
+After the playback recovery correction handoff, the owner asked the coordinator to fix any remaining bugs directly, then commit and push completed work and make a report. This authorizes the verified platform recovery/website UX delivery documented in [the completed-work report](completed-work-and-playback-delivery-20261004.md). Preserve unfinished materials changes outside that commit, the retained preview and the independent nested DRM repository. No production deployment, milestone acceptance or new DRM maintenance is inferred.
+
 ## Owner commit/push authorization (2026-10-02)
 
 After the completed platform UX, profile/dashboard navigation, support settings and final login/logout placement were verified and served on localhost:8080, the owner explicitly requested "commit and push". Commit and push the completed platform work and its sanitized verification reports. Earlier pending commit/push statements are historical. Preserve private local settings, backups, retained data and the unchanged independent DRM repository. This delivery authorization does not adopt draft legal policies, approve production deployment or certify capacity.
@@ -204,3 +208,7 @@ The owner supplied aliibrahim3600@gmail.com and 01062419263 and explicitly reque
 The owner selected the unified workspace and explicitly requested a reference-style four-item mobile dock, a retained desktop top navbar, and Profile opening the role-appropriate dashboard with sidebar navigation. Student learning and personal profile/security belong in one workspace; ADMIN retains every existing management destination and its personal profile. Standalone form submit/page-action groups are centred in Arabic and English, including profile saves/logout, rather than only login. Contextual row/editor/navigation controls remain attached to their context.
 
 After dispatching the prepared OpenCode prompt, the owner stopped OpenCode and assigned this agent to complete its actual changes without waiting for further input, then explicitly requested all website changes on localhost:8080. This authorizes bounded local completion, Docker verification, guarded preview update and restoration of unchanged local runtime dependencies; no DRM source edit, new backend/schema policy, owner data rewrite, milestone acceptance or commit/push is inferred. See [the completion report](dashboard-navigation-20261002/worker-report.md).
+
+## Bounded device recovery owner authorization (2026-10-04)
+
+The owner explicitly answered **yes** to the quoted [bounded DRM recovery assignment](course-video-device-limit-20261004.md), then requested an improvement search. This permits only the external application's protected tenant-scoped device inspection/inactive ACTIVE registration release API, concurrency/audit regressions, named local synthetic-account recovery through that API and Docker/browser verification. Preserve active playback, revoked-device bans, configured limits, existing data and the API-only persistence boundary. No production deployment, unrelated DRM maintenance, feature-agent launch, acceptance or commit/push is inferred. [Outcome and recommendations](course-video-recovery-20261004.md) distinguish verified playback from browser-harness cleanup failures and additional proposed work.

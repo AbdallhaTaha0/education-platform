@@ -46,6 +46,8 @@ export interface OutlineLesson {
   blockingAssessmentIds?: string[];
   completed: boolean;
   resumePositionSeconds: number;
+  /** Actual processed-video duration; null when unknown, absent on legacy payloads. */
+  durationSeconds?: number | null;
 }
 
 export interface OutlineSection {
@@ -92,6 +94,47 @@ export interface LessonProgressState {
  * the closure immediately or the platform will retry it in the background; the
  * viewer-facing state is ended either way.
  */
+export interface OwnSession {
+  referenceId: string;
+  courseSlug: string;
+  courseTitleAr: string;
+  courseTitleEn: string;
+  lessonId: string;
+  lessonTitleAr: string;
+  lessonTitleEn: string;
+  status: string;
+  terminationStatus: string | null;
+  pendingEndReason: string | null;
+  createdAt: string;
+  tokenExpiresAt: string;
+  sessionExpiresAt: string;
+  endedAt: string | null;
+}
+
+export interface DeviceEntry {
+  reference: string;
+  status: string;
+  createdAt: string;
+  lastSeenAt: string;
+  activePlayback: boolean;
+  releasable: boolean;
+}
+
+export interface DeviceInspection {
+  studentId: string;
+  maxDevices: number;
+  activeCount: number | null;
+  freeSlots: number | null;
+  truncated: boolean;
+  unavailable: boolean;
+  devices: DeviceEntry[];
+}
+
+export interface DeviceRelease {
+  released: boolean;
+  auditPending: boolean;
+}
+
 export type PlaybackClosure = 'CONFIRMED' | 'QUEUED' | 'NOOP';
 
 export interface PlaybackEnd {

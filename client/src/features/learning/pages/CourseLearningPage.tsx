@@ -4,9 +4,7 @@ import { Container } from '../../../components/ui/Card';
 import { useLang, useTranslate } from '../../../i18n';
 import { useOutline, usePlayback } from '../hooks/useLearning';
 import {
-  CourseOutline,
   ErrorBlock,
-  LearningLabels,
   LoadingBlock,
   RenewalRequired,
   formatDate,
@@ -14,17 +12,21 @@ import {
 import { DashLessonPlayer } from '../player/Player';
 import { clear as clearSession } from '../player/session';
 import { LessonAssessments } from '../../assessments/LessonAssessments';
+import { CoursePlan, useLearningLabels } from '../components/CoursePlan';
+import { OwnSessionRecovery } from '../sessions/OwnSessionRecovery';
+import { Button } from '../../../components/ui/Button';
 
 export interface CourseLearningPageProps {
   courseSlug: string;
   onRenew: (courseSlug: string) => void;
+  initialLessonId?: string | null;
 }
 
-export function CourseLearningPage({ courseSlug, onRenew }: CourseLearningPageProps): JSX.Element {
+export function CourseLearningPage({ courseSlug, onRenew, initialLessonId }: CourseLearningPageProps): JSX.Element {
   const t = useTranslate();
   const { lang } = useLang();
   const { data, loading, errorCode, reload } = useOutline(courseSlug);
-  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(initialLessonId ?? null);
   // No outline reload on progress: a reload would put the page into its loading
   // state and unmount the player mid-lesson.
   const playback = usePlayback(courseSlug);
@@ -49,30 +51,13 @@ export function CourseLearningPage({ courseSlug, onRenew }: CourseLearningPagePr
     }));
   }, [data, playback.progress]);
 
-  const labels = useMemo<LearningLabels>(
-    () => ({
-      active: t('learningActive'),
-      expired: t('learningExpired'),
-      continueLearning: t('learningContinue'),
-      renew: t('learningRenew'),
-      expiresOn: t('learningExpiresOn'),
-      progress: t('learningProgress'),
-      completed: t('learningCompleted'),
-      notStarted: t('learningNotStarted'),
-      resume: t('learningResume'),
-      lessonCount: t('learningLessonCount'),
-      emptyActive: t('learningEmptyActive'),
-      emptyExpired: t('learningEmptyExpired'),
-      noSubscription: t('learningNoSubscription'),
-      browseCourses: t('learningBrowse'),
-    }),
-    [t],
-  );
+  const labels = useLearningLabels();
 
   // Default selection: the trusted "continue" target, never a guessed id.
   useEffect(() => {
     if (sections === null) return;
     const firstPlayable =
+      sections.flatMap((s) => s.lessons).find((l) => l.playable && !l.completed && l.resumePositionSeconds > 0) ??
       sections.flatMap((s) => s.lessons).find((l) => l.playable && !l.completed) ??
       sections.flatMap((s) => s.lessons).find((l) => l.playable) ??
       null;
@@ -100,9 +85,13 @@ export function CourseLearningPage({ courseSlug, onRenew }: CourseLearningPagePr
   );
 
   /**
-   * Normal navigation away (hash change or unmount) performs a best-effort
-   * keepalive end so the external session does not outlive the page. Local
-   * cleanup never waits for it, and the durable reference guarantees a retry.
+   * Current-page exit closure only: the existing owner-checked end for THIS
+   * page's own grant is sent best-effort with `keepalive:true` on pagehide
+   * and unmount. Switching browser tabs/apps (visibility hidden) is NOT a
+   * page exit and must not end playback; background/offline abandonment
+   * remains a separate proposal, not an implemented policy. Local cleanup
+   * never waits for the request, and the durable server reference guarantees
+   * a retry. Closing/unloading cannot guarantee delivery.
    */
   const endRef = useRef(playback.end);
   useEffect(() => {
@@ -110,18 +99,28 @@ export function CourseLearningPage({ courseSlug, onRenew }: CourseLearningPagePr
   }, [playback.end]);
   useEffect(
     () => () => {
-      void endRef.current();
+      void endRef.current({ keepalive: true });
     },
     [],
   );
+  useEffect(() => {
+    const onPageHide = () => {
+      void endRef.current({ keepalive: true });
+    };
+    window.addEventListener('pagehide', onPageHide);
+    return () => {
+      window.removeEventListener('pagehide', onPageHide);
+    };
+  }, []);
 
   const selectLesson = useCallback(
     (lessonId: string) => {
+      if (playback.requesting || (selectedLessonId === lessonId && playback.grant !== null)) return;
       setSelectedLessonId(lessonId);
-      // The previous session is closed as part of switching lessons.
-      playback.release();
+      // start() closes the old session and requests the selected lesson.
+      void playback.start(lessonId);
     },
-    [playback],
+    [playback, selectedLessonId],
   );
 
   if (loading) {
@@ -177,10 +176,15 @@ export function CourseLearningPage({ courseSlug, onRenew }: CourseLearningPagePr
           .flatMap((section) => section.lessons)
           .find((lesson) => lesson.lessonId === selectedLessonId) ?? null);
   const entitlementLost = errorCode === 'SUBSCRIPTION_EXPIRED';
+  const lessons = (sections ?? data.sections).flatMap(section => section.lessons);
+  const selectedIndex = lessons.findIndex(lesson => lesson.lessonId === selectedLessonId);
+  const previousLesson = lessons[selectedIndex - 1];
+  const nextLesson = lessons[selectedIndex + 1];
 
   return (
     <Container id="main">
       <main className="py-8">
+        <a href="#/dashboard" className="mb-4 inline-flex min-h-[44px] items-center text-sm font-semibold text-muted underline">{lang === 'ar' ? 'العودة إلى كورساتي' : 'Back to my courses'}</a>
         <h1 className="mb-2 text-3xl font-bold">
           {lang === 'ar' ? course.titleAr : course.titleEn}
         </h1>
@@ -200,8 +204,15 @@ export function CourseLearningPage({ courseSlug, onRenew }: CourseLearningPagePr
           </p>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-          <div>
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(300px,1fr)]">
+          <div className="min-w-0">
+            {selectedLesson !== null ? <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-surface p-4">
+              <div className="min-w-0"><p className="text-xs font-semibold text-muted">{lang === 'ar' ? `الدرس ${selectedIndex + 1} من ${lessons.length}` : `Lesson ${selectedIndex + 1} of ${lessons.length}`}</p><h2 className="mt-1 break-words text-lg font-bold">{lang === 'ar' ? selectedLesson.titleAr : selectedLesson.titleEn}</h2></div>
+              <button type="button" data-testid="course-plan-jump" onClick={() => {
+                document.getElementById('course-plan')?.scrollIntoView({ behavior: 'auto', block: 'start' });
+                document.querySelector<HTMLElement>('#course-plan summary')?.focus({ preventScroll: true });
+              }} className="inline-flex min-h-[44px] items-center rounded-control border border-border px-3 text-sm font-semibold lg:hidden">{lang === 'ar' ? 'خطة الكورس' : 'Course plan'}</button>
+            </div> : null}
             {playback.grant !== null && selectedLesson !== null ? (
               <DashLessonPlayer
                 grant={playback.grant}
@@ -228,40 +239,51 @@ export function CourseLearningPage({ courseSlug, onRenew }: CourseLearningPagePr
             ) : (
               <div
                 data-testid="player-placeholder"
-                className="flex aspect-video w-full items-center justify-center rounded-card border border-border learning-video-surface text-sm text-white"
+                className="flex aspect-video w-full flex-col items-center justify-center gap-4 rounded-card border border-border learning-video-surface p-6 text-center text-white"
               >
-                {t('learningSelectLesson')}
+                <span className="text-base font-semibold">{selectedLesson ? lang === 'ar' ? selectedLesson.titleAr : selectedLesson.titleEn : t('learningSelectLesson')}</span>
+                {selectedLesson?.playable ? <Button data-testid="learning-start-playback" disabled={playback.requesting} onClick={() => void playback.start(selectedLesson.lessonId)}>{playback.requesting ? t('learningRequesting') : selectedLesson.resumePositionSeconds > 0 ? labels.resume : t('learningStartLesson')}</Button> : null}
               </div>
             )}
             {playback.errorCode !== null ? (
               <div className="mt-3">
-                <ErrorBlock message={t('learningPlaybackError')} />
+                <ErrorBlock message={playback.errorCode === 'PLAYBACK_DEVICE_LIMIT'
+                  ? (t('playerDeviceDetail') as string)
+                  : playback.errorCode === 'PLAYBACK_DEVICE_REVOKED'
+                    ? (t('playerRevokedDetail') as string)
+                    : playback.errorCode === 'PLAYBACK_STREAM_LIMIT'
+                      ? (t('playerStreamDetail') as string)
+                      : playback.errorCode === 'PLAYBACK_SESSION_EXPIRED' || playback.errorCode === 'SUBSCRIPTION_EXPIRED'
+                        ? (t('playerExpiredDetail') as string)
+                        : playback.errorCode === 'DRM_DEPENDENCY_FAILED'
+                          ? (t('playerNetworkDetail') as string)
+                          : t('learningPlaybackError')} />
+                {playback.errorCode === 'PLAYBACK_STREAM_LIMIT' && selectedLesson ? (
+                  <OwnSessionRecovery
+                    onRecovered={() => {
+                      // Only offer starting again after confirmed closure.
+                      void playback.start(selectedLesson.lessonId);
+                    }}
+                  />
+                ) : null}
               </div>
             ) : null}
+            {selectedLesson !== null ? <div className="mt-4 flex flex-wrap items-center justify-between gap-3" aria-label={lang === 'ar' ? 'التنقل بين الدروس' : 'Lesson navigation'}>
+              <Button variant="secondary" data-testid="previous-lesson" disabled={!previousLesson?.playable || playback.requesting} disabledReason={playback.requesting ? undefined : !previousLesson ? { ar: "أنت في أول درس؛ لا يوجد درس سابق.", en: "You are at the first lesson; there is no previous lesson." } : previousLesson.locked ? { ar: "اجتز التقييمات المطلوبة لفتح هذا الدرس.", en: "Pass the required assessments to unlock this lesson." } : { ar: "فيديو هذا الدرس غير متاح حاليًا.", en: "This lessons video is currently unavailable." }} onClick={() => previousLesson && selectLesson(previousLesson.lessonId)}>{lang === 'ar' ? 'الدرس السابق' : 'Previous lesson'}</Button>
+              <Button variant="secondary" data-testid="next-lesson" disabled={!nextLesson?.playable || playback.requesting} disabledReason={playback.requesting ? undefined : !nextLesson ? { ar: "أنت في آخر درس؛ لا يوجد درس تالٍ.", en: "You are at the last lesson; there is no next lesson." } : nextLesson.locked ? { ar: "اجتز التقييمات المطلوبة لفتح هذا الدرس.", en: "Pass the required assessments to unlock this lesson." } : { ar: "فيديو هذا الدرس غير متاح حاليًا.", en: "This lessons video is currently unavailable." }} onClick={() => nextLesson && selectLesson(nextLesson.lessonId)}>{lang === 'ar' ? 'الدرس التالي' : 'Next lesson'}</Button>
+              {nextLesson?.locked ? <p className="w-full text-sm text-muted">{lang === 'ar' ? 'اجتز التقييمات المطلوبة أدناه قبل الانتقال للدرس التالي.' : 'Pass the required assessments below before moving to the next lesson.'}</p> : null}
+            </div> : null}
             {selectedLesson !== null ? <LessonAssessments key={selectedLesson.lessonId} lessonId={selectedLesson.lessonId} /> : null}
           </div>
 
-          <nav aria-label={t('learningOutline')}>
-            <h2 className="mb-3 text-lg font-bold">{t('learningOutline')}</h2>
-            <CourseOutline
+          <div id="course-plan" className="course-plan-sidebar min-w-0 scroll-mt-24">
+            <CoursePlan
               sections={sections ?? data.sections}
               selectedLessonId={selectedLessonId}
               onSelect={selectLesson}
-              labels={labels}
-              lang={lang}
+              disabled={playback.requesting}
             />
-            {selectedLesson !== null && playback.grant === null ? (
-              <button
-                type="button"
-                data-testid="learning-start-playback"
-                className="mt-4 min-h-[44px] w-full rounded-control bg-primary px-4 py-2 font-bold text-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
-                disabled={!selectedLesson.playable || playback.requesting}
-                onClick={() => void playback.start(selectedLesson.lessonId)}
-              >
-                {playback.requesting ? t('learningRequesting') : t('learningStartLesson')}
-              </button>
-            ) : null}
-          </nav>
+          </div>
         </div>
       </main>
     </Container>
@@ -286,6 +308,13 @@ function playerLabels(t: Translate): {
   unsupported: string;
   fullscreen: string;
   exitFullscreen: string;
+  needsGesture: string;
+  unsupportedDetail: string;
+  networkDetail: string;
+  expiredDetail: string;
+  deviceDetail: string;
+  revokedDetail: string;
+  streamDetail: string;
 } {
   return {
     loading: t('playerLoading'),
@@ -303,5 +332,12 @@ function playerLabels(t: Translate): {
     unsupported: t('playerUnsupported'),
     fullscreen: t('playerFullscreen'),
     exitFullscreen: t('playerExitFullscreen'),
+    needsGesture: t('playerNeedsGesture'),
+    unsupportedDetail: t('playerUnsupportedDetail'),
+    networkDetail: t('playerNetworkDetail'),
+    expiredDetail: t('playerExpiredDetail'),
+    deviceDetail: t('playerDeviceDetail'),
+    revokedDetail: t('playerRevokedDetail'),
+    streamDetail: t('playerStreamDetail'),
   };
 }

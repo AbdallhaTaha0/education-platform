@@ -110,6 +110,7 @@ export function NotificationsPage(): JSX.Element {
                         state.unreadCount === 0 ||
                         state.unreadCount === null
                       }
+                      disabledReason={busy || state.loading || !state.loaded ? undefined : { ar: "لا توجد إشعارات غير مقروءة.", en: "There are no unread notifications." }}
                       onClick={() => void store.readAll()}
                     >
                       {state.busy === 'all' ? t.notificationsSaving : t.notificationsMarkAll}

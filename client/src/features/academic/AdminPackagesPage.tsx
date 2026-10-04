@@ -153,7 +153,7 @@ export function AdminPackagesPage(): JSX.Element {
               {loading ? <Loading text={t.loading} /> : null}
               {!loading && eligible.length < 3 ? <Notice kind="info">{ar?'تحتاج الباقة إلى ٣ كورسات شرح شهرية مختلفة ومصنفة لنفس الصف والسنة والترم. صنّف الكورسات من إدارة الكورسات أولًا.':'A package needs three distinct monthly courses classified for the same grade, year and term. Set their academic classification in course management first.'} <a href="#/admin/catalog" className="underline">{ar?'إدارة الكورسات':'Manage courses'}</a></Notice>:null}
               <FormActions>
-                <Button disabled={busy || eligible.length<3} onClick={()=>{setEditing(null);setForm(blank);setShowForm(true);}}>{ar?'إنشاء باقة':'Create package'}</Button>
+                <Button disabled={busy || eligible.length<3} disabledReason={busy ? undefined : { ar: "تحتاج الباقة إلى ٣ كورسات مؤهلة على الأقل. أضفها أولًا.", en: "A package needs at least 3 eligible courses. Add them first." }} onClick={()=>{setEditing(null);setForm(blank);setShowForm(true);}}>{ar?'إنشاء باقة':'Create package'}</Button>
               </FormActions>
               {showForm ? <Card className="mt-6">
                 <h2 className="text-xl font-bold">

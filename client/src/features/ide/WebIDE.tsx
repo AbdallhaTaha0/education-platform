@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
 import { javascript } from '@codemirror/lang-javascript';
 import { useLang } from '../../i18n';
@@ -7,8 +7,14 @@ import { Notice } from '../../components/ui/Notice';
 import { previewDocument } from './preview';
 import type { SourceFiles } from './types';
 import { javaScriptHighlight } from './highlight';
+import './ide.css';
 
-export function WebIDE({ value, onChange, beforeRun, disabled = false, starter, defaultInput = '' }: { value: SourceFiles; onChange: (source: SourceFiles) => void; beforeRun?: () => Promise<void>; disabled?: boolean; starter?: SourceFiles; defaultInput?: string }): JSX.Element {
+/** Visible reasons also remain readable when a native disabled button cannot focus. */
+function IDEAction({ reason, ...props }: ComponentProps<typeof Button> & { reason?: string }): JSX.Element {
+  return <Button {...props} disabledReason={reason} />;
+}
+
+export function WebIDE({ value, onChange, beforeRun, disabled = false, disabledReason, starter, defaultInput = '' }: { value: SourceFiles; onChange: (source: SourceFiles) => void; beforeRun?: () => Promise<void>; disabled?: boolean; disabledReason?: string; starter?: SourceFiles; defaultInput?: string }): JSX.Element {
   const { lang } = useLang(); const label = (ar: string, en: string): string => lang === 'ar' ? ar : en;
   const [document, setDocument] = useState<string | null>(null);
   const [input, setInput] = useState(defaultInput);
@@ -68,20 +74,23 @@ export function WebIDE({ value, onChange, beforeRun, disabled = false, starter, 
     finally { clearTimeout(timeout); worker?.terminate(); formatter.current = null; if (mounted.current) setFormatting(false); }
   }
   return <section data-testid="web-ide" className="rounded-card border border-border bg-surface p-4" aria-label={label('محرر الويب', 'Web IDE')}>
-    <div className="mb-3 flex flex-wrap items-center gap-2">
-      <span dir="ltr" className="rounded-control bg-primary px-3 py-2 font-semibold text-primary-ink">JavaScript</span>
-      <Button data-testid="ide-run" onClick={() => void run()} disabled={busy || disabled}>{label('تشغيل', 'Run')}</Button>
-      <Button variant="secondary" onClick={() => { runId.current = ''; setDocument(null); }} disabled={!document}>{label('إيقاف', 'Stop')}</Button>
-      <Button data-testid="ide-format" variant="secondary" onClick={() => void organize()} disabled={formatting}>{formatting ? label('جارٍ التنسيق…', 'Formatting…') : label('تنسيق الكود', 'Format code')}</Button>
-      {starter ? <Button data-testid="ide-reset" variant="secondary" onClick={() => setResetting(true)} disabled={formatting || busy}>{label('استعادة الكود الابتدائي', 'Reset to starter')}</Button> : null}
+    <div className="mb-3 flex flex-wrap items-start gap-2">
+      <span dir="ltr" data-testid="ide-language" className="ide-language inline-flex items-center gap-2 rounded-control px-3 py-2 font-semibold">
+        <svg aria-hidden="true" width="28" height="28" viewBox="0 0 32 32" className="shrink-0"><rect width="32" height="32" rx="3" fill="currentColor" /><text x="29" y="27" textAnchor="end" fontFamily="Arial, sans-serif" fontWeight="700" fontSize="21" fill="#18181b">JS</text></svg>
+        JavaScript
+      </span>
+      <IDEAction data-testid="ide-run" className="ide-run" onClick={() => void run()} disabled={busy || disabled} reason={busy ? label('جارٍ بدء التشغيل؛ انتظر حتى ينتهي الطلب.', 'Starting execution; wait for the request to finish.') : disabledReason ?? label('التشغيل غير متاح حاليًا في هذا المحرر.', 'Run is currently unavailable in this editor.')}><svg aria-hidden="true" width="18" height="18" viewBox="0 0 20 20" fill="currentColor"><path d="M5 3.5v13l11-6.5z" /></svg>{busy ? label('جارٍ التشغيل…', 'Starting…') : label('تشغيل', 'Run')}</IDEAction>
+      <IDEAction data-testid="ide-stop" variant="secondary" onClick={() => { runId.current = ''; setDocument(null); }} disabled={!document} reason={label('لا يوجد تشغيل لإيقافه. شغّل الكود أولًا.', 'Nothing to stop. Run your code first.')}>{label('إيقاف', 'Stop')}</IDEAction>
+      <IDEAction data-testid="ide-format" variant="secondary" onClick={() => void organize()} disabled={formatting} reason={label('يجري تنسيق الكود؛ انتظر حتى يكتمل.', 'Code formatting is in progress; wait until it finishes.')}>{formatting ? label('جارٍ التنسيق…', 'Formatting…') : label('تنسيق الكود', 'Format code')}</IDEAction>
+      {starter ? <IDEAction data-testid="ide-reset" variant="secondary" onClick={() => setResetting(true)} disabled={formatting || busy} reason={formatting ? label('انتظر اكتمال التنسيق قبل استعادة الكود.', 'Wait for formatting to finish before resetting code.') : label('انتظر اكتمال طلب التشغيل قبل استعادة الكود.', 'Wait for the run request to finish before resetting code.')}>{label('استعادة الكود الابتدائي', 'Reset to starter')}</IDEAction> : null}
     </div>
-    {resetting && starter ? <div role="alert" className="mb-3 rounded-control border border-border p-3"><p>{label('سيتم استبدال الكود الحالي بالكود الابتدائي لهذا السؤال. المحاولات والنتائج السابقة لن تتغير.', 'Replace your current code with this question’s starter code? Previous submissions and results will stay unchanged.')}</p><div className="mt-2 flex flex-wrap gap-2"><Button data-testid="ide-reset-confirm" disabled={formatting || busy} onClick={() => { runId.current = ''; setDocument(null); setLines([]); setFormatError(''); callback.current({ ...starter }); setResetting(false); }}>{label('تأكيد الاستعادة', 'Confirm reset')}</Button><Button variant="secondary" onClick={() => setResetting(false)}>{label('إلغاء', 'Cancel')}</Button></div></div> : null}
+    {resetting && starter ? <div role="alert" className="mb-3 rounded-control border border-border p-3"><p>{label('سيتم استبدال الكود الحالي بالكود الابتدائي لهذا السؤال. المحاولات والنتائج السابقة لن تتغير.', 'Replace your current code with this question’s starter code? Previous submissions and results will stay unchanged.')}</p><div className="mt-2 flex flex-wrap gap-2"><IDEAction data-testid="ide-reset-confirm" disabled={formatting || busy} reason={label('انتظر انتهاء التشغيل أو التنسيق قبل تأكيد الاستعادة.', 'Wait for execution setup or formatting to finish before confirming reset.')} onClick={() => { runId.current = ''; setDocument(null); setLines([]); setFormatError(''); callback.current({ ...starter }); setResetting(false); }}>{label('تأكيد الاستعادة', 'Confirm reset')}</IDEAction><Button variant="secondary" onClick={() => setResetting(false)}>{label('إلغاء', 'Cancel')}</Button></div></div> : null}
     {formatError ? <Notice kind="error">{formatError}</Notice> : null}
     <label className="mb-3 block text-sm font-semibold">{label('المدخلات (كل readline يقرأ سطرًا)', 'Input (each readline reads one line)')}<textarea data-testid="ide-input" dir="ltr" rows={3} maxLength={8192} value={input} onChange={(event) => setInput(event.target.value)} className="mt-2 w-full rounded-control border border-border bg-elevated p-3 font-mono text-ink" /></label>
-    <div data-testid="ide-workspace" className="grid min-w-0 gap-4 lg:grid-cols-2">
+    <div data-testid="ide-workspace" dir="ltr" className="grid min-w-0 gap-4 lg:grid-cols-2">
       <div ref={host} data-testid="ide-editor" dir="ltr" className="ide-editor min-h-[420px] min-w-0 overflow-hidden rounded-control border border-border bg-elevated text-ink" />
-      <div data-testid="ide-console" className="flex h-[460px] min-w-0 flex-col rounded-control border border-border bg-elevated p-3">
-        <div className="mb-3 flex items-center justify-between gap-2"><h3 className="font-semibold">{label('المخرجات', 'Console')}</h3><Button variant="secondary" onClick={() => setLines([])} disabled={lines.length === 0}>{label('مسح المخرجات', 'Clear console')}</Button></div>
+      <div data-testid="ide-console" dir={lang === 'ar' ? 'rtl' : 'ltr'} className="flex h-[460px] min-w-0 flex-col rounded-control border border-border bg-elevated p-3">
+        <div className="mb-3 flex items-start justify-between gap-2"><h3 className="font-semibold">{label('المخرجات', 'Console')}</h3><IDEAction data-testid="ide-clear" variant="secondary" onClick={() => setLines([])} disabled={lines.length === 0} reason={label('المخرجات فارغة؛ لا يوجد شيء لمسحه.', 'The console is empty; there is nothing to clear.')}>{label('مسح المخرجات', 'Clear console')}</IDEAction></div>
         <pre dir="ltr" role="log" aria-label={label('مخرجات JavaScript', 'JavaScript output')} aria-live="polite" className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-words text-sm">{lines.map((line, i) => <span key={i} className={`block ${line.level === 'error' ? 'text-error-fg' : ''}`}>{line.message}</span>)}</pre>
       </div>
     </div>
