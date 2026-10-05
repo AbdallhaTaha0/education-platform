@@ -2,7 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import { ApiError } from '../../identity/errors.js';
 import { audit } from '../audit.js';
 import { courseIdForLesson, withCourseLock } from '../courseTx.js';
-import { ensureStructuralAllowed } from '../courses/service.js';
+import { ensureLessonAdditionAllowed } from '../courses/service.js';
 import type { DrmClient } from '../drmClient.js';
 import type { ServerConfig } from '../../../config.js';
 import {
@@ -62,7 +62,7 @@ export async function registerLessonMedia(
         include: { media: true, section: { include: { course: true } } },
       });
       if (lesson === null) throw new ApiError(404, 'NOT_FOUND', 'Lesson not found.');
-      ensureStructuralAllowed(lesson.section.course);
+      ensureLessonAdditionAllowed(lesson.section.course);
       if (
         lesson.media !== null &&
         lesson.media.assetId !== null &&
@@ -161,7 +161,7 @@ export async function registerLessonMedia(
         include: { lesson: { include: { section: { include: { course: true } } } } },
       });
       if (current === null) throw new ApiError(404, 'MEDIA_MISSING', 'Media mapping not found.');
-      ensureStructuralAllowed(current.lesson.section.course);
+      ensureLessonAdditionAllowed(current.lesson.section.course);
       if (current.assetId === null) {
         await tx.mediaMapping.update({
           where: { id: intent.id },
@@ -197,7 +197,7 @@ export async function registerLessonMedia(
       include: { lesson: { include: { section: { include: { course: true } } } } },
     });
     if (current === null) throw new ApiError(404, 'MEDIA_MISSING', 'Media mapping not found.');
-    ensureStructuralAllowed(current.lesson.section.course);
+    ensureLessonAdditionAllowed(current.lesson.section.course);
     if (current.assetId !== null) {
       if (
         current.assetId !== registered.assetId ||

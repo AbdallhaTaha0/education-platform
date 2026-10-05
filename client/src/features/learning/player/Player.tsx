@@ -34,6 +34,7 @@ export interface PlayerProps {
   labels: PlayerLabels;
   /** True when entitlement is known to have lapsed; forces the expired state. */
   entitlementLost?: boolean;
+  autoPlay?: boolean;
   /** Short-lived caption Blob URLs; revoked by the materials hook. */
   captionUrls?: { ar: string | null; en: string | null };
   captionChoice?: 'off' | 'ar' | 'en';
@@ -59,6 +60,7 @@ export function DashLessonPlayer({
   grant,
   labels,
   entitlementLost = false,
+  autoPlay = false,
   captionUrls,
   captionChoice = 'off',
   captionControls,
@@ -356,13 +358,10 @@ export function DashLessonPlayer({
     [],
   );
 
-  const toggle = useCallback(() => {
+  const play = useCallback(() => {
     const video = videoRef.current;
     if (video === null) return;
-    if (!video.paused) {
-      video.pause();
-      return;
-    }
+    if (!video.paused) return;
     setNeedsGesture(false);
     setPlayFailure(null);
     const capturedGrantId = grantIdRef.current;
@@ -387,6 +386,19 @@ export function DashLessonPlayer({
       });
     }
   }, [dispatch]);
+
+  const toggle = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (video.paused) play(); else video.pause();
+  }, [play]);
+
+  const autoPlayAttempt = useRef<string | null>(null);
+  useEffect(() => {
+    if (!autoPlay || !canPlay || entitlementLost || autoPlayAttempt.current === grant.referenceId) return;
+    autoPlayAttempt.current = grant.referenceId;
+    play();
+  }, [autoPlay, canPlay, entitlementLost, grant.referenceId, play]);
 
   return (
     <div className="w-full">

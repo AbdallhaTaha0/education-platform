@@ -11,6 +11,7 @@ import {
   adminCourseIdFromHash,
   learnSlugFromHash,
   learnLessonFromHash,
+  learnResumeFromHash,
   planIdFromHash,
   packageIdFromHash,
   routeFromHash,
@@ -196,7 +197,7 @@ function Shell(): JSX.Element {
             </main>
           }
         >
-          <CourseLearningPage key={`${user?.id ?? 'anonymous'}:${learnSlugFromHash()}`} courseSlug={learnSlugFromHash()} initialLessonId={learnLessonFromHash()} onRenew={() => go('#/wallet')} />
+          <CourseLearningPage key={`${user?.id ?? 'anonymous'}:${learnSlugFromHash()}`} courseSlug={learnSlugFromHash()} initialLessonId={learnLessonFromHash()} autoResume={learnResumeFromHash()} onRenew={() => go('#/wallet')} />
         </Suspense>
       ) : null}
       <footer className="mt-auto border-t border-border bg-surface py-8 text-sm text-muted">

@@ -29,7 +29,7 @@ export function inspectEditor(root: HTMLElement, ar: boolean): EditorIssue[] {
   }
   for (const control of root.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input, textarea, select')) {
     const validity = control.validity;
-    if (validity.valueMissing || (control.required && !control.value.trim())) add(control, label('هذا الحقل مطلوب.', 'This field is required.'));
+    if (validity.valueMissing || (control.required && !control.value.trim())) add(control, control.getAttribute('data-missing-message') ?? label('هذا الحقل مطلوب.', 'This field is required.'));
     else if (validity.badInput || validity.rangeUnderflow || validity.rangeOverflow || validity.stepMismatch) add(control, label(`أدخل رقمًا ضمن النطاق الموضح (${control.getAttribute('min') ?? '…'}–${control.getAttribute('max') ?? '…'}).`, `Enter a number in the indicated range (${control.getAttribute('min') ?? '…'}–${control.getAttribute('max') ?? '…'}).`));
     else if (validity.patternMismatch) add(control, label('اكتب اسمًا صالحًا، مثل sum، بدون مسافات أو أقواس.', 'Enter a valid name such as sum, without spaces or parentheses.'));
     else if ('maxLength' in control && control.maxLength > 0 && control.value.length > control.maxLength) add(control, label(`الحد ${control.maxLength} حرفًا.`, `Maximum ${control.maxLength} characters.`));

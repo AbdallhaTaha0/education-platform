@@ -22,9 +22,10 @@ export interface CourseLearningPageProps {
   courseSlug: string;
   onRenew: (courseSlug: string) => void;
   initialLessonId?: string | null;
+  autoResume?: boolean;
 }
 
-export function CourseLearningPage({ courseSlug, onRenew, initialLessonId }: CourseLearningPageProps): JSX.Element {
+export function CourseLearningPage({ courseSlug, onRenew, initialLessonId, autoResume = false }: CourseLearningPageProps): JSX.Element {
   const t = useTranslate();
   const { lang } = useLang();
   const { data, loading, errorCode, reload } = useOutline(courseSlug);
@@ -32,6 +33,7 @@ export function CourseLearningPage({ courseSlug, onRenew, initialLessonId }: Cou
   // No outline reload on progress: a reload would put the page into its loading
   // state and unmount the player mid-lesson.
   const playback = usePlayback(courseSlug);
+  const resumeRequested = useRef(false);
 
   // Progress written during this visit is merged over the fetched outline, so
   // the row ticks over without a refetch.
@@ -69,6 +71,15 @@ export function CourseLearningPage({ courseSlug, onRenew, initialLessonId }: Cou
         : (firstPlayable?.lessonId ?? null),
     );
   }, [sections]);
+
+  useEffect(() => {
+    if (!autoResume || resumeRequested.current || !initialLessonId || loading || !sections) return;
+    const lesson = sections.flatMap(section => section.lessons).find(lesson => lesson.lessonId === initialLessonId);
+    if (!lesson?.playable) return;
+    resumeRequested.current = true;
+    setSelectedLessonId(lesson.lessonId);
+    void playback.start(lesson.lessonId);
+  }, [autoResume, initialLessonId, loading, sections, playback.start]);
 
   // Losing entitlement must tear the player down and drop the credential. The
   // release callback is held in a ref so this cleanup runs on unmount only:
@@ -247,6 +258,7 @@ export function CourseLearningPage({ courseSlug, onRenew, initialLessonId }: Cou
               <DashLessonPlayer
                 key={playback.grant.referenceId}
                 grant={playback.grant}
+                autoPlay={autoResume && selectedLessonId === initialLessonId}
                 entitlementLost={entitlementLost}
                 labels={playerLabels(t)}
                 captionUrls={lessonMaterials.captionUrls}

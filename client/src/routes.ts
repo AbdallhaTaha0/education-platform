@@ -94,3 +94,7 @@ export function learnSlugFromHash(): string {
 export function learnLessonFromHash(): string | null {
   return new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('lesson');
 }
+
+export function learnResumeFromHash(): boolean {
+  return new URLSearchParams(window.location.hash.split('?')[1] ?? '').get('resume') === '1';
+}

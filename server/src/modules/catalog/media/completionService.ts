@@ -2,7 +2,7 @@ import type { MediaState, PrismaClient } from '@prisma/client';
 import { ApiError } from '../../identity/errors.js';
 import { audit } from '../audit.js';
 import { courseIdForLesson, withCourseLock } from '../courseTx.js';
-import { ensureStructuralAllowed } from '../courses/service.js';
+import { ensureLessonAdditionAllowed } from '../courses/service.js';
 import { mapDrmStatusToLocal, assertUuid } from '../validation.js';
 import type { DrmClient } from '../drmClient.js';
 import type { ServerConfig } from '../../../config.js';
@@ -35,7 +35,7 @@ export async function completeLessonUpload(
     });
     if (lesson === null || lesson.media === null)
       throw new ApiError(404, 'MEDIA_MISSING', 'Media mapping not found.');
-    ensureStructuralAllowed(lesson.section.course);
+    ensureLessonAdditionAllowed(lesson.section.course);
     if (lesson.media.assetId === null)
       throw new ApiError(409, 'MEDIA_MISSING', 'Media not registered with DRM.');
     return { assetId: lesson.media.assetId, mappingId: lesson.media.id };
@@ -68,7 +68,7 @@ export async function completeLessonUpload(
     if (lesson === null || lesson.media === null || lesson.media.id !== mappingId) {
       throw new ApiError(404, 'MEDIA_MISSING', 'Media mapping not found.');
     }
-    ensureStructuralAllowed(lesson.section.course);
+    ensureLessonAdditionAllowed(lesson.section.course);
     const updated = await tx.mediaMapping.update({
       where: { id: mappingId },
       data: {
@@ -108,7 +108,7 @@ async function reconcileAfterUncertainCompletion(
     if (lesson === null || lesson.media === null || lesson.media.id !== mappingId) {
       throw new ApiError(404, 'MEDIA_MISSING', 'Media mapping not found.');
     }
-    ensureStructuralAllowed(lesson.section.course);
+    ensureLessonAdditionAllowed(lesson.section.course);
     const updated = await tx.mediaMapping.update({
       where: { id: mappingId },
       data: {

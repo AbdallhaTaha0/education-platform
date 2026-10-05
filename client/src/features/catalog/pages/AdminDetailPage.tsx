@@ -16,9 +16,10 @@ import { businessState } from '../../../components/ui/AdminNavigation';
 import { useConfirmNavigation } from '../../../components/ui/UnsavedChanges';
 import { SectionTabs, SectionPanel, type SectionTab } from '../../../components/ui/SectionTabs';
 import { PaginatedCollection } from '../../../components/ui/Pagination';
+import { lessonAdditionBlockCode, structuralBlockCode } from '../editability';
 
 const courseTabs: SectionTab[] = [
-  { id: 'outline', ar: 'الدروس والفيديو والتقييمات', en: 'Lessons, videos & assessments', descriptionAr: 'أضف الأقسام والدروس، وارفع الفيديو والملفات، وأدر الاختبارات والواجبات لكل درس.', descriptionEn: 'Add sections and lessons, upload video/materials and manage each lesson’s quizzes and assignments.' },
+  { id: 'outline', ar: 'الدروس والفيديو والتقييمات', en: 'Lessons, videos & assessments', descriptionAr: 'أضف الأقسام والدروس، وارفع الفيديو، وأدر الاختبارات والواجبات لكل درس.', descriptionEn: 'Add sections and lessons, upload video and manage each lesson’s quizzes and assignments.' },
   { id: 'details', ar: 'تعديل بيانات الكورس', en: 'Edit course details', descriptionAr: 'عدّل العنوان والوصف والتصنيف الدراسي باللغتين، ثم احفظ بيانات الكورس.', descriptionEn: 'Edit bilingual titles, descriptions and academic classification, then save the course details.' },
   { id: 'access', ar: 'الأسعار ومدة الاشتراك', en: 'Prices & subscription access', descriptionAr: 'أضف أو عدّل عروض السعر ومدة أو نهاية الوصول. تغييرات كل عرض تُحفظ من نموذجه.', descriptionEn: 'Add or edit price offers and access duration/deadline. Save each offer using its own form.' },
   { id: 'publish', ar: 'النشر والأرشفة والحذف', en: 'Publish, archive & delete', descriptionAr: 'راجع جاهزية النشر. الأرشفة قابلة للتراجع؛ الحذف النهائي يزيل المحتوى عبر التأكيد المطلوب.', descriptionEn: 'Review publication readiness. Archiving can be reversed; permanent deletion removes content through the required confirmation.' },
@@ -53,6 +54,11 @@ export function AdminDetailPage({ courseId }: { courseId: string }): JSX.Element
       </Container>
     );
   }
+
+  const structuralBlock = structuralBlockCode(course);
+  const structuralReason = structuralBlock ? localizeCode(t, structuralBlock) : undefined;
+  const additionBlock = lessonAdditionBlockCode(course);
+  const additionReason = additionBlock ? localizeCode(t, additionBlock) : undefined;
 
   async function saveCourse(values: CourseFormValues): Promise<boolean> {
     setSaving(true);
@@ -138,7 +144,8 @@ export function AdminDetailPage({ courseId }: { courseId: string }): JSX.Element
 
           {workspace === 'access' ? <PlanEditor courseId={courseId} plans={course.plans} onChanged={reload} /> : null}
           {workspace === 'outline' ? <>
-          <SectionEditor courseId={courseId} sections={course.sections} onChanged={reload} />
+          {structuralReason ? <Notice kind="info">{structuralReason}</Notice> : null}
+          <SectionEditor courseId={courseId} sections={course.sections} onChanged={reload} blockedReason={structuralReason} />
 
           <PaginatedCollection id="course-sections" resetKey={courseId}>{course.sections.map((s) => (
             <div
@@ -148,7 +155,7 @@ export function AdminDetailPage({ courseId }: { courseId: string }): JSX.Element
               <h3 className="text-xl font-bold">
                 #{s.position} {lang === 'ar' ? s.titleAr : s.titleEn}
               </h3>
-              <LessonList sectionId={s.id} lessons={s.lessons} onChanged={reload} />
+              <LessonList sectionId={s.id} lessons={s.lessons} onChanged={reload} blockedReason={structuralReason} additionBlockedReason={additionReason} />
               <DeletionPanel
                 kind="sections"
                 targetId={s.id}

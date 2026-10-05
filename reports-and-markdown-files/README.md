@@ -1,5 +1,13 @@
 # Education platform documentation
 
+Assessment video return (2026-10-05): [automatic return to the originating lesson after a correct result](assessment-video-return-20261005.md). Thirteen Docker browser checks pass, including saved-position playback and browser autoplay refusal recovery.
+
+Assessment save validation (2026-10-05): [clear Required/Optional choices and localized inline save feedback](assessment-save-validation-20261005.md). Eleven real-browser checks pass, including successful saves of both choices; explicit ADMIN policy selection preserved.
+
+Published-course lesson additions (2026-10-05): [owner-approved Add lesson and initial video upload after publication](published-course-lesson-additions-20261005.md). 61 catalog integration and 37 browser checks pass; existing subscriber access preserved. Supersedes the earlier draft-only lesson-addition restriction.
+
+Course editor and disk cleanup (2026-10-05): [published-course Add lesson repair, 37 browser checks and Docker cleanup outcome](catalog-editor-and-docker-cleanup-20261005.md). Existing editing rules and retained data preserved; build cache cleared, Windows disk compaction remains incomplete after the elevation prompt was canceled.
+
 Authentication alignment (2026-10-05): [login/register content centered in Arabic and English](auth-form-centering-20261005.md). Eight desktop/mobile browser checks pass; local frontend updated.
 
 Platform pagination (2026-10-05): [bounded histories, full-scope recharge search and shared bilingual list pages](platform-list-pagination-20261005.md). 62 backend integration tests and 80 browser checks pass; existing data and DRM remain preserved.

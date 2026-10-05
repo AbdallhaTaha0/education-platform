@@ -33,7 +33,7 @@ export function WalletPage({ go }: { go: (hash: string) => void }): JSX.Element 
           {wallet !== null ? (
             <Card className="mt-4">
               <p className="text-sm text-muted">{t.walletBalance}</p>
-              <p className="mt-1 text-4xl font-bold text-accent">
+              <p className="mt-1 select-none text-4xl font-bold text-accent">
                 <Money piastres={wallet.balancePiastres} />
               </p>
               <FormActions className="mt-4">

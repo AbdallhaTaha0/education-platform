@@ -12,7 +12,6 @@ import { createLesson, patchLesson, reorderLessons } from '../api/client';
 import type { AdminLesson } from '../types/models';
 import { MediaUploader } from './MediaUploader';
 import { AdminAssessmentPanel } from '../../assessments/AdminAssessmentPanel';
-import { AdminLessonMaterials } from '../../learning/materials/AdminLessonMaterials';
 import { DeletionPanel } from './DeletionPanel';
 import { businessState } from '../../../components/ui/AdminNavigation';
 import { EntityRename } from './EntityRename';
@@ -22,10 +21,14 @@ export function LessonList({
   sectionId,
   lessons,
   onChanged,
+  blockedReason,
+  additionBlockedReason,
 }: {
   sectionId: string;
   lessons: AdminLesson[];
   onChanged: () => Promise<void>;
+  blockedReason?: string;
+  additionBlockedReason?: string;
 }): JSX.Element {
   const { t, lang } = useLang();
   const [titleAr, setTitleAr] = useState('');
@@ -34,9 +37,9 @@ export function LessonList({
   const [error, setError] = useState<string | null>(null);
   useUnsavedChanges(!!(titleAr || titleEn),lang==='ar'?'اسم الدرس الجديد غير محفوظ. هل تريد تركه؟':'The new lesson name is unsaved. Leave without saving?');
 
-  async function submit(e: FormEvent): Promise<void> {
+  async function submit(e: FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
-    if (busy) return;
+    if (busy || additionBlockedReason || !e.currentTarget.reportValidity()) return;
     setBusy(true);
     setError(null);
     try {
@@ -52,17 +55,22 @@ export function LessonList({
   }
 
   async function move(index: number, delta: -1 | 1): Promise<void> {
+    if (busy || blockedReason) return;
     const ids = lessons.map((l) => l.id);
     const next = index + delta;
     if (next < 0 || next >= ids.length) return;
     const reordered = [...ids];
     const [moved] = reordered.splice(index, 1);
     reordered.splice(next, 0, moved as string);
+    setError(null);
+    setBusy(true);
     try {
       await reorderLessons(sectionId, reordered as string[]);
       await onChanged();
     } catch (err) {
       setError(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -76,13 +84,14 @@ export function LessonList({
               <span className="font-semibold">
                 #{l.position} {lang === 'ar' ? l.titleAr : l.titleEn}
               </span>
-              <EntityRename titleAr={l.titleAr} titleEn={l.titleEn} onSave={async body=>{await patchLesson(l.id,body);await onChanged();}} />
+              <EntityRename titleAr={l.titleAr} titleEn={l.titleEn} blockedReason={blockedReason} onSave={async body=>{await patchLesson(l.id,body);await onChanged();}} />
               <OrderingControls
                 onMoveUp={() => void move(i, -1)}
                 onMoveDown={() => void move(i, 1)}
                 upDisabled={i === 0}
                 downDisabled={i === lessons.length - 1}
                 busy={busy}
+                blockedReason={blockedReason}
               />
             </div>
             <div className="mt-2 text-sm text-muted">
@@ -92,8 +101,8 @@ export function LessonList({
               lessonId={l.id}
               mediaStatus={l.media?.status ?? null}
               onChanged={onChanged}
+              blockedReason={additionBlockedReason}
             />
-            <AdminLessonMaterials lessonId={l.id} />
             <AdminAssessmentPanel lessonId={l.id} />
             <DeletionPanel kind="lessons" targetId={l.id} entityName={lang==='ar'?l.titleAr:l.titleEn} expectedConfirmation={l.id} onChanged={onChanged}/>
           </li>
@@ -107,6 +116,8 @@ export function LessonList({
         <Field id={`les-ta-${sectionId}`} label={t.fieldTitleAr}>
           <input
             id={`les-ta-${sectionId}`}
+            disabled={busy || !!additionBlockedReason}
+            maxLength={300}
             required
             className={textInputClassName(false)}
             value={titleAr}
@@ -116,6 +127,8 @@ export function LessonList({
         <Field id={`les-te-${sectionId}`} label={t.fieldTitleEn} dir="ltr">
           <input
             id={`les-te-${sectionId}`}
+            disabled={busy || !!additionBlockedReason}
+            maxLength={300}
             dir="ltr"
             required
             className={textInputClassName(false)}
@@ -125,7 +138,7 @@ export function LessonList({
         </Field>
         <div className="col-span-2 max-sm:col-span-1">
           <FormActions className="mt-0">
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" disabled={busy || !!additionBlockedReason} disabledReason={additionBlockedReason}>
               {t.actionAddLesson}
             </Button>
           </FormActions>

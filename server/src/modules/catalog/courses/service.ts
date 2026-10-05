@@ -176,6 +176,17 @@ export function ensureStructuralAllowed(course: {
   }
 }
 
+/** Owner-approved additions to live courses; existing structural edits stay draft-only. */
+export function ensureLessonAdditionAllowed(course: {
+  status: string;
+  deletionRequestedAt: Date | null;
+}): void {
+  ensureMutable(course, 'Lesson addition');
+  if (course.status !== 'DRAFT' && course.status !== 'PUBLISHED') {
+    throw new ApiError(409, 'COURSE_NOT_DRAFT', 'Lesson addition and initial media upload require DRAFT or PUBLISHED.');
+  }
+}
+
 export async function createCourse(prisma: PrismaClient, actorId: string, raw: unknown) {
   rejectUnknownFields(raw, CREATE_FIELDS);
   const body = raw as Record<string, unknown>;

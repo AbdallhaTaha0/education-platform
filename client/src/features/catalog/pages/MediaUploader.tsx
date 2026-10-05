@@ -21,10 +21,12 @@ export function MediaUploader({
   lessonId,
   mediaStatus,
   onChanged,
+  blockedReason,
 }: {
   lessonId: string;
   mediaStatus: string | null;
   onChanged: () => Promise<void>;
+  blockedReason?: string;
 }): JSX.Element {
   const { t,lang } = useLang();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -48,7 +50,7 @@ export function MediaUploader({
   }
 
   async function run(): Promise<void> {
-    if (busy) return;
+    if (busy || blockedReason) return;
     const file = selectedFile();
     if (file === null) {
       setError('VALIDATION_ERROR');
@@ -124,12 +126,12 @@ export function MediaUploader({
           ref={fileRef}
           id={`file-${lessonId}`}
           type="file"
-          disabled={busy}
+          disabled={busy || !!blockedReason}
           accept="video/mp4,video/webm,video/quicktime,.mov"
           className="min-h-[44px]"
         />
       </Field>
-      <Button variant="secondary" disabled={busy} onClick={() => void run()}>
+      <Button variant="secondary" disabled={busy || !!blockedReason} disabledReason={blockedReason} onClick={() => void run()}>
         {t.actionRegister}
       </Button>
       <Button variant="secondary" disabled={busy} onClick={() => void sync()}>

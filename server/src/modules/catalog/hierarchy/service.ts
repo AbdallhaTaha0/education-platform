@@ -4,7 +4,7 @@ import { ApiError } from '../../identity/errors.js';
 import { audit } from '../audit.js';
 import { courseIdForLesson, courseIdForSection, withCourseLock } from '../courseTx.js';
 import type { TxClient } from '../types.js';
-import { ensureStructuralAllowed } from '../courses/service.js';
+import { ensureLessonAdditionAllowed, ensureStructuralAllowed } from '../courses/service.js';
 import {
   assertUuid,
   nonBlankString,
@@ -216,12 +216,14 @@ export async function createLesson(
       include: { course: true },
     });
     if (section === null) throw new ApiError(404, 'NOT_FOUND', 'Section not found.');
-    ensureStructuralAllowed(section.course);
+    ensureLessonAdditionAllowed(section.course);
     const count = await tx.lesson.count({ where: { sectionId } });
     const position =
       body['position'] === undefined ? count + 1 : validatePosition(body['position']);
     if (position < 1 || position > count + 1)
       throw new ApiError(400, 'VALIDATION_ERROR', 'Position out of range.', { field: 'position' });
+    // Inserting before existing lessons changes their order; only draft courses permit that.
+    if (position <= count) ensureStructuralAllowed(section.course);
     if (position <= count) await shiftLessonsForInsert(tx, sectionId, position);
     const created = await tx.lesson.create({ data: { sectionId, titleAr, titleEn, position } });
     await audit(tx, {

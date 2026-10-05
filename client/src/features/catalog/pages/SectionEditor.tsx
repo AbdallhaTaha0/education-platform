@@ -17,10 +17,12 @@ export function SectionEditor({
   courseId,
   sections,
   onChanged,
+  blockedReason,
 }: {
   courseId: string;
   sections: AdminSection[];
   onChanged: () => Promise<void>;
+  blockedReason?: string;
 }): JSX.Element {
   const { t, lang } = useLang();
   const [titleAr, setTitleAr] = useState('');
@@ -29,9 +31,9 @@ export function SectionEditor({
   const [error, setError] = useState<string | null>(null);
   useUnsavedChanges(!!(titleAr || titleEn),lang==='ar'?'اسم القسم الجديد غير محفوظ. هل تريد تركه؟':'The new section name is unsaved. Leave without saving?');
 
-  async function submit(e: FormEvent): Promise<void> {
+  async function submit(e: FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
-    if (busy) return;
+    if (busy || blockedReason || !e.currentTarget.reportValidity()) return;
     setBusy(true);
     setError(null);
     try {
@@ -47,6 +49,7 @@ export function SectionEditor({
   }
 
   async function move(index: number, delta: -1 | 1): Promise<void> {
+    if (busy || blockedReason) return;
     const ids = sections.map((s) => s.id);
     const next = index + delta;
     if (next < 0 || next >= ids.length) return;
@@ -54,11 +57,14 @@ export function SectionEditor({
     const [moved] = reordered.splice(index, 1);
     reordered.splice(next, 0, moved as string);
     setError(null);
+    setBusy(true);
     try {
       await reorderSections(courseId, reordered as string[]);
       await onChanged();
     } catch (err) {
       setError(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -72,13 +78,14 @@ export function SectionEditor({
             <span className="font-semibold">
               #{s.position} {lang === 'ar' ? s.titleAr : s.titleEn}
             </span>
-            <EntityRename titleAr={s.titleAr} titleEn={s.titleEn} onSave={async body=>{await patchSection(s.id,body);await onChanged();}} />
+            <EntityRename titleAr={s.titleAr} titleEn={s.titleEn} blockedReason={blockedReason} onSave={async body=>{await patchSection(s.id,body);await onChanged();}} />
             <OrderingControls
               onMoveUp={() => void move(i, -1)}
               onMoveDown={() => void move(i, 1)}
               upDisabled={i === 0}
               downDisabled={i === sections.length - 1}
               busy={busy}
+              blockedReason={blockedReason}
             />
           </li>
         ))}
@@ -91,6 +98,8 @@ export function SectionEditor({
         <Field id="sec-ta" label={t.fieldTitleAr}>
           <input
             id="sec-ta"
+            disabled={busy || !!blockedReason}
+            maxLength={300}
             required
             className={textInputClassName(false)}
             value={titleAr}
@@ -100,6 +109,8 @@ export function SectionEditor({
         <Field id="sec-te" label={t.fieldTitleEn} dir="ltr">
           <input
             id="sec-te"
+            disabled={busy || !!blockedReason}
+            maxLength={300}
             dir="ltr"
             required
             className={textInputClassName(false)}
@@ -109,7 +120,7 @@ export function SectionEditor({
         </Field>
         <div className="col-span-2 max-sm:col-span-1">
           <FormActions className="mt-0">
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" disabled={busy || !!blockedReason} disabledReason={blockedReason}>
               {t.actionAddSection}
             </Button>
           </FormActions>

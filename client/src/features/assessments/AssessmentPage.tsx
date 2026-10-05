@@ -24,6 +24,10 @@ export function AssessmentPage({ id }: { id: string }): JSX.Element {
   const [historyPaging, setHistoryPaging] = useState<PageInfo>({ page: 1, pageSize: 10, total: 0 });
   const [historyError, setHistoryError] = useState(false), [historyLoading, setHistoryLoading] = useState(false);
   useEffect(() => {
+    if (result?.state !== 'CORRECT' || !assessment) return;
+    window.location.replace(`#/learn/${encodeURIComponent(assessment.courseId)}?lesson=${encodeURIComponent(assessment.lessonId)}&resume=1`);
+  }, [result?.id, result?.state, assessment?.courseId, assessment?.lessonId]);
+  useEffect(() => {
     let live = true; setHistoryLoading(true); setHistoryError(false);
     void assessmentApi<{ submissions: typeof history; pagination: PageInfo }>(`/assessments/${id}/history?page=${historyPage}&pageSize=${historySize}`).then(data => {
       if (!live) return; setHistory(data.submissions); setHistoryPaging(data.pagination); setHistoryPage(data.pagination.page);
