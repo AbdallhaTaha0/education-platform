@@ -8,6 +8,7 @@ import { Loading, Notice } from '../../../components/ui/Notice';
 import { useNotifications } from '../context';
 import { BellIcon } from '../components/NotificationEntry';
 import { notificationHref } from '../inbox';
+import { PaginatedCollection } from '../../../components/ui/Pagination';
 
 export function NotificationsPage(): JSX.Element {
   const { status, user } = useAuth();
@@ -178,10 +179,8 @@ export function NotificationsPage(): JSX.Element {
                   <a className="mt-4 inline-block underline" href={user?.role==='ADMIN'?'#/admin/summary':'#/dashboard'}>{lang==='ar'?'العودة إلى مهامك':'Return to your tasks'}</a>
                 </Card>
               ) : null}
-              <ul
+              <PaginatedCollection as="ul" id="notifications" resetKey={String(state.unreadOnly)} disabled={state.loading || state.loadingMore || busy}
                 className="space-y-4"
-                aria-label={t.navNotifications}
-                aria-busy={state.loading || state.loadingMore}
               >
                 {state.items.map((item) => {
                   const href = notificationHref(item);
@@ -265,7 +264,7 @@ export function NotificationsPage(): JSX.Element {
                     </li>
                   );
                 })}
-              </ul>
+              </PaginatedCollection>
               {state.nextCursor !== null ? (
                 <FormActions className="mt-6">
                   <Button

@@ -23,6 +23,10 @@ export async function fetchMyPurchases(): Promise<PurchaseHistoryRow[]> {
   return body.data.purchases;
 }
 
+export async function fetchPurchasePage(page: number, pageSize: number) {
+  return (await apiFetch<{ data: { purchases: PurchaseHistoryRow[]; pagination: import('../../../components/ui/Pagination').PageInfo } }>(`/wallet/purchases?page=${page}&pageSize=${pageSize}`, { retryOnAuth: true })).data;
+}
+
 export async function fetchMySubscriptions(): Promise<SubscriptionView[]> {
   const body = await apiFetch<{ data: { subscriptions: SubscriptionView[] } }>(
     '/wallet/subscriptions',

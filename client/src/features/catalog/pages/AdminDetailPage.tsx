@@ -12,9 +12,17 @@ import { LessonList } from './LessonEditor';
 import { LifecycleControls } from './LifecycleControls';
 import { ArchiveControls } from './ArchiveControls';
 import { DeletionPanel } from './DeletionPanel';
-import { Button } from '../../../components/ui/Button';
 import { businessState } from '../../../components/ui/AdminNavigation';
 import { useConfirmNavigation } from '../../../components/ui/UnsavedChanges';
+import { SectionTabs, SectionPanel, type SectionTab } from '../../../components/ui/SectionTabs';
+import { PaginatedCollection } from '../../../components/ui/Pagination';
+
+const courseTabs: SectionTab[] = [
+  { id: 'outline', ar: 'الدروس والفيديو والتقييمات', en: 'Lessons, videos & assessments', descriptionAr: 'أضف الأقسام والدروس، وارفع الفيديو والملفات، وأدر الاختبارات والواجبات لكل درس.', descriptionEn: 'Add sections and lessons, upload video/materials and manage each lesson’s quizzes and assignments.' },
+  { id: 'details', ar: 'تعديل بيانات الكورس', en: 'Edit course details', descriptionAr: 'عدّل العنوان والوصف والتصنيف الدراسي باللغتين، ثم احفظ بيانات الكورس.', descriptionEn: 'Edit bilingual titles, descriptions and academic classification, then save the course details.' },
+  { id: 'access', ar: 'الأسعار ومدة الاشتراك', en: 'Prices & subscription access', descriptionAr: 'أضف أو عدّل عروض السعر ومدة أو نهاية الوصول. تغييرات كل عرض تُحفظ من نموذجه.', descriptionEn: 'Add or edit price offers and access duration/deadline. Save each offer using its own form.' },
+  { id: 'publish', ar: 'النشر والأرشفة والحذف', en: 'Publish, archive & delete', descriptionAr: 'راجع جاهزية النشر. الأرشفة قابلة للتراجع؛ الحذف النهائي يزيل المحتوى عبر التأكيد المطلوب.', descriptionEn: 'Review publication readiness. Archiving can be reversed; permanent deletion removes content through the required confirmation.' },
+];
 
 export function AdminDetailPage({ courseId }: { courseId: string }): JSX.Element {
   const { t, lang } = useLang();
@@ -80,9 +88,13 @@ export function AdminDetailPage({ courseId }: { courseId: string }): JSX.Element
             <Notice kind="pending">{t.deleteProgress}</Notice>
           ) : null}
 
-          <nav aria-label={lang === 'ar' ? 'أقسام إدارة الكورس' : 'Course workspace'} className="my-6 flex flex-wrap gap-2" data-testid="course-workspace-tabs">
-            {['outline','details','access','publish'].map((id,i) => <Button key={id} variant={workspace===id?'primary':'secondary'} aria-pressed={workspace===id} onClick={() => { if (workspace !== id && confirmLeave()) {setWorkspace(id);setSaveError(null);} }}>{(lang==='ar'?['الدروس والفيديو','بيانات الكورس','الأسعار والوصول','النشر والإجراءات']:['Lessons and video','Course details','Pricing and access','Publishing and actions'])[i]}</Button>)}
-          </nav>
+          <SectionTabs tabs={courseTabs} value={workspace} prefix="course-workspace" label={lang === 'ar' ? 'أقسام إدارة الكورس' : 'Course workspace'} disabled={saving} onChange={id => {
+            if (workspace === id) return true;
+            if (!confirmLeave()) return false;
+            setWorkspace(id); setSaveError(null); return true;
+          }} />
+          {courseTabs.map(tab => <SectionPanel key={tab.id} tab={tab} prefix="course-workspace" active={workspace === tab.id}>
+          {workspace === tab.id ? <>
           {workspace === 'details' ? <CourseForm
             busy={saving}
             key={course.id}
@@ -128,7 +140,7 @@ export function AdminDetailPage({ courseId }: { courseId: string }): JSX.Element
           {workspace === 'outline' ? <>
           <SectionEditor courseId={courseId} sections={course.sections} onChanged={reload} />
 
-          {course.sections.map((s) => (
+          <PaginatedCollection id="course-sections" resetKey={courseId}>{course.sections.map((s) => (
             <div
               key={s.id}
               className="mt-4 rounded-card border border-border bg-surface p-6 shadow-rest"
@@ -145,9 +157,11 @@ export function AdminDetailPage({ courseId }: { courseId: string }): JSX.Element
                 onChanged={reload}
               />
             </div>
-          ))}
+          ))}</PaginatedCollection>
           </> : null}
 
+          </> : null}
+          </SectionPanel>)}
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               className="hidden"

@@ -4,6 +4,7 @@ import { useLang } from '../../i18n';
 import { Card, Container } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { FormActions } from '../../components/ui/FormActions';
+import { PaginatedCollection } from '../../components/ui/Pagination';
 import { Field, textInputClassName } from '../../components/ui/Field';
 import { Loading, Notice } from '../../components/ui/Notice';
 import { fetchAdminCourses } from '../catalog/api/client';
@@ -317,7 +318,7 @@ export function AdminPackagesPage(): JSX.Element {
                 </form>
               </Card> : null}
               {!loading && !rows.length ? <p className="my-6 text-muted">{ar?'لا توجد باقات بعد. جهّز الكورسات الشهرية ثم أنشئ أول باقة.':'No packages yet. Prepare the monthly courses, then create your first package.'}</p>:null}
-              <ul className="mt-6 grid gap-4 md:grid-cols-2">
+              <PaginatedCollection as="ul" id="admin-packages" disabled={busy} className="mt-6 grid gap-4 md:grid-cols-2">
                 {rows.map((p) => (
                   <li key={p.id}>
                     <Card>
@@ -350,7 +351,7 @@ export function AdminPackagesPage(): JSX.Element {
                     </Card>
                   </li>
                 ))}
-              </ul>
+              </PaginatedCollection>
             </>
           )}
         </section>

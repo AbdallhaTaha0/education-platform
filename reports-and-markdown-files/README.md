@@ -1,5 +1,15 @@
 # Education platform documentation
 
+Authentication alignment (2026-10-05): [login/register content centered in Arabic and English](auth-form-centering-20261005.md). Eight desktop/mobile browser checks pass; local frontend updated.
+
+Platform pagination (2026-10-05): [bounded histories, full-scope recharge search and shared bilingual list pages](platform-list-pagination-20261005.md). 62 backend integration tests and 80 browser checks pass; existing data and DRM remain preserved.
+
+InstaPay QR and payment route repair (2026-10-05): [stale backend diagnosis, guarded local refresh and authenticated QR upload/display/removal](instapay-qr-and-payment-route-repair-20261005.md). Manual approval remains required; no DRM or deployment changes.
+
+ADMIN dashboard UX (2026-10-05): [six clearly named navigation groups and separate editable course/payment tabs](admin-dashboard-tabs-20261005.md), with Arabic/English, keyboard navigation, mobile layout and draft protection. Frontend-only owner-requested work; no architecture or DRM changes.
+
+Independent latest-commits review (2026-10-05): [538a0f9 → 3824ef9 — merge verification, progress/payment/logout/notification review and fresh Docker evidence](latest-commits-review-20261005.md). No blocking defect found in reviewed scope; 158 frontend tests, 51 wallet integration and 94 browser checks pass, plus typechecks/build and two DASH checks. Payment-setting audit history is a recommended follow-up; retained preview and DRM are preserved.
+
 Owner-authorized session delivery (2026-10-05): [completed progress, logout, payment, notification and UI work with verification](completed-work-delivery-20261005.md). Owner requested commit/push; this supersedes earlier delivery restrictions for the completed changes.
 
 Vodafone Cash and inbox follow-up (2026-10-05): [separate admin-editable receiving details, IDE naming and notification acknowledgement](vodafone-cash-and-notifications-20261005.md). Owner-confirmed local receiver enabled; manual approval preserved.

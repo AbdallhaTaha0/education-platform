@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useAuth } from '../../../auth';
 import { useLang } from '../../../i18n';
 import type { Route } from '../../../routes';
+import { AdminWorkspace } from './AdminWorkspace';
 
 interface WorkspaceLink {
   href: string;
@@ -19,24 +20,6 @@ function StudentLinks(route: Route): WorkspaceLink[] {
     { href: '#/wallet', ar: 'المحفظة', en: 'Wallet', active: r === 'wallet' || r === 'wallet-recharge' },
     { href: '#/purchases', ar: 'مشترياتي', en: 'My purchases', active: r === 'purchases' },
     { href: '#/notifications', ar: 'الإشعارات', en: 'Notifications', active: r === 'notifications' },
-    { href: '#/account/profile', ar: 'الملف والأمان', en: 'Profile & security', active: r === 'account-profile' },
-  ];
-}
-
-function AdminLinks(route: Route): WorkspaceLink[] {
-  const r = route as string;
-  return [
-    { href: '#/admin/summary', ar: 'نظرة عامة', en: 'Overview', active: r === 'admin-summary' },
-    { href: '#/admin/catalog', ar: 'الكورسات', en: 'Courses', active: r === 'admin-catalog' || r === 'admin-course' },
-    { href: '#/admin/packages', ar: 'الباقات', en: 'Packages', active: r === 'admin-packages' },
-    { href: '#/admin/recharge', ar: 'مراجعة الشحن', en: 'Recharge', active: r === 'admin-recharge' },
-    { href: '#/admin/practice', ar: 'حدود التدريب', en: 'Practice limits', active: r === 'admin-practice' },
-    { href: '#/admin/students', ar: 'الطلاب', en: 'Students', active: r === 'admin-students' },
-    { href: '#/admin', ar: 'إضافة مسؤول', en: 'Create admin', active: r === 'admin' },
-    { href: '#/admin/policies', ar: 'مسودات السياسات', en: 'Policy drafts', active: r === 'admin-policies' },
-    { href: '#/admin/support', ar: 'بيانات الدعم', en: 'Support contacts', active: r === 'admin-support' },
-    { href: '#/notifications', ar: 'الإشعارات', en: 'Notifications', active: r === 'notifications' },
-    { href: '#/account', ar: 'حسابي', en: 'My account', active: r === 'account' },
     { href: '#/account/profile', ar: 'الملف والأمان', en: 'Profile & security', active: r === 'account-profile' },
   ];
 }
@@ -65,13 +48,13 @@ export function AccountWorkspace({
     return <>{children}</>;
   }
 
-  const links = user.role === 'ADMIN' ? AdminLinks(route) : StudentLinks(route);
+  if (user.role === 'ADMIN') return <AdminWorkspace route={route}>{children}</AdminWorkspace>;
+
+  const links = StudentLinks(route);
   const current = links.find((l) => l.active);
   const menuLabel = ar ? 'أقسام الحساب' : 'Account sections';
   const currentLabel = current ? (ar ? current.ar : current.en) : menuLabel;
-  const sidebarTitle = user.role === 'ADMIN'
-    ? (ar ? 'إدارة المنصة وحسابي' : 'Platform management and my account')
-    : (ar ? 'حسابي وتعلّمي' : 'My account and learning');
+  const sidebarTitle = ar ? 'حسابي وتعلّمي' : 'My account and learning';
 
   return (
     <div className="account-workspace" data-testid="account-workspace">

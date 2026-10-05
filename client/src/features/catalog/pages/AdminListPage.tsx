@@ -12,6 +12,7 @@ import { createAdminCourse, fetchAdminCourses } from '../api/client';
 import type { AdminCourseSummary } from '../types/models';
 import { CourseForm } from './CourseForm';
 import { businessState } from '../../../components/ui/AdminNavigation';
+import { PaginatedCollection } from '../../../components/ui/Pagination';
 
 export function AdminListPage({ go }: { go: (h: string) => void }): JSX.Element {
   const { t, lang } = useLang();
@@ -116,7 +117,7 @@ export function AdminListPage({ go }: { go: (h: string) => void }): JSX.Element 
           <Button variant="secondary" onClick={()=>{setQuery('');setState('');setGrade('');setTerm('');}}>{lang==='ar'?'مسح البحث والتصفية':'Clear search and filters'}</Button>
           {loading ? <Loading text={t.loading} /> : null}
           {!loading && filtered.length === 0 ? <EmptyState text={lang==='ar'?'لا توجد نتائج. غيّر البحث أو امسح التصفية.':'No matching courses. Change your search or clear the filters.'} /> : null}
-          <div className="mt-4 grid grid-cols-3 gap-6 max-lg:grid-cols-2 max-sm:grid-cols-1">
+          <PaginatedCollection id="admin-courses" resetKey={JSON.stringify([query,state,grade,term])} className="mt-4 grid grid-cols-3 gap-6 max-lg:grid-cols-2 max-sm:grid-cols-1">
             {filtered.map((c) => (
               <Card key={c.id} className="flex flex-col gap-3">
                 <h3 className="m-0 text-xl">
@@ -136,7 +137,7 @@ export function AdminListPage({ go }: { go: (h: string) => void }): JSX.Element 
                 </div>
               </Card>
             ))}
-          </div>
+          </PaginatedCollection>
         </Container>
       </section>
     </main>

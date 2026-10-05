@@ -10,6 +10,7 @@ import { adminLesson, assessmentAccess, publishAssessment, saveAssessment, saveD
 import { practiceEligible, readQuota, reserveRun, adjustQuota } from './quota.js';
 import { LearningError } from '../learning/errors.js';
 import { getLogger } from '../../logger.js';
+import { parseListPage, pageInfo } from '../../list-pagination.js';
 import { requestPreparation, preparationStatus } from './preparation.js';
 
 const uuid = (v: unknown): string => { if (typeof v !== 'string' || !/^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i.test(v)) return invalid(); return v; };
@@ -64,8 +65,10 @@ export function assessmentRouters(db: PrismaClient, now: () => number = Date.now
     if (!found) throw new ApiError(404, 'NOT_FOUND', 'Submission not found.'); res.json(ok(found));
   }));
   r.get('/:id/history', asyncRoute(async (req, res) => {
-    const list = await db.assessmentSubmission.findMany({ where: { studentId: student(req), assessmentId: uuid(req.params.id) }, orderBy: { createdAt: 'desc' }, take: 30, select: { id: true, state: true, result: true, createdAt: true } });
-    res.json(ok({ submissions: list }));
+    const where = { studentId: student(req), assessmentId: uuid(req.params.id) }, input = parseListPage(req.query);
+    const pagination = input ? pageInfo(input, await db.assessmentSubmission.count({ where })) : undefined;
+    const list = await db.assessmentSubmission.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: pagination?.pageSize ?? 30, skip: pagination ? (pagination.page - 1) * pagination.pageSize : 0, select: { id: true, state: true, result: true, createdAt: true } });
+    res.set('Cache-Control', 'no-store').json(ok({ submissions: list, ...(pagination ? { pagination } : {}) }));
   }));
   r.get('/:id', asyncRoute(async (req, res) => { res.json(ok(await studentAssessment(db, student(req), uuid(req.params.id), now()))); }));
   r.put('/:id/draft', ...writes, asyncRoute(async (req, res) => {
@@ -80,8 +83,10 @@ export function assessmentRouters(db: PrismaClient, now: () => number = Date.now
 
   admin.get('/students', asyncRoute(async (req, res) => {
     const search = typeof req.query.q === 'string' ? req.query.q.slice(0, 100) : '';
-    const users = await db.user.findMany({ where: { role: 'STUDENT', ...(search ? { OR: [{ email: { contains: search, mode: 'insensitive' as const } }, { displayName: { contains: search, mode: 'insensitive' as const } }, { phone: { contains: search } }] } : {}) }, orderBy: { createdAt: 'desc' }, take: 30, select: { id: true, displayName: true, email: true } });
-    res.json(ok({ students: users }));
+    const where = { role: 'STUDENT' as const, ...(search ? { OR: [{ email: { contains: search, mode: 'insensitive' as const } }, { displayName: { contains: search, mode: 'insensitive' as const } }, { phone: { contains: search } }] } : {}) }, input = parseListPage(req.query);
+    const pagination = input ? pageInfo(input, await db.user.count({ where })) : undefined;
+    const users = await db.user.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: pagination?.pageSize ?? 30, skip: pagination ? (pagination.page - 1) * pagination.pageSize : 0, select: { id: true, displayName: true, email: true } });
+    res.set('Cache-Control', 'no-store').json(ok({ students: users, ...(pagination ? { pagination } : {}) }));
   }));
   admin.get('/students/:studentId/quota', asyncRoute(async (req, res) => {
     const id = uuid(req.params.studentId); if (!await db.user.findFirst({ where: { id, role: 'STUDENT' } })) throw new ApiError(404, 'NOT_FOUND', 'Student not found.');

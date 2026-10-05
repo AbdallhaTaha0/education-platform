@@ -3,8 +3,9 @@ import type { PaymentChannelConfig } from '../../config.js';
 import { ApiError } from '../identity/errors.js';
 
 async function getSettings(prisma: PrismaClient, channels: PaymentChannelConfig[], channel: 'INSTAPAY' | 'MOBILE_WALLET') {
-  const row = await (channel === 'INSTAPAY' ? prisma.instaPaySettings.findUnique({ where: { id: 1 } }) : prisma.vodafoneCashSettings.findUnique({ where: { id: 1 } }));
-  if (row) return { enabled: row.enabled, accountLabel: row.accountLabel, instructionsAr: row.instructionsAr, instructionsEn: row.instructionsEn, version: row.version };
+  const select = { enabled: true, accountLabel: true, instructionsAr: true, instructionsEn: true, version: true } as const;
+  const row = await (channel === 'INSTAPAY' ? prisma.instaPaySettings.findUnique({ where: { id: 1 }, select: { ...select, qrMime: true } }) : prisma.vodafoneCashSettings.findUnique({ where: { id: 1 }, select }));
+  if (row) return { ...row, ...('qrMime' in row ? { qrUrl: row.qrMime ? `/api/admin/payment-settings/instapay/qr?v=${row.version}` : null } : {}) };
   const legacy = channels.find(c => c.channel === channel);
   return { enabled: !!legacy, accountLabel: legacy?.accountLabel ?? '', instructionsAr: legacy?.instructionsAr ?? '', instructionsEn: legacy?.instructionsEn ?? '', version: 0 };
 }
@@ -17,7 +18,7 @@ export async function paymentChannels(prisma: PrismaClient, configured: PaymentC
   const vodafone = await getVodafoneCash(prisma, configured);
   return [...configured.filter(c => c.channel !== 'INSTAPAY' && c.channel !== 'MOBILE_WALLET'),
     ...([{ channel: 'INSTAPAY' as const, settings: instapay }, { channel: 'MOBILE_WALLET' as const, settings: vodafone }]
-      .filter(c => c.settings.enabled).map(({ channel, settings }) => ({ channel, accountLabel: settings.accountLabel, instructionsAr: settings.instructionsAr, instructionsEn: settings.instructionsEn })))];
+      .filter(c => c.settings.enabled).map(({ channel, settings }) => ({ channel, accountLabel: settings.accountLabel, instructionsAr: settings.instructionsAr, instructionsEn: settings.instructionsEn, ...(channel === 'INSTAPAY' && 'qrUrl' in settings && settings.qrUrl ? { qrUrl: `/api/wallet/payment-settings/instapay/qr?v=${settings.version}` } : {}) })))];
 }
 
 async function saveSettings(prisma: PrismaClient, body: unknown, channel: 'INSTAPAY' | 'MOBILE_WALLET') {

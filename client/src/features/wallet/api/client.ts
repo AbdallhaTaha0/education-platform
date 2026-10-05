@@ -1,5 +1,13 @@
 import { apiFetch } from '../../../auth';
 import type { PaymentInstruction, RechargeRequestView, WalletView } from '../types/models';
+import type { PageInfo } from '../../../components/ui/Pagination';
+export async function fetchRequestPage(page: number, pageSize: number) {
+  return (await apiFetch<{ data: { requests: RechargeRequestView[]; pagination: PageInfo } }>(`/wallet/recharge-requests?page=${page}&pageSize=${pageSize}`, { retryOnAuth: true })).data;
+}
+export async function fetchReviewPage(status: string, page: number, pageSize: number, search: string, date: string) {
+  const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize), ...(status ? { status } : {}), ...(search ? { search } : {}), ...(date ? { date } : {}) });
+  return (await apiFetch<{ data: { requests: import('../types/models').AdminRechargeRow[]; pagination: PageInfo } }>(`/admin/recharge-requests?${query}`, { retryOnAuth: true })).data;
+}
 
 export async function fetchWallet(): Promise<WalletView> {
   const body = await apiFetch<{ data: WalletView }>('/wallet', { retryOnAuth: true });

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useLang } from '../../../i18n';
+import { PaginatedCollection } from '../../../components/ui/Pagination';
 import { PackageCards } from '../../academic/PackageCards';
 import { gradeLabel } from '../../academic/model';
 import { Field, textInputClassName } from '../../../components/ui/Field';
@@ -170,7 +171,7 @@ export function PublicCatalogSections({
           {!loading && error === null && filtered.length === 0 ? (
             <EmptyState text={compact?t.catalogEmpty:lang==='ar'?'لا توجد كورسات مطابقة. غيّر البحث أو امسح التصفية.':'No matching courses. Change your search or clear the filters.'} />
           ) : null}
-          <div className="mt-6 grid grid-cols-3 gap-6 max-lg:grid-cols-2 max-sm:grid-cols-1">
+          <PaginatedCollection id="public-courses" resetKey={JSON.stringify([query,grade,term,year])} className="mt-6 grid grid-cols-3 gap-6 max-lg:grid-cols-2 max-sm:grid-cols-1">
             {filtered.slice(0, compact ? 3 : filtered.length).map((c, index) => (
               <article key={c.id}>
                 <Card className="group relative flex h-full flex-col gap-3 overflow-hidden border-border-strong transition-[border-color,transform,box-shadow] hover:-translate-y-1 hover:border-primary hover:shadow-lift">
@@ -216,7 +217,7 @@ export function PublicCatalogSections({
                 </Card>
               </article>
             ))}
-          </div>
+          </PaginatedCollection>
           {!compact ? <PackageCards grade={grade} term={term} year={year} query={query} /> : null}
         </Container>
       </section>

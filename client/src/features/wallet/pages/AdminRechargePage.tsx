@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { ApiError } from '../../../auth';
 import { localizeCode, useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
@@ -7,15 +7,27 @@ import { Card, Container } from '../../../components/ui/Card';
 import { Dialog } from '../../../components/ui/Dialog';
 import { Field } from '../../../components/ui/Field';
 import { Loading, Notice, EmptyState } from '../../../components/ui/Notice';
-import { fetchAdminQueue, proofUrl, reviewRequest } from '../api/client';
+import { fetchReviewPage, proofUrl, reviewRequest } from '../api/client';
+import { Pagination, type PageInfo } from '../../../components/ui/Pagination';
 import { Money } from '../components/Money';
 import { RequestStatus } from '../components/RequestStatus';
 import type { AdminRechargeRow, RechargeStatus } from '../types/models';
 import { InstaPaySettings } from '../components/InstaPaySettings';
+import { SectionPanel, SectionTabs, type SectionTab } from '../../../components/ui/SectionTabs';
+
+const paymentTabs: SectionTab[] = [
+  { id: 'review', ar: 'مراجعة طلبات الشحن', en: 'Review recharge requests', descriptionAr: 'راجع الطلب وإثبات التحويل قبل اعتماد الرصيد. إرسال الطلب لا يضيف رصيدًا.', descriptionEn: 'Check the request and transfer receipt before approving credit. Submission alone never adds credit.' },
+  { id: 'instapay', ar: 'بيانات استقبال InstaPay', en: 'InstaPay receiving details', descriptionAr: 'عدّل رقم أو عنوان الاستقبال واسم المستلم والتعليمات باللغتين، ثم احفظ التغييرات.', descriptionEn: 'Edit the receiving number/address, recipient and bilingual instructions, then save your changes.' },
+  { id: 'vodafone', ar: 'بيانات استقبال فودافون كاش', en: 'Vodafone Cash receiving details', descriptionAr: 'عدّل بيانات فودافون كاش مستقلة عن InstaPay. تعطيل الطريقة يمنع الطلبات الجديدة فقط.', descriptionEn: 'Edit Vodafone Cash independently of InstaPay. Disabling it prevents only new requests.' },
+];
 
 type Filter = '' | RechargeStatus;
 
 export function AdminRechargePage(): JSX.Element {
+  const [page, setPage] = useState(1); const [pageSize, setPageSize] = useState(10);
+  const [pagination, setPagination] = useState<PageInfo>({ page: 1, pageSize: 10, total: 0 });
+  const request = useRef(0);
+  const [paymentTab, setPaymentTab] = useState('review');
   const { t, lang } = useLang();
   const [filter, setFilter] = useState<Filter>('PENDING');
   const [rows, setRows] = useState<AdminRechargeRow[]>([]);
@@ -29,19 +41,22 @@ export function AdminRechargePage(): JSX.Element {
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [dialogDone, setDialogDone] = useState<string | null>(null);
   const [search,setSearch]=useState(''); const [date,setDate]=useState('');
-  const shown=rows.filter(r=>(!search || `${r.senderName} ${r.referenceNorm}`.toLowerCase().includes(search.toLowerCase())) && (!date || r.transferDate.slice(0,10)===date));
+  const shown = rows;
 
   const reload = useCallback(async () => {
+    const current = ++request.current;
     setLoading(true);
     setError(null);
     try {
-      setRows(await fetchAdminQueue(filter === '' ? undefined : filter));
+      const data = await fetchReviewPage(filter, page, pageSize, search, date);
+      if (current !== request.current) return;
+      setRows(data.requests); setPagination(data.pagination); setPage(data.pagination.page);
     } catch (err) {
-      setError(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
+      if (current === request.current) setError(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
     } finally {
-      setLoading(false);
+      if (current === request.current) setLoading(false);
     }
-  }, [filter]);
+  }, [filter, page, pageSize, search, date]);
 
   useEffect(() => {
     void reload();
@@ -84,17 +99,19 @@ export function AdminRechargePage(): JSX.Element {
       <section className="py-8">
         <Container>
           <h1 className="text-3xl font-bold">{t.adminRechargeTitle}</h1>
-          <InstaPaySettings />
-          <InstaPaySettings method="vodafone-cash" />
+          <SectionTabs tabs={paymentTabs} value={paymentTab} prefix="admin-payments" label={lang === 'ar' ? 'إدارة الشحن وطرق الدفع' : 'Recharge and payment management'} disabled={busy || selected !== null} onChange={setPaymentTab} />
+          <SectionPanel tab={paymentTabs[1]} prefix="admin-payments" active={paymentTab === 'instapay'}><InstaPaySettings expanded /></SectionPanel>
+          <SectionPanel tab={paymentTabs[2]} prefix="admin-payments" active={paymentTab === 'vodafone'}><InstaPaySettings method="vodafone-cash" expanded /></SectionPanel>
+          <SectionPanel tab={paymentTabs[0]} prefix="admin-payments" active={paymentTab === 'review'}>
           <p className="mt-2 text-muted">{t.adminRechargeBody}</p>
-          <div className="my-4 grid gap-3 sm:grid-cols-2"><label>{lang==='ar'?'بحث في الطلبات المحمّلة بالاسم أو المرجع':'Search loaded requests by name/reference'}<input className="w-full rounded-control border border-border bg-surface p-3" value={search} onChange={e=>setSearch(e.target.value)}/></label><label>{lang==='ar'?'تاريخ التحويل':'Transfer date'}<input type="date" className="w-full rounded-control border border-border bg-surface p-3" value={date} onChange={e=>setDate(e.target.value)}/></label></div><Button variant="secondary" onClick={()=>{setSearch('');setDate('');}}>{lang==='ar'?'مسح التصفية':'Clear filters'}</Button>
+          <div className="my-4 grid gap-3 sm:grid-cols-2"><label>{lang==='ar'?'البحث في جميع الطلبات بالاسم أو المرجع':'Search all requests by name/reference'}<input id="recharge-request-search" maxLength={100} className="w-full rounded-control border border-border bg-surface p-3" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/></label><label>{lang==='ar'?'تاريخ التحويل':'Transfer date'}<input type="date" className="w-full rounded-control border border-border bg-surface p-3" value={date} onChange={e=>{setDate(e.target.value);setPage(1);}}/></label></div><Button variant="secondary" onClick={()=>{setSearch('');setDate('');setPage(1);}}>{lang==='ar'?'مسح التصفية':'Clear filters'}</Button>
           <Button className="my-4" variant="secondary" disabled={loading || busy} onClick={()=>void reload()}>{lang==='ar'?'تحديث الطلبات':'Refresh requests'}</Button>
           <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label={t.filterStatus}>
             {(['PENDING', 'APPROVED', 'REJECTED', ''] as Filter[]).map((value) => (
               <Button
                 key={value === '' ? 'all' : value}
                 variant={filter === value ? 'primary' : 'secondary'}
-                onClick={() => setFilter(value)}
+                onClick={() => { setFilter(value); setPage(1); }}
               >
                 {value === ''
                   ? t.filterAll
@@ -141,6 +158,7 @@ export function AdminRechargePage(): JSX.Element {
               </li>
             ))}
           </ul>
+          <Pagination {...pagination} id="admin-requests" disabled={loading || busy || selected !== null} onPage={setPage} onSize={size => { setPageSize(size); setPage(1); }} />
           <Dialog open={selected !== null} title={t.reviewTitle} onClose={() => setSelected(null)}>
             {selected !== null ? (
               <div>
@@ -231,6 +249,7 @@ export function AdminRechargePage(): JSX.Element {
               </div>
             ) : null}
           </Dialog>
+          </SectionPanel>
         </Container>
       </section>
     </main>

@@ -9,12 +9,14 @@ import {
   requireSessionCsrf,
 } from '../../identity/middleware.js';
 import { cleanupExpiredProofs } from '../cleanup/service.js';
-import { getProofBytes, listRequestsForReview } from '../recharge/queries.js';
+import { getProofBytes, listRequestsForReview, reviewRequestPage } from '../recharge/queries.js';
+import { parseListPage } from '../../../list-pagination.js';
 import { reviewRecharge } from '../recharge/service.js';
 import type { RechargeReviewInput } from '../types.js';
 import { authOf } from './auth.js';
 import type { ServerConfig } from '../../../config.js';
 import { getInstaPay, saveInstaPay, getVodafoneCash, saveVodafoneCash } from '../payment-settings.js';
+import { readQr, saveQr, removeQr } from '../payment-qr.js';
 
 export interface WalletAdminDeps {
   prisma: PrismaClient;
@@ -27,13 +29,22 @@ const writeGuard = [requireOrigin, requireAuth, requireAdmin, requireSessionCsrf
 /** Admin recharge-review router. Proof bytes never leave this router except to an ADMIN. */
 export function createWalletAdminRouter(deps: WalletAdminDeps) {
   const router = Router();
+  router.get('/payment-settings/instapay/qr', ...readGuard, async (_req, res, next) => {
+    try { const image = await readQr(deps.prisma, true); res.set({ 'Content-Type': image.mime, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; sandbox" }).send(image.bytes); } catch (error) { next(error); }
+  });
+  for (const method of ['post', 'delete'] as const) router[method]('/payment-settings/instapay/qr', ...writeGuard, rateLimit('payment-qr-write', { windowSec: 60, max: 20 }), async (req, res, next) => {
+    try {
+      if (method === 'post') await saveQr(deps.prisma, req.body); else await removeQr(deps.prisma, req.body);
+      res.set('Cache-Control', 'no-store').json(ok(await getInstaPay(deps.prisma, deps.config.paymentChannels)));
+    } catch (error) { next(error); }
+  });
   router.get('/payment-settings/instapay', ...readGuard, async (_req, res, next) => {
     try { res.set('Cache-Control', 'no-store').json(ok(await getInstaPay(deps.prisma, deps.config.paymentChannels))); } catch (error) { next(error); }
   });
   router.put('/payment-settings/instapay', ...writeGuard, async (req, res, next) => {
     try {
-      const saved = await saveInstaPay(deps.prisma, req.body);
-      res.set('Cache-Control', 'no-store').json(ok({ enabled: saved.enabled, accountLabel: saved.accountLabel, instructionsAr: saved.instructionsAr, instructionsEn: saved.instructionsEn, version: saved.version }));
+      await saveInstaPay(deps.prisma, req.body);
+      res.set('Cache-Control', 'no-store').json(ok(await getInstaPay(deps.prisma, deps.config.paymentChannels)));
     } catch (error) { next(error); }
   });
 
@@ -51,6 +62,13 @@ export function createWalletAdminRouter(deps: WalletAdminDeps) {
     try {
       const status = req.query['status'];
       const channel = req.query['channel'];
+      const paging = parseListPage(req.query);
+      if (paging) {
+        res.set('Cache-Control', 'no-store').json(ok(await reviewRequestPage(deps.prisma, {
+          ...(status === 'PENDING' || status === 'APPROVED' || status === 'REJECTED' ? { status } : {}),
+          ...(typeof channel === 'string' ? { channel } : {}),
+        }, paging))); return;
+      }
       res.json(
         ok({
           requests: await listRequestsForReview(deps.prisma, {

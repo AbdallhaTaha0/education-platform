@@ -100,3 +100,6 @@ export async function packageHistory(): Promise<PackageReceipt[]> {
     })
   ).data.purchases;
 }
+export async function packageHistoryPage(page: number, pageSize: number) {
+  return (await apiFetch<{ data: { purchases: PackageReceipt[]; pagination: import('../../components/ui/Pagination').PageInfo } }>(`/wallet/package-purchases?page=${page}&pageSize=${pageSize}`, { retryOnAuth: true })).data;
+}

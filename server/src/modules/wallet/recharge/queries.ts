@@ -1,4 +1,5 @@
-import type { PrismaClient } from '@prisma/client';
+import type { PrismaClient, Prisma } from '@prisma/client';
+import { pageInfo, type ListPage } from '../../../list-pagination.js';
 import { ApiError } from '../../identity/errors.js';
 import { PROOF_RETENTION_DAYS } from '../errors.js';
 import type { TxClient } from '../types.js';
@@ -36,10 +37,10 @@ export async function getOwnRequest(prisma: PrismaClient, studentId: string, req
   return toStudentView(row as unknown as Record<string, unknown>);
 }
 
-export async function listOwnRequests(prisma: PrismaClient, studentId: string, limit = 50) {
+export async function listOwnRequests(prisma: PrismaClient, studentId: string, limit = 50, skip = 0) {
   const rows = await prisma.rechargeRequest.findMany({
     where: { studentId },
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip,
     take: Math.min(Math.max(limit, 1), 100),
   });
   return rows.map((r) => toStudentView(r as unknown as Record<string, unknown>));
@@ -47,19 +48,13 @@ export async function listOwnRequests(prisma: PrismaClient, studentId: string, l
 
 export async function listRequestsForReview(
   prisma: PrismaClient,
-  filter: { status?: 'PENDING' | 'APPROVED' | 'REJECTED'; channel?: string },
+  filter: ReviewFilter,
   limit = 50,
+  skip = 0,
 ) {
   const rows = await prisma.rechargeRequest.findMany({
-    where: {
-      ...(filter.status ? { status: filter.status } : {}),
-      ...(filter.channel === 'INSTAPAY' ||
-      filter.channel === 'BANK_TRANSFER' ||
-      filter.channel === 'MOBILE_WALLET'
-        ? { channel: filter.channel }
-        : {}),
-    },
-    orderBy: { createdAt: 'desc' },
+    where: reviewWhere(filter),
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip,
     take: Math.min(Math.max(limit, 1), 100),
     select: {
       id: true,
@@ -84,6 +79,23 @@ export async function listRequestsForReview(
     transferDate: r.transferDate.toISOString(),
     proofDeletionDate: proofDeletionDate(r.reviewedAt),
   }));
+}
+
+type ReviewFilter = { status?: 'PENDING' | 'APPROVED' | 'REJECTED'; channel?: string; search?: string; date?: string };
+function reviewWhere(filter: ReviewFilter): Prisma.RechargeRequestWhereInput {
+  return { ...(filter.status ? { status: filter.status } : {}),
+    ...(filter.channel === 'INSTAPAY' || filter.channel === 'BANK_TRANSFER' || filter.channel === 'MOBILE_WALLET' ? { channel: filter.channel } : {}),
+    ...(filter.search ? { OR: [{ senderName: { contains: filter.search, mode: 'insensitive' } }, { referenceNorm: { contains: filter.search, mode: 'insensitive' } }] } : {}),
+    ...(filter.date ? { transferDate: { gte: new Date(`${filter.date}T00:00:00Z`), lt: new Date(Date.parse(`${filter.date}T00:00:00Z`) + 86400000) } } : {}) };
+}
+export async function ownRequestPage(prisma: PrismaClient, studentId: string, input: ListPage) {
+  const pagination = pageInfo(input, await prisma.rechargeRequest.count({ where: { studentId } }));
+  return { requests: await listOwnRequests(prisma, studentId, pagination.pageSize, (pagination.page - 1) * pagination.pageSize), pagination };
+}
+export async function reviewRequestPage(prisma: PrismaClient, filter: ReviewFilter, input: ListPage) {
+  const scope = { ...filter, search: input.search, date: input.date };
+  const pagination = pageInfo(input, await prisma.rechargeRequest.count({ where: reviewWhere(scope) }));
+  return { requests: await listRequestsForReview(prisma, scope, pagination.pageSize, (pagination.page - 1) * pagination.pageSize), pagination };
 }
 
 /** Admin-only proof bytes with safe preview/download headers. Never for students. */

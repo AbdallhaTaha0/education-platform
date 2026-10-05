@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useLang } from '../../i18n';
+import { Pagination, type PageInfo } from '../../components/ui/Pagination';
 import { Container } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { FormActions } from '../../components/ui/FormActions';
@@ -19,18 +20,29 @@ export function AssessmentPage({ id }: { id: string }): JSX.Element {
   const saveStatus = useDraftSave({ value: answers, dirty, enabled: !!assessment, endpoint: `/assessments/${id}/draft`, revision, extra: { version: assessment?.version }, ar, clearDirty: () => setDirty(false) });
   const [checking, setChecking] = useState<string | null>(null); const [busy, setBusy] = useState(false); const [result, setResult] = useState<Result | null>(null);
   const [history, setHistory] = useState<Array<{ id: string; state: string; createdAt: string }>>([]);
+  const [historyPage, setHistoryPage] = useState(1), [historySize, setHistorySize] = useState(10), [historyRetry, setHistoryRetry] = useState(0);
+  const [historyPaging, setHistoryPaging] = useState<PageInfo>({ page: 1, pageSize: 10, total: 0 });
+  const [historyError, setHistoryError] = useState(false), [historyLoading, setHistoryLoading] = useState(false);
+  useEffect(() => {
+    let live = true; setHistoryLoading(true); setHistoryError(false);
+    void assessmentApi<{ submissions: typeof history; pagination: PageInfo }>(`/assessments/${id}/history?page=${historyPage}&pageSize=${historySize}`).then(data => {
+      if (!live) return; setHistory(data.submissions); setHistoryPaging(data.pagination); setHistoryPage(data.pagination.page);
+      const pending = historyPage === 1 ? data.submissions.find(s => s.state === 'PENDING' || s.state === 'RUNNING') : undefined;
+      if (pending) setChecking(current => current ?? pending.id);
+    }).catch(() => { if (live) setHistoryError(true); }).finally(() => { if (live) setHistoryLoading(false); });
+    return () => { live = false; };
+  }, [id, historyPage, historySize, historyRetry]);
   useEffect(() => {
     let active = true;
-    setAssessment(null); setDirty(false); setResult(null); setChecking(null); setError('');
+    setAssessment(null); setHistoryPage(1); setDirty(false); setResult(null); setChecking(null); setError('');
     void assessmentApi<Assessment>(`/assessments/${id}`).then((data) => { if (!active) return; setAssessment(data); revision.current = data.draft?.revision ?? 0; setAnswers(data.content.questions.map((q) => { const saved = data.draft?.content.find((a) => a.questionId === q.id); return q.type !== 'CHOICE' ? { questionId: q.id, source: saved?.source ?? q.starter! } : { questionId: q.id, choiceId: saved?.choiceId ?? '' }; })); }).catch((e) => { if (active) setError(errorLabel(e, ar)); });
-    void assessmentApi<{ submissions: Array<{ id: string; state: string; createdAt: string }> }>(`/assessments/${id}/history`).then((h) => { if (!active) return; setHistory(h.submissions); const pending = h.submissions.find((s) => s.state === 'PENDING' || s.state === 'RUNNING'); if (pending) setChecking(pending.id); }).catch(() => {});
     return () => { active = false; };
   }, [id]);
   useEffect(() => {
     if (!checking) return; let active = true; let timer: ReturnType<typeof setTimeout>; let attempts = 0; let inFlight = false;
     const poll = async (): Promise<void> => {
       if (inFlight || !active) return; inFlight = true; clearTimeout(timer);
-      try { const response = await assessmentApi<Result>(`/assessments/submissions/${checking}`); if (!active) return; if (!['PENDING', 'RUNNING'].includes(response.state)) { setResult(response); setChecking(null); setHistory((old) => [{ id: response.id, state: response.state, createdAt: new Date().toISOString() }, ...old.filter((x) => x.id !== response.id)]); if (response.state === 'CORRECT') setAssessment((old) => old ? { ...old, passed: true } : old); return; } }
+      try { const response = await assessmentApi<Result>(`/assessments/submissions/${checking}`); if (!active) return; if (!['PENDING', 'RUNNING'].includes(response.state)) { setResult(response); setChecking(null); setHistoryPage(1); setHistoryRetry(v => v + 1); if (response.state === 'CORRECT') setAssessment((old) => old ? { ...old, passed: true } : old); return; } }
       catch (e) { if (active) setError(errorLabel(e, ar)); }
       inFlight = false;
       if (active) timer = setTimeout(() => { void poll(); }, (++attempts < 5 ? 1500 + attempts * 700 : 30000) + Math.random() * 1000);
@@ -58,7 +70,7 @@ export function AssessmentPage({ id }: { id: string }): JSX.Element {
         <Button data-testid="assessment-submit" disabled={busy || !!checking} disabledReason={busy ? undefined : { ar: "يجري تصحيح الحل الحالي. انتظر النتيجة قبل إرسال حل آخر.", en: "Your current submission is being graded. Wait for its result before submitting again." }} onClick={() => void submit()}>{checking ? label('جارٍ التقييم…', 'Checking…') : label('إرسال الحل', 'Submit answer')}</Button>
       </FormActions>
       {result ? <div data-testid="assessment-result" className="mt-4" role="status"><Notice kind={result.state === 'CORRECT' ? 'success' : result.state === 'ERROR' ? 'error' : 'info'}>{result.state === 'CORRECT' ? label('إجابة صحيحة! يمكنك المتابعة.', 'Correct! You can continue.') : result.state === 'ERROR' ? label('تعذر التقييم. يمكنك المحاولة مجددًا.', 'Checking failed. You can retry.') : label('إجابة غير صحيحة بعد. عدّل الحل وحاول مجددًا.', 'Not correct yet. Edit your answer and retry.')}</Notice>{result.result?.questions?.map((q) => <p key={q.questionId} className="mt-2 text-sm">{ar ? assessment.content.questions.find((x) => x.id === q.questionId)?.titleAr : assessment.content.questions.find((x) => x.id === q.questionId)?.titleEn}: {q.checksPassed}/{q.checksTotal} {label('اختبارات ناجحة', 'checks passed')}</p>)}</div> : null}
-      <details className="mt-6"><summary className="cursor-pointer font-semibold">{label('سجل المحاولات', 'Submission history')}</summary><ul className="mt-2 space-y-2">{history.map((h) => <li key={h.id}>{new Date(h.createdAt).toLocaleString(ar ? 'ar-EG' : 'en')} · {h.state === 'CORRECT' ? label('صحيح', 'Correct') : h.state === 'INCORRECT' ? label('غير صحيح', 'Incorrect') : ['PENDING','RUNNING'].includes(h.state) ? label('جارٍ التقييم', 'Checking') : label('تعذر التقييم', 'Checking failed')}</li>)}</ul></details>
+      <details className="mt-6"><summary className="cursor-pointer font-semibold">{label('سجل المحاولات', 'Submission history')}</summary><ul className="mt-2 space-y-2">{history.map((h) => <li key={h.id}>{new Date(h.createdAt).toLocaleString(ar ? 'ar-EG' : 'en')} · {h.state === 'CORRECT' ? label('صحيح', 'Correct') : h.state === 'INCORRECT' ? label('غير صحيح', 'Incorrect') : ['PENDING','RUNNING'].includes(h.state) ? label('جارٍ التقييم', 'Checking') : label('تعذر التقييم', 'Checking failed')}</li>)}</ul>{historyError ? <Notice kind="error"><p>{label('تعذر تحميل سجل المحاولات.', 'Could not load submission history.')}</p><Button onClick={() => setHistoryRetry(v => v + 1)}>{label('إعادة المحاولة','Retry')}</Button></Notice> : null}<Pagination {...historyPaging} id="submission-history" disabled={historyLoading} onPage={setHistoryPage} onSize={size => { setHistorySize(size); setHistoryPage(1); }} /></details>
     </>}
   </main></Container>;
 }

@@ -155,12 +155,12 @@ export async function purchasePackage(prisma: PrismaClient, studentId: string, r
   });
 }
 
-export async function listPackagePurchases(prisma: PrismaClient, studentId: string) {
+export async function listPackagePurchases(prisma: PrismaClient, studentId: string, limit = 100, skip = 0) {
   await requireStudent(prisma, studentId);
   return prisma.packagePurchase.findMany({
     where: { studentId },
     include: purchaseInclude,
-    orderBy: { createdAt: 'desc' },
-    take: 100,
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: limit, skip,
   });
 }

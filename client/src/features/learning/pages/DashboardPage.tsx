@@ -2,6 +2,7 @@
 import { useMemo } from 'react';
 import { Container } from '../../../components/ui/Card';
 import { FormActions } from '../../../components/ui/FormActions';
+import { PaginatedCollection } from '../../../components/ui/Pagination';
 import { useDashboard } from '../hooks/useLearning';
 import { ErrorBlock, LoadingBlock, SectionHeading, SubscriptionCard } from '../components/Learning';
 import { useLang, useTranslate } from '../../../i18n';
@@ -62,7 +63,7 @@ export function DashboardPage({ onContinue, onRenew, onBrowse }: DashboardPagePr
                   {labels.emptyActive}
                 </p>
               ) : (
-                <ul className="grid gap-4 md:grid-cols-2">
+                <PaginatedCollection as="ul" id="active-courses" className="grid gap-4 md:grid-cols-2">
                   {data.active.map((item) => (
                     <SubscriptionCard
                       key={item.courseId}
@@ -72,7 +73,7 @@ export function DashboardPage({ onContinue, onRenew, onBrowse }: DashboardPagePr
                       onContinue={onContinue}
                     />
                   ))}
-                </ul>
+                </PaginatedCollection>
               )}
             </section>
 
@@ -81,7 +82,7 @@ export function DashboardPage({ onContinue, onRenew, onBrowse }: DashboardPagePr
                 <SectionHeading>
                   <span id="expired-heading">{t('learningExpiredHeading')}</span>
                 </SectionHeading>
-                <ul className="grid gap-4 md:grid-cols-2">
+                <PaginatedCollection as="ul" id="expired-courses" className="grid gap-4 md:grid-cols-2">
                   {data.expired.map((item) => (
                     <SubscriptionCard
                       key={item.courseId}
@@ -91,7 +92,7 @@ export function DashboardPage({ onContinue, onRenew, onBrowse }: DashboardPagePr
                       onRenew={onRenew}
                     />
                   ))}
-                </ul>
+                </PaginatedCollection>
               </section>
             ) : null}
 

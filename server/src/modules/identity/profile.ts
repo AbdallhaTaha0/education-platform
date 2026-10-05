@@ -31,7 +31,9 @@ export async function updateProfile(ctx: IdentityContext, userId:string, session
 
 export async function studentDirectory(ctx:IdentityContext, query:Record<string,unknown>) {
   const search=typeof query.q==='string'?query.q.trim():''; const after=typeof query.cursor==='string'?query.cursor:'';
+  const limit=query.limit===undefined?20:Number(query.limit);
+  if(typeof query.limit!=='undefined' && (typeof query.limit!=='string'||!/^[1-9]\d*$/.test(query.limit)||limit>50))throw new ApiError(400,'VALIDATION_ERROR','Invalid page size.');
   if(search.length>100 || (after && !/^[0-9a-f-]{36}$/i.test(after)))throw new ApiError(400,'VALIDATION_ERROR','Invalid search or cursor.');
-  const students=await ctx.prisma.user.findMany({where:{role:'STUDENT',...(after?{id:{gt:after}}:{}),...(search?{OR:[{displayName:{contains:search,mode:'insensitive'}},{email:{contains:search,mode:'insensitive'}}]}:{})},orderBy:{id:'asc'},take:21,select:{id:true,displayName:true,email:true,createdAt:true}});
-  return {students:students.slice(0,20),nextCursor:students.length>20?students[19]!.id:null};
+  const students=await ctx.prisma.user.findMany({where:{role:'STUDENT',...(after?{id:{gt:after}}:{}),...(search?{OR:[{displayName:{contains:search,mode:'insensitive'}},{email:{contains:search,mode:'insensitive'}}]}:{})},orderBy:{id:'asc'},take:limit+1,select:{id:true,displayName:true,email:true,createdAt:true}});
+  return {students:students.slice(0,limit),nextCursor:students.length>limit?students[limit-1]!.id:null};
 }

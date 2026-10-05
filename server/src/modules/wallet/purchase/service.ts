@@ -243,11 +243,11 @@ export async function purchaseCourse(
   }
 }
 
-export async function listMyPurchases(prisma: PrismaClient, studentId: string) {
+export async function listMyPurchases(prisma: PrismaClient, studentId: string, limit = 100, skip = 0) {
   const rows = await prisma.purchase.findMany({
     where: { studentId },
-    orderBy: { createdAt: 'desc' },
-    take: 100,
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: limit, skip,
   });
   const subs = await prisma.subscription.findMany({
     where: { studentId, purchaseId: { in: rows.map((p) => p.id) } },

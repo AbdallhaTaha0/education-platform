@@ -7,6 +7,7 @@ export interface WalletView {
 }
 
 export interface PaymentInstruction {
+  qrUrl?: string;
   channel: RechargeChannel;
   accountLabel: string;
   instructionsAr: string;

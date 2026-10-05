@@ -1,6 +1,7 @@
 /** Real platform APIs and synthetic transfers only. Runner owns disposable cleanup. */
 import assert from 'node:assert/strict';
 import { lookup } from 'node:dns/promises';
+import { writeFileSync, unlinkSync } from 'node:fs';
 import puppeteer from 'puppeteer-core';
 const host = (await lookup('nginx')).address;
 const browser = await puppeteer.launch({ executablePath: '/usr/bin/chromium', headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage', `--host-resolver-rules=MAP localhost ${host}`] });
@@ -23,7 +24,7 @@ try {
   const admin = await page(), student = await page(); await login(admin, 'admin'); await login(student, 'student');
   pass('Arabic navigation says IDE', await student.$eval('.site-header a[href="#/practice"]', e => e.textContent.trim() === 'IDE'));
   await route(admin, '#/admin/recharge'); await admin.waitForSelector('#instapay-account');
-  await admin.click('[data-testid=instapay-settings] summary');
+  await admin.click('#admin-payments-tab-instapay');
   await admin.click('#instapay-enabled');
   await text(admin, '#instapay-account', 'synthetic@instapay');
   await text(admin, '#instapay-ar', 'مستلم تجريبي فقط'); await text(admin, '#instapay-en', 'Synthetic recipient only');
@@ -32,7 +33,7 @@ try {
   pass('ADMIN saves receiving details');
   await admin.reload({ waitUntil: 'networkidle2' }); await admin.waitForSelector('#instapay-account');
   pass('receiving settings persist after reload', await admin.$eval('#instapay-account', e => e.value === 'synthetic@instapay'));
-  await admin.click('[data-testid=vodafone-cash-settings] summary');
+  await admin.click('#admin-payments-tab-vodafone');
   await admin.click('#vodafone-cash-enabled');
   await text(admin, '#vodafone-cash-account', '+201001234567');
   await text(admin, '#vodafone-cash-ar', 'مستلم فودافون تجريبي');
@@ -43,6 +44,30 @@ try {
   pass('both payment methods available', (await api(student, '/wallet/instructions')).channels.length === 2);
   await route(student, '#/wallet'); await student.waitForFunction(() => document.querySelector('main').textContent.includes('synthetic@instapay'));
   pass('student sees saved receiving details');
+  await admin.$eval('#admin-payments-tab-instapay', e => e.scrollIntoView({ block: 'center' })); await admin.click('#admin-payments-tab-instapay');
+  await admin.waitForSelector('#instapay-qr-file', { visible: true });
+  const qrPath = '/tmp/synthetic-instapay-qr.png';
+  writeFileSync(qrPath, Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5ioAAAAASUVORK5CYII=', 'base64'));
+  await (await admin.$('#instapay-qr-file')).uploadFile(qrPath);
+  const uploaded = admin.waitForResponse(r => r.url().includes('/api/admin/payment-settings/instapay/qr') && r.request().method() === 'POST' && r.status() === 200);
+  await admin.click('[data-testid=upload-instapay-qr]'); await uploaded; unlinkSync(qrPath);
+  await admin.waitForFunction(() => { const image = document.querySelector('[data-testid=admin-instapay-qr]'); return image?.complete && image.naturalWidth > 0; });
+  pass('ADMIN uploads and previews InstaPay QR');
+  await admin.reload({ waitUntil: 'networkidle2' }); await admin.click('#admin-payments-tab-instapay'); await admin.waitForSelector('[data-testid=admin-instapay-qr]', { visible: true });
+  pass('QR persists after ADMIN reload');
+  await student.reload({ waitUntil: 'networkidle2' }); await student.waitForFunction(() => { const image = document.querySelector('[data-testid=instapay-qr]'); return image?.complete && image.naturalWidth > 0; });
+  pass('STUDENT sees saved QR without account credit');
+  const jpeg = await admin.evaluate(() => { const canvas = document.createElement('canvas'); canvas.width = canvas.height = 8; canvas.getContext('2d').fillRect(0,0,8,8); return canvas.toDataURL('image/jpeg').split(',')[1]; });
+  const jpegPath = '/tmp/synthetic-instapay-qr.jpg'; writeFileSync(jpegPath, Buffer.from(jpeg, 'base64'));
+  await (await admin.$('#instapay-qr-file')).uploadFile(jpegPath);
+  const replaced = admin.waitForResponse(r => r.url().includes('/api/admin/payment-settings/instapay/qr') && r.request().method() === 'POST' && r.status() === 200);
+  await admin.click('[data-testid=upload-instapay-qr]'); await replaced; unlinkSync(jpegPath);
+  await student.reload({ waitUntil: 'networkidle2' }); await student.waitForFunction(() => { const image = document.querySelector('[data-testid=instapay-qr]'); return image?.complete && image.naturalWidth === 8; });
+  pass('ADMIN replaces PNG with JPEG and STUDENT sees new image');
+  admin.once('dialog', d => d.accept()); const removed = admin.waitForResponse(r => r.url().includes('/api/admin/payment-settings/instapay/qr') && r.request().method() === 'DELETE' && r.status() === 200);
+  await admin.click('[data-testid=remove-instapay-qr]'); await removed;
+  await student.reload({ waitUntil: 'networkidle2' });
+  pass('QR removal preserves receiving details', await student.$$eval('[data-testid=instapay-qr]', images => images.length === 0) && (await api(student, '/wallet/instructions')).channels[0].accountLabel === 'synthetic@instapay');
   await student.waitForFunction(() => [...document.querySelectorAll('[data-testid=payment-logo]')].length === 2 && [...document.querySelectorAll('[data-testid=payment-logo]')].every(e => e.complete && e.naturalWidth > 0));
   pass('both official payment logos load locally', await student.$$eval('[data-testid=payment-logo]', images => images.every(e => (e.src.startsWith('data:image/') || new URL(e.src).origin === location.origin) && e.getBoundingClientRect().width >= 40)));
 
@@ -92,11 +117,14 @@ try {
   await student.waitForFunction(() => document.querySelector('main').textContent.includes('synthetic@instapay'));
   pass('read notifications stay absent from navbar after navigation and reload', await student.$$eval('[data-testid=notification-entry]', entries => entries.every(e => !e.querySelector('bdi'))));
   await student.screenshot({ path: '/evidence/wallet-student.png', fullPage: true });
-  await route(admin, '#/admin/recharge'); await admin.reload({ waitUntil: 'networkidle2' }); await admin.waitForSelector('#instapay-enabled'); await admin.click('[data-testid=instapay-settings] summary');
+  await route(admin, '#/admin/recharge'); await admin.reload({ waitUntil: 'networkidle2' }); await admin.waitForSelector('#instapay-enabled'); await admin.click('#admin-payments-tab-instapay');
   await admin.click('#instapay-enabled'); await admin.click('[data-testid=instapay-settings] button[type=submit]');
   await admin.waitForFunction(() => document.querySelector('[data-testid=instapay-settings]').textContent.includes('تم حفظ'));
   pass('disabling InstaPay preserves enabled Vodafone Cash', (await api(student, '/wallet/instructions')).channels[0].channel === 'MOBILE_WALLET');
-  await admin.click('[data-testid=vodafone-cash-settings] summary');
+  await admin.waitForFunction(() => !document.querySelector('#admin-payments-tab-vodafone').disabled);
+  await admin.$eval('#admin-payments-tab-vodafone', e => e.scrollIntoView({ block: 'center' }));
+  await admin.click('#admin-payments-tab-vodafone');
+  await admin.waitForSelector('#vodafone-cash-enabled', { visible: true });
   await admin.click('#vodafone-cash-enabled'); await admin.click('[data-testid=vodafone-cash-settings] button[type=submit]');
   await admin.waitForFunction(() => document.querySelector('[data-testid=vodafone-cash-settings]').textContent.includes('تم حفظ'));
   await route(student, '#/wallet'); await student.reload({ waitUntil: 'networkidle2' }); await student.waitForFunction(() => document.querySelector('main').textContent.includes('الشحن غير متاح'));

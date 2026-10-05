@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../../../auth';
 import { localizeCode, useLang } from '../../../i18n';
+import { PaginatedCollection } from '../../../components/ui/Pagination';
 import { Button } from '../../../components/ui/Button';
 import { FormActions } from '../../../components/ui/FormActions';
 import { Card } from '../../../components/ui/Card';
@@ -68,7 +69,7 @@ export function LessonList({
   return (
     <div className="mt-2">
       {error !== null ? <Notice kind="error">{localizeCode(t, error)}</Notice> : null}
-      <ul className="space-y-3">
+      <PaginatedCollection as="ul" id={`lessons-${sectionId}`} className="space-y-3" disabled={busy}>
         {lessons.map((l, i) => (
           <li key={l.id} className="rounded-control border border-border p-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -97,7 +98,7 @@ export function LessonList({
             <DeletionPanel kind="lessons" targetId={l.id} entityName={lang==='ar'?l.titleAr:l.titleEn} expectedConfirmation={l.id} onChanged={onChanged}/>
           </li>
         ))}
-      </ul>
+      </PaginatedCollection>
       <form
         onSubmit={(e) => void submit(e)}
         noValidate

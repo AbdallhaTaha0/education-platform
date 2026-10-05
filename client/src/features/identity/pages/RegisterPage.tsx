@@ -61,7 +61,7 @@ export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element 
 
   return (
     <Container>
-      <div className="form-card mx-auto max-w-[640px] rounded-card border border-border bg-surface p-6 shadow-rest">
+      <div className="form-card auth-form-card mx-auto w-full max-w-[640px] rounded-card border border-border bg-surface p-6 shadow-rest">
         <div className="mb-4">
           <BrandMark size="md" />
         </div>

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../../../auth';
 import { localizeCode, useLang } from '../../../i18n';
+import { PaginatedCollection } from '../../../components/ui/Pagination';
 import { Button } from '../../../components/ui/Button';
 import { FormActions } from '../../../components/ui/FormActions';
 import { Card } from '../../../components/ui/Card';
@@ -102,7 +103,7 @@ export function PlanEditor({
           : 'Access terms are saved at purchase. Later edits do not change existing purchased access.'}
       </p>
       {error ? <Notice kind="error">{localizeCode(t, error)}</Notice> : null}
-      <ul className="mt-4 space-y-3">
+      <PaginatedCollection as="ul" id="price-plans" className="mt-4 space-y-3">
         {plans.map((plan) => (
           <li key={plan.id} className="flex flex-wrap items-center gap-3">
             <PriceDisplay
@@ -120,7 +121,7 @@ export function PlanEditor({
             </Button>
           </li>
         ))}
-      </ul>
+      </PaginatedCollection>
       <form onSubmit={(event) => void submit(event)} className="mt-6 space-y-4">
         <h3 className="font-bold">{editing ? t.actionEdit : t.actionAddPlan}</h3>
         <div className="grid gap-3 sm:grid-cols-2">

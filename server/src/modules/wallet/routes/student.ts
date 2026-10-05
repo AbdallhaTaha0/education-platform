@@ -11,11 +11,13 @@ import {
 import { getOrCreateWallet, reconciledBalance } from '../ledger.js';
 import { authOf } from './auth.js';
 import { listMyPurchases, listMySubscriptions, purchaseCourse } from '../purchase/service.js';
-import { getOwnRequest, listOwnRequests } from '../recharge/queries.js';
+import { getOwnRequest, listOwnRequests, ownRequestPage } from '../recharge/queries.js';
+import { parseListPage, pageInfo } from '../../../list-pagination.js';
 import { submitRecharge } from '../recharge/service.js';
 import type { PurchaseInput, RechargeSubmitInput } from '../types.js';
 import { listPackagePurchases, packageReview, purchasePackage } from '../purchase/packages.js';
 import { paymentChannels } from '../payment-settings.js';
+import { readQr } from '../payment-qr.js';
 
 export interface WalletStudentDeps {
   prisma: PrismaClient;
@@ -28,6 +30,9 @@ const authedWrite = [requireOrigin, requireAuth, requireSessionCsrf];
 /** Student wallet/recharge/purchase router. Balances/prices are never trusted from the client. */
 export function createWalletStudentRouter(deps: WalletStudentDeps) {
   const router = Router();
+  router.get('/payment-settings/instapay/qr', ...authed, async (_req, res, next) => {
+    try { const image = await readQr(deps.prisma, false); res.set({ 'Content-Type': image.mime, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Content-Security-Policy': "default-src 'none'; sandbox" }).send(image.bytes); } catch (error) { next(error); }
+  });
   router.get('/packages/:id/review', ...authed, async (req, res, next) => {
     try {
       res.json(ok(await packageReview(deps.prisma, authOf(req).userId, req.params.id as string)));
@@ -37,7 +42,9 @@ export function createWalletStudentRouter(deps: WalletStudentDeps) {
   });
   router.get('/package-purchases', ...authed, async (req, res, next) => {
     try {
-      res.json(ok({ purchases: await listPackagePurchases(deps.prisma, authOf(req).userId) }));
+      const userId = authOf(req).userId, paging = parseListPage(req.query);
+      const pagination = paging ? pageInfo(paging, await deps.prisma.packagePurchase.count({ where: { studentId: userId } })) : undefined;
+      res.set('Cache-Control', 'no-store').json(ok({ purchases: await listPackagePurchases(deps.prisma, userId, pagination?.pageSize, pagination ? (pagination.page - 1) * pagination.pageSize : 0), ...(pagination ? { pagination } : {}) }));
     } catch (err) {
       next(err);
     }
@@ -117,7 +124,8 @@ export function createWalletStudentRouter(deps: WalletStudentDeps) {
   router.get('/recharge-requests', ...authed, async (req, res, next) => {
     try {
       const { userId } = authOf(req);
-      res.json(ok({ requests: await listOwnRequests(deps.prisma, userId) }));
+      const paging = parseListPage(req.query);
+      res.set('Cache-Control', 'no-store').json(ok(paging ? await ownRequestPage(deps.prisma, userId, paging) : { requests: await listOwnRequests(deps.prisma, userId) }));
     } catch (err) {
       next(err);
     }
@@ -150,7 +158,9 @@ export function createWalletStudentRouter(deps: WalletStudentDeps) {
   router.get('/purchases', ...authed, async (req, res, next) => {
     try {
       const { userId } = authOf(req);
-      res.json(ok({ purchases: await listMyPurchases(deps.prisma, userId) }));
+      const paging = parseListPage(req.query);
+      const pagination = paging ? pageInfo(paging, await deps.prisma.purchase.count({ where: { studentId: userId } })) : undefined;
+      res.set('Cache-Control', 'no-store').json(ok({ purchases: await listMyPurchases(deps.prisma, userId, pagination?.pageSize, pagination ? (pagination.page - 1) * pagination.pageSize : 0), ...(pagination ? { pagination } : {}) }));
     } catch (err) {
       next(err);
     }

@@ -1,4 +1,5 @@
 import { Button } from '../../../components/ui/Button';
+import { PaginatedCollection } from '../../../components/ui/Pagination';
 /** ADMIN caption-pair/resource authoring (course-learning UI).
  *
  * Uses only the frozen contract endpoints with the existing course-management
@@ -269,7 +270,7 @@ export function AdminLessonMaterials({ lessonId }: { lessonId: string }): JSX.El
                 : 'Add Arabic and English labels (up to 200 characters) and choose a file: PDF, ZIP, TXT, JS or JSON up to 10 MB. ZIP is download-only and never extracted or executed.'}
             </p>
             {materials && materials.resources.length > 0 ? (
-              <ul className="mt-2 space-y-1">
+              <PaginatedCollection as="ul" id={`admin-resources-${lessonId}`} className="mt-2 space-y-1" disabled={removingId !== null}>
                 {materials.resources.map((resource) => (
                   <li key={resource.id} data-testid="admin-resource-row" className="flex flex-wrap items-center gap-2 text-xs">
                     <span className="min-w-0 flex-1" dir="auto">
@@ -281,7 +282,7 @@ export function AdminLessonMaterials({ lessonId }: { lessonId: string }): JSX.El
                     </Button>
                   </li>
                 ))}
-              </ul>
+              </PaginatedCollection>
             ) : (
               <p className="mt-2 text-xs text-muted">{ar ? 'لا توجد ملفات بعد.' : 'No files yet.'}</p>
             )}

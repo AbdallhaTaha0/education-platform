@@ -937,6 +937,8 @@ model InstaPaySettings {
   instructionsEn String
   version Int @default(1)
   updatedAt DateTime @updatedAt
+  qrBytes Bytes?
+  qrMime String?
 }
 
 model AssessmentPreparation {

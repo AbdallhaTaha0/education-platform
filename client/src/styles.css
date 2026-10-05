@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Authentication stays centred when language direction changes. */
+.auth-form-card { text-align: center; }
+.auth-form-card legend { margin-inline: auto; }
+.auth-form-card input,
+.auth-form-card select { text-align: center; }
+.auth-form-card select { text-align-last: center; }
+
 /* Minimal global stylesheet: Tailwind entry + font/base behavior + central
  * semantic design tokens (FAYQ identity: forest / lime / amber / cream /
  * charcoal, per the approved brand direction).

@@ -50,6 +50,7 @@ export const PAYMENT_CHANNEL_IDS: PaymentChannelId[] = [
  * instruction endpoints fail with a safe category instead of guessing.
  */
 export interface PaymentChannelConfig {
+  qrUrl?: string;
   channel: PaymentChannelId;
   accountLabel: string;
   instructionsAr: string;

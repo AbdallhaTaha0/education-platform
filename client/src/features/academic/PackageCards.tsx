@@ -3,6 +3,7 @@ import { useLang } from '../../i18n';
 import { Card } from '../../components/ui/Card';
 import { Loading, Notice, EmptyState } from '../../components/ui/Notice';
 import { Button } from '../../components/ui/Button';
+import { PaginatedCollection } from '../../components/ui/Pagination';
 import { formatEgp } from '../catalog/types/models';
 import { displayDeadline } from './model';
 import { publicPackages, type SchoolPackage } from './api';
@@ -72,7 +73,7 @@ export function PackageCards({
           text={ar ? 'لا توجد باقات مناسبة حاليًا.' : 'No matching packages available yet.'}
         />
       ) : null}
-      <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+      <PaginatedCollection id="public-packages" resetKey={JSON.stringify([query,grade,term,year])} className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {!failed &&
           !loading &&
           visible.map((p) => (
@@ -113,7 +114,7 @@ export function PackageCards({
               )}
             </Card>
           ))}
-      </div>
+      </PaginatedCollection>
     </section>
   );
 }

@@ -67,9 +67,7 @@ export function AdminSummaryPage({ accountOverview = false }: { accountOverview?
     <main id="main">
       <Container>
         <section className="py-10">
-          <h1 className="section-title">{accountOverview
-            ? (ar ? 'مساحة الإدارة وحسابي' : 'Management and my account')
-            : (ar ? 'نظرة على المنصة' : 'Platform overview')}</h1>
+          <h1 className="section-title">{ar ? 'نظرة عامة على المنصة' : 'Platform overview'}</h1>
           {accountOverview && status === 'authenticated' && user?.role === 'ADMIN' ? (
             <p className="mt-3 text-muted">{user.displayName} · <a className="underline" href="#/account/profile">
               {ar ? 'الملف والأمان' : 'Profile & security'}</a></p>
@@ -82,20 +80,7 @@ export function AdminSummaryPage({ accountOverview = false }: { accountOverview?
             <Notice kind="error">{t.forbiddenBody}</Notice>
           ) : (
             <>
-              <nav className="my-5 flex flex-wrap gap-5">
-                <a className="footer-discovery" href="#/admin/catalog">
-                  {t.navCourses}
-                </a>
-                <a className="footer-discovery" href="#/admin/packages">
-                  {ar ? 'الباقات' : 'Packages'}
-                </a>
-                <a className="footer-discovery" href="#/admin/recharge">
-                  {t.navRecharge}
-                </a>
-                <a className="footer-discovery" href="#/admin">
-                  {ar ? 'إضافة مسؤول' : 'Create admin'}
-                </a>
-              </nav>
+              <p className="my-5 text-sm leading-7 text-muted">{ar ? 'هذا الملخص للمتابعة فقط. اختر تبويبًا أعلى الصفحة لفتح القسم الذي تريد تعديله؛ كل نموذج له زر حفظ مستقل.' : 'This summary is for monitoring. Choose a tab above to open the section you want to edit; each form has its own Save action.'}</p>
               <FormActions className="mt-4">
                 <Button variant="secondary" onClick={() => setRetry((v) => v + 1)} disabled={loading}>
                   {ar ? 'تحديث الملخص' : 'Refresh overview'}

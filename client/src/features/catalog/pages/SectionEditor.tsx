@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { ApiError } from '../../../auth';
 import { localizeCode, useLang } from '../../../i18n';
+import { PaginatedCollection } from '../../../components/ui/Pagination';
 import { Button } from '../../../components/ui/Button';
 import { FormActions } from '../../../components/ui/FormActions';
 import { Card } from '../../../components/ui/Card';
@@ -65,7 +66,7 @@ export function SectionEditor({
     <Card className="mt-4">
       <h2 className="text-xl font-bold">{lang==='ar'?'الأقسام':'Sections'}</h2>
       {error !== null ? <Notice kind="error">{localizeCode(t, error)}</Notice> : null}
-      <ul className="mt-2 space-y-3">
+      <PaginatedCollection as="ul" id="section-ordering" className="mt-2 space-y-3">
         {sections.map((s, i) => (
           <li key={s.id} className="flex flex-wrap items-center gap-2">
             <span className="font-semibold">
@@ -81,7 +82,7 @@ export function SectionEditor({
             />
           </li>
         ))}
-      </ul>
+      </PaginatedCollection>
       <form
         onSubmit={(e) => void submit(e)}
         noValidate

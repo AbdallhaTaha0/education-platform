@@ -5,12 +5,16 @@ import { Button } from '../../../components/ui/Button';
 import { FormActions } from '../../../components/ui/FormActions';
 import { EmptyState, Loading, Notice } from '../../../components/ui/Notice';
 import { Money } from '../../wallet/components/Money';
-import { fetchMyPurchases } from '../api/client';
-import { packageHistory, type PackageReceipt } from '../../academic/api';
+import { fetchMyPurchases, fetchPurchasePage } from '../api/client';
+import { packageHistoryPage, type PackageReceipt } from '../../academic/api';
+import { Pagination, type PageInfo } from '../../../components/ui/Pagination';
 import { displayDeadline } from '../../academic/model';
 import { learningApi } from '../../learning/api/client';
 
 export function PurchaseHistoryPage(): JSX.Element {
+  const [coursePage, setCoursePage] = useState(1), [packagePage, setPackagePage] = useState(1), [pageSize, setPageSize] = useState(10);
+  const [coursePaging, setCoursePaging] = useState<PageInfo>({ page: 1, pageSize: 10, total: 0 }), [packagePaging, setPackagePaging] = useState<PageInfo>({ page: 1, pageSize: 10, total: 0 });
+  function changeSize(value: number) { setPageSize(value); setCoursePage(1); setPackagePage(1); }
   const { t, lang } = useLang();
   const ar = lang === 'ar';
   const [rows, setRows] = useState<Awaited<ReturnType<typeof fetchMyPurchases>>>([]);
@@ -24,11 +28,11 @@ export function PurchaseHistoryPage(): JSX.Element {
     setLoading(true);
     setFailed(false);
     void learningApi.dashboard().then(d=>{if(live)setCourseNames(Object.fromEntries([...d.active,...d.expired].map(c=>[c.courseId,c])));}).catch(()=>undefined);
-    Promise.all([fetchMyPurchases(), packageHistory()])
+    Promise.all([fetchPurchasePage(coursePage, pageSize), packageHistoryPage(packagePage, pageSize)])
       .then(([c, p]) => {
         if (live) {
-          setRows(c);
-          setPackages(p);
+          setRows(c.purchases); setCoursePaging(c.pagination); setCoursePage(c.pagination.page);
+          setPackages(p.purchases); setPackagePaging(p.pagination); setPackagePage(p.pagination.page);
         }
       })
       .catch(() => {
@@ -40,7 +44,7 @@ export function PurchaseHistoryPage(): JSX.Element {
     return () => {
       live = false;
     };
-  }, [retry]);
+  }, [retry, coursePage, packagePage, pageSize]);
   return (
     <main id="main">
       <section className="py-10">
@@ -62,7 +66,7 @@ export function PurchaseHistoryPage(): JSX.Element {
           ) : (
             <>
               {!rows.length && !packages.length ? <EmptyState text={t.purchaseEmpty} /> : null}
-              <ul className="mt-6 space-y-4">
+              <h2 className="mt-6 text-xl font-bold">{ar ? 'إيصالات الباقات' : 'Package receipts'}</h2><ul className="mt-6 space-y-4">
                 {packages.map((p) => (
                   <li key={`package-${p.id}`}>
                     <Card>
@@ -90,6 +94,8 @@ export function PurchaseHistoryPage(): JSX.Element {
                     </Card>
                   </li>
                 ))}
+              </ul><Pagination {...packagePaging} id="package-receipts" onPage={setPackagePage} onSize={changeSize} disabled={loading} />
+              <h2 className="mt-6 text-xl font-bold">{ar ? 'إيصالات الكورسات' : 'Course receipts'}</h2><ul className="mt-6 space-y-4">
                 {rows.map((row) => (
                   <li key={`course-${row.id}`}>
                     <Card className="flex flex-wrap items-center justify-between gap-3">
@@ -118,6 +124,7 @@ export function PurchaseHistoryPage(): JSX.Element {
                   </li>
                 ))}
               </ul>
+              <Pagination {...coursePaging} id="course-receipts" onPage={setCoursePage} onSize={changeSize} disabled={loading} />
             </>
           )}
         </Container>

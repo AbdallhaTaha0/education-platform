@@ -1,4 +1,5 @@
 import { Button } from '../../../components/ui/Button';
+import { PaginatedCollection } from '../../../components/ui/Pagination';
 /** Student caption controls + protected resource list (course-learning UI).
  *
  * Caption <track> elements are attached by the player from short-lived Blob
@@ -161,7 +162,7 @@ export function ResourcesPanel({
         </p>
       ) : null}
       {resources.length > 0 ? (
-        <ul className="mt-2 space-y-2">
+        <PaginatedCollection as="ul" id="lesson-resources" className="mt-2 space-y-2">
           {resources.map((resource) => (
             <li key={resource.id} data-testid="resource-row" className="flex flex-wrap items-center gap-3 rounded-control border border-border bg-canvas px-3 py-2">
               <span className="min-w-0 flex-1">
@@ -183,7 +184,7 @@ export function ResourcesPanel({
               </Button>
             </li>
           ))}
-        </ul>
+        </PaginatedCollection>
       ) : null}
       {downloadError !== null ? (
         <p role="alert" data-testid="resource-download-error" className="mt-2 text-sm font-semibold text-error-fg">

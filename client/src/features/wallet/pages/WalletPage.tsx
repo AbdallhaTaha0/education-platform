@@ -7,10 +7,11 @@ import { useWallet } from '../hooks/useWallet';
 import { Money } from '../components/Money';
 import { RequestStatus } from '../components/RequestStatus';
 import { PaymentDetails } from '../components/PaymentDetails';
+import { Pagination } from '../../../components/ui/Pagination';
 
 export function WalletPage({ go }: { go: (hash: string) => void }): JSX.Element {
   const { t, lang } = useLang();
-  const { loading, wallet, requests, instructions, instructionsError, error, reload } = useWallet();
+  const { loading, wallet, requests, instructions, instructionsError, error, reload, pagination, setPage, setPageSize } = useWallet();
 
   return (
     <main id="main">
@@ -79,6 +80,7 @@ export function WalletPage({ go }: { go: (hash: string) => void }): JSX.Element 
               </li>
             ))}
           </ul>
+          <Pagination {...pagination} id="wallet-requests" onPage={setPage} onSize={setPageSize} disabled={loading} />
         </Container>
       </section>
     </main>
