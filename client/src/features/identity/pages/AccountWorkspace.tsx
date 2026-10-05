@@ -15,7 +15,7 @@ function StudentLinks(route: Route): WorkspaceLink[] {
   return [
     { href: '#/account', ar: 'حسابي', en: 'My account', active: r === 'account' },
     { href: '#/dashboard', ar: 'تعلّمي', en: 'My learning', active: r === 'dashboard' || r === 'learn' },
-    { href: '#/practice', ar: 'مختبر البرمجة', en: 'Practice', active: r === 'practice' || r === 'assessment' },
+    { href: '#/practice', ar: 'IDE', en: 'IDE', active: r === 'practice' || r === 'assessment' },
     { href: '#/wallet', ar: 'المحفظة', en: 'Wallet', active: r === 'wallet' || r === 'wallet-recharge' },
     { href: '#/purchases', ar: 'مشترياتي', en: 'My purchases', active: r === 'purchases' },
     { href: '#/notifications', ar: 'الإشعارات', en: 'Notifications', active: r === 'notifications' },

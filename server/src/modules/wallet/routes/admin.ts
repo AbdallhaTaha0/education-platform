@@ -13,9 +13,12 @@ import { getProofBytes, listRequestsForReview } from '../recharge/queries.js';
 import { reviewRecharge } from '../recharge/service.js';
 import type { RechargeReviewInput } from '../types.js';
 import { authOf } from './auth.js';
+import type { ServerConfig } from '../../../config.js';
+import { getInstaPay, saveInstaPay, getVodafoneCash, saveVodafoneCash } from '../payment-settings.js';
 
 export interface WalletAdminDeps {
   prisma: PrismaClient;
+  config: ServerConfig;
 }
 
 const readGuard = [requireAuth, requireAdmin];
@@ -24,6 +27,25 @@ const writeGuard = [requireOrigin, requireAuth, requireAdmin, requireSessionCsrf
 /** Admin recharge-review router. Proof bytes never leave this router except to an ADMIN. */
 export function createWalletAdminRouter(deps: WalletAdminDeps) {
   const router = Router();
+  router.get('/payment-settings/instapay', ...readGuard, async (_req, res, next) => {
+    try { res.set('Cache-Control', 'no-store').json(ok(await getInstaPay(deps.prisma, deps.config.paymentChannels))); } catch (error) { next(error); }
+  });
+  router.put('/payment-settings/instapay', ...writeGuard, async (req, res, next) => {
+    try {
+      const saved = await saveInstaPay(deps.prisma, req.body);
+      res.set('Cache-Control', 'no-store').json(ok({ enabled: saved.enabled, accountLabel: saved.accountLabel, instructionsAr: saved.instructionsAr, instructionsEn: saved.instructionsEn, version: saved.version }));
+    } catch (error) { next(error); }
+  });
+
+  router.get('/payment-settings/vodafone-cash', ...readGuard, async (_req, res, next) => {
+    try { res.set('Cache-Control', 'no-store').json(ok(await getVodafoneCash(deps.prisma, deps.config.paymentChannels))); } catch (error) { next(error); }
+  });
+  router.put('/payment-settings/vodafone-cash', ...writeGuard, async (req, res, next) => {
+    try {
+      const saved = await saveVodafoneCash(deps.prisma, req.body);
+      res.set('Cache-Control', 'no-store').json(ok({ enabled: saved.enabled, accountLabel: saved.accountLabel, instructionsAr: saved.instructionsAr, instructionsEn: saved.instructionsEn, version: saved.version }));
+    } catch (error) { next(error); }
+  });
 
   router.get('/recharge-requests', ...readGuard, async (req, res, next) => {
     try {

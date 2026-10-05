@@ -6,6 +6,7 @@ import { Loading, Notice, EmptyState } from '../../../components/ui/Notice';
 import { useWallet } from '../hooks/useWallet';
 import { Money } from '../components/Money';
 import { RequestStatus } from '../components/RequestStatus';
+import { PaymentDetails } from '../components/PaymentDetails';
 
 export function WalletPage({ go }: { go: (hash: string) => void }): JSX.Element {
   const { t, lang } = useLang();
@@ -51,23 +52,9 @@ export function WalletPage({ go }: { go: (hash: string) => void }): JSX.Element 
             </div>
           ) : null}
           {instructions !== null && instructions.length > 0 ? (
-            <div className="mt-2 grid gap-4 md:grid-cols-3">
+            <div className="mt-3 grid gap-4 lg:grid-cols-2" data-testid="payment-methods">
               {instructions.map((channel) => (
-                <Card key={channel.channel}>
-                  <h3 className="text-lg font-bold">
-                    {channel.channel === 'INSTAPAY'
-                      ? t.channelInstapay
-                      : channel.channel === 'BANK_TRANSFER'
-                        ? t.channelBank
-                        : t.channelMobile}
-                  </h3>
-                  <p className="mt-1 text-sm text-muted" dir="ltr">
-                    {channel.accountLabel}
-                  </p>
-                  <p className="mt-2 text-sm">
-                    {lang === 'ar' ? channel.instructionsAr : channel.instructionsEn}
-                  </p>
-                </Card>
+                <PaymentDetails key={channel.channel} receiving={channel} stacked />
               ))}
             </div>
           ) : null}

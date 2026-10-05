@@ -229,6 +229,11 @@ export function CourseLearningPage({ courseSlug, onRenew, initialLessonId }: Cou
           </p>
         )}
 
+        {playback.progressError ? <div role="status" className="mb-4 rounded-card border border-border bg-surface p-4" data-testid="progress-save-error">
+          <p>{lang === 'ar' ? 'تعذّر حفظ آخر تقدم. يمكنك متابعة المشاهدة وإعادة محاولة الحفظ.' : 'Your latest progress could not be saved. You can keep watching and retry saving.'}</p>
+          <Button variant="secondary" onClick={playback.retryProgress}>{lang === 'ar' ? 'إعادة حفظ التقدم' : 'Retry saving progress'}</Button>
+        </div> : null}
+
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(300px,1fr)]">
           <div className="min-w-0">
             {selectedLesson !== null ? <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-surface p-4">
@@ -240,6 +245,7 @@ export function CourseLearningPage({ courseSlug, onRenew, initialLessonId }: Cou
             </div> : null}
             {playback.grant !== null && selectedLesson !== null ? (
               <DashLessonPlayer
+                key={playback.grant.referenceId}
                 grant={playback.grant}
                 entitlementLost={entitlementLost}
                 labels={playerLabels(t)}
@@ -258,8 +264,8 @@ export function CourseLearningPage({ courseSlug, onRenew, initialLessonId }: Cou
                   />
                 }
                 onRetry={() => void playback.start(selectedLesson.lessonId)}
-                onProgress={(position, duration, completed) =>
-                  playback.reportProgress(position, duration, completed)
+                onProgress={(position, duration, completed, keepalive) =>
+                  playback.reportProgress(selectedLesson.lessonId, position, duration, completed, keepalive)
                 }
                 onEnded={() => {
                   // Natural completion ends the external session.

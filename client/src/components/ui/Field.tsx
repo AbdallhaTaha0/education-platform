@@ -16,7 +16,7 @@ export function Field({ id, label, error, dir, hint, children }: FieldProps): JS
         {label}
       </label>
       {children}
-      {hint !== undefined ? <p className="mt-2 text-sm text-muted">{hint}</p> : null}
+      {hint !== undefined ? <p id={`${id}-hint`} className="mt-2 text-sm text-muted">{hint}</p> : null}
       {error !== undefined ? (
         <p className="mt-2 text-sm font-semibold text-error-fg" role="alert" id={`${id}-error`}>
           {error}

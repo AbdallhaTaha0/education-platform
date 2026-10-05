@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { FormActions } from '../../../components/ui/FormActions';
 import { StatusBadge } from '../../../components/ui/Dialog';
 import { BrandMark } from '../../../components/ui/BrandMark';
+import { ProgressBar } from '../../../components/ui/ProgressBar';
 import { formatDuration, formatDurationTotal, sumDurations } from '../materials/duration';
 import type { DashboardSubscription, OutlineSection } from '../types/models';
 
@@ -64,19 +65,7 @@ export function SubscriptionCard({
           <span>{labels.progress}</span>
           <span>{item.percentComplete}%</span>
         </div>
-        <div
-          role="progressbar"
-          aria-valuenow={item.percentComplete}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label={labels.progress}
-          className="mt-1 h-2 w-full overflow-hidden rounded-full bg-canvas"
-        >
-          <div
-            className="h-full rounded-full bg-primary"
-            style={{ width: `${item.percentComplete}%` }}
-          />
-        </div>
+        <ProgressBar value={item.percentComplete} label={`${title} — ${labels.progress}`} className="mt-1" />
         <p className="mt-1 text-xs text-muted">
           {labels.lessonCount}: {item.completedLessons}/{item.totalLessons}
         </p>

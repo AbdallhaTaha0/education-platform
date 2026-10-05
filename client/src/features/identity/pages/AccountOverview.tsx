@@ -8,6 +8,7 @@ import { Button } from '../../../components/ui/Button';
 import { useDashboard } from '../../learning/hooks/useLearning';
 import { formatEgp } from '../../catalog/types/models';
 import { displayDeadline } from '../../academic/model';
+import { ProgressBar } from '../../../components/ui/ProgressBar';
 
 /**
  * Authenticated role-aware overview for #/account.
@@ -118,11 +119,7 @@ function StudentAccountOverview({ go }: { go: (hash: string) => void }): JSX.Ele
                   {ar ? 'الدروس المكتملة' : 'Completed lessons'}: {resume.completedLessons}/{resume.totalLessons}
                   {' · '}{resume.percentComplete}%
                 </p>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-canvas" role="progressbar"
-                  aria-valuemin={0} aria-valuemax={100} aria-valuenow={resume.percentComplete}
-                  aria-label={ar ? 'تقدم الكورس' : 'Course progress'}>
-                  <div className="h-full rounded-full bg-primary" style={{ width: `${resume.percentComplete}%` }} />
-                </div>
+                <ProgressBar value={resume.percentComplete} label={ar ? 'تقدم الكورس' : 'Course progress'} className="mt-2" />
                 <p className="mt-2 text-sm text-muted">{resume.expiresAt
                   ? `${ar ? 'الوصول حتى' : 'Access until'}: ${displayDeadline(resume.expiresAt, lang)}`
                   : (ar ? 'بدون انتهاء، حتى الحذف النهائي للكورس' : 'No expiry, until permanent course removal')}</p>
@@ -152,7 +149,7 @@ function StudentAccountOverview({ go }: { go: (hash: string) => void }): JSX.Ele
               aria-label={ar ? 'أقسام حسابك' : 'Your account sections'}
             >
               <a href="#/dashboard">{ar ? 'تعلّمي' : 'My learning'}</a>
-              <a href="#/practice">{ar ? 'مختبر البرمجة' : 'Practice'}</a>
+              <a href="#/practice">{ar ? 'IDE' : 'IDE'}</a>
               <a href="#/wallet">{t.navWallet}</a>
               <a href="#/purchases">{ar ? 'مشترياتي' : 'My purchases'}</a>
               <a href="#/notifications">{t.navNotifications}</a>

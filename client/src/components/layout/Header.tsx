@@ -90,7 +90,7 @@ export function Header({
         },
       ]
     : [
-        ...(signedIn ? [{ href: '#/practice', label: label('مختبر البرمجة', 'Practice IDE'), icon: 'learning' as const, active: route === 'practice' }] : []),
+        ...(signedIn ? [{ href: '#/practice', label: label('IDE', 'IDE'), icon: 'learning' as const, active: route === 'practice' }] : []),
         { href: '#/', label: t.navHome, icon: 'home', active: route === 'home' },
         {
           href: '#/courses',
@@ -113,8 +113,6 @@ export function Header({
             'account-profile',
             'login',
             'register',
-            'wallet',
-            'wallet-recharge',
             'purchases',
             'notifications',
           ].includes(route as string),

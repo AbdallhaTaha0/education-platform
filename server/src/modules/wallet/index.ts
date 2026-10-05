@@ -12,7 +12,7 @@ export function createWalletModule(options: WalletModuleOptions) {
   const context = { prisma: options.prisma, config: options.config };
   return {
     studentRouter: createWalletStudentRouter(context),
-    adminRouter: createWalletAdminRouter({ prisma: options.prisma }),
+    adminRouter: createWalletAdminRouter(context),
     context,
   };
 }

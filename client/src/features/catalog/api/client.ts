@@ -211,7 +211,7 @@ export async function registerMedia(
     `/admin/catalog/lessons/${lessonId}/media`,
     {
       method: 'POST',
-      retryOnAuth: false,
+      retryOnAuth: true,
       body: input,
     },
   );
@@ -221,7 +221,7 @@ export async function registerMedia(
 export async function completeMedia(lessonId: string): Promise<void> {
   await apiFetch(`/admin/catalog/lessons/${lessonId}/media/complete`, {
     method: 'POST',
-    retryOnAuth: false,
+    retryOnAuth: true,
     body: {},
   });
 }
@@ -229,7 +229,7 @@ export async function completeMedia(lessonId: string): Promise<void> {
 export async function syncLessonMedia(lessonId: string): Promise<string> {
   const body = await apiFetch<{ data: { mapping: { status: string } } }>(
     `/admin/catalog/lessons/${lessonId}/media/sync`,
-    { method: 'POST', retryOnAuth: false, body: {} },
+    { method: 'POST', retryOnAuth: true, body: {} },
   );
   return body.data.mapping.status;
 }

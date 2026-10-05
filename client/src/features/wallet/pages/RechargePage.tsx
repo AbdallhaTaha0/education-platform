@@ -11,6 +11,7 @@ import { newIdempotencyKey } from '../../../utils';
 import { useWallet } from '../hooks/useWallet';
 import { Money } from '../components/Money';
 import type { RechargeChannel } from '../types/models';
+import { PaymentDetails } from '../components/PaymentDetails';
 
 function egpToPiastres(raw: string): number | null {
   if (!/^\d+(\.\d{1,2})?$/.test(raw.trim())) return null;
@@ -50,6 +51,7 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
 
   const piastres = useMemo(() => egpToPiastres(amount), [amount]);
   const channelOptions = useMemo(() => (instructions ?? []).map((c) => c.channel), [instructions]);
+  const receiving = instructions?.find(c => c.channel === channel) ?? (instructions?.length === 1 ? instructions[0] : undefined);
 
   async function onSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
@@ -122,10 +124,12 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
             <p className="mt-2 text-muted">{t.rechargeNoAutoCredit}</p>
             {instructions===null ? <><Notice kind={instructionsError?'error':'info'}>{instructionsError?(lang==='ar'?'تعذر تحميل طرق التحويل. أعد المحاولة.':'Could not load transfer methods. Please retry.') : t.loading}</Notice>{instructionsError?<Button variant="secondary" onClick={()=>void reload()}>{t.retry}</Button>:null}</>:!channelOptions.length?<Notice kind="info">{lang==='ar'?'الشحن غير متاح حاليًا؛ لم تُضف الإدارة طريقة تحويل. لا تحول أي مبلغ حتى تظهر التعليمات.':'Recharge is temporarily unavailable because no transfer method is configured. Wait for transfer instructions before sending money.'}</Notice>:null}
             {errorCode !== null ? <Notice kind="error">{localizeCode(t, errorCode)}</Notice> : null}
+            {receiving ? <div className="my-4" data-testid="recharge-receiving"><PaymentDetails receiving={receiving} /></div> : null}
             <form onSubmit={(e) => void onSubmit(e)} noValidate><fieldset disabled={busy || !channelOptions.length}>
-              <Field id="rch-amount" label={t.fieldAmount}>
+              <Field id="rch-amount" label={t.fieldAmount} hint={lang === 'ar' ? 'المبلغ المحوَّل بالجنيه' : 'Transferred EGP amount'}>
                 <input
                   id="rch-amount"
+                  aria-describedby="rch-amount-hint"
                   name="amount"
                   inputMode="decimal"
                   required
@@ -141,9 +145,10 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
                   <Money piastres={piastres} />
                 </p>
               ) : null}
-              <Field id="rch-channel" label={t.fieldChannel}>
+              <Field id="rch-channel" label={t.fieldChannel} hint={lang === 'ar' ? 'طريقة إرسال المبلغ' : 'Transfer method used'}>
                 <select
                   id="rch-channel"
+                  aria-describedby="rch-channel-hint"
                   name="channel"
                   required
                   value={channel}
@@ -162,9 +167,10 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
                   ))}
                 </select>
               </Field>
-              <Field id="rch-reference" label={t.fieldReference}>
+              <Field id="rch-reference" label={lang === 'ar' ? 'مرجع التحويل (رقم العملية)' : 'Transfer reference (transaction ID)'} hint={lang === 'ar' ? 'رقم العملية بالإيصال' : 'Receipt transaction ID'}>
                 <input
                   id="rch-reference"
+                  aria-describedby="rch-reference-hint"
                   name="reference"
                   required
                   dir="ltr"
@@ -173,9 +179,10 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
                   className="w-full rounded-control border border-border bg-surface px-3 py-2"
                 />
               </Field>
-              <Field id="rch-sender" label={t.fieldSenderName}>
+              <Field id="rch-sender" label={t.fieldSenderName} hint={lang === 'ar' ? 'اسم مُرسل التحويل' : 'Transfer sender name'}>
                 <input
                   id="rch-sender"
+                  aria-describedby="rch-sender-hint"
                   name="senderName"
                   required
                   value={senderName}
@@ -183,9 +190,10 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
                   className="w-full rounded-control border border-border bg-surface px-3 py-2"
                 />
               </Field>
-              <Field id="rch-phone" label={t.fieldSenderPhone}>
+              <Field id="rch-phone" label={t.fieldSenderPhone} hint={lang === 'ar' ? 'رقم مُرسل التحويل' : 'Transfer sender phone'}>
                 <input
                   id="rch-phone"
+                  aria-describedby="rch-phone-hint"
                   name="senderPhone"
                   type="tel"
                   required
@@ -195,9 +203,10 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
                   className="w-full rounded-control border border-border bg-surface px-3 py-2"
                 />
               </Field>
-              <Field id="rch-date" label={t.fieldTransferDate}>
+              <Field id="rch-date" label={t.fieldTransferDate} hint={lang === 'ar' ? 'التاريخ المسجَّل بالإيصال' : 'Receipt transfer date'}>
                 <input
                   id="rch-date"
+                  aria-describedby="rch-date-hint"
                   name="transferDate"
                   type="date"
                   required
@@ -206,9 +215,11 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
                   className="w-full rounded-control border border-border bg-surface px-3 py-2"
                 />
               </Field>
-              <Field id="rch-proof" label={t.fieldProof} error={fileError ?? undefined}>
+              <Field id="rch-proof" label={t.fieldProof} error={fileError ?? undefined} hint={lang === 'ar' ? 'صورة إيصال التحويل' : 'Transfer receipt image'}>
                 <input
                   id="rch-proof"
+                  aria-describedby={`rch-proof-hint${fileError ? ' rch-proof-error' : ''}`}
+                  aria-invalid={fileError ? true : undefined}
                   name="proof"
                   type="file"
                   required

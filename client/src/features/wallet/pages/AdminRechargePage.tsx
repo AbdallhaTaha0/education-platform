@@ -11,6 +11,7 @@ import { fetchAdminQueue, proofUrl, reviewRequest } from '../api/client';
 import { Money } from '../components/Money';
 import { RequestStatus } from '../components/RequestStatus';
 import type { AdminRechargeRow, RechargeStatus } from '../types/models';
+import { InstaPaySettings } from '../components/InstaPaySettings';
 
 type Filter = '' | RechargeStatus;
 
@@ -83,6 +84,8 @@ export function AdminRechargePage(): JSX.Element {
       <section className="py-8">
         <Container>
           <h1 className="text-3xl font-bold">{t.adminRechargeTitle}</h1>
+          <InstaPaySettings />
+          <InstaPaySettings method="vodafone-cash" />
           <p className="mt-2 text-muted">{t.adminRechargeBody}</p>
           <div className="my-4 grid gap-3 sm:grid-cols-2"><label>{lang==='ar'?'بحث في الطلبات المحمّلة بالاسم أو المرجع':'Search loaded requests by name/reference'}<input className="w-full rounded-control border border-border bg-surface p-3" value={search} onChange={e=>setSearch(e.target.value)}/></label><label>{lang==='ar'?'تاريخ التحويل':'Transfer date'}<input type="date" className="w-full rounded-control border border-border bg-surface p-3" value={date} onChange={e=>setDate(e.target.value)}/></label></div><Button variant="secondary" onClick={()=>{setSearch('');setDate('');}}>{lang==='ar'?'مسح التصفية':'Clear filters'}</Button>
           <Button className="my-4" variant="secondary" disabled={loading || busy} onClick={()=>void reload()}>{lang==='ar'?'تحديث الطلبات':'Refresh requests'}</Button>

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ApiError } from '../../../auth';
 import { localizeCode, useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
@@ -7,6 +7,8 @@ import { Notice } from '../../../components/ui/Notice';
 import { completeMedia, registerMedia, syncLessonMedia } from '../api/client';
 import { isSupportedVideoMime } from '../types/models';
 import { businessState } from '../../../components/ui/AdminNavigation';
+import { ProgressBar } from '../../../components/ui/ProgressBar';
+import { uploadVideo } from '../api/upload';
 
 function mimeFor(file: File): string {
   if (file.type === 'video/quicktime' || file.name.toLowerCase().endsWith('.mov'))
@@ -27,9 +29,19 @@ export function MediaUploader({
   const { t,lang } = useLang();
   const fileRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<string | null>(null);
-  const [progress, setProgress] = useState<number | null>(null);
+  const [progress, setProgress] = useState<number | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const operation = useRef<AbortController | null>(null);
+  const lastMediaStatus = useRef(mediaStatus);
+  useEffect(() => () => operation.current?.abort(), []);
+  useEffect(() => {
+    if (lastMediaStatus.current === mediaStatus) return;
+    lastMediaStatus.current = mediaStatus;
+    if (phase !== 'syncing') return;
+    if (mediaStatus === 'READY') setPhase('ready');
+    else if (mediaStatus === 'FAILED' || mediaStatus === 'DELETION_FAILED') setPhase('failed');
+  }, [mediaStatus, phase]);
 
   function selectedFile(): File | null {
     return fileRef.current?.files?.[0] ?? null;
@@ -49,7 +61,9 @@ export function MediaUploader({
     }
     setBusy(true);
     setError(null);
-    setProgress(0);
+    setProgress(undefined);
+    const controller = new AbortController();
+    operation.current = controller;
     try {
       setPhase('registering');
       const { uploadUrl } = await registerMedia(lessonId, {
@@ -57,43 +71,49 @@ export function MediaUploader({
         securityTier: 'STANDARD',
         title: file.name.slice(0, 120),
       });
+      if (controller.signal.aborted) return;
       setPhase('uploading');
-      const put = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: file,
-        headers: { 'Content-Type': mime },
-      });
-      if (!put.ok) {
-        setPhase('failed');
-        setError('SERVICE_ERROR');
-        return;
-      }
+      setProgress(0);
+      await uploadVideo(uploadUrl, file, mime, setProgress, controller.signal);
       setProgress(100);
       setPhase('completing');
       await completeMedia(lessonId);
+      if (controller.signal.aborted) return;
       setPhase('syncing');
       for (let poll = 0; poll < 10; poll += 1) {
+        if (controller.signal.aborted) return;
         const status = await syncLessonMedia(lessonId);
-        if (status === 'READY' || status === 'FAILED' || status === 'DELETION_FAILED') break;
+        if (controller.signal.aborted) return;
+        if (status === 'FAILED' || status === 'DELETION_FAILED') throw new Error('PROCESSING_FAILED');
+        if (status === 'READY') { setPhase('ready'); break; }
         await new Promise((r) => setTimeout(r, 1500));
       }
-      setPhase('done');
+      if (controller.signal.aborted) return;
+      // 100% bytes transferred does not mean DRM processing has finished.
       await onChanged();
     } catch (err) {
+      if (controller.signal.aborted) return;
       setPhase('failed');
       setError(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
     } finally {
-      setBusy(false);
+      if (!controller.signal.aborted) setBusy(false);
     }
   }
 
   async function sync(): Promise<void> {
+    if (busy) return;
+    setBusy(true);
     setError(null);
     try {
-      await syncLessonMedia(lessonId);
+      const status = await syncLessonMedia(lessonId);
+      if (status === 'READY') setPhase('ready');
+      else if (status === 'FAILED' || status === 'DELETION_FAILED') setPhase('failed');
+      else if (status === 'PROCESSING' || status === 'UPLOADED') setPhase('syncing');
       await onChanged();
     } catch (err) {
       setError(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -104,6 +124,7 @@ export function MediaUploader({
           ref={fileRef}
           id={`file-${lessonId}`}
           type="file"
+          disabled={busy}
           accept="video/mp4,video/webm,video/quicktime,.mov"
           className="min-h-[44px]"
         />
@@ -116,8 +137,8 @@ export function MediaUploader({
       </Button>
       {phase !== null ? (
         <span role="status" aria-live="polite" className="text-sm text-muted">
-          {({registering:lang==='ar'?'تسجيل الفيديو':'Registering video',uploading:lang==='ar'?'رفع الفيديو':'Uploading video',completing:lang==='ar'?'تأكيد الرفع':'Confirming upload',syncing:lang==='ar'?'تحديث الحالة':'Updating status',done:lang==='ar'?'اكتمل الرفع':'Upload completed',failed:lang==='ar'?'فشل الرفع':'Upload failed'} as Record<string,string>)[phase] ?? (lang==='ar'?'تحديث الفيديو':'Updating video')}
-          {progress !== null ? ` ${progress}%` : ''}
+          {({registering:lang==='ar'?'تسجيل الفيديو':'Registering video',uploading:lang==='ar'?'رفع الفيديو':'Uploading video',completing:lang==='ar'?'تأكيد الرفع':'Confirming upload',syncing:lang==='ar'?'اكتمل الرفع؛ الفيديو قيد التجهيز. حدّث الحالة للتحقق.':'Upload complete; video processing. Refresh status to check.',ready:lang==='ar'?'الفيديو جاهز':'Video ready',failed:lang==='ar'?'فشل الرفع أو التجهيز':'Upload or processing failed'} as Record<string,string>)[phase] ?? (lang==='ar'?'تحديث الفيديو':'Updating video')}
+          {phase === 'uploading' && progress !== undefined ? ` ${progress}%` : ''}
           {mediaStatus !== null ? ` (${businessState(mediaStatus,lang==='ar')})` : ''}
         </span>
       ) : (
@@ -125,6 +146,8 @@ export function MediaUploader({
           {t.mediaStatusLabel}: ({mediaStatus ? businessState(mediaStatus,lang==='ar') : '—'})
         </span>
       )}
+      {phase && phase !== 'failed' ? <ProgressBar value={phase === 'uploading' ? progress : phase === 'ready' ? 100 : undefined}
+        label={phase === 'uploading' ? (lang === 'ar' ? 'تقدم رفع الفيديو' : 'Video upload progress') : (lang === 'ar' ? 'تجهيز الفيديو' : 'Video preparation')} className="basis-full" /> : null}
       {error !== null ? <Notice kind="error">{localizeCode(t, error)}</Notice> : null}
     </div>
   );

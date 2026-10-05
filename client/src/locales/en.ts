@@ -197,7 +197,7 @@ export const en = {
   selectChannel: 'Choose a channel…',
   channelInstapay: 'InstaPay',
   channelBank: 'Bank transfer',
-  channelMobile: 'Mobile wallet',
+  channelMobile: 'Vodafone Cash',
   proofRequired: 'Attach your transfer proof file.',
   proofTooLarge: 'The proof file exceeds the 5 MB limit.',
   submitRecharge: 'Submit request',

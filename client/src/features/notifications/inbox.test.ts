@@ -260,3 +260,29 @@ describe('notification destinations', () => {
     }
   });
 });
+
+
+describe('acknowledging inbox entry', () => {
+  it('clears the server-confirmed badge through the loaded snapshot, preserving later notices', async () => {
+    let after = false;
+    const readAll = vi.fn(async () => { after = true; return { changedCount: 1, ...metadata('3', 1, '2') }; });
+    const { store } = setup({ readAll, list: async () => after ? page([item('2'), item('1', '2026-10-01T01:00:00Z')], metadata('3', 1, '2')) : page([item()], metadata('2', 1, '1')) });
+    store.start(); store.open(true);
+    await vi.waitFor(() => expect(store.getSnapshot()).toMatchObject({ revision: '3', busy: null }));
+    expect(readAll).toHaveBeenCalledExactlyOnceWith('1');
+    expect(store.getSnapshot().unreadCount).toBe(1);
+    expect(store.getSnapshot().items[0].readAt).toBeNull();
+    await store.refresh(); expect(readAll).toHaveBeenCalledTimes(1); store.stop();
+  });
+  it('keeps the badge and offers retry when automatic acknowledgement fails', async () => {
+    const { store } = setup({ readAll: async () => { throw new Error('offline'); } });
+    store.start(); store.open(true);
+    await vi.waitFor(() => expect(store.getSnapshot()).toMatchObject({ unreadCount: 1, actionError: 'SERVICE_ERROR', busy: null }));
+    expect(store.getSnapshot().items[0].readAt).toBeNull(); store.stop();
+  });
+  it('does not acknowledge a page closed before its load finishes', async () => {
+    const pending = deferred<InboxPage>(); const { store, api } = setup({ list: () => pending.promise });
+    store.start(); store.open(true); store.close(); pending.resolve(page()); await loaded(store);
+    expect(api.readAll).not.toHaveBeenCalled(); store.stop();
+  });
+});

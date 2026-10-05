@@ -61,6 +61,7 @@ export class InboxStore {
   private listeners = new Set<() => void>();
   private active = false;
   private opened = false;
+  private readOnOpen = false;
   private listRequest = 0;
   private countRequest = 0;
   private actionRequest = 0;
@@ -93,6 +94,7 @@ export class InboxStore {
     if (this.opened) void this.refresh();
   }
   stop() {
+    this.readOnOpen = false;
     this.active = false;
     this.listRequest++;
     this.countRequest++;
@@ -100,11 +102,13 @@ export class InboxStore {
     this.state = initialState();
     this.listeners.forEach((listener) => listener());
   }
-  open() {
+  open(markRead = false) {
+    this.readOnOpen = markRead;
     this.opened = true;
     if (this.active) void this.refresh();
   }
   close() {
+    this.readOnOpen = false;
     this.opened = false;
   }
   synchronize() {
@@ -164,6 +168,11 @@ export class InboxStore {
         loading: false,
         ...mergeMetadata(this.state, page),
       });
+      if (this.opened && this.readOnOpen && this.state.busy === null) {
+        this.readOnOpen = false;
+        // Acknowledge only the inbox snapshot loaded on entry; later notices remain unread.
+        if (this.state.unreadCount) await this.readAll();
+      }
     } catch (error) {
       if (!this.active || request !== this.listRequest) return;
       const code = this.failure(error);

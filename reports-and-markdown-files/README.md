@@ -1,5 +1,19 @@
 # Education platform documentation
 
+Owner-authorized session delivery (2026-10-05): [completed progress, logout, payment, notification and UI work with verification](completed-work-delivery-20261005.md). Owner requested commit/push; this supersedes earlier delivery restrictions for the completed changes.
+
+Vodafone Cash and inbox follow-up (2026-10-05): [separate admin-editable receiving details, IDE naming and notification acknowledgement](vodafone-cash-and-notifications-20261005.md). Owner-confirmed local receiver enabled; manual approval preserved.
+
+Recharge field help (2026-10-05): [bilingual explanations and accessible hint associations](recharge-field-help-20261005.md) clarify transaction reference, sender details, actual amount/date and receipt requirements. Frontend build passes; local preview updated.
+
+Payment/IDE readability (2026-10-05): [theme-aware code selection, clearer file tabs and receiving details with exact copy](payment-ui-and-ide-selection-20261005.md). 32 syntax-theme and 17 wallet browser checks pass; frontend-only local update preserves settings/data. Hero headline no longer shows drag-selection blocks.
+
+Wallet/InstaPay and logout follow-up (2026-10-05): [admin-editable receiving details, manual recharge verification and UI corrections](wallet-instapay-and-logout-20261005.md). Owner receiver configured locally; 47 integration and 15 browser checks pass. Logout replaces the current screen with login; wallet highlighting and login help alignment corrected. Guarded migration preserves 24 existing table fingerprints.
+
+Logout redirect (2026-10-05): [successful logout returns students and admins to login](logout-redirect-20261005.md). Docker build and 19 browser checks pass; local preview updated.
+
+Progress indicators (2026-10-05): [student persistence/session recovery and measured ADMIN uploads](progress-indicators-fix-20261005.md). All existing progress surfaces use accessible bars; 155 frontend tests, 2 DASH checks and 17 Docker browser checks pass. Local preview updated with retained data and services preserved.
+
 Interactive IDE preview correction (2026-10-04): [per-task execution budget and Docker/browser evidence](ide-interactive-preview-fix-20261004.md) fixes counter/text/timer callbacks failing after two seconds of idle time. All 14 browser checks pass while preserving infinite-loop protection and the opaque/network-denying sandbox.
 
 Three IDE modes (2026-10-04): [implementation, owner decisions, schema/API, isolation evidence and Docker runbook](ide-modes-implementation-20261004.md). JavaScript, web and Python have separate drafts/assessments and share practice allowance. Local preview updated through additive guarded migration; capacity/production qualification and milestone acceptance remain separate.

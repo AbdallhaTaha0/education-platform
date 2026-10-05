@@ -30,7 +30,7 @@ export interface RechargeSubmit {
 export async function submitRecharge(input: RechargeSubmit): Promise<RechargeRequestView> {
   const body = await apiFetch<{ data: RechargeRequestView }>('/wallet/recharge-requests', {
     method: 'POST',
-    retryOnAuth: false,
+    retryOnAuth: true,
     body: { ...input },
   });
   return body.data;
@@ -61,7 +61,7 @@ export async function reviewRequest(
 ): Promise<void> {
   await apiFetch(`/admin/recharge-requests/${encodeURIComponent(id)}/review`, {
     method: 'POST',
-    retryOnAuth: false,
+    retryOnAuth: true,
     body: input,
   });
 }

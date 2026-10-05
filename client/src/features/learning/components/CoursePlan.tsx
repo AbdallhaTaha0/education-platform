@@ -4,6 +4,7 @@ import { CourseOutline, type LearningLabels } from './Learning';
 import { filterOutlineByTitle } from '../search/normalize';
 import { formatDurationTotal, sumDurations } from '../materials/duration';
 import type { OutlineSection } from '../types/models';
+import { ProgressBar } from '../../../components/ui/ProgressBar';
 
 export function useLearningLabels(): LearningLabels {
   const t = useTranslate();
@@ -86,9 +87,8 @@ export function CoursePlan({ sections, selectedLessonId, onSelect, disabled = fa
         <p data-testid="course-duration" dir="ltr" className="mt-1 text-sm text-muted">
           {formatDurationTotal(courseTotal, lang)}
         </p>
-        <div role="progressbar" aria-label={labels.progress} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} className="mt-3 h-2 overflow-hidden rounded-full bg-canvas">
-          <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${percent}%` }} />
-        </div>
+        <ProgressBar value={percent} label={labels.progress} className="mt-3" />
+        <p className="mt-2 text-xs text-muted">{ar ? 'نسبة الدروس المكتملة؛ مشاهدة جزء من الدرس تحفظ موضع المتابعة.' : 'Percentage of completed lessons; partial viewing saves your resume position.'}</p>
         <div className="mt-4">
           <label htmlFor="course-plan-search" className="mb-2 block text-sm font-semibold">
             {ar ? 'بحث في دروس الكورس' : 'Search course lessons'}

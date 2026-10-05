@@ -106,7 +106,7 @@ export function HomePage({
               <p className="eyebrow">
                 {c('مساحتك لفهم البرمجة', 'Your space to understand programming')}
               </p>
-              <h1 id="hero-title">
+              <h1 id="hero-title" className="select-none">
                 {c('افهم الفكرة.', 'Understand it.')}
                 <br />
                 {c('اكتب الكود.', 'Code it.')}

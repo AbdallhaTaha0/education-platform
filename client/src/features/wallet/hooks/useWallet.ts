@@ -44,6 +44,9 @@ export function useWallet(): WalletState {
 
   useEffect(() => {
     void reload();
+    const refresh = () => { void reload(); };
+    window.addEventListener('focus', refresh);
+    return () => window.removeEventListener('focus', refresh);
   }, [reload]);
 
   return { loading, wallet, requests, instructions, instructionsError, error, reload };

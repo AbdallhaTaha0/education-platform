@@ -17,7 +17,7 @@ export function PracticePage(): JSX.Element {
     const timer = setTimeout(() => { void assessmentApi<{ quota: Quota }>('/assessments/practice').then((data) => setQuota(data.quota)).catch(() => undefined); }, Math.min(2147483647, Math.max(0, new Date(quota.nextResetAt).getTime() - Date.now()) + 500));
     return () => clearTimeout(timer);
   }, [quota?.nextResetAt]);
-  return <Container id="main"><main className="py-8"><h1 className="mb-3 text-3xl font-bold">{ar ? 'مختبر البرمجة' : 'Practice IDE'}</h1>
+  return <Container id="main"><main className="py-8"><h1 className="mb-3 text-3xl font-bold">{ar ? 'IDE' : 'IDE'}</h1>
     {status !== 'authenticated' || user?.role !== 'STUDENT' ? <Notice kind="error">{ar ? 'سجل الدخول بحساب طالب لديه اشتراك نشط.' : 'Sign in as a student with an active subscription.'} <a href="#/login">{ar ? 'تسجيل الدخول' : 'Sign in'}</a></Notice> : <>
       <ModeTabs value={mode} onChange={setMode} label={ar ? 'نوع المحرر' : 'IDE type'} />
       <p className="mb-3 text-muted">{ar ? 'الحصة مشتركة بين المحررات الثلاثة. لكل محرر مسودته الخاصة؛ الواجبات والاختبارات خارج حصة التدريب.' : 'All three IDEs share your allowance. Each has its own draft; assignment and quiz Runs are exempt.'}</p>

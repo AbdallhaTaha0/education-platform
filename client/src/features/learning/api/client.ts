@@ -6,18 +6,25 @@
  * never written to storage.
  */
 
-const BASE = import.meta.env.VITE_API_BASE ?? '/api';
+import { apiResponse, ApiError } from '../../../auth';
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${BASE}${path}`, {
-    ...init,
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      ...(init.body === undefined ? {} : { 'Content-Type': 'application/json' }),
-      ...(init.headers ?? {}),
-    },
-  });
+  let response: Response;
+  try {
+    response = await apiResponse(path, {
+      ...init,
+      // Authentication rejects these requests before any business logic runs.
+      retryOnAuth: true,
+      headers: {
+        Accept: 'application/json',
+        ...(init.body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...(init.headers ?? {}),
+      },
+    });
+  } catch (error) {
+    if (error instanceof ApiError) throw new LearningApiError(error.code, error.status);
+    throw error;
+  }
   const text = await response.text();
   let payload: unknown = null;
   if (text.length > 0) {
@@ -99,10 +106,10 @@ export const learningApi = {
     positionSeconds: number;
     durationSeconds: number | null;
     completed: boolean;
-  }): Promise<LessonProgressState> {
+  }, options: { keepalive?: boolean } = {}): Promise<LessonProgressState> {
     return request<{ progress: LessonProgressState }>(
       '/learning/progress',
-      mutationInit(input),
+      { ...mutationInit(input), ...options },
     ).then((body) => body.progress);
   },
   endPlayback(referenceId: string, opts: { keepalive?: boolean } = {}): Promise<PlaybackEnd> {

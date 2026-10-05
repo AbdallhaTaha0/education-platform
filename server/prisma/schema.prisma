@@ -928,6 +928,17 @@ model NotificationRollout {
   installedAt DateTime
 }
 
+/// Owner-editable manual InstaPay receiving instructions. Bank transfers retain deployment configuration.
+model InstaPaySettings {
+  id Int @id
+  enabled Boolean
+  accountLabel String
+  instructionsAr String
+  instructionsEn String
+  version Int @default(1)
+  updatedAt DateTime @updatedAt
+}
+
 model AssessmentPreparation {
   id String @id @default(uuid())
   assessmentId String
@@ -943,4 +954,14 @@ model AssessmentPreparation {
   updatedAt DateTime @updatedAt
   @@unique([assessmentId, contentHash])
   @@index([state, leasedUntil, createdAt])
+}
+
+model VodafoneCashSettings {
+  id Int @id
+  enabled Boolean
+  accountLabel String
+  instructionsAr String
+  instructionsEn String
+  version Int @default(1)
+  updatedAt DateTime @updatedAt
 }
