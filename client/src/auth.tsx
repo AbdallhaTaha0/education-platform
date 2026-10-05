@@ -221,6 +221,8 @@ function AuthInner({ children }: { children: ReactNode }): JSX.Element {
   const logout = useCallback(async (): Promise<string | null> => {
     try {
       await apiFetch('/auth/logout', { method: 'POST', retryOnAuth: false });
+      window.location.hash = '#/login';
+      window.location.reload();
       if (mounted.current) {
         setUser(null);
         setStatus('anonymous');
@@ -237,6 +239,8 @@ function AuthInner({ children }: { children: ReactNode }): JSX.Element {
   const logoutAll = useCallback(async (): Promise<string | null> => {
     try {
       await apiFetch('/auth/logout-all', { method: 'POST', retryOnAuth: false });
+      window.location.hash = '#/login';
+      window.location.reload();
       if (mounted.current) {
         setUser(null);
         setStatus('anonymous');

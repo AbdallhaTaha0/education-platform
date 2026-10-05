@@ -20,7 +20,7 @@ export function NotificationsPage(): JSX.Element {
   }, [status]);
   useEffect(() => {
     if (status !== 'authenticated') return;
-    store.open();
+    store.open(true);
     return () => store.close();
   }, [status, store]);
   useEffect(() => {
@@ -222,6 +222,7 @@ export function NotificationsPage(): JSX.Element {
                               {href ? (
                                 <a
                                   href={href}
+                                  onClick={() => { if (!read) void store.setRead(item.id, true); }}
                                   className="inline-flex min-h-[44px] items-center gap-2 rounded-control px-3 font-bold text-primary-strong hover:bg-interactive"
                                 >
                                   {item.target?.kind === 'WALLET'

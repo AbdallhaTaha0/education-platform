@@ -15,6 +15,7 @@ import { getOwnRequest, listOwnRequests } from '../recharge/queries.js';
 import { submitRecharge } from '../recharge/service.js';
 import type { PurchaseInput, RechargeSubmitInput } from '../types.js';
 import { listPackagePurchases, packageReview, purchasePackage } from '../purchase/packages.js';
+import { paymentChannels } from '../payment-settings.js';
 
 export interface WalletStudentDeps {
   prisma: PrismaClient;
@@ -79,12 +80,13 @@ export function createWalletStudentRouter(deps: WalletStudentDeps) {
     }
   });
 
-  router.get('/instructions', ...authed, (req, res, next) => {
+  router.get('/instructions', ...authed, async (req, res, next) => {
     try {
-      if (deps.config.paymentChannels.length === 0) {
+      const channels = await paymentChannels(deps.prisma, deps.config.paymentChannels);
+      if (channels.length === 0) {
         throw new ApiError(503, 'PAYMENT_UNCONFIGURED', 'Manual funding is not configured.');
       }
-      res.json(ok({ channels: deps.config.paymentChannels }));
+      res.set('Cache-Control', 'no-store').json(ok({ channels }));
     } catch (err) {
       next(err);
     }
@@ -101,7 +103,7 @@ export function createWalletStudentRouter(deps: WalletStudentDeps) {
         const { userId } = authOf(req);
         const view = await submitRecharge(
           deps.prisma,
-          deps.config.paymentChannels,
+          await paymentChannels(deps.prisma, deps.config.paymentChannels),
           userId,
           req.body as RechargeSubmitInput,
         );

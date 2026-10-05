@@ -13,7 +13,10 @@ const formatOnly=process.argv.includes('--format-only');
 const previewOnly=process.argv.includes('--preview-only');
 const syntaxOnly=process.argv.includes('--syntax-only');
 const studentOnly=process.argv.includes('--student-only');
-const editorOnly=process.argv.includes('--editor-only')||formatOnly||previewOnly||syntaxOnly||studentOnly;
+const progressOnly=process.argv.includes('--progress-only');
+const walletBrowserOnly=process.argv.includes('--wallet-browser-only');
+const walletOnly=process.argv.includes('--wallet-only')||walletBrowserOnly;
+const editorOnly=process.argv.includes('--editor-only')||formatOnly||previewOnly||syntaxOnly||studentOnly||progressOnly||walletOnly;
 function capture(args,input){const r=spawnSync(docker,args,{cwd:root,input,encoding:'utf8',maxBuffer:8*1024*1024});if(r.status!==0)throw Error('Verification inspection/action failed');return r.stdout;}
 function guard(){
  const c=JSON.parse(capture([...prefix,'config','--format','json']));
@@ -35,12 +38,13 @@ else{
  let failed=false;
  try{
   run('migrations',[...prefix,'up','-d','--wait','migrate','redis']);
+  if(walletOnly&&!walletBrowserOnly)run('wallet-integration',[...prefix,'run','--rm','--no-deps','identity-test','npx','vitest','run','tests/integration/wallet-payment-settings.test.ts','tests/integration/wallet-vodafone-settings.test.ts','tests/integration/wallet-recharge.test.ts','tests/integration/wallet-review.test.ts','tests/integration/wallet-integrity.test.ts','tests/integration/wallet-purchase.test.ts','tests/integration/wallet-proof-cleanup.test.ts']);
   if(studentOnly&&!process.argv.includes('--browser-only'))run('student-integration',[...prefix,'run','--rm','--no-deps','identity-test','npx','vitest','run','tests/integration/student-profile.test.ts','tests/integration/identity-auth.test.ts','tests/integration/identity-session.test.ts','tests/integration/identity-security.test.ts','tests/integration/identity-redis.test.ts']);
   if(!editorOnly)run('integration',[...prefix,'run','--rm','--no-deps','test','npx','vitest','run','tests/integration/ide-modes.test.ts','tests/integration/m9-assessments.test.ts','tests/integration/m9-program.test.ts']);
   run('browser-stack',[...prefix,'up','-d','--wait','nginx',...(!editorOnly?['grading']:[])]);
   const fixtures=JSON.parse(capture([...prefix,'exec','-T','server','node','-'],readFileSync(join(root,'docker/ide/modes-fixtures.cjs'))));
   writeFileSync(join(dir,'fixtures.json'),JSON.stringify(fixtures),{mode:0o600});
-  for(const name of studentOnly?['student-profile-flow']:syntaxOnly?['syntax-theme-flow']:previewOnly?['web-preview-flow']:formatOnly?['python-format-flow']:editorOnly?['editor-keyboard-flow']:['modes-flow','modes-admin-flow'])run(name,['run','--rm','--name',`${project}-${name}`,'--label',`com.docker.compose.project=${project}`,'--network',`${project}_default`,'--mount',`type=bind,source=${join(root,`docker/ide/${name}.mjs`)},target=/srv/browser/${name}.mjs,readonly`,'--mount',`type=bind,source=${dir},target=/evidence`,'fayq-m9-browser:0.9.0','node',`${name}.mjs`]);
+  for(const name of walletOnly?['wallet-flow']:progressOnly?['progress-flow']:studentOnly?['student-profile-flow']:syntaxOnly?['syntax-theme-flow']:previewOnly?['web-preview-flow']:formatOnly?['python-format-flow']:editorOnly?['editor-keyboard-flow']:['modes-flow','modes-admin-flow'])run(name,['run','--rm','--name',`${project}-${name}`,'--label',`com.docker.compose.project=${project}`,'--network',`${project}_default`,'--mount',`type=bind,source=${join(root,`docker/ide/${name}.mjs`)},target=/srv/browser/${name}.mjs,readonly`,'--mount',`type=bind,source=${dir},target=/evidence`,'fayq-m9-browser:0.9.0','node',`${name}.mjs`]);
  }catch(e){failed=true;console.error(e.message);}
  finally{try{guard();run('cleanup',[...prefix,'down','-v']);}catch(e){failed=true;console.error(e.message);}}
  if(failed)process.exitCode=1;

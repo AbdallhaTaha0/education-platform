@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { learningApi, LearningApiError } from '../api/client';
 import { deviceId } from './device';
 import { clear as clearSession, renewSession } from '../player/session';
+import { mergeProgress } from '../progress/merge';
 import type {
   DashboardPayload,
   LessonProgressState,
@@ -52,7 +53,16 @@ function useAsync<T>(load: () => Promise<T>, deps: unknown[]): AsyncState<T> {
 }
 
 export function useDashboard(): AsyncState<DashboardPayload> {
-  return useAsync(() => learningApi.dashboard(), []);
+  const state = useAsync(() => learningApi.dashboard(), []);
+  useEffect(() => {
+    window.addEventListener('focus', state.reload);
+    window.addEventListener('learning-progress-saved', state.reload);
+    return () => {
+      window.removeEventListener('focus', state.reload);
+      window.removeEventListener('learning-progress-saved', state.reload);
+    };
+  }, [state.reload]);
+  return state;
 }
 
 export function useOutline(courseRef: string): AsyncState<OutlinePayload> {
@@ -92,10 +102,14 @@ export interface PlaybackController {
   start: (lessonId: string) => Promise<void>;
   end: (opts?: { keepalive?: boolean }) => Promise<void>;
   reportProgress: (
+    lessonId: string,
     positionSeconds: number,
     durationSeconds: number | null,
     completed: boolean,
+    keepalive?: boolean,
   ) => void;
+  progressError: boolean;
+  retryProgress: () => void;
   /** Locally merged progress, so a write never needs an outline reload. */
   progress: Record<string, LessonProgressState>;
   release: () => void;
@@ -116,6 +130,8 @@ export function usePlayback(courseRef: string): PlaybackController {
   const [requesting, setRequesting] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [progress, setProgress] = useState<Record<string, LessonProgressState>>({});
+  const [progressError, setProgressError] = useState(false);
+  const unsaved = useRef(new Map<string, LessonProgressState>());
   const pending = useRef<AbortController | null>(null);
   const renewTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The lesson currently loaded, so throttled progress writes target the right
@@ -261,21 +277,31 @@ export function usePlayback(courseRef: string): PlaybackController {
    * second write interrupted playback. The response is merged into local state
    * instead, and a failure leaves the player exactly as it was.
    */
-  const reportProgress = useCallback(
-    (positionSeconds: number, durationSeconds: number | null, completed: boolean) => {
-      const lessonId = activeLesson.current;
-      if (grantRef.current === null || lessonId === null) return;
+  const saveProgress = useCallback(
+    (value: LessonProgressState, keepalive = false) => {
+      const { lessonId, positionSeconds, durationSeconds, completed } = value;
       void learningApi
-        .recordProgress({ courseRef, lessonId, positionSeconds, durationSeconds, completed })
+        .recordProgress({ courseRef, lessonId, positionSeconds, durationSeconds, completed }, { keepalive })
         .then((saved) => {
-          setProgress((prev) => ({ ...prev, [saved.lessonId]: saved }));
+          setProgress((prev) => ({ ...prev, [saved.lessonId]: mergeProgress(prev[saved.lessonId], saved) }));
+          if (unsaved.current.get(lessonId) === value) unsaved.current.delete(lessonId);
+          if (unsaved.current.size === 0) setProgressError(false);
+          window.dispatchEvent(new Event('learning-progress-saved'));
         })
         .catch(() => {
-          // A failed write must never disturb playback; the next tick retries.
+          if (unsaved.current.get(lessonId) === value) setProgressError(true);
         });
     },
     [courseRef],
   );
+  const reportProgress = useCallback((lessonId: string, positionSeconds: number, durationSeconds: number | null, completed: boolean, keepalive = false) => {
+    const value = mergeProgress(unsaved.current.get(lessonId), { lessonId, positionSeconds, durationSeconds, completed });
+    unsaved.current.set(lessonId, value);
+    saveProgress(value, keepalive);
+  }, [saveProgress]);
+  const retryProgress = useCallback(() => {
+    for (const value of unsaved.current.values()) saveProgress(value);
+  }, [saveProgress]);
 
   const release = useCallback(() => {
     if (renewTimer.current !== null) {
@@ -309,10 +335,12 @@ export function usePlayback(courseRef: string): PlaybackController {
       end,
       reportProgress,
       progress,
+      progressError,
+      retryProgress,
       release,
       markSessionEnded,
     }),
-    [grant, requesting, errorCode, start, end, reportProgress, progress, release, markSessionEnded],
+    [grant, requesting, errorCode, start, end, reportProgress, progress, progressError, retryProgress, release, markSessionEnded],
   );
 }
 

@@ -192,7 +192,7 @@ export const ar = {
   selectChannel: 'اختر قناة…',
   channelInstapay: 'انستاباي',
   channelBank: 'تحويل بنكي',
-  channelMobile: 'محفظة الهاتف',
+  channelMobile: 'فودافون كاش',
   proofRequired: 'أرفق ملف إثبات التحويل.',
   proofTooLarge: 'يتجاوز ملف الإثبات حد 5 م.ب.',
   submitRecharge: 'إرسال الطلب',

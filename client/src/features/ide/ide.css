@@ -45,6 +45,7 @@
  * Keep the FAYQ surface; language palettes change code, not the surrounding UI.
  */
 .ide-editor {
+  --ide-selection: #173957;
   --ide-tag: #fdba74;
   --ide-attribute: #7dd3fc;
   --ide-property: #7dd3fc;
@@ -77,6 +78,7 @@
   --ide-meta: #f9a8d4;
 }
 html[data-theme='light'] .ide-editor {
+  --ide-selection: #c8def5;
   --ide-tag: #9a3412;
   --ide-attribute: #075985;
   --ide-property: #075985;
@@ -84,6 +86,16 @@ html[data-theme='light'] .ide-editor {
   --ide-builtin: #6d28d9;
   --ide-meta: #9d174d;
   --ide-invalid: #be123c;
+}
+
+/* CodeMirror draws selection behind the code. Use the editor's theme ink;
+ * the site's lime/forest native selection would hide code in dark mode. */
+.ide-editor .cm-content::selection,
+.ide-editor .cm-content ::selection,
+.ide-editor .cm-editor .cm-content .cm-line::selection,
+.ide-editor .cm-editor .cm-content .cm-line ::selection {
+  background: var(--ide-selection) !important;
+  color: var(--color-ink);
 }
 html[data-theme='light'] .ide-editor[data-ide-language='html'] {
   --ide-keyword: #9a3412;

@@ -43,6 +43,7 @@ export interface PlayerProps {
     positionSeconds: number,
     durationSeconds: number | null,
     completed: boolean,
+    keepalive?: boolean,
   ) => void;
   onEnded?: () => void;
   onError?: (code: string) => void;
@@ -101,6 +102,18 @@ export function DashLessonPlayer({
   onExpireRef.current = onExpire;
   onEndedRef.current = onEnded;
   onProgressRef.current = onProgress;
+  const lastPosition = useRef<{ position: number; duration: number | null; completed: boolean } | null>(null);
+  const captureProgress = useCallback((video: HTMLVideoElement, completed = false) => {
+    if (!Number.isFinite(video.currentTime) || video.currentTime < 0) return;
+    const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : null;
+    if (video.currentTime === 0 && !completed && lastPosition.current === null) return;
+    lastPosition.current = { position: video.currentTime, duration, completed: completed || lastPosition.current?.completed === true };
+  }, []);
+  const reportProgress = useCallback((completed: boolean, keepalive = false) => {
+    if (videoRef.current) captureProgress(videoRef.current, completed);
+    const snapshot = lastPosition.current;
+    if (snapshot) onProgressRef.current?.(snapshot.position, snapshot.duration, snapshot.completed, keepalive);
+  }, [captureProgress]);
 
   // Keep the transient session in memory only, for the lifetime of the grant.
   // A renewal replaces the token on the SAME external session, so the resume
@@ -264,6 +277,9 @@ export function DashLessonPlayer({
     }
 
     return () => {
+      // Capture before DASH reset or React detaches the video ref.
+      captureProgress(video);
+      reportProgress(false, true);
       // Abort in-flight requests and release the EME session on unmount.
       try {
         player?.removeRequestInterceptor(interceptor);
@@ -275,22 +291,16 @@ export function DashLessonPlayer({
       playerRef.current = null;
       clearSession();
     };
-  }, [grant.manifestUrl, grant.licenseUrl, grant.drmProvider, dispatch]);
-
-  const reportProgress = useCallback((completed: boolean) => {
-    const video = videoRef.current;
-    if (video === null) return;
-    const duration = Number.isFinite(video.duration) ? video.duration : null;
-    onProgressRef.current?.(video.currentTime, duration, completed);
-  }, []);
+  }, [grant.manifestUrl, grant.licenseUrl, grant.drmProvider, dispatch, captureProgress, reportProgress]);
 
   // Throttled progress; a final flush happens on pause/end/unmount.
   const handleTimeUpdate = useCallback(() => {
+    if (videoRef.current) captureProgress(videoRef.current);
     const now = Date.now();
     if (!shouldFlushProgress(lastFlush.current, now, PROGRESS_INTERVAL_MS)) return;
     lastFlush.current = now;
     reportProgress(false);
-  }, [reportProgress]);
+  }, [reportProgress, captureProgress]);
 
   const handlePause = useCallback(() => {
     dispatch({ type: 'PAUSED' });
@@ -318,11 +328,11 @@ export function DashLessonPlayer({
     onEndedRef.current?.();
   }, [dispatch, reportProgress]);
 
-  // Final flush on unmount without tearing the tree down twice.
+  // Save on page exit as well as component teardown. Background tabs keep playback.
   useEffect(() => {
-    return () => {
-      reportProgress(false);
-    };
+    const flush = () => reportProgress(false, true);
+    window.addEventListener('pagehide', flush);
+    return () => window.removeEventListener('pagehide', flush);
   }, [reportProgress]);
 
   const [needsGesture, setNeedsGesture] = useState(false);

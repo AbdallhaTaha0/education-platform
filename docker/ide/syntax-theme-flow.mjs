@@ -30,6 +30,31 @@ try{
    if(language==='html')pass(`HTML ${theme} tags and attributes have different colors`,!!find('section')&&!!find('class')&&find('section')!==find('class'));
    if(language==='css')pass(`CSS ${theme} selectors and properties have different colors`,!!find('card')&&!!find('color')&&find('card')!==find('color'));
    if(language==='python')pass(`Python ${theme} keywords and function names have different colors`,!!find('def')&&!!find('greet')&&find('def')!==find('greet'));
+   await page.click(`${editor} .cm-content`);await page.keyboard.down('Control');await page.keyboard.press('A');await page.keyboard.up('Control');
+   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   const selection=await page.$eval(editor,e=>{
+    const background=getComputedStyle(e.querySelector('.cm-selectionBackground')).backgroundColor;
+    const luminance=color=>color.match(/[\d.]+/g).slice(0,3).map(Number).map(n=>{n/=255;return n<=.04045?n/12.92:((n+.055)/1.055)**2.4;}).reduce((sum,n,i)=>sum+n*[.2126,.7152,.0722][i],0);
+    const spans=[...e.querySelectorAll('.cm-line span')].filter(s=>s.textContent.trim());
+    return {contrast:spans.every(s=>{const a=luminance(getComputedStyle(s,'::selection').color),b=luminance(background);return(Math.max(a,b)+.05)/(Math.min(a,b)+.05)>=4.5;}),nativeColor:spans.every(s=>getComputedStyle(s,'::selection').color===getComputedStyle(e).color)};
+   });
+   if(!selection.nativeColor||!selection.contrast)console.log('Selection diagnostic',language,theme,selection);
+   pass(`${language} ${theme} selection uses readable theme ink`,selection.nativeColor&&selection.contrast);
+   await page.keyboard.press('ArrowLeft');
+   await page.$eval(editor,e=>e.scrollIntoView({block:'center'}));
+   const drag=await page.$eval(editor,e=>{
+    const node=e.querySelector('.cm-line span').firstChild;
+    const from=2,to=Math.min(12,node.textContent.length);
+    const point=offset=>{const r=document.createRange();r.setStart(node,offset);r.collapse(true);const b=r.getBoundingClientRect();return{x:b.x,y:b.y+b.height/2};};
+    return {start:point(from),end:point(to),text:node.textContent.slice(from,to)};
+   });
+   await page.mouse.move(drag.start.x,drag.start.y);await page.mouse.down();await page.mouse.move(drag.end.x,drag.end.y,{steps:12});await page.mouse.up();
+   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+   const draggedText=await page.evaluate(()=>window.getSelection()?.toString());
+   if(draggedText!==drag.text)console.log('Mouse selection diagnostic',{expected:drag.text,actual:draggedText});
+   await page.screenshot({path:`/evidence/mouse-selection-${language}-${theme}.png`});
+   pass(`${language} ${theme} mouse drag selects part of one line`,draggedText===drag.text);
+   pass(`${language} ${theme} mouse selection has a visible background`,await page.$eval(editor,e=>{const node=e.querySelector('.cm-line span');return getComputedStyle(node,'::selection').backgroundColor===getComputedStyle(e.querySelector('.cm-selectionBackground')).backgroundColor;}));
    if(language!=='javascript'){await page.$eval(editor,e=>e.scrollIntoView({block:'center'}));await page.screenshot({path:`/evidence/syntax-${language}-${theme}.png`});}
   }
  }

@@ -83,9 +83,11 @@ export function LoginScreen({ onDone }: { onDone: () => void }): JSX.Element {
             </Button>
           </FormActions>
         </form>
-        <p className="mt-5"><a href="#/register" className="underline">{lang==='ar'?'ليس لديك حساب؟ أنشئ حساب طالب':'New here? Create a student account'}</a></p>
-        <p className="mt-3 text-sm text-muted">{lang==='ar'?'استعادة كلمة المرور حاليًا بمساعدة الإدارة.':'Password recovery requires admin assistance.'}</p>
-        <a href="#/support" className="mt-2 inline-block underline">{lang==='ar'?'المساعدة في استعادة الحساب':'Account recovery help'}</a>
+        <div className="text-center" data-testid="login-help">
+          <p className="mt-5"><a href="#/register" className="underline">{lang==='ar'?'ليس لديك حساب؟ أنشئ حساب طالب':'New here? Create a student account'}</a></p>
+          <p className="mt-3 text-sm text-muted">{lang==='ar'?'استعادة كلمة المرور حاليًا بمساعدة الإدارة.':'Password recovery requires admin assistance.'}</p>
+          <a href="#/support" className="mt-2 inline-block underline">{lang==='ar'?'المساعدة في استعادة الحساب':'Account recovery help'}</a>
+        </div>
       </div>
     </Container>
   );
