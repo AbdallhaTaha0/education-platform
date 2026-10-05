@@ -11,6 +11,7 @@ import {
   normalizePhone,
   rejectPrivilegeFields,
   validatePassword,
+  PASSWORD_MAX_LENGTH,
 } from './validation.js';
 import { hashPassword, verifyPassword, type Argon2Params } from './password.js';
 import {
@@ -236,6 +237,11 @@ export async function login(
   rejectPrivilegeFields(raw);
   const body = (typeof raw === 'object' && raw !== null ? raw : {}) as LoginInput;
   const password = typeof body.password === 'string' ? body.password : '';
+  // Reject values outside the account password contract before hashing or
+  // looking up an identifier; retain the same generic login failure.
+  if (password.length > PASSWORD_MAX_LENGTH) {
+    throw new ApiError(401, 'INVALID_CREDENTIALS', 'Email/phone or password is incorrect.');
+  }
 
   let email: string | null = null;
   let phone: string | null = null;

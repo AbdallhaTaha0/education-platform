@@ -1,5 +1,11 @@
 # Education platform documentation
 
+Security follow-up delivery (2026-10-06): [independent review, dual-repository delivery, bounded dependency mitigation, private exposure checks and launch prerequisites](security-delivery-20261006.md). 993 server, 183 frontend/DASH/brace and 105 DRM checks passed; 37 public assets unchanged; eight display cases and framing/IDE browser checks passed. No production deployment exists.
+
+DRM security repair (2026-10-06): [key-safe worker errors, public-only pinned webhooks and qualified tooling upgrade](drm-security-repair-20261006.md). 103 default unit/security tests plus two real PostgreSQL/BullMQ tests pass; build, focused tooling check and zero-advisory dependency audit pass. Owned test resources cleaned; no deployment or commit/push. Supersedes the audit’s open DRM source findings; frontend/browser-tooling advisories and private historical-exposure checks remain.
+
+Security audit (2026-10-05 to 2026-10-06): [70-category report, six verified platform fixes and remaining HIGH risks](security-audit-summary-20261005.md). Final Docker verification: 993 server tests, 173 frontend tests, two DASH checks, builds/typechecks and Chromium framing/IDE checks pass. [Architecture](security-audit-architecture-20261005.md), [125-route platform inventory](security-audit-attack-surface-20261005.md), [ordered phase ledger](security-audit-phases-20261005.md), [external DRM read-only review](security-audit-drm-readonly-20261005.md). No deployment, commit/push, nested DRM edit or production approval.
+
 Published-course working copies (2026-10-05): [keep the live course available while editing, replace/remove draft videos, and retire unused videos safely](published-course-working-copies-20261005.md). Fresh isolated Docker verification: 187 catalog/learning checks, 45 browser checks, and a separate 271-unit/76-materials-playback check suite pass. Port 8080 updated with a protected backup; all 18 retained data fingerprints preserved.
 
 Historical same-day predecessor: [in-place return to draft](published-course-return-to-draft-20261005.md), superseded by the working-copy requirement above.

@@ -13,6 +13,8 @@ server {
   server_name _;
   root /usr/share/nginx/html;
   index index.html;
+  add_header Content-Security-Policy "frame-ancestors 'none'; object-src 'none'; base-uri 'self'" always;
+  add_header X-Frame-Options DENY always;
   resolver ${DNS_RESOLVER} valid=10s;
   set $backend http://${BACKEND_HOST}:${BACKEND_PORT};
   client_max_body_size 11m;
@@ -43,7 +45,16 @@ server {
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-Proto https;
   }
-  location /assets/ { try_files $uri =404; expires 30d; add_header Cache-Control 'public, immutable'; }
-  location = /index.html { add_header Cache-Control 'no-store'; }
+  location /assets/ {
+    try_files $uri =404; expires 30d;
+    add_header Cache-Control 'public, immutable';
+    add_header Content-Security-Policy "frame-ancestors 'none'; object-src 'none'; base-uri 'self'" always;
+    add_header X-Frame-Options DENY always;
+  }
+  location = /index.html {
+    add_header Cache-Control 'no-store';
+    add_header Content-Security-Policy "frame-ancestors 'none'; object-src 'none'; base-uri 'self'" always;
+    add_header X-Frame-Options DENY always;
+  }
   location / { try_files $uri $uri/ /index.html; }
 }

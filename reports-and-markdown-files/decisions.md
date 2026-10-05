@@ -1,5 +1,9 @@
 # Decision register
 
+## Bounded DRM security repair — 2026-10-06
+
+Owner instructed "fix the drm" after the security audit: repair F01 key-bearing worker errors and F03 webhook destination validation/pinned transport. Owner separately approved the TypeScript ESLint v8 tooling upgrade; qualified8.71.0 removes the vulnerable development chain without relaxing package-age policy. [105 passing Docker tests and outcome](drm-security-repair-20261006.md). No architecture/persistence change, production release, historical-data deletion or commit/push is authorized.
+
 ## D16 follow-up — published-course return to draft (2026-10-05)
 
 The owner explicitly requested making a published course a draft to edit it. Permit ADMIN `PUBLISHED → DRAFT` through the existing locked/audited transition API and a clear confirmation. Preserve purchases, subscription expiry dates, learning progress, media references and first-publication evidence. Draft content follows the existing unpublished visibility rules; republishing retains the full processing/readiness validation. No other backward transition, subscription extension, new role, DRM maintenance or production authority is inferred. See [implementation and Docker evidence](published-course-return-to-draft-20261005.md).
@@ -247,3 +251,7 @@ The owner's subsequent instruction supersedes the same-day in-place return-to-dr
 The owner explicitly chose **Require a replacement before publishing** after removing a draft lesson's video and **Yes, safely delete unused superseded videos**. Draft video removal leaves the lesson in place. Inherited live media stays intact until publication; superseded media is retired durably and deleted only through the external DRM API after references and active sessions no longer need it. These instructions authorize the bounded additive platform schema and local Docker upgrade; they do not authorize DRM source changes, production deployment, capacity certification, milestone acceptance or commit/push. See [implementation and evidence](published-course-working-copies-20261005.md).
 
 Owner follow-up: create/open an editing draft **only from a published canonical course**, never from another draft. Remove the preparation-state reopen exception and hide the create-draft action throughout DRAFT/PROCESSING/READY. Repeated published-root requests still reuse its one working copy. No existing drafts or content are deleted by this correction.
+
+## Security follow-up delivery — 2026-10-06
+
+The owner instructed “do them” for independent review, dual-repository commit/push, remaining dependency follow-up and private exposure triage, then explicitly chose a separate review agent and confirmed no production deployment exists. Deliver verified audit/platform fixes and bounded DRM F01/F03 plus the approved tooling upgrade. The braces nesting guard preserves current frontend assets and keeps upstream advisories visible; no new browser-support policy is inferred. No production deployment, unrelated DRM maintenance or milestone acceptance. See [final evidence and limits](security-delivery-20261006.md).

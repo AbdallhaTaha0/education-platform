@@ -106,6 +106,7 @@ export class DrmClient {
           headers: this.headers(),
           body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
           signal: controller.signal,
+        redirect: 'error',
         });
         const text = await this.readBoundedBody(res);
         if (!res.ok) {
@@ -173,10 +174,25 @@ export class DrmClient {
   }
 
   private async readBoundedBody(res: Response): Promise<string> {
-    const text = await res.text();
-    if (text.length > MAX_BODY_BYTES)
-      throw new ApiError(502, 'DRM_MALFORMED', 'External response too large.');
-    return text;
+    if (!res.body) return '';
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let bytes = 0;
+    try {
+      for (;;) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        bytes += chunk.value.byteLength;
+        if (bytes > MAX_BODY_BYTES) {
+          await reader.cancel().catch(() => undefined);
+          throw new ApiError(502, 'DRM_MALFORMED', 'External response too large.');
+        }
+        chunks.push(chunk.value);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    return Buffer.concat(chunks, bytes).toString('utf8');
   }
 
   private parseJson(text: string): unknown {
@@ -288,6 +304,7 @@ export class DrmClient {
         },
         body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
         signal: controller.signal,
+          redirect: 'error',
       });
       if (!res.ok) {
         getLogger().warn(
