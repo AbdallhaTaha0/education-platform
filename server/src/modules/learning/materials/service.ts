@@ -21,6 +21,12 @@ function label(value: unknown): string {
 async function mutableLesson(tx: Prisma.TransactionClient, lessonId: string) {
   const before = await tx.lesson.findUnique({ where: { id: lessonId }, include: { section: true } });
   if (!before) throw new LearningError('LESSON_NOT_FOUND');
+  const owner = await tx.course.findUniqueOrThrow({ where: { id: before.section.courseId } });
+  if (owner.revisionOwnerId) {
+    await lockCourseRow(tx, owner.revisionOwnerId);
+    const live = await tx.course.findUniqueOrThrow({ where: { id: owner.revisionOwnerId } });
+    if (live.deletionRequestedAt) throw new LearningError('LESSON_NOT_FOUND');
+  }
   await lockCourseRow(tx, before.section.courseId);
   const lesson = await tx.lesson.findUnique({ where: { id: lessonId }, include: { section: { include: { course: true } } } });
   if (!lesson) throw new LearningError('LESSON_NOT_FOUND');
@@ -192,14 +198,14 @@ export async function getStudentMaterials(
 export async function getAdminMaterials(
   deps: MaterialsDeps,
   lessonId: string,
-): Promise<{ lessonId: string; durationSeconds: number | null; captions: (CaptionMetadata & { state: string; errorCategory?: string | null })[]; resources: ResourceMetadata[] }> {
+): Promise<{ lessonId: string; durationSeconds: number | null; captions: (CaptionMetadata & { inherited?: boolean; state: string; errorCategory?: string | null })[]; resources: (ResourceMetadata & { inherited?: boolean })[] }> {
   const lesson = await deps.prisma.lesson.findUnique({
     where: { id: lessonId },
     include: { media: true },
   });
   if (!lesson) throw new LearningError('LESSON_NOT_FOUND');
 
-  const captions = await deps.prisma.lessonCaption.findMany({
+  let captions = await deps.prisma.lessonCaption.findMany({
     where: { lessonId },
     select: { id: true, language: true, labelAr: true, labelEn: true, byteSize: true, state: true, errorCategory: true },
   });
@@ -209,10 +215,18 @@ export async function getAdminMaterials(
     select: { id: true, labelAr: true, labelEn: true, fileName: true, mimeType: true, byteSize: true },
   });
 
+  let inheritedCaptions = false;
+  const inheritedResources = lesson.originId ? await deps.prisma.lessonResource.findMany({ where: { lessonId: lesson.originId }, select: { id: true, labelAr: true, labelEn: true, fileName: true, mimeType: true, byteSize: true } }) : [];
+  if (lesson.originId && !captions.length) {
+    captions = await deps.prisma.lessonCaption.findMany({ where: { lessonId: lesson.originId }, select: { id: true, language: true, labelAr: true, labelEn: true, byteSize: true, state: true, errorCategory: true } });
+    inheritedCaptions = true;
+  }
+  const inheritedMedia = lesson.inheritedMediaId ? await deps.prisma.mediaMapping.findUnique({ where: { id: lesson.inheritedMediaId }, select: { durationSeconds: true } }) : null;
   return {
     lessonId,
-    durationSeconds: lesson.media?.durationSeconds ?? null,
+    durationSeconds: lesson.media?.durationSeconds ?? inheritedMedia?.durationSeconds ?? null,
     captions: captions.map((c) => ({
+      inherited: inheritedCaptions,
       id: c.id,
       language: c.language as 'ar' | 'en',
       labelAr: c.labelAr,
@@ -221,14 +235,14 @@ export async function getAdminMaterials(
       state: c.state,
       errorCategory: c.errorCategory,
     })),
-    resources: resources.map((r) => ({
+    resources: [...inheritedResources.map(r => ({ ...r, inherited: true })), ...resources.map((r) => ({
       id: r.id,
       labelAr: r.labelAr,
       labelEn: r.labelEn,
       fileName: r.fileName,
       mimeType: r.mimeType,
       byteSize: r.byteSize,
-    })),
+    }))],
   };
 }
 

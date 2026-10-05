@@ -23,7 +23,7 @@ try {
     await page.evaluate(({ root, label }) => { const b = [...document.querySelector(root).querySelectorAll('button')].find(b => b.querySelector('span')?.textContent.trim() === label || b.textContent.trim() === label); if (!b) throw Error(`Missing ${label}`); b.setAttribute('data-save-test-click', 'active'); b.scrollIntoView({ block: 'center' }); }, { root, label });
     await page.click('[data-save-test-click=active]'); await page.evaluate(() => document.querySelectorAll('[data-save-test-click]').forEach(e => e.removeAttribute('data-save-test-click')));
   }
-  await button(scope, 'Assignments and quizzes'); await page.waitForSelector(`${scope} [data-testid=ide-mode-javascript]`);
+  await page.waitForSelector('#course-workspace-tab-assessments'); await page.$eval('#course-workspace-tab-assessments',e=>e.scrollIntoView({block:'center'})); await page.click('#course-workspace-tab-assessments'); await page.waitForSelector(`${scope} [data-testid=ide-mode-javascript]`);
   for (const [lang, choice] of [['en', 'false'], ['ar', 'true']]) {
     await button(scope, 'Add assessment'); await page.waitForSelector(`${editor} .cm-content`);
     if (lang === 'ar') await page.click(`${editor} button[aria-label="التبديل إلى العربية"]`);

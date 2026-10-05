@@ -60,11 +60,8 @@ export async function requestPermanentDeletion(
   assertUuid(targetId, 'targetId');
   const body = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
 
-  const courseSlug =
-    targetType === 'COURSE'
-      ? ((await prisma.course.findUnique({ where: { id: targetId }, select: { slug: true } }))
-          ?.slug ?? null)
-      : null;
+  const confirmationCourse = targetType === 'COURSE' ? await prisma.course.findUnique({ where: { id: targetId }, select: { slug: true, requestedSlug: true } }) : null;
+  const courseSlug = confirmationCourse?.requestedSlug ?? confirmationCourse?.slug ?? null;
   if (targetType === 'COURSE' && courseSlug === null)
     throw new ApiError(404, 'NOT_FOUND', 'Course not found.');
   confirmationFor(targetType, targetId, courseSlug, body['confirmation']);
@@ -81,10 +78,18 @@ export async function requestPermanentDeletion(
   const created = await prisma.$transaction(async (tx) => {
     await advisoryLock(tx, deletionAdvisoryKey(targetType, targetId));
     const unlocked = await collectDeletionScope(tx, targetType, targetId);
+    const child = await tx.course.findUniqueOrThrow({ where: { id: unlocked.courseId } });
+    if (child.revisionOwnerId) {
+      await lockCourseRow(tx, child.revisionOwnerId);
+      const parent = await tx.course.findUniqueOrThrow({ where: { id: child.revisionOwnerId } });
+      if (parent.deletionRequestedAt) throw new ApiError(409, 'DELETION_PENDING', 'Parent course deletion is pending.');
+    }
     // Participate in the same course row lock as every other course mutation,
     // then re-read everything under it: no new media mapping or structural
     // mutation can interleave between the checks below and the writes.
     await lockCourseRow(tx, unlocked.courseId);
+    const lockedCourse = await tx.course.findUniqueOrThrow({ where: { id: unlocked.courseId } });
+    if (targetType !== 'COURSE' && lockedCourse.workingCopyId) throw new ApiError(409, 'COURSE_NOT_DRAFT', 'Delete content in the working copy, not the published course.');
     if ((await findActiveOpForTarget(tx, targetType, targetId)) !== null) {
       throw new ApiError(
         409,

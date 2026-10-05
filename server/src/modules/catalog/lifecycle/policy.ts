@@ -2,11 +2,11 @@ import { ApiError } from '../../identity/errors.js';
 import { assertValidTransition } from '../validation.js';
 import type { CourseHierarchy } from '../types.js';
 
-export type LifecycleTarget = 'PROCESSING' | 'READY' | 'PUBLISHED';
+export type LifecycleTarget = 'DRAFT' | 'PROCESSING' | 'READY' | 'PUBLISHED';
 
 export function assertTransitionInput(from: string, to: string): LifecycleTarget {
   const target = to.toUpperCase();
-  if (target !== 'PROCESSING' && target !== 'READY' && target !== 'PUBLISHED') {
+  if (target !== 'DRAFT' && target !== 'PROCESSING' && target !== 'READY' && target !== 'PUBLISHED') {
     throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid transition target.', { field: 'to' });
   }
   assertValidTransition(from, target);
@@ -109,6 +109,7 @@ export function availableLifecycleActions(status: string): {
     enabled: boolean;
     reason: string | null;
   }[] = [
+    { action: 'DRAFT', enabled: status === 'PUBLISHED', reason: status === 'PUBLISHED' ? null : 'Available only from PUBLISHED.' },
     {
       action: 'PROCESSING',
       enabled: status === 'DRAFT',

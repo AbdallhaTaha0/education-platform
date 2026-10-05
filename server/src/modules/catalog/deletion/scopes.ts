@@ -18,8 +18,10 @@ async function courseScope(tx: TxClient, courseId: string): Promise<DeletionScop
   if (course === null) throw new ApiError(404, 'NOT_FOUND', 'Course not found.');
   const affected: AffectedMedia[] = [];
   const lessonIds: string[] = [];
-  const sectionIds = course.sections.map((s) => s.id);
-  for (const s of course.sections) {
+  const children = await tx.courseSection.findMany({ where: { course: { revisionOwnerId: courseId } }, include: { lessons: { include: { media: true } } } });
+  const allSections = [...course.sections, ...children];
+  const sectionIds = allSections.map((s) => s.id);
+  for (const s of allSections) {
     for (const l of s.lessons) {
       lessonIds.push(l.id);
       if (l.media !== null) {

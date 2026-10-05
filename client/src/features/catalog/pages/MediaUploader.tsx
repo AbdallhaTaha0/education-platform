@@ -4,11 +4,13 @@ import { localizeCode, useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
 import { Field } from '../../../components/ui/Field';
 import { Notice } from '../../../components/ui/Notice';
-import { completeMedia, registerMedia, syncLessonMedia } from '../api/client';
+import { completeMedia, registerMedia, syncLessonMedia, removeLessonVideo } from '../api/client';
+import { ConfirmDialog } from '../../../components/ui/Dialog';
 import { isSupportedVideoMime } from '../types/models';
 import { businessState } from '../../../components/ui/AdminNavigation';
 import { ProgressBar } from '../../../components/ui/ProgressBar';
 import { uploadVideo } from '../api/upload';
+import { useUnsavedChanges } from '../../../components/ui/UnsavedChanges';
 
 function mimeFor(file: File): string {
   if (file.type === 'video/quicktime' || file.name.toLowerCase().endsWith('.mov'))
@@ -22,11 +24,13 @@ export function MediaUploader({
   mediaStatus,
   onChanged,
   blockedReason,
+  canReplace = false,
 }: {
   lessonId: string;
   mediaStatus: string | null;
   onChanged: () => Promise<void>;
   blockedReason?: string;
+  canReplace?: boolean;
 }): JSX.Element {
   const { t,lang } = useLang();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -34,6 +38,15 @@ export function MediaUploader({
   const [progress, setProgress] = useState<number | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  async function remove(): Promise<void> {
+    if (busy || !canReplace) return;
+    setBusy(true); setError(null);
+    try { await removeLessonVideo(lessonId); setPhase(null); setConfirmRemove(false); if (fileRef.current) fileRef.current.value = ''; await onChanged(); }
+    catch (e) { setError(e instanceof ApiError ? e.code : 'SERVICE_ERROR'); }
+    finally { setBusy(false); }
+  }
+  useUnsavedChanges(busy, lang === 'ar' ? 'رفع الفيديو قيد التنفيذ. ترك الدرس سيوقف الرفع. هل تريد المتابعة؟' : 'Video upload is in progress. Leaving this lesson will stop the upload. Continue?');
   const operation = useRef<AbortController | null>(null);
   const lastMediaStatus = useRef(mediaStatus);
   useEffect(() => () => operation.current?.abort(), []);
@@ -126,14 +139,16 @@ export function MediaUploader({
           ref={fileRef}
           id={`file-${lessonId}`}
           type="file"
-          disabled={busy || !!blockedReason}
+          disabled={busy || !!blockedReason || (mediaStatus !== null && mediaStatus !== 'UPLOAD_PENDING')}
           accept="video/mp4,video/webm,video/quicktime,.mov"
           className="min-h-[44px]"
         />
       </Field>
-      <Button variant="secondary" disabled={busy || !!blockedReason} disabledReason={blockedReason} onClick={() => void run()}>
+      <Button variant="secondary" disabled={busy || !!blockedReason || (mediaStatus !== null && mediaStatus !== 'UPLOAD_PENDING')} disabledReason={blockedReason} onClick={() => void run()}>
         {t.actionRegister}
       </Button>
+      {mediaStatus && canReplace ? <Button variant="secondary" disabled={busy} data-testid="remove-draft-video" onClick={() => setConfirmRemove(true)}>{lang === 'ar' ? 'إزالة / استبدال الفيديو' : 'Remove / replace video'}</Button> : null}
+      <ConfirmDialog open={confirmRemove} title={lang === 'ar' ? 'إزالة فيديو المسودة' : 'Remove draft video'} body={lang === 'ar' ? 'يبقى فيديو الإصدار المنشور متاحًا. يجب رفع بديل جاهز قبل نشر المسودة. ستُحذف الفيديوهات القديمة غير المستخدمة بأمان.' : 'The published video stays available. Upload a ready replacement before publishing this draft. Unused old videos will be cleaned up safely.'} confirmLabel={lang === 'ar' ? 'إزالة من المسودة' : 'Remove from draft'} cancelLabel={t.actionCancel} onConfirm={() => void remove()} onCancel={() => { if (!busy) setConfirmRemove(false); }} />
       <Button variant="secondary" disabled={busy} onClick={() => void sync()}>
         {t.actionSync}
       </Button>

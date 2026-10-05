@@ -6,9 +6,14 @@ import { completeLessonUpload } from '../media/completionService.js';
 import { syncCourseMedia, syncLessonMedia } from '../media/syncService.js';
 import type { CatalogRouteContext } from '../types.js';
 import { asyncRoute, authOf, ctxOf } from './shared.js';
+import { removeDraftVideo } from '../media/retirement.js';
 
 export function createMediaRouter(ctx: CatalogRouteContext): Router {
   const router = Router();
+  router.delete('/catalog/lessons/:id/media', [...writeGuard], asyncRoute(async (req, res) => {
+    const c = ctxOf(req);
+    res.json(ok(await removeDraftVideo(c.prisma, authOf(req).userId, req.params['id'] as string)));
+  }));
 
   router.post(
     '/catalog/lessons/:id/media',

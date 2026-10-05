@@ -5,6 +5,8 @@ import { resolveCourse } from '../learning/access/service.js';
 import { assertLessonUnlocked } from './progression.js';
 import { answers, content, publicContent, type Content } from './contracts.js';
 import { preparationHash, freezePrograms } from './program-contracts.js';
+import { ensureMutable } from '../catalog/courses/service.js';
+import { withCourseLock } from '../catalog/courseTx.js';
 
 const json = (v: unknown): Prisma.InputJsonValue => v as Prisma.InputJsonValue;
 export async function adminLesson(db: PrismaClient, lessonId: string) {
@@ -20,15 +22,16 @@ export async function assessmentAccess(db: PrismaClient, studentId: string, id: 
   return a;
 }
 export async function saveAssessment(db: PrismaClient, actor: string, lessonId: string, id: string | null, body: Record<string, unknown>) {
-  await adminLesson(db, lessonId);
+  const owner = await adminLesson(db, lessonId);
   if (typeof body.required !== 'boolean' || !['ASSIGNMENT', 'QUIZ'].includes(body.kind as string)) throw new ApiError(400, 'VALIDATION_ERROR', 'Select kind and required/optional status.');
   const c = content(body.content);
-  return db.$transaction(async (tx) => {
+  return withCourseLock(db, owner.section.courseId, async (tx) => {
     // Serialize with permanent course deletion's existing course lock.
     const lesson = await tx.lesson.findUniqueOrThrow({ where: { id: lessonId }, include: { section: true } });
     await tx.$queryRaw`SELECT id FROM "Course" WHERE id=${lesson.section.courseId} FOR UPDATE`;
     const course = await tx.course.findUniqueOrThrow({ where: { id: lesson.section.courseId } });
     if (course.deletionRequestedAt) throw new ApiError(409, 'DELETION_PENDING', 'Content deletion is pending.');
+    ensureMutable(course, 'Assessment edit');
     if (id) {
       await tx.$queryRaw`SELECT id FROM "Assessment" WHERE id=${id} FOR UPDATE`;
       const old = await tx.assessment.findUnique({ where: { id } });
@@ -41,12 +44,13 @@ export async function saveAssessment(db: PrismaClient, actor: string, lessonId: 
 }
 export async function publishAssessment(db: PrismaClient, actor: string, id: string, action: 'PUBLISH' | 'ARCHIVE') {
   const a = await db.assessment.findUnique({ where: { id } }); if (!a) throw new ApiError(404, 'NOT_FOUND', 'Assessment not found.');
-  await adminLesson(db, a.lessonId);
-  return db.$transaction(async (tx) => {
+  const owner = await adminLesson(db, a.lessonId);
+  return withCourseLock(db, owner.section.courseId, async (tx) => {
     const lesson = await tx.lesson.findUniqueOrThrow({ where: { id: a.lessonId }, include: { section: true } });
     await tx.$queryRaw`SELECT id FROM "Course" WHERE id=${lesson.section.courseId} FOR UPDATE`;
     const course = await tx.course.findUniqueOrThrow({ where: { id: lesson.section.courseId } });
     if (course.deletionRequestedAt) throw new ApiError(409, 'DELETION_PENDING', 'Content deletion is pending.');
+    ensureMutable(course, 'Assessment edit');
     await tx.$queryRaw`SELECT id FROM "Assessment" WHERE id=${id} FOR UPDATE`;
     const current = await tx.assessment.findUniqueOrThrow({ where: { id } });
     if (action === 'ARCHIVE') {

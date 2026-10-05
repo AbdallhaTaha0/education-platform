@@ -126,7 +126,7 @@ function Shell(): JSX.Element {
       {route === 'package' ? (
         <PackagePage key={packageIdFromHash()} id={packageIdFromHash()} />
       ) : null}
-      {route === 'admin-course' ? <AccountWorkspace route={route}><AdminDetailPage courseId={adminCourseIdFromHash()} /></AccountWorkspace> : null}
+      {route === 'admin-course' ? <AccountWorkspace route={route}><AdminDetailPage key={adminCourseIdFromHash()} courseId={adminCourseIdFromHash()} /></AccountWorkspace> : null}
       {route === 'register' ? (
         <main id="main">
           <section className="py-8">

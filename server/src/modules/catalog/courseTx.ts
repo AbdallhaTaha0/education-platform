@@ -20,9 +20,15 @@ export async function withCourseLock<T>(
 ): Promise<T> {
   assertUuid(courseId, 'courseId');
   return prisma.$transaction(async (tx) => {
+    const owner = await tx.course.findUnique({ where: { id: courseId }, select: { revisionOwnerId: true } });
+    if (owner?.revisionOwnerId) {
+      await lockCourseRow(tx, owner.revisionOwnerId);
+      const live = await tx.course.findUniqueOrThrow({ where: { id: owner.revisionOwnerId } });
+      if (live.deletionRequestedAt) throw new ApiError(409, 'DELETION_PENDING', 'The published course is being deleted.');
+    }
     await lockCourseRow(tx, courseId);
     return fn(tx);
-  });
+  }, { timeout: 30000 });
 }
 
 /** Purchase-side counterpart: shared locks allow concurrent buyers but block

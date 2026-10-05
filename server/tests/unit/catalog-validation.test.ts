@@ -60,15 +60,16 @@ describe('exact price + duration bounds', () => {
 });
 
 describe('lifecycle transition matrix', () => {
-  it('allows only DRAFT→PROCESSING→READY→PUBLISHED', () => {
+  it('allows the publishing lifecycle and owner-approved PUBLISHED→DRAFT editing', () => {
     expect(() => assertValidTransition('DRAFT', 'PROCESSING')).not.toThrow();
     expect(() => assertValidTransition('PROCESSING', 'READY')).not.toThrow();
     expect(() => assertValidTransition('READY', 'PUBLISHED')).not.toThrow();
+    expect(() => assertValidTransition('PUBLISHED', 'DRAFT')).not.toThrow();
     for (const [from, to] of [
       ['DRAFT', 'READY'],
       ['DRAFT', 'PUBLISHED'],
       ['READY', 'DRAFT'],
-      ['PUBLISHED', 'DRAFT'],
+      ['PROCESSING', 'DRAFT'],
     ] as const) {
       try {
         assertValidTransition(from, to);

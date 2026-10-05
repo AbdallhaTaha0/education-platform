@@ -150,6 +150,13 @@ enum CatalogDeletionTarget {
 }
 
 model Course {
+  revisionOwnerId String?
+  revisionOwner Course? @relation("CourseRevisions", fields: [revisionOwnerId], references: [id], onDelete: Cascade)
+  revisions Course[] @relation("CourseRevisions")
+  @@index([revisionOwnerId])
+  workingCopyId String? @unique
+  requestedSlug String?
+  historical Boolean @default(false)
   id                  String       @id @default(uuid())
   slug                String       @unique
   titleAr             String
@@ -181,6 +188,7 @@ model Course {
 
 // M9: platform-owned assessments, never external DRM records.
 model Assessment {
+  originId String?
   id String @id @default(uuid())
   lessonId String
   lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -337,6 +345,7 @@ model PythonRun {
 }
 
 model CourseSection {
+  originId String?
   id        String   @id @default(uuid())
   courseId  String
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -360,6 +369,8 @@ enum CaptionState {
 }
 
 model Lesson {
+  originId String?
+  inheritedMediaId String?
   id        String        @id @default(uuid())
   sectionId String
   section   CourseSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
@@ -433,6 +444,7 @@ model LessonResource {
 /// previousPricePiastres null disables the visual offer; when present it
 /// must be strictly greater than currentPricePiastres. durationDays 1–3650.
 model SubscriptionPlan {
+  originId String?
   id                    String   @id @default(uuid())
   courseId              String
   course                Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -451,6 +463,9 @@ model SubscriptionPlan {
 /// URLs, storage keys, client secrets, or DRM internals. errorCategory is a
 /// safe token (e.g. TIMEOUT/NETWORK/SERVER/VALIDATION), never raw bodies.
 model MediaMapping {
+  retiredAt DateTime?
+  retirementOperationId String?
+  retirementNextAttempt DateTime?
   id                String     @id @default(uuid())
   lessonId          String     @unique
   lesson            Lesson     @relation(fields: [lessonId], references: [id], onDelete: Cascade)
@@ -467,6 +482,7 @@ model MediaMapping {
 
   @@index([status])
   @@index([assetId])
+  @@index([retiredAt, retirementNextAttempt])
 }
 
 /// Durable catalog deletion operation. No FK to Course/Section/Lesson so
@@ -824,6 +840,7 @@ model PlaybackReference {
   @@index([status, nextTerminationAt])
   @@index([studentId, courseId])
   @@index([courseId, status])
+  @@index([externalAssetId, status])
 }
 
 /// M6 durable notification intent. Only platform references are stored;

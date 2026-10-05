@@ -20,10 +20,10 @@ interface Question { id: string; type: 'CODING' | 'CHOICE' | 'PROGRAM'; program?
 interface Content { ide?: IDEMode; titleAr: string; titleEn: string; instructionsAr: string; instructionsEn: string; questions: Question[] }
 interface Entry { id: string; lessonId: string; kind: string; required: boolean; draftRequired: boolean | null; status: string; content: Content; version: number }
 const newQuestion = (type: 'CODING' | 'PROGRAM' = 'PROGRAM', mode: IDEMode = 'javascript'): Question => ({ id: crypto.randomUUID(), type, titleAr: '', titleEn: '', starter: { ...EMPTY_SOURCE, javascript: '', ...(mode === 'python' ? { python: '' } : {}) }, shareStarter: false, ...(type === 'PROGRAM' ? { program: newProgram(mode) } : { checks: mode === 'web' ? [{ type: 'exists', selector: '#result' }] : [{ type: 'console', expected: '' }] }) });
-export function AdminAssessmentPanel({ lessonId }: { lessonId: string }): JSX.Element {
+export function AdminAssessmentPanel({ lessonId, initiallyOpen = false }: { lessonId: string; initiallyOpen?: boolean }): JSX.Element {
   const { lang, setLang } = useLang(); const ar = lang === 'ar'; const label = (a: string, e: string): string => ar ? a : e;
   const [mode, setMode] = useState<IDEMode>('javascript');
-  const [open, setOpen] = useState(false); const [list, setList] = useState<Entry[]>([]); const [editing, setEditing] = useState<string | null | false>(false);
+  const [open, setOpen] = useState(initiallyOpen); const [list, setList] = useState<Entry[]>([]); const [editing, setEditing] = useState<string | null | false>(false);
   const [content, setContent] = useState<Content>({ titleAr: '', titleEn: '', instructionsAr: '', instructionsEn: '', questions: [] });
   const [kind, setKind] = useState('ASSIGNMENT'); const [required, setRequired] = useState(''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
   const [review, setReview] = useState<Entry | null>(null);

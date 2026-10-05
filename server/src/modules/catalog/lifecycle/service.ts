@@ -5,6 +5,7 @@ import { recordFirstPublication } from '../../notifications/producers.js';
 import { withCourseLock } from '../courseTx.js';
 import type { CourseHierarchy } from '../types.js';
 import { assertUuid } from '../validation.js';
+import { createWorkingCopy, effectiveHierarchy, publishWorkingCopy } from '../courses/revisions.js';
 import {
   assertTransitionInput,
   collectNotReady,
@@ -17,10 +18,7 @@ async function loadHierarchy(
   courseId: string,
 ): Promise<CourseHierarchy> {
   const client = prisma as PrismaClient;
-  const course = await client.course.findUnique({
-    where: { id: courseId },
-    include: { sections: { include: { lessons: { include: { media: true } } } }, plans: true },
-  });
+  const course = await effectiveHierarchy(client, courseId);
   if (course === null) throw new ApiError(404, 'NOT_FOUND', 'Course not found.');
   return course as unknown as CourseHierarchy;
 }
@@ -35,11 +33,19 @@ export async function requestTransition(
   return withCourseLock(prisma, courseId, async (tx) => {
     const course = await tx.course.findUnique({ where: { id: courseId } });
     if (course === null) throw new ApiError(404, 'NOT_FOUND', 'Course not found.');
+    if (course.historical) throw new ApiError(409, 'INVALID_TRANSITION', 'Historical content cannot be edited.');
     if (course.deletionRequestedAt !== null)
       throw new ApiError(409, 'DELETION_PENDING', 'Transition blocked while deletion is pending.');
     if (course.status === 'ARCHIVED')
       throw new ApiError(409, 'COURSE_ARCHIVED', 'Archived courses use unarchive.');
+    if (String(to).toUpperCase() === 'DRAFT' && course.revisionOwnerId && ['PROCESSING', 'READY'].includes(course.status)) {
+      await audit(tx, { actorUserId: actorId, action: 'COURSE_DRAFT_REOPENED', entityType: 'Course', entityId: courseId });
+      return tx.course.update({ where: { id: courseId }, data: { status: 'DRAFT' } });
+    }
     const target = assertTransitionInput(course.status, String(to));
+    if (target === 'DRAFT') {
+      return createWorkingCopy(tx, actorId, course);
+    }
     const hierarchy = await loadHierarchy(tx, courseId);
     if (course.status === 'DRAFT' && target === 'PROCESSING') {
       validateDraftForProcessing(hierarchy);
@@ -77,6 +83,13 @@ export async function requestTransition(
       return updated;
     }
     validateReadyForPublish(hierarchy);
+    if (course.revisionOwnerId) {
+      try { return await publishWorkingCopy(tx, actorId, course); }
+      catch (error) {
+        if ((error as { code?: string }).code === 'P2002') throw new ApiError(409, 'SLUG_TAKEN', 'The draft slug was claimed by another course. Choose another slug.');
+        throw error;
+      }
+    }
     const updated = await tx.course.update({
       where: { id: courseId },
       data: { status: 'PUBLISHED', publishedAt: new Date() },

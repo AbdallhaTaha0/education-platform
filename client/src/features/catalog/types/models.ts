@@ -20,6 +20,8 @@ export interface PublicCourse {
 }
 
 export interface AdminCourseSummary {
+  revisionOwnerId?: string | null;
+  workingCopyId?: string | null;
   id: string;
   slug: string;
   titleAr: string;
@@ -74,7 +76,7 @@ export interface AdminCourseDetail extends AdminCourseSummary {
 }
 
 export interface LifecycleAction {
-  action: 'PROCESSING' | 'READY' | 'PUBLISHED' | 'ARCHIVE' | 'UNARCHIVE';
+  action: 'DRAFT' | 'PROCESSING' | 'READY' | 'PUBLISHED' | 'ARCHIVE' | 'UNARCHIVE';
   enabled: boolean;
   reason: string | null;
 }

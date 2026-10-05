@@ -1,0 +1,11 @@
+ALTER TABLE "Course" ADD COLUMN "revisionOwnerId" TEXT, ADD COLUMN "workingCopyId" TEXT, ADD COLUMN "requestedSlug" TEXT, ADD COLUMN "historical" BOOLEAN NOT NULL DEFAULT false;
+CREATE UNIQUE INDEX "Course_workingCopyId_key" ON "Course"("workingCopyId");
+CREATE INDEX "Course_revisionOwnerId_idx" ON "Course"("revisionOwnerId");
+ALTER TABLE "Course" ADD CONSTRAINT "Course_revisionOwnerId_fkey" FOREIGN KEY ("revisionOwnerId") REFERENCES "Course"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "CourseSection" ADD COLUMN "originId" TEXT;
+ALTER TABLE "Lesson" ADD COLUMN "originId" TEXT, ADD COLUMN "inheritedMediaId" TEXT;
+ALTER TABLE "Assessment" ADD COLUMN "originId" TEXT;
+ALTER TABLE "SubscriptionPlan" ADD COLUMN "originId" TEXT;
+ALTER TABLE "MediaMapping" ADD COLUMN "retiredAt" TIMESTAMP(3), ADD COLUMN "retirementOperationId" TEXT, ADD COLUMN "retirementNextAttempt" TIMESTAMP(3);
+CREATE INDEX "MediaMapping_retiredAt_retirementNextAttempt_idx" ON "MediaMapping"("retiredAt", "retirementNextAttempt");
+CREATE INDEX "PlaybackReference_externalAssetId_status_idx" ON "PlaybackReference"("externalAssetId", "status");

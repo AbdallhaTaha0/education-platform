@@ -1,5 +1,9 @@
 # Decision register
 
+## D16 follow-up — published-course return to draft (2026-10-05)
+
+The owner explicitly requested making a published course a draft to edit it. Permit ADMIN `PUBLISHED → DRAFT` through the existing locked/audited transition API and a clear confirmation. Preserve purchases, subscription expiry dates, learning progress, media references and first-publication evidence. Draft content follows the existing unpublished visibility rules; republishing retains the full processing/readiness validation. No other backward transition, subscription extension, new role, DRM maintenance or production authority is inferred. See [implementation and Docker evidence](published-course-return-to-draft-20261005.md).
+
 ## Later owner instruction — finish materials, push both, shut down (2026-10-04)
 
 The owner asked to finish the remaining integration, commit/push/report and shut down the laptop, then explicitly clarified "push both the drm and the platform". This authorizes delivery of the completed platform materials integration and existing bounded DRM recovery. It supersedes the earlier pending-material preservation/DRM no-push restriction for this delivery; no new nested DRM implementation or production permission is inferred. See [completed integration](course-materials-and-dual-repository-delivery-20261004.md).
@@ -235,3 +239,9 @@ Owner follow-up (2026-10-04): school-year choices and new/update API validation 
 ## Published-course lesson additions — 2026-10-05
 
 The owner answered **yes** to allowing ADMIN to add lessons to published courses. This supersedes the draft-only guard for appending lessons and their initial recorded-video upload workflow. Existing lessons and the course remain published while new media processes; student playback still requires READY media and the existing subscription/progression checks. Existing section editing, lesson renaming/reordering, media replacement, archive/deletion protections and PROCESSING/READY lifecycle guards retain their prior rules. No DRM internals, new schema, production deployment or commit/push is authorized by this clarification.
+
+## Published course working copies — 2026-10-05
+
+The owner's subsequent instruction supersedes the same-day in-place return-to-draft behavior: creating an editing draft must keep the last published version visible and usable until the replacement draft is published. Implement a hidden working copy and atomically apply its validated content to the canonical course, preserving public IDs, purchases, subscriptions and learning records. Root editing is blocked while its working copy exists so the live version cannot drift behind the draft.
+
+The owner explicitly chose **Require a replacement before publishing** after removing a draft lesson's video and **Yes, safely delete unused superseded videos**. Draft video removal leaves the lesson in place. Inherited live media stays intact until publication; superseded media is retired durably and deleted only through the external DRM API after references and active sessions no longer need it. These instructions authorize the bounded additive platform schema and local Docker upgrade; they do not authorize DRM source changes, production deployment, capacity certification, milestone acceptance or commit/push. See [implementation and evidence](published-course-working-copies-20261005.md).

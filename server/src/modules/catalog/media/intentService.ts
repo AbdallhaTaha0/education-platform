@@ -63,6 +63,7 @@ export async function registerLessonMedia(
       });
       if (lesson === null) throw new ApiError(404, 'NOT_FOUND', 'Lesson not found.');
       ensureLessonAdditionAllowed(lesson.section.course);
+      if (lesson.inheritedMediaId) throw new ApiError(409, 'MEDIA_EXISTS', 'Remove the inherited draft video before uploading a replacement.');
       if (
         lesson.media !== null &&
         lesson.media.assetId !== null &&

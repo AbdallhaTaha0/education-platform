@@ -1,0 +1,138 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import request from 'supertest';
+import { adminDelete, adminGet, adminPatch, adminPost, createCatalogWorld, createFullDraft, type CatalogWorld } from './catalog-helpers.js';
+import { reconcileRetiredMedia } from '../../src/modules/catalog/media/retirement.js';
+import type { DrmClient } from '../../src/modules/catalog/drmClient.js';
+
+let world: CatalogWorld;
+beforeAll(async () => { world = await createCatalogWorld(); });
+afterAll(async () => { await world.close(); });
+async function published(suffix: string) {
+  const ids = await createFullDraft(world, suffix);
+  await world.prisma.mediaMapping.create({ data: { lessonId: ids.lessonId, externalAssetId: `draft-${ids.lessonId}`, assetId: `draft-${ids.lessonId}`, idempotencyKey: ids.lessonId, status: 'READY' } });
+  for (const to of ['PROCESSING', 'READY', 'PUBLISHED']) expect((await adminPost(world.app, `/admin/catalog/courses/${ids.courseId}/transitions`, world.adminJar, { to })).status).toBe(200);
+  return ids;
+}
+describe('owner-approved published course return to draft', () => {
+  it('keeps access, edits a separate copy and publishes without altering purchases, expiry, progress or first publication', async () => {
+    const ids = await published('draft-return');
+    const before = await world.prisma.course.findUniqueOrThrow({ where: { id: ids.courseId } });
+    const purchase = await world.prisma.purchase.create({ data: { studentId: world.studentUser.id, planId: ids.planId, courseId: ids.courseId, pricePiastres: 60000, durationDays: 90, idempotencyKey: ids.courseId } });
+    const subscription = await world.prisma.subscription.create({ data: { studentId: world.studentUser.id, courseId: ids.courseId, purchaseId: purchase.id, startsAt: new Date(Date.now()-1000), expiresAt: new Date(Date.now()+86400000) } });
+    const progress = await world.prisma.lessonProgress.create({ data: { studentId: world.studentUser.id, courseId: ids.courseId, lessonId: ids.lessonId, positionSeconds: 25 } });
+    const media = await world.prisma.mediaMapping.findUniqueOrThrow({ where: { lessonId: ids.lessonId } });
+    expect((await adminGet(world.app, `/learning/courses/${ids.courseId}/outline`, world.studentJar)).status).toBe(200);
+    const result = await adminPost(world.app, `/admin/catalog/courses/${ids.courseId}/transitions`, world.adminJar, { to: 'DRAFT' });
+    expect(result.status).toBe(200); expect(result.body.data.course.status).toBe('DRAFT'); expect(result.body.data.course.publishedAt).toBeNull(); const draftId = result.body.data.course.id; const copy = await world.prisma.course.findUniqueOrThrow({ where: { id: draftId }, include: { sections: { include: { lessons: true } } } }); const sectionId = copy.sections[0]!.id; const lessonId = copy.sections[0]!.lessons[0]!.id;
+    expect((await request(world.app).get(`/catalog/courses/${before.slug}`)).status).toBe(200);
+    expect((await adminGet(world.app, `/learning/courses/${ids.courseId}/outline`, world.studentJar)).status).toBe(200);
+    expect((await adminPatch(world.app, `/admin/catalog/sections/${sectionId}`, world.adminJar, { titleAr: 'قسم معدل', titleEn: 'Edited section' })).status).toBe(200);
+    expect((await adminPatch(world.app, `/admin/catalog/lessons/${lessonId}`, world.adminJar, { titleAr: 'درس معدل', titleEn: 'Edited lesson' })).status).toBe(200);
+    expect((await adminPost(world.app, `/admin/catalog/courses/${ids.courseId}/transitions`, world.adminJar, { to: 'PUBLISHED' })).status).toBe(409);
+    for (const to of ['PROCESSING', 'READY', 'PUBLISHED']) expect((await adminPost(world.app, `/admin/catalog/courses/${draftId}/transitions`, world.adminJar, { to })).status).toBe(200);
+    expect((await adminGet(world.app, `/learning/courses/${ids.courseId}/outline`, world.studentJar)).status).toBe(200);
+    expect(await world.prisma.purchase.findUnique({ where: { id: purchase.id } })).toEqual(purchase);
+    expect(await world.prisma.subscription.findUnique({ where: { id: subscription.id } })).toEqual(subscription);
+    expect(await world.prisma.lessonProgress.findUnique({ where: { id: progress.id } })).toEqual(progress);
+    expect(await world.prisma.mediaMapping.findUnique({ where: { id: media.id } })).toEqual(media);
+    expect((await world.prisma.course.findUniqueOrThrow({ where: { id: ids.courseId } })).firstPublicationAt).toEqual(before.firstPublicationAt);
+    const events = await world.prisma.auditEvent.findMany({ where: { entityId: ids.courseId, action: 'COURSE_DRAFT_CREATED' } });
+    expect(events).toHaveLength(1); expect((await world.prisma.lesson.findUniqueOrThrow({where:{id:ids.lessonId}})).titleEn).toBe('Edited lesson');
+  });
+  it('rejects students and reuses one copy for concurrent editing requests', async () => {
+    const { courseId } = await published('draft-race');
+    const path = `/admin/catalog/courses/${courseId}/transitions`;
+    expect((await adminPost(world.app, path, world.studentJar, { to: 'DRAFT' })).status).toBe(403);
+    const outcomes = await Promise.all([adminPost(world.app, path, world.adminJar, { to: 'DRAFT' }), adminPost(world.app, path, world.adminJar, { to: 'DRAFT' })]);
+    expect(outcomes.map(o => o.status).sort()).toEqual([200,200]);
+    expect(outcomes[0]!.body.data.course.id).toBe(outcomes[1]!.body.data.course.id);
+  });
+  it('preserves archive and pending-deletion gates', async () => {
+    const { courseId } = await published('draft-gates');
+    const path = `/admin/catalog/courses/${courseId}/transitions`;
+    expect((await adminPost(world.app, `/admin/catalog/courses/${courseId}/archive`, world.adminJar)).status).toBe(200);
+    expect((await adminPost(world.app, path, world.adminJar, { to: 'DRAFT' })).body.error.code).toBe('COURSE_ARCHIVED');
+    expect((await adminPost(world.app, `/admin/catalog/courses/${courseId}/unarchive`, world.adminJar)).status).toBe(200);
+    await world.prisma.course.update({ where: { id: courseId }, data: { deletionRequestedAt: new Date() } });
+    expect((await adminPost(world.app, path, world.adminJar, { to: 'DRAFT' })).body.error.code).toBe('DELETION_PENDING');
+  });
+  it('keeps live price/content unchanged and blocks direct edits while the copy exists', async () => {
+    const ids = await published('copy-prices');
+    const result = await adminPost(world.app, `/admin/catalog/courses/${ids.courseId}/transitions`, world.adminJar, { to: 'DRAFT' });
+    const draftId = result.body.data.course.id as string;
+    const copy = (await adminGet(world.app, `/admin/catalog/courses/${draftId}`, world.adminJar)).body.data.course;
+    expect(copy.sections[0].lessons[0].media.status).toBe('READY');
+    expect((await adminPatch(world.app, `/admin/catalog/courses/${draftId}`, world.adminJar, { titleEn: 'Future title' })).status).toBe(200);
+    expect((await adminPatch(world.app, `/admin/catalog/plans/${copy.plans[0].id}`, world.adminJar, { currentPricePiastres: 50000 })).status).toBe(200);
+    expect((await world.prisma.subscriptionPlan.findUniqueOrThrow({ where: { id: ids.planId } })).currentPricePiastres).toBe(60000);
+    expect((await world.prisma.course.findUniqueOrThrow({ where: { id: ids.courseId } })).titleEn).toBe('Test course');
+    expect((await adminPatch(world.app, `/admin/catalog/courses/${ids.courseId}`, world.adminJar, { titleEn: 'Wrong target' })).status).toBe(409);
+    const list = (await adminGet(world.app, '/admin/catalog/courses', world.adminJar)).body.data.courses;
+    expect(list.some((c: { id: string }) => c.id === draftId)).toBe(false);
+    expect(list.find((c: { id: string }) => c.id === ids.courseId).workingCopyId).toBe(draftId);
+    for (const to of ['PROCESSING', 'READY', 'PUBLISHED']) expect((await adminPost(world.app, `/admin/catalog/courses/${draftId}/transitions`, world.adminJar, { to })).status).toBe(200);
+    expect((await world.prisma.subscriptionPlan.findUniqueOrThrow({ where: { id: ids.planId } })).currentPricePiastres).toBe(50000);
+  });
+  it('removes the inherited video only from the draft, blocks publication, then swaps and protects active playback', async () => {
+    const ids = await published('copy-video');
+    const old = await world.prisma.mediaMapping.findUniqueOrThrow({ where: { lessonId: ids.lessonId } });
+    const draftId = (await adminPost(world.app, `/admin/catalog/courses/${ids.courseId}/transitions`, world.adminJar, { to: 'DRAFT' })).body.data.course.id as string;
+    const copy = (await adminGet(world.app, `/admin/catalog/courses/${draftId}`, world.adminJar)).body.data.course;
+    const lessonId = copy.sections[0].lessons[0].id as string;
+    expect((await adminDelete(world.app, `/admin/catalog/lessons/${lessonId}/media`, world.studentJar)).status).toBe(403);
+    expect((await adminDelete(world.app, `/admin/catalog/lessons/${lessonId}/media`, world.adminJar)).status).toBe(200);
+    expect((await world.prisma.mediaMapping.findUniqueOrThrow({ where: { id: old.id } })).retiredAt).toBeNull();
+    expect((await adminPost(world.app, `/admin/catalog/courses/${draftId}/transitions`, world.adminJar, { to: 'PROCESSING' })).body.error.code).toBe('PUBLICATION_BLOCKED');
+    const replacement = await world.prisma.mediaMapping.create({ data: { lessonId, externalAssetId: `replacement-${lessonId}`, assetId: `replacement-${lessonId}`, idempotencyKey: lessonId, status: 'READY' } });
+    const session = await world.prisma.playbackReference.create({ data: { studentId: world.studentUser.id, lessonId: ids.lessonId, courseId: ids.courseId, externalAssetId: old.externalAssetId, externalSessionId: `session-${lessonId}`, provider: 'CLEARKEY', sessionExpiresAt: new Date(Date.now() + 3600000), tokenExpiresAt: new Date(Date.now() + 300000) } });
+    for (const to of ['PROCESSING', 'READY', 'PUBLISHED']) expect((await adminPost(world.app, `/admin/catalog/courses/${draftId}/transitions`, world.adminJar, { to })).status).toBe(200);
+    expect((await world.prisma.mediaMapping.findUniqueOrThrow({ where: { lessonId: ids.lessonId } })).id).toBe(replacement.id);
+    expect((await world.prisma.mediaMapping.findUniqueOrThrow({ where: { id: old.id } })).retiredAt).not.toBeNull();
+    let deletes = 0;
+    const drm = { deleteMedia: async () => { deletes++; return { deletionId: 'synthetic-deletion', status: 'PENDING' }; }, deletionStatus: async () => ({ status: 'COMPLETED' }), revokePlaybackSession: async () => ({ status: 'revoked' }) } as unknown as DrmClient;
+    await reconcileRetiredMedia(world.prisma, drm, world.redis);
+    expect(deletes).toBe(0);
+    await world.prisma.playbackReference.update({ where: { id: session.id }, data: { status: 'ENDED', endedAt: new Date(), terminationStatus: 'COMPLETED' } });
+    await world.prisma.mediaMapping.update({ where: { id: old.id }, data: { retirementNextAttempt: new Date(0) } });
+    await reconcileRetiredMedia(world.prisma, drm, world.redis);
+    expect(deletes).toBe(1);
+    expect(await world.prisma.mediaMapping.findUnique({ where: { id: old.id } })).toBeNull();
+    expect(await world.prisma.mediaMapping.findUnique({ where: { id: replacement.id } })).not.toBeNull();
+  });
+  it('preserves assessment passes when publishing updated copies and retains removed lessons privately', async () => {
+    const ids = await published('copy-pass');
+    const assessment = await world.prisma.assessment.create({ data: { lessonId: ids.lessonId, kind: 'QUIZ', status: 'PUBLISHED', required: true, version: 1, content: { title: 'old' } } });
+    await world.prisma.assessmentVersion.create({ data: { assessmentId: assessment.id, version: 1, content: { title: 'old' } } });
+    const pass = await world.prisma.assessmentPass.create({ data: { studentId: world.studentUser.id, assessmentId: assessment.id, passedVersion: 1 } });
+    const draftId = (await adminPost(world.app, `/admin/catalog/courses/${ids.courseId}/transitions`, world.adminJar, { to: 'DRAFT' })).body.data.course.id as string;
+    const a = await world.prisma.assessment.findFirstOrThrow({ where: { originId: assessment.id } });
+    await world.prisma.assessmentVersion.update({ where: { assessmentId_version: { assessmentId: a.id, version: 1 } }, data: { content: { title: 'new' } } });
+    for (const to of ['PROCESSING', 'READY', 'PUBLISHED']) expect((await adminPost(world.app, `/admin/catalog/courses/${draftId}/transitions`, world.adminJar, { to })).status).toBe(200);
+    expect(await world.prisma.assessmentPass.findUnique({ where: { studentId_assessmentId: { studentId: world.studentUser.id, assessmentId: assessment.id } } })).toEqual(pass);
+    expect((await world.prisma.assessment.findUniqueOrThrow({ where: { id: assessment.id } })).version).toBe(2);
+    const again = (await adminPost(world.app, `/admin/catalog/courses/${ids.courseId}/transitions`, world.adminJar, { to: 'DRAFT' })).body.data.course.id as string;
+    const section = await world.prisma.courseSection.findFirstOrThrow({ where: { courseId: again } });
+    // A different ready lesson permits publication after removing the original from the draft.
+    await world.prisma.lesson.deleteMany({ where: { sectionId: section.id } });
+    const added = await world.prisma.lesson.create({ data: { sectionId: section.id, titleAr: 'جديد', titleEn: 'New', position: 1 } });
+    await world.prisma.mediaMapping.create({ data: { lessonId: added.id, assetId: added.id, externalAssetId: added.id, idempotencyKey: added.id, status: 'READY' } });
+    for (const to of ['PROCESSING', 'READY', 'PUBLISHED']) expect((await adminPost(world.app, `/admin/catalog/courses/${again}/transitions`, world.adminJar, { to })).status).toBe(200);
+    expect(await world.prisma.lesson.findUnique({ where: { id: ids.lessonId } })).not.toBeNull();
+    expect(await world.prisma.assessmentPass.findUnique({ where: { studentId_assessmentId: { studentId: world.studentUser.id, assessmentId: assessment.id } } })).toEqual(pass);
+  });
+  it('rolls back publication conflicts completely and lets the admin retry the same draft', async () => {
+    const ids = await published('atomic-publish');
+    const before = await world.prisma.course.findUniqueOrThrow({ where: { id: ids.courseId } });
+    const draftId = (await adminPost(world.app, `/admin/catalog/courses/${ids.courseId}/transitions`, world.adminJar, { to: 'DRAFT' })).body.data.course.id as string;
+    expect((await adminPatch(world.app, `/admin/catalog/courses/${draftId}`, world.adminJar, { slug: 'claimed-after-drafting', titleEn: 'Pending title' })).status).toBe(200);
+    const competitor = await world.prisma.course.create({ data: { slug: 'claimed-after-drafting', titleAr: 'منافس', titleEn: 'Competitor', descriptionAr: 'وصف', descriptionEn: 'Description' } });
+    for (const to of ['PROCESSING', 'READY']) expect((await adminPost(world.app, `/admin/catalog/courses/${draftId}/transitions`, world.adminJar, { to })).status).toBe(200);
+    const conflict = await adminPost(world.app, `/admin/catalog/courses/${draftId}/transitions`, world.adminJar, { to: 'PUBLISHED' });
+    expect(conflict.status).toBe(409); expect(conflict.body.error.code).toBe('SLUG_TAKEN');
+    expect((await world.prisma.course.findUniqueOrThrow({ where: { id: ids.courseId } })).titleEn).toBe(before.titleEn);
+    expect((await world.prisma.lesson.findUniqueOrThrow({ where: { id: ids.lessonId } })).sectionId).toBe(ids.sectionId);
+    expect((await world.prisma.course.findUniqueOrThrow({ where: { id: draftId } })).status).toBe('READY');
+    await world.prisma.course.delete({ where: { id: competitor.id } });
+    expect((await adminPost(world.app, `/admin/catalog/courses/${draftId}/transitions`, world.adminJar, { to: 'PUBLISHED' })).status).toBe(200);
+  });
+});

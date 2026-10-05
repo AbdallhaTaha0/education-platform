@@ -39,10 +39,12 @@ export type MaterialState =
   | 'REMOVED';
 
 export interface AdminMaterialCaption extends MaterialCaption {
+  inherited?: boolean;
   state: MaterialState;
 }
 
 export interface AdminMaterialResource extends MaterialResource {
+  inherited?: boolean;
   state: MaterialState;
 }
 

@@ -9,6 +9,7 @@ import { getLogger } from '../../../logger.js';
 import { isDeletionLeaseOwner, withRenewingLease } from './lease.js';
 import { finalizeMediaBackedTarget } from './finalizer.js';
 import { assertUuid } from '../validation.js';
+import { reconcileRetiredMedia } from '../media/retirement.js';
 
 const DEFAULT_LEASE_TTL_MS = 30_000;
 
@@ -260,6 +261,7 @@ export function startDeletionReconciler(
     if (stopped) return;
     try {
       await reconcilePendingOperations(prisma, config, drmFactory, redis, 10);
+      await reconcileRetiredMedia(prisma, drmFactory(config), redis);
     } catch (err) {
       getLogger().warn({ err: (err as Error).message }, 'catalog deletion reconcile tick failed');
     } finally {

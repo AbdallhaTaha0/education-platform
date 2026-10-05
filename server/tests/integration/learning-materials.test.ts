@@ -6,6 +6,9 @@ import { TEST_ORIGIN, uniqueIp, registerStudent } from './identity-helpers.js';
 import { StorageClient } from '../../src/infra/storage.js';
 import { reconcileMaterialObjects, uploadResource, uploadCaptionPair, type MaterialsDeps } from '../../src/modules/learning/materials/service.js';
 import { lockCourseRow } from '../../src/modules/catalog/locks.js';
+import { createWorkingCopy, publishWorkingCopy } from '../../src/modules/catalog/courses/revisions.js';
+import { withCourseLock } from '../../src/modules/catalog/courseTx.js';
+import { getAdminMaterials } from '../../src/modules/learning/materials/service.js';
 let world: LearningWorld;
 let course: Awaited<ReturnType<typeof createPublishedCourse>>;
 let storage: StorageClient, deps: MaterialsDeps;
@@ -223,5 +226,30 @@ describe('real material contract', () => {
     const unsigned = await fetch(`${process.env.STORAGE_ENDPOINT}/${process.env.STORAGE_BUCKET}/${caption.storageKey}`); expect(unsigned.status).toBe(403);
     const wrong = new StorageClient({ endpoint: process.env.STORAGE_ENDPOINT!, region: 'us-east-1', bucket: process.env.STORAGE_BUCKET!, accessKeyId: process.env.STORAGE_ACCESS_KEY_ID!, secretAccessKey: 'wrong-secret', forcePathStyle: true, timeoutMs: 2000, maxRetries: 0 });
     await expect(wrong.getObject(caption.storageKey)).rejects.toBeDefined();
+  });
+  it('keeps live materials intact during draft editing and merges replacements only on publication', async () => {
+    const c = await createPublishedCourse(world, 'materials-working-copy');
+    const captionInput = (language: 'ar' | 'en', bytes: Buffer) => ({ language, content: bytes, labelAr: 'ترجمة', labelEn: 'Caption' });
+    await uploadCaptionPair(deps, c.lessonId, captionInput('ar', vtt), captionInput('en', english), world.adminUser.id);
+    const resource = await uploadResource(deps, c.lessonId, { labelAr: 'ملف', labelEn: 'File', fileName: 'original.txt', mimeType: 'text/plain', content: Buffer.from('original') }, world.adminUser.id);
+    const original = await getAdminMaterials(deps, c.lessonId);
+    const copy = await withCourseLock(world.prisma, c.courseId, async tx => createWorkingCopy(tx, world.adminUser.id, await tx.course.findUniqueOrThrow({ where: { id: c.courseId } })));
+    const lesson = await world.prisma.lesson.findFirstOrThrow({ where: { originId: c.lessonId, section: { courseId: copy.id } } });
+    const inherited = await getAdminMaterials(deps, lesson.id);
+    expect(inherited.captions.map(x => x.id)).toEqual(original.captions.map(x => x.id));
+    expect(inherited.captions.every(x => x.inherited)).toBe(true);
+    expect(inherited.resources.find(x => x.id === resource.id)?.inherited).toBe(true);
+    const replacement = Buffer.from('WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nReplacement\n');
+    await uploadCaptionPair(deps, lesson.id, captionInput('ar', replacement), captionInput('en', replacement), world.adminUser.id);
+    await uploadResource(deps, lesson.id, { labelAr: 'جديد', labelEn: 'New', fileName: 'added.txt', mimeType: 'text/plain', content: Buffer.from('added') }, world.adminUser.id);
+    expect(await getAdminMaterials(deps, c.lessonId)).toEqual(original);
+    await withCourseLock(world.prisma, copy.id, async tx => publishWorkingCopy(tx, world.adminUser.id, await tx.course.findUniqueOrThrow({ where: { id: copy.id } })));
+    const published = await getAdminMaterials(deps, c.lessonId);
+    expect(published.captions).toHaveLength(2);
+    expect(published.resources.map(x => x.fileName).sort()).toEqual(['added.txt', 'original.txt']);
+    for (const caption of await world.prisma.lessonCaption.findMany({ where: { lessonId: c.lessonId } })) {
+      expect(Buffer.from((await storage.getObject(caption.storageKey)).body)).toEqual(replacement);
+    }
+    expect(await world.prisma.materialObject.count({ where: { storageKey: { in: original.captions.map(x => `captions/${c.lessonId}/${x.id}`) }, state: 'DELETE' } })).toBe(2);
   });
 });

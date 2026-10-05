@@ -5,7 +5,7 @@ import { checkContainerIdentity, checkContainerMounts, checkNetworkMembers, chec
 const root = resolve(import.meta.dirname, '../..'), docker = process.env.DOCKER_EXE || 'docker';
 const project = 'fayq-course-learning-backend-final-20261004';
 const compose = ['compose', '-p', project, '-f', 'docker/course-learning-backend/compose.test.yml'];
-const SERVER = 'fayq-materials-final-server-test:20261004';
+const SERVER = process.argv.includes('--course-revisions') ? 'fayq-ide-modes-server:test' : 'fayq-materials-final-server-test:20261004';
 function sh(args, opts = {}) {
   const r = spawnSync(docker, args, { cwd: root, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024, ...opts });
   return r;
@@ -187,11 +187,13 @@ function cleanupProject(composeArgs, proj, { flowScriptHostPath, evidenceHostPat
 
 
 const env = ['-e','NODE_ENV=test','-e','DATABASE_URL=postgresql://materials:synthetic_materials_test_only@postgres:5432/course_learning_test','-e','REDIS_URL=redis://redis:6379','-e','AUTH_JWT_SECRET=materials-test-jwt-secret-012345678901234567890','-e','AUTH_ISSUER=materials-test','-e','AUTH_AUDIENCE=materials-browser','-e','ALLOWED_ORIGINS=http://localhost:8080','-e','COOKIE_SECURE=false','-e','ARGON2_MEMORY_KB=8192','-e','ARGON2_TIME_COST=2','-e','ARGON2_PARALLELISM=1','-e','LOG_LEVEL=error','-e','STORAGE_ENDPOINT=http://minio:9000','-e','STORAGE_REGION=us-east-1','-e','STORAGE_ACCESS_KEY_ID=materials-test','-e','STORAGE_SECRET_ACCESS_KEY=synthetic_materials_storage_only','-e','STORAGE_BUCKET=course-learning','-e','STORAGE_REQUEST_TIMEOUT_MS=2000','-e','STORAGE_MAX_RETRIES=1'];
+env.push('-e','STUDENT_DATA_ENCRYPTION_KEY_B64=YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=','-e','STUDENT_DATA_INDEX_KEY_B64=YmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmI=');
 const run = args => must(['run','--rm','--label',`com.docker.compose.project=${project}`,'--network',`${project}_default`,...env,SERVER,...args], args.join(' '));
 let failure;
 try {
   if (process.argv.includes('--cleanup')) { cleanupProject(compose, project); process.exit(0); }
   must([...compose, 'up','-d','--wait'], 'start isolated fixtures');
+  if (!process.argv.includes('--course-revisions')) {
   // Upgrade a populated accepted pre-materials schema before testing a fresh DB.
   must([...compose, 'exec','-T','postgres','psql','-U','materials','-d','course_learning_test','-c','CREATE DATABASE materials_upgrade_test'], 'create upgrade fixture');
   const upgradeEnv = ['-e','DATABASE_URL=postgresql://materials:synthetic_materials_test_only@postgres:5432/materials_upgrade_test'];
@@ -207,6 +209,7 @@ try {
   job(SERVER, ['npx','prisma','migrate','deploy']);
   if (before !== fingerprint()) throw Error('Populated migration changed retained fixture data');
   console.log('Populated migration/repeat gate passed; existing string IDs and rows preserved.');
+  }
   run(['npx','prisma','migrate','deploy']);
   run(['npx','prisma','migrate','deploy']);
   run(['npm','run','typecheck']);

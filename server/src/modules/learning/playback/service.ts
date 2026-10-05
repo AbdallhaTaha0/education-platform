@@ -63,7 +63,13 @@ export async function createPlaybackSession(
     deps.drmPublicBaseUrl,
   );
 
-  const record = await deps.prisma.playbackReference.create({
+  const record = await deps.prisma.$transaction(async tx => {
+    // Publication/retirement locks the same mapping. A stale in-flight grant must
+    // not appear after cleanup has determined that all existing sessions ended.
+    await tx.$queryRaw`SELECT id FROM "MediaMapping" WHERE "externalAssetId"=${input.binding.externalAssetId} FOR UPDATE`;
+    const media = await tx.mediaMapping.findUnique({ where: { externalAssetId: input.binding.externalAssetId } });
+    if (!media || media.retiredAt) throw new LearningError('MEDIA_NOT_READY');
+    return tx.playbackReference.create({
     data: {
       studentId: input.binding.studentId,
       lessonId: input.binding.lessonId,
@@ -76,6 +82,12 @@ export async function createPlaybackSession(
       sessionExpiresAt: new Date(session.sessionExpiresAt),
     },
     select: { id: true },
+    });
+  }).catch(async error => {
+    // A newly created external session was never handed to the student.
+    // Fail closed if publication won the race; cleanup can safely revoke it.
+    await deps.drm.revokePlaybackSession(session.playbackSessionId, 'STALE_COURSE_VERSION').catch(() => undefined);
+    throw error;
   });
 
   return {

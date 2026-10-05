@@ -27,7 +27,7 @@ try{
     pass(`preserved destination ${hash}`,await admin.$$eval('[data-testid=admin-section-links] a',links=>links.some(a=>a.getAttribute('aria-current')==='page')));
   }
   await route(admin,`#/admin/courses/${fixture.courseId}`);await admin.waitForSelector('[data-testid=course-workspace-tabs]');
-  pass('course editing has four named tabs and matching panels',await admin.evaluate(()=>document.querySelectorAll('[data-testid=course-workspace-tabs] [role=tab]').length===4&&[...document.querySelectorAll('[data-testid=course-workspace-tabs] [role=tab]')].every(tab=>document.getElementById(tab.getAttribute('aria-controls')))));
+  pass('course editing has five named tabs and matching panels',await admin.evaluate(()=>document.querySelectorAll('[data-testid=course-workspace-tabs] [role=tab]').length===5&&[...document.querySelectorAll('[data-testid=course-workspace-tabs] [role=tab]')].every(tab=>document.getElementById(tab.getAttribute('aria-controls')))));
   await admin.click('#course-workspace-tab-details');await admin.waitForSelector('#cf-ta');await text(admin,'#cf-ta','Unsaved synthetic course title');
   admin.once('dialog',d=>d.dismiss());await admin.click('#course-workspace-tab-access');
   pass('cancelled course tab change retains unsaved details',await admin.$eval('#cf-ta',e=>e.value==='Unsaved synthetic course title'));

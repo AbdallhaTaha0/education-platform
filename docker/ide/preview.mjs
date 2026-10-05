@@ -29,8 +29,10 @@ function guard() {
     }
   }
 }
-const tables = ['User', 'Wallet', 'Purchase', 'Subscription', 'Course', 'CourseSection', 'Lesson', 'MediaMapping'];
-const sql = tables.map((t) => `SELECT '${t}', count(*), md5(coalesce(string_agg(row_to_json(t)::text, ',' ORDER BY id),'')) FROM "${t}" t`).join(' UNION ALL ');
+const courseRevisions = process.argv.includes('--course-revisions');
+const tables = ['User', 'Wallet', 'Purchase', 'Subscription', 'Course', 'CourseSection', 'Lesson', 'MediaMapping', ...(courseRevisions ? ['SubscriptionPlan', 'Assessment', 'AssessmentVersion', 'AssessmentPass', 'LessonProgress', 'PlaybackReference', 'PreservedLessonUnlock', 'LessonCaption', 'LessonResource', 'MaterialObject'] : [])];
+const row = courseRevisions ? `(to_jsonb(t) - ARRAY['revisionOwnerId','workingCopyId','requestedSlug','historical','originId','inheritedMediaId','retiredAt','retirementOperationId','retirementNextAttempt'])::text` : 'row_to_json(t)::text';
+const sql = tables.map((t) => `SELECT '${t}', count(*), md5(coalesce(string_agg(${row}, ',' ORDER BY ${courseRevisions ? row : 'id'}),'')) FROM "${t}" t`).join(' UNION ALL ');
 function snapshot() {
   return capture([...args, 'exec', '-T', 'postgres', 'sh', '-c', 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -c "$1"', 'sh', sql]);
 }
@@ -41,14 +43,14 @@ if (command === 'upgrade') {
   if (spawnSync('git', ['check-ignore', '--quiet', 'docker/browser/evidence/m9/preview-backup.dump'], { cwd: root }).status !== 0) throw new Error('Backup ignore guard refused.');
   let servingStopped = false;
   try {
-    action(['stop', 'server']); servingStopped = true;
+    action(['stop', 'server', ...(courseRevisions ? ['grading'] : [])]); servingStopped = true;
     const before = snapshot();
     const installed = capture([...args, 'exec', '-T', 'postgres', 'sh', '-c', 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -c "$1"', 'sh', 'SELECT count(*) FROM "_prisma_migrations" WHERE migration_name=\'20261001210000_m9_assessments\' AND finished_at IS NOT NULL']).trim() === '1';
     const reachSQL = 'SELECT count(*) FROM (SELECT "studentId","lessonId" FROM "LessonProgress" UNION SELECT "studentId","lessonId" FROM "PlaybackReference") old LEFT JOIN "PreservedLessonUnlock" p USING ("studentId","lessonId") WHERE p."studentId" IS NULL';
     const unmatchedBefore = installed ? capture([...args, 'exec', '-T', 'postgres', 'sh', '-c', 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -c "$1"', 'sh', reachSQL]).trim() : '0';
     const dump = capture([...args, 'exec', '-T', 'postgres', 'sh', '-c', 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc'], null);
     if (!Buffer.isBuffer(dump) || dump.length < 100 || dump.subarray(0, 5).toString() !== 'PGDMP') throw new Error('Backup proof failed.');
-    const file = join(dir, `preview-before-m9-${Date.now()}.dump`);
+    const file = join(dir, `preview-before-${courseRevisions ? 'course-revisions' : 'm9'}-${Date.now()}.dump`);
     const fd = openSync(file, 'wx', 0o600); try { writeFileSync(fd, dump); } finally { closeSync(fd); }
     console.log('Protected database backup created=true');
     action(['run', '--rm', '--no-deps', 'migrate']);
@@ -61,8 +63,8 @@ if (command === 'upgrade') {
     // Static upstream DNS is resolved at Nginx startup. Application image
     // replacement may change addresses even though the edge image is unchanged.
     action(['up', '-d', '--wait', '--no-deps', '--force-recreate', 'nginx']); servingStopped = false;
-    writeFileSync(join(dir, 'preview-upgrade.json'), JSON.stringify({ version: '0.9.0-m9', dataPreserved: true, reachedPreserved: true, backup: file.split(/[\\/]/).pop(), time: new Date().toISOString() }), { mode: 0o600 });
-    console.log('M9 preview ready: http://localhost:8080; DRM unchanged');
+    writeFileSync(join(dir, courseRevisions ? 'preview-course-revisions-upgrade.json' : 'preview-upgrade.json'), JSON.stringify({ version: courseRevisions ? 'course-revisions-20261005' : '0.9.0-m9', dataPreserved: true, reachedPreserved: true, fingerprintedTables: tables.length, backup: file.split(/[\\/]/).pop(), time: new Date().toISOString() }), { mode: 0o600 });
+    console.log(`${courseRevisions ? 'Course revisions' : 'M9'} preview ready: http://localhost:8080; DRM unchanged`);
   } catch (error) {
     if (servingStopped) console.error('Preview readiness needs recovery; retained volumes and backup are preserved. Follow the M9 rollback runbook.');
     throw error;

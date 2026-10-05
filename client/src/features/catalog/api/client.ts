@@ -81,12 +81,17 @@ export async function fetchLifecycleActions(courseId: string): Promise<Lifecycle
   return body.data.actions;
 }
 
-export async function transitionCourse(courseId: string, to: string): Promise<void> {
-  await apiFetch(`/admin/catalog/courses/${courseId}/transitions`, {
+export async function transitionCourse(courseId: string, to: string): Promise<{ id: string }> {
+  const result = await apiFetch<{ data: { course: { id: string } } }>(`/admin/catalog/courses/${courseId}/transitions`, {
     method: 'POST',
     retryOnAuth: false,
     body: { to },
   });
+  return result.data.course;
+}
+
+export async function removeLessonVideo(lessonId: string): Promise<void> {
+  await apiFetch(`/admin/catalog/lessons/${lessonId}/media`, { method: 'DELETE', retryOnAuth: false });
 }
 
 export async function archiveCourse(courseId: string): Promise<void> {

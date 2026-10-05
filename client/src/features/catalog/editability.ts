@@ -7,6 +7,7 @@ export function structuralBlockCode(course: Pick<AdminCourseSummary, 'status' | 
   return course.status === 'DRAFT' ? null : 'COURSE_NOT_DRAFT';
 }
 
-export function lessonAdditionBlockCode(course: Pick<AdminCourseSummary, 'status' | 'deletionRequestedAt'>): string | null {
+export function lessonAdditionBlockCode(course: Pick<AdminCourseSummary, 'status' | 'deletionRequestedAt' | 'workingCopyId'>): string | null {
+  if (course.workingCopyId) return 'COURSE_NOT_DRAFT';
   return course.status === 'PUBLISHED' && course.deletionRequestedAt === null ? null : structuralBlockCode(course);
 }

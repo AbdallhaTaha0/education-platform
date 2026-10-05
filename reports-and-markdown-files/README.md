@@ -1,5 +1,13 @@
 # Education platform documentation
 
+Published-course working copies (2026-10-05): [keep the live course available while editing, replace/remove draft videos, and retire unused videos safely](published-course-working-copies-20261005.md). Fresh isolated Docker verification: 187 catalog/learning checks, 45 browser checks, and a separate 271-unit/76-materials-playback check suite pass. Port 8080 updated with a protected backup; all 18 retained data fingerprints preserved.
+
+Historical same-day predecessor: [in-place return to draft](published-course-return-to-draft-20261005.md), superseded by the working-copy requirement above.
+
+ADMIN course workspaces (2026-10-05): [searchable course tabs, focused section/lesson editors and a dedicated assessment area](admin-course-workspaces-20261005.md). 91 browser checks, 61 catalog integration tests, 173 frontend tests and two DASH checks pass. Local frontend updated on port 8080; data services and DRM preserved.
+
+Latest phone-watermark review (2026-10-05): [independent f5cf038 review and fresh Docker evidence](f5cf038-independent-review-20261005.md). 173 frontend tests, two DASH checks and 20 browser checks pass; the retained frontend predated that commit at review time and was subsequently refreshed with the course-workspace delivery above.
+
 Assessment video return (2026-10-05): [automatic return to the originating lesson after a correct result](assessment-video-return-20261005.md). Thirteen Docker browser checks pass, including saved-position playback and browser autoplay refusal recovery.
 
 Assessment save validation (2026-10-05): [clear Required/Optional choices and localized inline save feedback](assessment-save-validation-20261005.md). Eleven real-browser checks pass, including successful saves of both choices; explicit ADMIN policy selection preserved.

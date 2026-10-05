@@ -15,13 +15,14 @@ const syntaxOnly=process.argv.includes('--syntax-only');
 const studentOnly=process.argv.includes('--student-only');
 const progressOnly=process.argv.includes('--progress-only');
 const adminTabsOnly=process.argv.includes('--admin-tabs-only');
+const courseWorkspaceOnly=process.argv.includes('--course-workspace-only');
 const catalogOnly=process.argv.includes('--catalog-only');
 const assessmentSaveOnly=process.argv.includes('--assessment-save-only');
 const assessmentReturnOnly=process.argv.includes('--assessment-return-only');
 const walletBrowserOnly=process.argv.includes('--wallet-browser-only');
 const paginationOnly=process.argv.includes('--pagination-only');
 const walletOnly=process.argv.includes('--wallet-only')||walletBrowserOnly||paginationOnly;
-const editorOnly=process.argv.includes('--editor-only')||formatOnly||previewOnly||syntaxOnly||studentOnly||progressOnly||walletOnly||adminTabsOnly||catalogOnly||assessmentSaveOnly||assessmentReturnOnly;
+const editorOnly=process.argv.includes('--editor-only')||formatOnly||previewOnly||syntaxOnly||studentOnly||progressOnly||walletOnly||adminTabsOnly||courseWorkspaceOnly||catalogOnly||assessmentSaveOnly||assessmentReturnOnly;
 function capture(args,input){const r=spawnSync(docker,args,{cwd:root,input,encoding:'utf8',maxBuffer:8*1024*1024});if(r.status!==0)throw Error('Verification inspection/action failed');return r.stdout;}
 function guard(){
  const c=JSON.parse(capture([...prefix,'config','--format','json']));
@@ -43,7 +44,7 @@ else{
  let failed=false;
  try{
   run('migrations',[...prefix,'up','-d','--wait','migrate','redis']);
-  if(catalogOnly&&!process.argv.includes('--browser-only'))run('catalog-integration',[...prefix,'run','--rm','--no-deps','identity-test','npx','vitest','run','tests/integration/catalog-']);
+  if(catalogOnly&&!process.argv.includes('--browser-only'))run('catalog-integration',[...prefix,'run','--rm','--no-deps','identity-test','npx','vitest','run','tests/integration/catalog-','tests/integration/learning-playback.test.ts','tests/integration/learning-entitlement.test.ts','tests/integration/learning-corrections.test.ts','tests/integration/m8-indefinite-learning.test.ts','tests/unit/catalog-validation.test.ts','tests/unit/learning-playback.test.ts','tests/unit/learning-progress.test.ts']);
   if(paginationOnly&&!process.argv.includes('--browser-only'))run('pagination-integration',[...prefix,'run','--rm','--no-deps','identity-test','npx','vitest','run','tests/integration/list-pagination.test.ts']);
   if(walletOnly&&!walletBrowserOnly&&!process.argv.includes('--browser-only'))run('wallet-integration',[...prefix,'run','--rm','--no-deps','identity-test','npx','vitest','run','tests/integration/wallet-payment-qr.test.ts','tests/integration/wallet-payment-settings.test.ts','tests/integration/wallet-vodafone-settings.test.ts','tests/integration/wallet-recharge.test.ts','tests/integration/wallet-review.test.ts','tests/integration/wallet-integrity.test.ts','tests/integration/wallet-purchase.test.ts','tests/integration/wallet-proof-cleanup.test.ts']);
   if(studentOnly&&!process.argv.includes('--browser-only'))run('student-integration',[...prefix,'run','--rm','--no-deps','identity-test','npx','vitest','run','tests/integration/student-profile.test.ts','tests/integration/identity-auth.test.ts','tests/integration/identity-session.test.ts','tests/integration/identity-security.test.ts','tests/integration/identity-redis.test.ts']);
@@ -51,8 +52,9 @@ else{
   run('browser-stack',[...prefix,'up','-d','--wait','nginx',...(!editorOnly?['grading']:[])]);
   const fixtures=JSON.parse(capture([...prefix,'exec','-T','server','node','-'],readFileSync(join(root,'docker/ide/modes-fixtures.cjs'))));
   writeFileSync(join(dir,'fixtures.json'),JSON.stringify(fixtures),{mode:0o600});
+  if(courseWorkspaceOnly){const extra=JSON.parse(capture([...prefix,'exec','-T','server','node','-'],readFileSync(join(root,'docker/ide/course-workspace-fixtures.cjs'))));writeFileSync(join(dir,'fixtures.json'),JSON.stringify({...fixtures,...extra}),{mode:0o600});}
   if(paginationOnly)capture([...prefix,'exec','-T','server','node','-'],readFileSync(join(root,'docker/ide/pagination-fixtures.cjs')));
-  for(const name of assessmentReturnOnly?['assessment-return-flow']:assessmentSaveOnly?['assessment-save-flow']:catalogOnly?['catalog-editor-flow']:paginationOnly?['pagination-flow']:adminTabsOnly?['admin-dashboard-flow']:walletOnly?['wallet-flow']:progressOnly?['progress-flow']:studentOnly?['student-profile-flow']:syntaxOnly?['syntax-theme-flow']:previewOnly?['web-preview-flow']:formatOnly?['python-format-flow']:editorOnly?['editor-keyboard-flow']:['modes-flow','modes-admin-flow'])run(name,['run','--rm','--name',`${project}-${name}`,'--label',`com.docker.compose.project=${project}`,'--network',`${project}_default`,'--mount',`type=bind,source=${join(root,`docker/ide/${name}.mjs`)},target=/srv/browser/${name}.mjs,readonly`,'--mount',`type=bind,source=${dir},target=/evidence`,'fayq-m9-browser:0.9.0','node',`${name}.mjs`]);
+  for(const name of courseWorkspaceOnly?['course-workspace-flow','admin-dashboard-flow','assessment-save-flow']:assessmentReturnOnly?['assessment-return-flow']:assessmentSaveOnly?['assessment-save-flow']:catalogOnly?['catalog-editor-flow']:paginationOnly?['pagination-flow']:adminTabsOnly?['admin-dashboard-flow']:walletOnly?['wallet-flow']:progressOnly?['progress-flow']:studentOnly?['student-profile-flow']:syntaxOnly?['syntax-theme-flow']:previewOnly?['web-preview-flow']:formatOnly?['python-format-flow']:editorOnly?['editor-keyboard-flow']:['modes-flow','modes-admin-flow'])run(name,['run','--rm','--name',`${project}-${name}`,'--label',`com.docker.compose.project=${project}`,'--network',`${project}_default`,'--mount',`type=bind,source=${join(root,`docker/ide/${name}.mjs`)},target=/srv/browser/${name}.mjs,readonly`,'--mount',`type=bind,source=${dir},target=/evidence`,'fayq-m9-browser:0.9.0','node',`${name}.mjs`]);
  }catch(e){failed=true;console.error(e.message);}
  finally{try{guard();run('cleanup',[...prefix,'down','-v']);}catch(e){failed=true;console.error(e.message);}}
  if(failed)process.exitCode=1;

@@ -5,6 +5,7 @@ import { withCourseLock } from '../courseTx.js';
 import { nonBlankString, rejectUnknownFields, validateSlug, assertUuid } from '../validation.js';
 import type { PublicCourse } from '../types.js';
 import { academicPlacement, type AcademicPlacement } from '../academic.js';
+import { effectiveHierarchy } from './revisions.js';
 
 const CREATE_FIELDS = new Set([
   'slug',
@@ -129,6 +130,7 @@ export async function getPublishedCourseBySlug(
 
 export async function listCoursesAdmin(prisma: PrismaClient) {
   return prisma.course.findMany({
+    where: { revisionOwnerId: null },
     orderBy: { createdAt: 'desc' },
     include: { plans: true, _count: { select: { sections: true } } },
   });
@@ -147,13 +149,15 @@ export async function getCourseAdmin(prisma: PrismaClient, courseId: string) {
     },
   });
   if (course === null) throw new ApiError(404, 'NOT_FOUND', 'Course not found.');
-  return course;
+  if (course.historical) throw new ApiError(404, 'NOT_FOUND', 'Course not found.');
+  return effectiveHierarchy(prisma, courseId);
 }
 
 export function ensureMutable(
-  course: { status: string; deletionRequestedAt: Date | null },
+  course: { status: string; deletionRequestedAt: Date | null; workingCopyId?: string | null; historical?: boolean },
   op: string,
 ): void {
+  if (course.workingCopyId || course.historical) throw new ApiError(409, 'COURSE_NOT_DRAFT', 'Open the working draft to edit this course.');
   if (course.deletionRequestedAt !== null) {
     throw new ApiError(409, 'DELETION_PENDING', `${op} is blocked while deletion is pending.`);
   }
@@ -267,7 +271,11 @@ export async function updateCourse(
       }
     }
     try {
-      const updated = await tx.course.update({ where: { id: courseId }, data });
+      if (data.slug && course.revisionOwnerId) {
+        const taken = await tx.course.findUnique({ where: { slug: data.slug } });
+        if (taken && taken.id !== course.revisionOwnerId) throw new ApiError(409, 'SLUG_TAKEN', 'Slug is already taken.');
+      }
+      const updated = await tx.course.update({ where: { id: courseId }, data: course.revisionOwnerId && data.slug ? { ...data, slug: course.slug, requestedSlug: data.slug } : data });
       await audit(tx, {
         actorUserId: actorId,
         action: 'COURSE_UPDATED',

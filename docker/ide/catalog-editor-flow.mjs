@@ -11,7 +11,7 @@ let checks = 0; const errors = [];
 const pass = (name, ok = true) => { assert(ok, name); checks++; console.log(`PASS ${name}`); };
 async function route(p, hash) { await p.goto('http://localhost:8080/' + hash, { waitUntil: 'networkidle2' }); }
 async function tab(p, name) { const selector=`#course-workspace-tab-${name}`; await p.waitForFunction(selector=>document.querySelector(selector)&&!document.querySelector(selector).disabled,{},selector); await p.$eval(selector,e=>e.scrollIntoView({block:'center'})); await p.click(selector); await p.waitForSelector(`${selector}[aria-selected=true]`); }
-async function text(p, selector, value) { await p.waitForFunction(selector=>document.querySelector(selector)&&!document.querySelector(selector).disabled,{},selector); await p.$eval(selector, e => { e.scrollIntoView({ block: 'center' }); e.focus(); e.select(); }); await p.keyboard.press('Backspace'); await p.type(selector, value); }
+async function text(p, selector, value) { await p.evaluate(selector=>{const d=document.querySelector(selector)?.closest("details");if(d&&!d.open)d.querySelector("summary").click();},selector); await p.waitForFunction(selector=>document.querySelector(selector)&&!document.querySelector(selector).disabled,{},selector); await p.$eval(selector, e => { e.scrollIntoView({ block: 'center' }); e.focus(); e.select(); }); await p.keyboard.press('Backspace'); await p.type(selector, value); }
 async function button(p, scope, label) { const selector = await p.evaluate(({scope,label}) => {
   const root = document.querySelector(scope); const buttons = [...root.querySelectorAll('button')];
   const target = buttons.find(b => b.querySelector('span')?.textContent.trim() === label || b.textContent.trim() === label);
@@ -29,12 +29,41 @@ try {
   await p.evaluateOnNewDocument(()=>{if(window===window.top)localStorage.setItem('edu-platform-lang','en');});
   await route(p,'#/login'); await p.type('#login-id','modes-admin@example.test'); await p.type('#login-password','synthetic modes password only'); await p.click('form button[type=submit]'); await p.waitForFunction(()=>location.hash==='#/account');
   await route(p,`#/admin/courses/${fixture.courseId}`); await p.waitForSelector(`[id="les-ta-${(await course(p,fixture.courseId)).sections[0].id}"]`);
+  await tab(p,'publish'); await p.waitForFunction(()=>document.querySelector('[data-testid=return-course-to-draft]')?.disabled===false);
+  await p.$eval('[data-testid=return-course-to-draft]',e=>e.scrollIntoView({block:'center'})); await p.click('[data-testid=return-course-to-draft]'); await p.waitForSelector('[role=dialog]');
+  pass('editing confirmation explains preserved live access',await p.$eval('[role=dialog]',e=>e.textContent.includes('Students keep the current published version')&&e.textContent.includes('subscriptions and progress remain unchanged')));
+  await button(p,'[role=dialog]','Cancel'); pass('canceling draft return leaves the course published',(await course(p,fixture.courseId)).status==='PUBLISHED');
+  await p.click('[data-testid=return-course-to-draft]'); const draftReturn=p.waitForResponse(r=>r.url().endsWith(`/courses/${fixture.courseId}/transitions`)&&r.request().method()==='POST'); await button(p,'[role=dialog]','Open editing draft'); const copyResponse=await draftReturn; assert.equal(copyResponse.status(),200); const editingId=(await copyResponse.json()).data.course.id; await p.waitForFunction(id=>location.hash===`#/admin/courses/${id}`,{},editingId); const editingLessonId=(await course(p,editingId)).sections[0].lessons[0].id;
+  await p.waitForFunction(()=>!document.querySelector('[role=dialog]')); await tab(p,'outline');
+  pass('return to draft enables existing section and lesson editing',await p.$eval('[data-testid=selected-lesson-editor]',e=>[...e.querySelectorAll('button')].some(b=>b.querySelector('span')?.textContent==='Edit'&&!b.disabled)));
+  await button(p,'[data-testid=selected-lesson-editor]','Edit'); await text(p,'[data-testid=selected-lesson-editor] form input[dir=ltr]','Edited before republishing');
+  const edited=p.waitForResponse(r=>r.url().endsWith(`/lessons/${editingLessonId}`)&&r.request().method()==='PATCH'); await button(p,'[data-testid=selected-lesson-editor] form','Save'); assert.equal((await edited).status(),200);
+  await p.waitForFunction(()=>!document.querySelector('[data-testid=selected-lesson-editor] form input[dir=ltr]')); pass('existing lesson edit saves after publication is returned to draft');
+  await tab(p,'publish');
+  for(const label of ['Start processing','Check video readiness','Publish course']){await p.waitForFunction(label=>[...document.querySelectorAll('#course-workspace-panel-publish button')].some(b=>b.querySelector('span')?.textContent.trim()===label&&!b.disabled),{},label);const response=p.waitForResponse(r=>r.url().endsWith(`/courses/${editingId}/transitions`)&&r.request().method()==='POST');await button(p,'#course-workspace-panel-publish',label);assert.equal((await response).status(),200);}
+  await p.waitForFunction(id=>location.hash===`#/admin/courses/${id}`,{},fixture.courseId); await p.waitForSelector('h1');
+  pass('edited course republishes through the full validated lifecycle',(await course(p,fixture.courseId)).status==='PUBLISHED');
+  const removableCopy = await api(p,`/admin/catalog/courses/${fixture.courseId}/transitions`,'POST',{to:'DRAFT'});
+  assert.equal(removableCopy.status,200); const removalDraftId=removableCopy.data.course.id;
+  const removalLessonId=(await course(p,removalDraftId)).sections[0].lessons[0].id;
+  await route(p,`#/admin/courses/${removalDraftId}`); await p.waitForSelector('[data-testid=remove-draft-video]');
+  await p.$eval('[data-testid=remove-draft-video]',e=>e.scrollIntoView({block:'center'})); await p.click('[data-testid=remove-draft-video]'); await p.waitForSelector('[role=dialog]');
+  pass('video removal explains replacement requirement',await p.$eval('[role=dialog]',e=>e.textContent.includes('Upload a ready replacement before publishing')));
+  const mediaRemoved=p.waitForResponse(r=>r.url().endsWith(`/lessons/${removalLessonId}/media`)&&r.request().method()==='DELETE'); await button(p,'[role=dialog]','Remove from draft'); assert.equal((await mediaRemoved).status(),200);
+  pass('draft video disappears without changing published video',(await course(p,removalDraftId)).sections[0].lessons[0].media===null&&(await course(p,fixture.courseId)).sections[0].lessons[0].media.status==='READY');
+  const missingVideo=await api(p,`/admin/catalog/courses/${removalDraftId}/transitions`,'POST',{to:'PROCESSING'});
+  pass('missing replacement blocks publication',missingVideo.status===409&&missingVideo.error.code==='PUBLICATION_BLOCKED');
+  assert.equal((await api(p,`/admin/catalog/courses/${removalDraftId}/delete`,'POST',{confirmation:removalDraftId})).status,202);
+  pass('discarding an inherited-only draft leaves live course published',(await course(p,fixture.courseId)).status==='PUBLISHED'&&!(await course(p,fixture.courseId)).workingCopyId);
+  await route(p,`#/admin/courses/${fixture.courseId}`); await p.waitForSelector('h1');
+  await tab(p,'outline');
   pass('published course explains which changes still require a draft',await p.$eval('main',e=>e.textContent.includes('Published courses allow adding lessons')));
   pass('published section creation and rename remain disabled',await p.evaluate(()=>[...document.querySelectorAll('#course-workspace-panel-outline button')].filter(b=>['Add section','Edit'].includes(b.querySelector('span')?.textContent.trim())).every(b=>b.disabled)));
   const liveSection=(await course(p,fixture.courseId)).sections[0].id;
   await text(p,`#les-ta-${liveSection}`,'درس جديد بعد النشر'); await text(p,`#les-te-${liveSection}`,'New published lesson'); await submit(p,`#les-ta-${liveSection}`,`/sections/${liveSection}/lessons`);
   const live=await course(p,fixture.courseId); const liveLesson=live.sections[0].lessons.at(-1);
   pass('published Add lesson succeeds through the real form and backend',live.status==='PUBLISHED'&&liveLesson.titleEn==='New published lesson'&&live.sections[0].lessons[0].media.status==='READY');
+  await p.evaluate(()=>[...document.querySelectorAll('[data-testid^=paged-list-lessons-] button')].find(b=>b.textContent.includes('New published lesson')).click());
   pass('new published lesson video upload controls are enabled',await p.$eval(`[data-testid=uploader-${liveLesson.id}] input[type=file]`,e=>!e.disabled));
   await p.click('.language-tool'); await p.waitForFunction(()=>document.documentElement.dir==='rtl'); await p.setViewport({width:390,height:844});
   pass('Arabic mobile explains published lesson additions without generic error',await p.$eval('main',e=>e.textContent.includes('يمكنك إضافة دروس')&&!e.textContent.includes('حدث خطأ غير متوقع')));
@@ -62,12 +91,12 @@ try {
   await button(p,sectionRow,'Edit'); await text(p,`${sectionRow} input:not([dir=ltr])`,'قسم مُعدّل'); await text(p,`${sectionRow} input[dir=ltr]`,'Renamed section');
   const sectionSaved=p.waitForResponse(r=>r.url().endsWith(`/sections/${sectionId}`)&&r.request().method()==='PATCH'); await button(p,sectionRow,'Save'); assert.equal((await sectionSaved).status(),200);
   await p.waitForFunction(()=>document.querySelector('[data-testid=paged-list-section-ordering]').textContent.includes('Renamed section')); pass('section rename persists');
-  const lessonRow=`[data-testid=paged-list-lessons-${sectionId}] > li:first-child`;
+  const lessonRow=`[data-testid=selected-lesson-editor] > li`;
   await button(p,lessonRow,'Edit'); await text(p,`${lessonRow} form input[dir=ltr]`,'Renamed lesson');
   const lessonSaved=p.waitForResponse(r=>r.url().endsWith(`/lessons/${lessonId}`)&&r.request().method()==='PATCH'); await button(p,`${lessonRow} form`,'Save'); assert.equal((await lessonSaved).status(),200);
   await p.waitForFunction(lessonId=>document.querySelector(`[data-testid=deletion-${lessonId}]`).textContent.includes('Renamed lesson'),{},lessonId); pass('lesson rename persists');
   const move=p.waitForResponse(r=>r.url().includes(`/sections/${sectionId}/lessons/reorder`)&&r.request().method()==='POST'); await button(p,lessonRow,'↓'); assert.equal((await move).status(),200);
-  await p.waitForFunction(lessonId=>document.querySelector(`[data-testid=deletion-${lessonId}]`)?.closest('li')?.textContent.includes('#2'),{},lessonId);
+  await p.waitForFunction(lessonId=>document.querySelector(`[data-testid=deletion-${lessonId}]`)?.closest('li')?.textContent.includes('#2'),{},lessonId).catch(async e=>{console.log(JSON.stringify({selected:await p.$eval('[data-testid=selected-lesson-editor]',e=>e.textContent),positions:(await course(p,id)).sections.flatMap(s=>s.lessons.map(l=>({id:l.id,position:l.position,title:l.titleEn})))}));await p.screenshot({path:'/evidence/catalog-order-failure.png',fullPage:true});throw e;});
   pass('lesson reorder persists with contiguous positions',(await course(p,id)).sections[0].lessons.map(l=>l.position).join(',')==='1,2');
   const sectionMoved=p.waitForResponse(r=>r.url().includes(`/courses/${id}/sections/reorder`)&&r.request().method()==='POST'); await button(p,sectionRow,'↓'); assert.equal((await sectionMoved).status(),200);
   pass('section reorder persists',(await course(p,id)).sections[1].id===sectionId);
@@ -90,19 +119,19 @@ try {
   await tab(p,'outline'); pass('archived section/lesson controls explain restore path',await p.$eval('main',e=>e.textContent.includes('Restore it from the Publish, archive & delete')));
   await tab(p,'publish'); const restored=p.waitForResponse(r=>r.url().endsWith(`/courses/${id}/unarchive`)&&r.request().method()==='POST'); await button(p,'#course-workspace-panel-publish','Unarchive'); assert.equal((await restored).status(),200);
   await p.waitForFunction(()=>document.querySelector('#course-workspace-panel-publish')?.textContent.includes('Archive')&&!document.querySelector('#course-workspace-panel-publish')?.textContent.includes('Unarchive'));
-  await tab(p,'outline'); await p.waitForSelector(`#les-ta-${sectionId}`); pass('restored draft permits lesson creation',await p.$eval(`#les-ta-${sectionId}`,e=>!e.disabled));
-  const scope=`[data-testid=assessment-admin-${lessonId}]`; await button(p,scope,'Assignments and quizzes'); await p.waitForSelector(`${scope} [data-testid=ide-mode-python]`);
+  await tab(p,'outline'); await p.evaluate(()=>[...document.querySelectorAll('[data-testid=paged-list-course-sections] button')].find(b=>b.textContent.includes('Renamed section')).click()); await p.waitForSelector(`#les-ta-${sectionId}`); pass('restored draft permits lesson creation',await p.$eval(`#les-ta-${sectionId}`,e=>!e.disabled));
+  await tab(p,'assessments'); await p.evaluate(()=>[...document.querySelectorAll('[data-testid=paged-list-course-sections] button')].find(b=>b.textContent.includes('Renamed section')).click()); await p.evaluate(()=>[...document.querySelectorAll('[data-testid^=paged-list-lessons-] button')].find(b=>b.textContent.includes('Renamed lesson')).click()); const scope=`[data-testid=assessment-admin-${lessonId}]`; await p.waitForSelector(`${scope} [data-testid=ide-mode-python]`);
   for(const mode of ['javascript','web','python']) {
     await p.click(`${scope} [data-testid=ide-mode-${mode}]`); await button(p,scope,'Add assessment'); await p.waitForSelector('[data-testid=assessment-editor] .cm-content'); pass(`${mode} assessment authoring opens`);
     await button(p,'[data-testid=assessment-editor]','Cancel'); await p.waitForFunction(()=>!document.querySelector('[data-testid=assessment-editor]')); pass(`${mode} assessment cancellation closes safely`);
   }
   const removable=(await course(p,id)).sections.find(s=>s.id===sectionId).lessons.find(l=>l.id!==lessonId).id;
-  const deletion=`[data-testid=deletion-${removable}]`; await p.click(`${deletion} summary`); pass('deletion requires exact confirmation',await p.$eval(`${deletion} [data-testid=deletion-submit]`,e=>e.disabled));
+  await tab(p,'outline'); await p.evaluate(()=>[...document.querySelectorAll('[data-testid=paged-list-course-sections] button')].find(b=>b.textContent.includes('Renamed section')).click()); await p.evaluate(()=>[...document.querySelectorAll('[data-testid^=paged-list-lessons-] button')].find(b=>b.textContent.includes('Lesson two')).click()); const deletion=`[data-testid=deletion-${removable}]`; await p.click(`${deletion} summary`); pass('deletion requires exact confirmation',await p.$eval(`${deletion} [data-testid=deletion-submit]`,e=>e.disabled));
   await text(p,`${deletion} input`,removable); const removed=p.waitForResponse(r=>r.url().endsWith(`/lessons/${removable}/delete`)&&r.request().method()==='POST'); await p.click(`${deletion} [data-testid=deletion-submit]`); assert.equal((await removed).status(),202);
   const final=await course(p,id); pass('synthetic empty lesson deletion succeeds',!final.sections.flatMap(s=>s.lessons).some(l=>l.id===removable));
   await p.screenshot({path:'/evidence/catalog-draft-desktop-en.png',fullPage:true});
   const emptySection=final.sections.find(s=>s.lessons.length===0).id; const sectionDelete=`[data-testid=deletion-${emptySection}]`;
-  await p.click(`${sectionDelete} summary`); await text(p,`${sectionDelete} input`,emptySection); const sectionGone=p.waitForResponse(r=>r.url().endsWith(`/sections/${emptySection}/delete`)&&r.request().method()==='POST'); await p.$eval(`${sectionDelete} [data-testid=deletion-submit]`,e=>e.scrollIntoView({block:'center'})); await p.click(`${sectionDelete} [data-testid=deletion-submit]`); assert.equal((await sectionGone).status(),202);
+  await p.evaluate(()=>[...document.querySelectorAll('[data-testid=paged-list-course-sections] button')].find(b=>b.textContent.includes('Section two')).click()); await p.click(`${sectionDelete} summary`); await text(p,`${sectionDelete} input`,emptySection); const sectionGone=p.waitForResponse(r=>r.url().endsWith(`/sections/${emptySection}/delete`)&&r.request().method()==='POST'); await p.$eval(`${sectionDelete} [data-testid=deletion-submit]`,e=>e.scrollIntoView({block:'center'})); await p.click(`${sectionDelete} [data-testid=deletion-submit]`); assert.equal((await sectionGone).status(),202);
   pass('synthetic empty section deletion succeeds',!(await course(p,id)).sections.some(s=>s.id===emptySection));
   await tab(p,'access'); const planId=(await course(p,id)).plans[0].id; const planGone=p.waitForResponse(r=>r.url().endsWith(`/plans/${planId}`)&&r.request().method()==='DELETE'); await button(p,'[data-testid=paged-list-price-plans] li','Remove'); assert.equal((await planGone).status(),200); pass('synthetic price offer removal succeeds',(await course(p,id)).plans.length===0);
   await tab(p,'publish'); const courseDelete=`[data-testid=deletion-${id}]`; await p.click(`${courseDelete} summary`); await text(p,`${courseDelete} input`,'catalog-editor-synthetic');

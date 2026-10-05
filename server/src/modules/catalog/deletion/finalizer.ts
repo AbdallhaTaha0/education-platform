@@ -56,8 +56,13 @@ export async function finalizeNoMediaTarget(
   const courseId = (op as { courseId?: string | null }).courseId ?? null;
   await prisma.$transaction(async (tx) => {
     await advisoryLock(tx, deletionAdvisoryKey(targetType, targetId));
-    if (courseId !== null) await lockCourseRow(tx, courseId);
+    if (courseId !== null) {
+      const course = await tx.course.findUnique({ where: { id: courseId } });
+      if (course?.revisionOwnerId) await lockCourseRow(tx, course.revisionOwnerId);
+      await lockCourseRow(tx, courseId);
+    }
     if (targetType === 'COURSE') {
+      await tx.course.updateMany({ where: { workingCopyId: targetId }, data: { workingCopyId: null } });
       await tx.course.deleteMany({ where: { id: targetId } });
     } else if (targetType === 'SECTION') {
       const section = await tx.courseSection.findUnique({ where: { id: targetId } });
@@ -113,7 +118,11 @@ export async function finalizeMediaBackedTarget(
     (op as { courseId?: string | null }).courseId ?? (targetType === 'COURSE' ? targetId : null);
   await prisma.$transaction(async (tx) => {
     await advisoryLock(tx, deletionAdvisoryKey(targetType, targetId));
-    if (courseId !== null) await lockCourseRow(tx, courseId);
+    if (courseId !== null) {
+      const course = await tx.course.findUnique({ where: { id: courseId } });
+      if (course?.revisionOwnerId) await lockCourseRow(tx, course.revisionOwnerId);
+      await lockCourseRow(tx, courseId);
+    }
     const fresh = await tx.catalogDeletionOperation.findUnique({
       where: { id: operationId },
       include: { assets: true },
@@ -121,6 +130,7 @@ export async function finalizeMediaBackedTarget(
     if (fresh === null || fresh.status === 'COMPLETED') return;
     if (fresh.assets.some((a) => a.lastState !== 'COMPLETED')) return;
     if (targetType === 'COURSE') {
+      await tx.course.updateMany({ where: { workingCopyId: targetId }, data: { workingCopyId: null } });
       const sections = await tx.courseSection.findMany({
         where: { courseId: targetId },
         select: { id: true },

@@ -11,9 +11,9 @@ export function Pagination({ page, pageSize, total, onPage, onSize, id, disabled
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const number = (value: number) => new Intl.NumberFormat(ar ? 'ar-EG' : 'en-GB').format(value);
   return <nav aria-label={ar ? 'صفحات القائمة' : 'List pages'} data-testid={`pagination-${id}`} className="my-5 flex flex-wrap items-center justify-center gap-3 rounded-control border border-border bg-surface p-3">
-    <Button variant="secondary" disabled={disabled || page <= 1} onClick={() => onPage(page - 1)} data-testid="page-previous">{ar ? 'السابق' : 'Previous'}</Button>
+    <Button variant="secondary" disabled={disabled || page <= 1} disabledReason={!disabled && page <= 1 ? (ar ? 'أنت في أول صفحة.' : 'You are on the first page.') : undefined} onClick={() => onPage(page - 1)} data-testid="page-previous">{ar ? 'السابق' : 'Previous'}</Button>
     <span aria-live="polite" className="text-sm">{ar ? 'صفحة' : 'Page'} {number(page)} / {number(pages)} · {number(total ? (page - 1) * pageSize + 1 : 0)}–{number(Math.min(page * pageSize, total))} {ar ? 'من' : 'of'} {number(total)}</span>
-    <Button variant="secondary" disabled={disabled || page >= pages} onClick={() => onPage(page + 1)} data-testid="page-next">{ar ? 'التالي' : 'Next'}</Button>
+    <Button variant="secondary" disabled={disabled || page >= pages} disabledReason={!disabled && page >= pages ? (ar ? 'أنت في آخر صفحة.' : 'You are on the last page.') : undefined} onClick={() => onPage(page + 1)} data-testid="page-next">{ar ? 'التالي' : 'Next'}</Button>
     <label className="flex items-center gap-2 text-sm">{ar ? 'لكل صفحة' : 'Per page'}<select value={pageSize} disabled={disabled} onChange={e => onSize(Number(e.target.value))} className="min-h-[44px] rounded-control border border-border bg-surface px-3 text-ink" data-testid="page-size">{[10,20,50].map(size => <option key={size} value={size}>{number(size)}</option>)}</select></label>
   </nav>;
 }

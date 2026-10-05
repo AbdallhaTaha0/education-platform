@@ -23,11 +23,15 @@ export async function syncLessonMedia(
   lessonId: string,
 ) {
   assertUuid(lessonId, 'lessonId');
-  const drm = requireDrm(config, drmFactory);
   const lesson = await prisma.lesson.findUnique({
     where: { id: lessonId },
     include: { media: true },
   });
+  if (lesson?.inheritedMediaId && !lesson.media) {
+    const inherited = await prisma.mediaMapping.findUnique({ where: { id: lesson.inheritedMediaId } });
+    if (inherited && !inherited.retiredAt) return inherited;
+  }
+  const drm = requireDrm(config, drmFactory);
   if (lesson === null || lesson.media === null)
     throw new ApiError(404, 'MEDIA_MISSING', 'Media mapping not found.');
   if (lesson.media.assetId === null)

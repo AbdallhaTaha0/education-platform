@@ -253,10 +253,11 @@ export function AdminLessonMaterials({ lessonId }: { lessonId: string }): JSX.El
               <Button unstyled type="button" disabled={captionBusy} onClick={() => void uploadCaptions()} data-testid={`admin-caption-upload-${lessonId}`} className="inline-flex min-h-[44px] items-center rounded-control bg-primary px-3 text-sm font-bold text-primary-ink disabled:opacity-60">
                 {ar ? 'رفع الزوج' : 'Upload pair'}
               </Button>
-              <Button unstyled type="button" disabled={captionBusy} onClick={() => void removeCaptions()} data-testid={`admin-caption-remove-${lessonId}`} className="inline-flex min-h-[44px] items-center rounded-control border border-border px-3 text-sm font-bold">
+              <Button unstyled type="button" disabled={captionBusy || materials?.captions.some(c => c.inherited)} onClick={() => void removeCaptions()} data-testid={`admin-caption-remove-${lessonId}`} className="inline-flex min-h-[44px] items-center rounded-control border border-border px-3 text-sm font-bold">
                 {ar ? 'إزالة الترجمة' : 'Remove captions'}
               </Button>
             </div>
+            {materials?.captions.some(c => c.inherited) ? <p className="mt-2 text-xs text-muted">{ar ? 'ترجمة الإصدار المنشور محفوظة. رفع زوج جديد هنا يستبدلها عند نشر المسودة.' : 'Published captions are retained. Uploading a new pair here replaces them when the draft is published.'}</p> : null}
             {captionBusy ? <p role="status" className="mt-1 text-xs text-muted">{ar ? 'جارٍ الحفظ…' : 'Saving…'}</p> : null}
             {captionNotice ? <p role="status" className="mt-1 text-xs font-semibold">{captionNotice}</p> : null}
             {captionError ? <p role="alert" data-testid={`admin-caption-error-${lessonId}`} className="mt-1 text-xs font-semibold text-error-fg">{captionError.startsWith('MATERIAL_') ? friendlyAdminError(captionError, lang) : captionError}</p> : null}
@@ -274,10 +275,10 @@ export function AdminLessonMaterials({ lessonId }: { lessonId: string }): JSX.El
                 {materials.resources.map((resource) => (
                   <li key={resource.id} data-testid="admin-resource-row" className="flex flex-wrap items-center gap-2 text-xs">
                     <span className="min-w-0 flex-1" dir="auto">
-                      {resourceLabel(resource, lang)}{' · '}{resource.state}
+                      {resourceLabel(resource, lang)}{' · '}{resource.inherited ? (ar ? 'محفوظ من الإصدار المنشور' : 'Retained from published version') : resource.state}
                       <span dir="ltr" className="block text-muted">{resource.fileName} · {resource.mimeType} · {formatByteSize(resource.byteSize, lang)}</span>
                     </span>
-                    <Button unstyled type="button" disabled={removingId !== null} onClick={() => void removeResource(resource.id)} data-testid={`admin-resource-remove-${resource.id}`} className="inline-flex min-h-[44px] items-center rounded-control border border-border px-2 font-bold">
+                    <Button unstyled type="button" disabled={removingId !== null || resource.inherited} onClick={() => void removeResource(resource.id)} data-testid={`admin-resource-remove-${resource.id}`} className="inline-flex min-h-[44px] items-center rounded-control border border-border px-2 font-bold">
                       {removingId === resource.id ? (ar ? 'جارٍ الإزالة…' : 'Removing…') : (ar ? 'إزالة' : 'Remove')}
                     </Button>
                   </li>

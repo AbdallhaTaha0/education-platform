@@ -197,7 +197,7 @@ export const VALID_TRANSITIONS: Record<string, string[]> = {
   DRAFT: ['PROCESSING'],
   PROCESSING: ['READY'],
   READY: ['PUBLISHED'],
-  PUBLISHED: [],
+  PUBLISHED: ['DRAFT'],
   ARCHIVED: [],
 };
 
