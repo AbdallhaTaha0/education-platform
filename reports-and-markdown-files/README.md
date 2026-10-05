@@ -1,5 +1,7 @@
 # Education platform documentation
 
+Latest commit report (2026-10-05): [538a0f9 — three IDE modes, editor improvements, protected student registration and material fixes](latest-commit-report-538a0f9-20261005.md). Describes the committed scope, additive schema/API/configuration changes, recorded Docker verification, local preview preservation and remaining qualification boundaries.
+
 Interactive IDE preview correction (2026-10-04): [per-task execution budget and Docker/browser evidence](ide-interactive-preview-fix-20261004.md) fixes counter/text/timer callbacks failing after two seconds of idle time. All 14 browser checks pass while preserving infinite-loop protection and the opaque/network-denying sandbox.
 
 Three IDE modes (2026-10-04): [implementation, owner decisions, schema/API, isolation evidence and Docker runbook](ide-modes-implementation-20261004.md). JavaScript, web and Python have separate drafts/assessments and share practice allowance. Local preview updated through additive guarded migration; capacity/production qualification and milestone acceptance remain separate.
