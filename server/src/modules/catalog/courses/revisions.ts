@@ -9,6 +9,9 @@ const json = (v: Prisma.JsonValue) => v as Prisma.InputJsonValue;
 
 /** Called under the canonical course lock. A working copy never owns inherited video objects. */
 export async function createWorkingCopy(tx: TxClient, actor: string, live: Course) {
+  if (live.status !== 'PUBLISHED' || live.revisionOwnerId || live.historical) {
+    throw new ApiError(409, 'INVALID_TRANSITION', 'Only a published course can create an editing draft.');
+  }
   if (live.workingCopyId) return tx.course.findUniqueOrThrow({ where: { id: live.workingCopyId } });
   const draft = await tx.course.create({ data: { ...details(live), slug: `draft-${randomUUID()}`, requestedSlug: live.slug, revisionOwnerId: live.id } });
   const sections = await tx.courseSection.findMany({ where: { courseId: live.id }, include: { lessons: { include: { media: true, assessments: { include: { versions: true } } } } } });

@@ -56,6 +56,30 @@ describe('owner-approved published course return to draft', () => {
     await world.prisma.course.update({ where: { id: courseId }, data: { deletionRequestedAt: new Date() } });
     expect((await adminPost(world.app, path, world.adminJar, { to: 'DRAFT' })).body.error.code).toBe('DELETION_PENDING');
   });
+  it('allows draft creation only from the published root, never from an existing draft or its preparation states', async () => {
+    const plain = await createFullDraft(world, 'no-nested-plain');
+    expect((await adminPost(world.app, `/admin/catalog/courses/${plain.courseId}/transitions`, world.adminJar, { to: 'DRAFT' })).status).toBe(409);
+    const { courseId } = await published('no-nested-copy');
+    const rootPath = `/admin/catalog/courses/${courseId}/transitions`;
+    const copy = await adminPost(world.app, rootPath, world.adminJar, { to: 'DRAFT' });
+    expect(copy.status).toBe(200);
+    const draftId = copy.body.data.course.id as string;
+    const path = `/admin/catalog/courses/${draftId}/transitions`;
+    for (const state of ['DRAFT', 'PROCESSING', 'READY']) {
+      if (state !== 'DRAFT') expect((await adminPost(world.app, path, world.adminJar, { to: state })).status).toBe(200);
+      const actions = await adminGet(world.app, `/admin/catalog/courses/${draftId}/lifecycle-actions`, world.adminJar);
+      expect(actions.body.data.actions.find((a: { action: string }) => a.action === 'DRAFT').enabled).toBe(false);
+      const rejected = await adminPost(world.app, path, world.adminJar, { to: 'DRAFT' });
+      expect(rejected.status).toBe(409);
+      expect(rejected.body.error.code).toBe('INVALID_TRANSITION');
+      expect((await world.prisma.course.findUniqueOrThrow({ where: { id: draftId } })).status).toBe(state);
+      expect(await world.prisma.course.count({ where: { revisionOwnerId: courseId } })).toBe(1);
+      expect(await world.prisma.course.count({ where: { revisionOwnerId: draftId } })).toBe(0);
+    }
+    expect((await adminPost(world.app, rootPath, world.adminJar, { to: 'DRAFT' })).body.data.course.id).toBe(draftId);
+    expect((await adminPost(world.app, path, world.adminJar, { to: 'PUBLISHED' })).status).toBe(200);
+    expect((await world.prisma.course.findUniqueOrThrow({ where: { id: courseId } })).status).toBe('PUBLISHED');
+  });
   it('keeps live price/content unchanged and blocks direct edits while the copy exists', async () => {
     const ids = await published('copy-prices');
     const result = await adminPost(world.app, `/admin/catalog/courses/${ids.courseId}/transitions`, world.adminJar, { to: 'DRAFT' });

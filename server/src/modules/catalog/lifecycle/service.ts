@@ -38,10 +38,6 @@ export async function requestTransition(
       throw new ApiError(409, 'DELETION_PENDING', 'Transition blocked while deletion is pending.');
     if (course.status === 'ARCHIVED')
       throw new ApiError(409, 'COURSE_ARCHIVED', 'Archived courses use unarchive.');
-    if (String(to).toUpperCase() === 'DRAFT' && course.revisionOwnerId && ['PROCESSING', 'READY'].includes(course.status)) {
-      await audit(tx, { actorUserId: actorId, action: 'COURSE_DRAFT_REOPENED', entityType: 'Course', entityId: courseId });
-      return tx.course.update({ where: { id: courseId }, data: { status: 'DRAFT' } });
-    }
     const target = assertTransitionInput(course.status, String(to));
     if (target === 'DRAFT') {
       return createWorkingCopy(tx, actorId, course);

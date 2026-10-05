@@ -61,10 +61,6 @@ export function createCourseAdminRouter(ctx: CatalogRouteContext): Router {
     asyncRoute(async (req, res) => {
       const course = await getCourseAdmin(ctx.prisma, req.params['id'] as string);
       const actions = availableLifecycleActions(course.status);
-      if (course.revisionOwnerId && ['PROCESSING', 'READY'].includes(course.status)) {
-        const reopen = actions.find(a => a.action === 'DRAFT');
-        if (reopen) { reopen.enabled = true; reopen.reason = null; }
-      }
       res.status(200).json(ok({ actions }));
     }),
   );

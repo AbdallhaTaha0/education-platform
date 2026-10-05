@@ -14,7 +14,7 @@ export function LifecycleControls({courseId,status,onChanged}: {courseId:string;
   const [confirmDraft,setConfirmDraft]=useState(false);
   useEffect(()=>{let live=true; setError(null); setActions([]); void fetchLifecycleActions(courseId).then(a=>{if(live)setActions(a);}).catch(()=>{if(live)setError('SERVICE_ERROR');});return()=>{live=false;};},[courseId,status,retry]);
   const target=({DRAFT:'PROCESSING',PROCESSING:'READY',READY:'PUBLISHED'} as Record<string,string>)[status]; const next=actions.find(a=>a.action===target);
-  const draft=actions.find(a=>a.action==='DRAFT'&&a.enabled);
+  const draft=status==='PUBLISHED'?actions.find(a=>a.action==='DRAFT'&&a.enabled):undefined;
   async function run(action=next):Promise<void>{if(!action?.enabled || busy)return;setBusy(true);setError(null);try{const changed=await transitionCourse(courseId,action.action);if(changed.id!==courseId){window.location.hash=`#/admin/courses/${changed.id}`;}else{await onChanged();}setConfirmDraft(false);}catch(e){setError(e instanceof ApiError?e.code:'SERVICE_ERROR');}finally{setBusy(false);}}
   return <div className="my-5 space-y-3" aria-label={t.actionTransition}>
     {draft ? <><FormActions className="mt-0"><Button variant="secondary" data-testid="return-course-to-draft" disabled={busy||!draft} onClick={()=>setConfirmDraft(true)}>{ar?'إنشاء / فتح مسودة التعديل':'Create / open editing draft'}</Button></FormActions><p className="text-sm text-muted">{ar?'عدّل مسودة مستقلة بينما يبقى الإصدار الحالي منشورًا. انشر المسودة عندما تصبح جاهزة.':'Edit a separate draft while the current version stays published. Publish the draft when it is ready.'}</p></> : null}
