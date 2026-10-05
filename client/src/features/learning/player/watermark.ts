@@ -11,8 +11,9 @@
  * (those are redacted server-side and never reach the browser). Forensically
  * attributable watermarking is the external DRM's responsibility (D07).
  *
- * Privacy: only the dependency-supplied MASKED identity is shown. No email, no
- * phone number, no student name, no token, and nothing derived from them.
+ * Owner instruction (2026-10-05): show the authenticated student phone instead
+ * of the dependency masked identity. Keep dependency placement policy unchanged.
+ * Missing/invalid account data falls back to the dependency identity.
  */
 import type { PlaybackGrant } from '../types/models';
 
@@ -74,7 +75,7 @@ export function watermarkLabels(watermark: PlaybackGrant['watermark']): Watermar
 }
 
 /** The single visible text, or `null` when nothing should be drawn. */
-export function watermarkText(watermark: PlaybackGrant['watermark']): string | null {
+export function watermarkText(watermark: PlaybackGrant['watermark'], phone?: string): string | null {
   if (!isWatermarkVisible(watermark) || watermark === null) return null;
-  return watermark.maskedIdentity;
+  return phone && /^(?:\+[1-9]\d{7,14}|01[0125]\d{8})$/.test(phone) ? phone : watermark.maskedIdentity;
 }

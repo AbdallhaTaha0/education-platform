@@ -18,6 +18,8 @@ ADMIN dashboard UX (2026-10-05): [six clearly named navigation groups and separa
 
 Independent latest-commits review (2026-10-05): [538a0f9 → 3824ef9 — merge verification, progress/payment/logout/notification review and fresh Docker evidence](latest-commits-review-20261005.md). No blocking defect found in reviewed scope; 158 frontend tests, 51 wallet integration and 94 browser checks pass, plus typechecks/build and two DASH checks. Payment-setting audit history is a recommended follow-up; retained preview and DRM are preserved.
 
+Phone watermark (2026-10-05): [owner-selected authenticated student phone in the visible player overlay](phone-watermark-20261005.md), preserving external DRM placement and playback behavior.
+
 Owner-authorized session delivery (2026-10-05): [completed progress, logout, payment, notification and UI work with verification](completed-work-delivery-20261005.md). Owner requested commit/push; this supersedes earlier delivery restrictions for the completed changes.
 
 Vodafone Cash and inbox follow-up (2026-10-05): [separate admin-editable receiving details, IDE naming and notification acknowledgement](vodafone-cash-and-notifications-20261005.md). Owner-confirmed local receiver enabled; manual approval preserved.

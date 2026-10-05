@@ -7,7 +7,7 @@ async function main() {
   try {
     const passwordHash = await argon2.hash('synthetic modes password only', { type: argon2.argon2id, memoryCost: 8192, timeCost: 2, parallelism: 1 });
     await db.user.create({ data: { role: 'ADMIN', email: 'modes-admin@example.test', phone: '+201001239901', displayName: 'Modes Admin', passwordHash } });
-    const student = await db.user.create({ data: { email: 'modes-student@example.test', phone: '+201001239902', displayName: 'Modes Student', passwordHash } });
+    const student = await db.user.create({ data: { email: 'modes-student@example.test', phone: '01001239902', displayName: 'Modes Student', passwordHash } });
     const course = await db.course.create({ data: { slug: 'ide-modes-browser', titleAr: 'محررات', titleEn: 'IDE modes', descriptionAr: 'تجربة', descriptionEn: 'Synthetic verification', status: 'PUBLISHED', publishedAt: new Date(), firstPublicationAt: new Date() } });
     const section = await db.courseSection.create({ data: { courseId: course.id, titleAr: 'قسم', titleEn: 'Section', position: 1 } });
     const lesson = await db.lesson.create({ data: { sectionId: section.id, titleAr: 'درس', titleEn: 'Lesson', position: 1 } });

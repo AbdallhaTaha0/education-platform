@@ -131,3 +131,17 @@ describe('watermark positions', () => {
     for (const label of labels) expect(label.key).not.toContain('fixt');
   });
 });
+
+
+describe('owner-selected phone watermark', () => {
+  it('replaces dependency identity with the authenticated E.164 phone', () => {
+    expect(watermarkText(watermark(), '+201005344368')).toBe('+201005344368');
+    expect(watermarkText(watermark(), '01005344368')).toBe('01005344368');
+  });
+  it('preserves fallback and absent-policy behavior', () => {
+    const policy = watermark();
+    expect(watermarkText(policy, 'not a phone')).toBe(policy!.maskedIdentity);
+    expect(watermarkText(policy)).toBe(policy!.maskedIdentity);
+    expect(watermarkText(null, '+201005344368')).toBeNull();
+  });
+});

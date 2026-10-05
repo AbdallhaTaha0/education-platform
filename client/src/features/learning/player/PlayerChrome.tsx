@@ -4,6 +4,7 @@
  * Split out of Player.tsx so the player keeps to a single responsibility and
  * both files stay small enough to review.
  */
+import { useAuth } from '../../../auth';
 import { isWatermarkVisible, watermarkLabels, watermarkText } from './watermark';
 import type { PlaybackGrant, PlayerPhase } from '../types/models';
 
@@ -66,9 +67,10 @@ export function phaseLabel(phase: PlayerPhase, labels: PlayerLabels): string {
 /**
  * Visible watermark overlay.
  *
- * Renders ONLY the masked identity the DRM supplied. The trace code and the
+ * Renders the authenticated student phone at the DRM-supplied positions, per
+ * the owner instruction on 2026-10-05. The trace code and the
  * signature are never sent to the client, so nothing here is attributable on its
- * own; this is presentation of a dependency-supplied label, not a claim that
+ * own; this is a visible account label, not a claim that
  * screen capture is prevented.
  *
  * The layer is rendered AFTER the state overlay by the player, and its CSS
@@ -79,9 +81,10 @@ export function phaseLabel(phase: PlayerPhase, labels: PlayerLabels): string {
  * reaches assistive technology.
  */
 export function WatermarkOverlay({ grant }: { grant: PlaybackGrant }): JSX.Element | null {
+  const { user } = useAuth();
   const watermark = grant.watermark;
   if (!isWatermarkVisible(watermark)) return null;
-  const text = watermarkText(watermark) ?? '';
+  const text = watermarkText(watermark, user?.phone) ?? '';
   const labels = watermarkLabels(watermark);
   return (
     <div

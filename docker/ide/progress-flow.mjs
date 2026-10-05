@@ -46,7 +46,7 @@ async function mediaFixture(p) {
       referenceId: `progress-synthetic-${++reference}`, playbackSessionId: 'synthetic', playbackToken: 'synthetic',
       tokenExpiresAt: new Date(Date.now() + 3600000).toISOString(), sessionExpiresAt: new Date(Date.now() + 3600000).toISOString(),
       manifestUrl: 'http://localhost:8080/progress-fixture/manifest', licenseUrl: 'http://localhost:8080/progress-fixture/license',
-      drmProvider: 'CLEAR_KEY', resumePositionSeconds: 0, watermark: null,
+      drmProvider: 'CLEAR_KEY', resumePositionSeconds: 0, watermark: { type: 'MASKED', maskedIdentity: 'old-masked-identity', positions: [{ x: 20, y: 20 }], expiresAt: null },
     } } }) });
     if (path.includes('/learning/playback/progress-synthetic-') && path.endsWith('/end')) return void r.respond({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { ended: true, closure: 'CONFIRMED' } }) });
     if (path.startsWith('/progress-fixture/')) return void r.respond({ status: 404 });
@@ -64,6 +64,9 @@ async function signal(p, position, event) {
 try {
   const p = await pageFor(); await login(p, 'student'); await mediaFixture(p);
   await route(p, '#/learn/ide-modes-browser'); await percent(p, 0); await start(p);
+  await p.waitForSelector('[data-testid=watermark-label]');
+  pass('video watermark shows authenticated student phone', await p.$$eval('[data-testid=watermark-label]', labels => labels.every(e => e.textContent === '01001239902')));
+  await p.screenshot({ path: '/evidence/phone-watermark.png', fullPage: true });
   failWrite = true; await signal(p, 5, 'pause'); await p.waitForSelector('[data-testid=progress-save-error]');
   pass('failed progress save is visible without removing player', await p.$('video'));
   await p.click('[data-testid=progress-save-error] button'); await p.waitForSelector('[data-testid=progress-save-error]', { hidden: true });
