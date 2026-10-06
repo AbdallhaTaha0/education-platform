@@ -23,6 +23,8 @@ import type { Clock } from './modules/identity/tokens.js';
 import { createAssertionJwks } from './modules/learning/playback/assertion.js';
 import { createNotificationRouter } from './modules/notifications/index.js';
 import { assessmentRouters } from './modules/assessments/routes.js';
+import { createSeoRouter } from './modules/seo/router.js';
+import { readSeoSettings } from './modules/seo/config.js';
 import { createSupportRouter } from './modules/support/routes.js';
 
 export interface AppDependencies {
@@ -72,6 +74,8 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
   // Cookie-authenticated and credential-bearing API responses must not persist
   // in browser/shared caches. Public-only discovery can explicitly override.
   app.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+  app.use((_req, res, next) => { res.set('X-Robots-Tag', 'noindex'); next(); });
+  app.use('/seo', createSeoRouter(deps.prisma, readSeoSettings()));
   app.use(cors({ origin: false }));
   // Proof submission is the only JSON route allowed above the global 256 KiB
   // ceiling. Select the parser before any body has been consumed; mounting a

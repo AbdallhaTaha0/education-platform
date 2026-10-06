@@ -1,0 +1,26 @@
+# Milestone 7
+
+[Main documentation index](../../README.md).
+
+- [m7-01-manager-review.md](m7-01-manager-review.md)
+- [m7-01-open-code-worker-prompt.md](m7-01-open-code-worker-prompt.md)
+- [m7-01-readiness-report.md](m7-01-readiness-report.md)
+- [m7-02-manager-review.md](m7-02-manager-review.md)
+- [m7-02-open-code-worker-prompt.md](m7-02-open-code-worker-prompt.md)
+- [m7-02-postcss-report.md](m7-02-postcss-report.md)
+- [m7-03-manager-review.md](m7-03-manager-review.md)
+- [m7-03-open-code-worker-prompt.md](m7-03-open-code-worker-prompt.md)
+- [m7-03-runtime-dependencies-report.md](m7-03-runtime-dependencies-report.md)
+- [m7-04-manager-review.md](m7-04-manager-review.md)
+- [m7-04-open-code-worker-prompt.md](m7-04-open-code-worker-prompt.md)
+- [m7-04-server-tooling-report.md](m7-04-server-tooling-report.md)
+- [m7-05-client-tooling-report.md](m7-05-client-tooling-report.md)
+- [m7-06-manager-review.md](m7-06-manager-review.md)
+- [m7-06-open-code-worker-prompt.md](m7-06-open-code-worker-prompt.md)
+- [m7-06-prisma-remediation-assessment.md](m7-06-prisma-remediation-assessment.md)
+- [m7-07-manager-review.md](m7-07-manager-review.md)
+- [m7-07-open-code-worker-prompt.md](m7-07-open-code-worker-prompt.md)
+- [m7-07-prisma-override-report.md](m7-07-prisma-override-report.md)
+- [m7-07-verification-followup.md](m7-07-verification-followup.md)
+- [m7-08-railway-preparation-report.md](m7-08-railway-preparation-report.md)
+- [m7-railway-runbook.md](m7-railway-runbook.md)

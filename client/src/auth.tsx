@@ -7,7 +7,7 @@
  * preference (owned by i18n.tsx).
  */
 import React, { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { LanguageProvider, useLang } from './i18n';
+import { LanguageProvider, useLang, type Lang } from './i18n';
 
 const API_BASE: string = (import.meta.env['VITE_API_BASE'] as string | undefined) || '/api';
 const CSRF_COOKIE = 'edu_csrf';
@@ -178,9 +178,9 @@ interface AuthContextValue {
 
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
-export function AuthProvider({ children }: { children: ReactNode }): JSX.Element {
+export function AuthProvider({ children, initialLang }: { children: ReactNode; initialLang?: Lang }): JSX.Element {
   return (
-    <LanguageProvider>
+    <LanguageProvider initialLang={initialLang}>
       <AuthInner>{children}</AuthInner>
     </LanguageProvider>
   );

@@ -1,10 +1,13 @@
+import { Footer } from './components/layout/Footer';
+import { usePublicData } from './seo/publicData';
+import { updateDocumentMetadata } from './seo/metadata';
+import { publicHref } from './seo/paths';
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from './auth';
 import { Container } from './components/ui/Card';
 import { ErrorFeedbackProvider } from './components/ui/ErrorFeedback';
 import { UnsavedChangesProvider, useConfirmNavigation } from './components/ui/UnsavedChanges';
 import { useLang } from './i18n';
-import { routeDocumentTitle } from './pageTitles';
 import { ThemeProvider } from './theme';
 import { Header } from './components/layout/Header';
 import {
@@ -19,23 +22,23 @@ import {
   type Route,
 } from './routes';
 import { PackagePage } from './features/academic/PackagePage';
-import { AdminPackagesPage } from './features/academic/AdminPackagesPage';
-import { AdminSummaryPage } from './features/academic/AdminSummaryPage';
+const AdminPackagesPage = lazy(() => import('./features/academic/AdminPackagesPage').then(module => ({ default: module.AdminPackagesPage })));
+const AdminSummaryPage = lazy(() => import('./features/academic/AdminSummaryPage').then(module => ({ default: module.AdminSummaryPage })));
 import { AdminScreen, LoginScreen, RegisterScreen } from './screens';
 import { AccountWorkspace } from './features/identity/pages/AccountWorkspace';
 import { AccountOverview } from './features/identity/pages/AccountOverview';
 import { AccountProfile } from './features/identity/pages/AccountProfile';
 import { PublicCatalogPage } from './features/catalog/pages/PublicCatalogPage';
 import { OfferPage } from './features/catalog/pages/OfferPage';
-import { AdminListPage } from './features/catalog/pages/AdminListPage';
-import { AdminDetailPage } from './features/catalog/pages/AdminDetailPage';
+const AdminListPage = lazy(() => import('./features/catalog/pages/AdminListPage').then(module => ({ default: module.AdminListPage })));
+const AdminDetailPage = lazy(() => import('./features/catalog/pages/AdminDetailPage').then(module => ({ default: module.AdminDetailPage })));
 import { HomePage } from './features/home/pages/HomePage';
-import { WalletPage } from './features/wallet/pages/WalletPage';
-import { RechargePage } from './features/wallet/pages/RechargePage';
-import { AdminRechargePage } from './features/wallet/pages/AdminRechargePage';
-import { PurchasePage } from './features/purchase/pages/PurchasePage';
-import { PurchaseHistoryPage } from './features/purchase/pages/PurchaseHistoryPage';
-import { DashboardPage } from './features/learning/pages/DashboardPage';
+const WalletPage = lazy(() => import('./features/wallet/pages/WalletPage').then(module => ({ default: module.WalletPage })));
+const RechargePage = lazy(() => import('./features/wallet/pages/RechargePage').then(module => ({ default: module.RechargePage })));
+const AdminRechargePage = lazy(() => import('./features/wallet/pages/AdminRechargePage').then(module => ({ default: module.AdminRechargePage })));
+const PurchasePage = lazy(() => import('./features/purchase/pages/PurchasePage').then(module => ({ default: module.PurchasePage })));
+const PurchaseHistoryPage = lazy(() => import('./features/purchase/pages/PurchaseHistoryPage').then(module => ({ default: module.PurchaseHistoryPage })));
+const DashboardPage = lazy(() => import('./features/learning/pages/DashboardPage').then(module => ({ default: module.DashboardPage })));
 import { Loading } from './components/ui/Notice';
 const CourseLearningPage = lazy(() =>
   import('./features/learning/pages/CourseLearningPage').then((module) => ({
@@ -43,10 +46,10 @@ const CourseLearningPage = lazy(() =>
   })),
 );
 import { NotificationsProvider } from './features/notifications/context';
-import { NotificationsPage } from './features/notifications/pages/NotificationsPage';
-import { StudentDirectoryPage } from './features/identity/pages/StudentDirectoryPage';
+const NotificationsPage = lazy(() => import('./features/notifications/pages/NotificationsPage').then(module => ({ default: module.NotificationsPage })));
+const StudentDirectoryPage = lazy(() => import('./features/identity/pages/StudentDirectoryPage').then(module => ({ default: module.StudentDirectoryPage })));
 import { SupportPage, PolicyPage, NotFoundPage } from './features/identity/pages/HelpPages';
-import { SupportSettings } from './features/identity/pages/SupportSettings';
+const SupportSettings = lazy(() => import('./features/identity/pages/SupportSettings').then(module => ({ default: module.SupportSettings })));
 const PracticePage = lazy(() => import('./features/ide/PracticePage').then((m) => ({ default: m.PracticePage })));
 const AssessmentPage = lazy(() => import('./features/assessments/AssessmentPage').then((m) => ({ default: m.AssessmentPage })));
 const AdminQuotaPage = lazy(() => import('./features/assessments/AdminQuotaPage').then((m) => ({ default: m.AdminQuotaPage })));
@@ -55,8 +58,9 @@ function Shell(): JSX.Element {
   const confirmNavigation = useConfirmNavigation();
   const { lang, t, setLang } = useLang();
   const { user } = useAuth();
-  const [route, setRoute] = useState<Route>(() => routeFromHash());
-  const [hash, setHash] = useState(() => window.location.hash);
+  const publicData = usePublicData();
+  const [route, setRoute] = useState<Route>(() => typeof window === "undefined" ? publicData?.page ?? "home" : routeFromHash());
+  const [hash, setHash] = useState(() => typeof window === "undefined" ? "" : window.location.hash);
 
   useEffect(() => {
     const onHash = (): void => {
@@ -75,17 +79,19 @@ function Shell(): JSX.Element {
   // Document title follows the route and the language, always from the
   // centralized FAYQ identity.
   useEffect(() => {
-    document.title = routeDocumentTitle(lang, route, t);
-  }, [lang, route, t]);
+    updateDocumentMetadata(lang, route, publicData);
+  }, [lang, route, publicData]);
 
   const go = useCallback((hash: string) => {
+    const href = publicHref(hash, lang);
+    if (href !== hash) { window.location.assign(href); return; }
     if (window.location.hash === hash) {
       setRoute(routeFromHash());
       window.scrollTo(0, 0);
     } else {
       window.location.hash = hash;
     }
-  }, []);
+  }, [lang]);
 
   return (
     <div id="top" className="site-shell flex min-h-screen flex-col">
@@ -105,6 +111,7 @@ function Shell(): JSX.Element {
         {t.skipToContent}
       </a>
       <Header onSwitch={setLang} route={route} />
+      <Suspense fallback={<main id="main"><Container><Loading text={t.loading} /></Container></main>}>
       {route==='admin-students'?<AccountWorkspace route={route}><StudentDirectoryPage/></AccountWorkspace>:null}
       {route==='support'?<SupportPage/>:null}
       {route==='admin-support'?<AccountWorkspace route={route}><SupportSettings/></AccountWorkspace>:null}
@@ -118,13 +125,13 @@ function Shell(): JSX.Element {
         <PublicCatalogPage onSelect={(slug) => go(`#/courses/${encodeURIComponent(slug)}`)} />
       ) : null}
       {route === 'course-detail' ? (
-        <OfferPage slug={slugFromHash()} onBack={() => go('#/courses')} />
+        <OfferPage slug={publicData?.course?.slug ?? slugFromHash()} onBack={() => go('#/courses')} />
       ) : null}
       {route === 'admin-catalog' ? <AccountWorkspace route={route}><AdminListPage go={go} /></AccountWorkspace> : null}
       {route === 'admin-packages' ? <AccountWorkspace route={route}><AdminPackagesPage /></AccountWorkspace> : null}
       {route === 'admin-summary' ? <AccountWorkspace route={route}><AdminSummaryPage /></AccountWorkspace> : null}
       {route === 'package' ? (
-        <PackagePage key={packageIdFromHash()} id={packageIdFromHash()} />
+        <PackagePage key={publicData?.pkg?.id ?? packageIdFromHash()} id={publicData?.pkg?.id ?? packageIdFromHash()} />
       ) : null}
       {route === 'admin-course' ? <AccountWorkspace route={route}><AdminDetailPage key={adminCourseIdFromHash()} courseId={adminCourseIdFromHash()} /></AccountWorkspace> : null}
       {route === 'register' ? (
@@ -200,26 +207,17 @@ function Shell(): JSX.Element {
           <CourseLearningPage key={`${user?.id ?? 'anonymous'}:${learnSlugFromHash()}`} courseSlug={learnSlugFromHash()} initialLessonId={learnLessonFromHash()} autoResume={learnResumeFromHash()} onRenew={() => go('#/wallet')} />
         </Suspense>
       ) : null}
-      <footer className="mt-auto border-t border-border bg-surface py-8 text-sm text-muted">
-        <Container>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="font-semibold text-ink">{t.footer}</p>
-            <a className="footer-discovery" href="#/courses">
-              {t.navCourses} ↗
-            </a>
-            <p>{t.slogan}</p>
-            <nav className="flex flex-wrap gap-4" aria-label={lang==='ar'?'المساعدة والسياسات':'Help and policies'}>{[['support','المساعدة','Help'],['terms','الشروط','Terms'],['privacy','الخصوصية','Privacy'],['refunds','الاسترداد','Refunds']].map(([id,a,e])=><a key={id} href={`#/${id}`} className="underline">{lang==='ar'?a:e}</a>)}</nav>
-          </div>
-        </Container>
-      </footer>
+      </Suspense>
+      <Footer />
     </div>
   );
 }
 
 export default function App(): JSX.Element {
+  const publicData = usePublicData();
   return (
-    <ThemeProvider>
-      <AuthProvider>
+    <ThemeProvider initialTheme={publicData ? "dark" : undefined}>
+      <AuthProvider initialLang={publicData?.lang}>
         <NotificationsProvider>
           <ErrorFeedbackProvider><UnsavedChangesProvider><Shell /></UnsavedChangesProvider></ErrorFeedbackProvider>
         </NotificationsProvider>

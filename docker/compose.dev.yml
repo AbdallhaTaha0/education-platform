@@ -288,8 +288,8 @@ services:
       ADMIN_PHONE: ${BROWSER_ADMIN_PHONE:-}
       ADMIN_PASSWORD: ${BROWSER_ADMIN_PASSWORD:-}
     volumes:
-      - ../reports-and-markdown-files/m3-evidence:/srv/browser/evidence
-      - ../reports-and-markdown-files/m5-evidence:/srv/browser/m5-evidence
+      - ../reports-and-markdown-files/milestones/m3/evidence:/srv/browser/evidence
+      - ../reports-and-markdown-files/milestones/m5/evidence:/srv/browser/m5-evidence
       - ../docker/browser/fixtures:/srv/browser/fixtures:ro
     depends_on:
       nginx:
@@ -299,7 +299,7 @@ services:
 volumes:
   # Persistent development data: survives `down` and normal container
   # restarts. Destroy ONLY deliberately: `... down -v` (non-destructive
-  # rollback never uses -v; see m1-implementation-report.md).
+  # rollback never uses -v; see reports-and-markdown-files/milestones/m1/m1-implementation-report.md).
   # Volume names default to the accepted development volumes (docker_pgdata /
   # docker_redisdata) so the pre-existing dev database is preserved when the
   # stable project name `education-platform` is used. Disposable verification

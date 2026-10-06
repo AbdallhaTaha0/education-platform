@@ -1,8 +1,9 @@
+import { usePublicData } from '../../../seo/publicData';
+import { publicHref } from '../../../seo/paths';
 import { useEffect, useState } from 'react';
 import { ApiError, apiFetch, useAuth } from '../../../auth';
 import { fetchMySubscriptions } from '../../purchase/api/client';
 import { localizeCode, useLang } from '../../../i18n';
-import { Button } from '../../../components/ui/Button';
 import { FormActions } from '../../../components/ui/FormActions';
 import { Card, Container } from '../../../components/ui/Card';
 import { Loading, Notice } from '../../../components/ui/Notice';
@@ -12,15 +13,18 @@ import { CoursePlan } from '../../learning/components/CoursePlan';
 import { useOutline } from '../../learning/hooks/useLearning';
 import { ErrorBlock } from '../../learning/components/Learning';
 
-export function OfferPage({ slug, onBack }: { slug: string; onBack: () => void }): JSX.Element {
+export function OfferPage({ slug }: { slug: string; onBack: () => void }): JSX.Element {
   const { t, lang } = useLang();
-  const [loading, setLoading] = useState(true);
-  const [course, setCourse] = useState<PublicCourse | null>(null);
+  const seed = usePublicData()?.course;
+  const initial = seed?.slug === slug ? seed : undefined;
+  const [loading, setLoading] = useState(initial === undefined);
+  const [course, setCourse] = useState<PublicCourse | null>(initial ?? null);
   const [error, setError] = useState<string | null>(null);
   const {user}=useAuth(); const [owned,setOwned]=useState(false);
   useEffect(()=>{let live=true;setOwned(false); if(user?.role==='STUDENT' && course) void fetchMySubscriptions().then(rows=>{if(live)setOwned(rows.some(s=>s.courseId===course.id && (!s.expiresAt || Date.parse(s.expiresAt)>Date.now())));}).catch(()=>undefined);return()=>{live=false;};},[user?.id,course?.id]);
 
   useEffect(() => {
+    if (initial !== undefined) { setCourse(initial); setLoading(false); return; }
     let live = true;
     (async () => {
       setLoading(true);
@@ -41,16 +45,17 @@ export function OfferPage({ slug, onBack }: { slug: string; onBack: () => void }
     return () => {
       live = false;
     };
-  }, [slug]);
+  }, [slug, initial]);
 
   return (
     <main id="main">
       <section className="py-8">
         <Container>
           <FormActions className="mt-0">
-            <Button variant="secondary" onClick={onBack}>
-              {t.courseDetailBack}
-            </Button>
+            <nav aria-label={lang === "ar" ? "مسار الصفحة" : "Breadcrumb"} className="flex flex-col items-center gap-2">
+            <a href={publicHref("#/courses", lang)} className="footer-discovery">{t.courseDetailBack}</a>
+            {course ? <span aria-current="page"> / {lang === "ar" ? course.titleAr : course.titleEn}</span> : null}
+            </nav>
           </FormActions>
           {loading ? <Loading text={t.loading} /> : null}
           {error !== null ? <Notice kind="error">{localizeCode(t, error)}</Notice> : null}

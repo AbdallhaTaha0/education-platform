@@ -18,6 +18,7 @@ const STRINGS = { ar, en } as const;
 
 /** Language preference only (no auth/session tokens ever live in storage). */
 const STORAGE_KEY = 'edu-platform-lang';
+import { publicLocation } from './seo/paths';
 const DEFAULT_LANG: Lang = (import.meta.env['VITE_DEFAULT_LANG'] as Lang) === 'en' ? 'en' : 'ar';
 
 interface LangContextValue {
@@ -31,6 +32,8 @@ const LangContext = createContext<LangContextValue | null>(null);
 
 function readInitialLang(): Lang {
   try {
+    const location = publicLocation(window.location.pathname);
+    if (location) return location.lang;
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored === 'ar' || stored === 'en') return stored;
   } catch {
@@ -39,16 +42,22 @@ function readInitialLang(): Lang {
   return DEFAULT_LANG;
 }
 
-export function LanguageProvider({ children }: { children: ReactNode }): JSX.Element {
-  const [lang, setLangState] = useState<Lang>(readInitialLang);
+export function LanguageProvider({ children, initialLang }: { children: ReactNode; initialLang?: Lang }): JSX.Element {
+  const [lang, setLangState] = useState<Lang>(() => initialLang ?? readInitialLang());
   const dir: Dir = lang === 'ar' ? 'rtl' : 'ltr';
 
   useEffect(() => {
     document.documentElement.lang = lang;
     document.documentElement.dir = dir;
+    try { window.localStorage.setItem(STORAGE_KEY, lang); } catch { /* Preference storage is optional. */ }
   }, [lang, dir]);
 
   const setLang = useCallback((next: Lang) => {
+    const location = publicLocation(window.location.pathname);
+    if (location && next !== location.lang) {
+      window.location.assign('/' + next + window.location.pathname.slice(3) + window.location.search + window.location.hash);
+      return;
+    }
     setLangState(next);
     try {
       window.localStorage.setItem(STORAGE_KEY, next);

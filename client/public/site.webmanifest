@@ -1,0 +1,16 @@
+{
+  "name": "FAYQ",
+  "short_name": "FAYQ",
+  "start_url": "/ar",
+  "display": "browser",
+  "background_color": "#0F1F12",
+  "theme_color": "#0F1F12",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

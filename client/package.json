@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/patch-braces.mjs --verify && tsc -b && vite build",
+    "build": "node scripts/patch-braces.mjs --verify && tsc -b && vite build && vite build --ssr src/seo/entry-server.tsx --outDir dist-ssr",
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "test": "node --test scripts/patch-braces.test.mjs && node --test scripts/patch-dashjs.test.mjs && vitest run",

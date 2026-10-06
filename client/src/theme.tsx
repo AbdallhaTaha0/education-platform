@@ -27,17 +27,22 @@ function readTheme(): Theme {
   return 'dark';
 }
 
-export function ThemeProvider({ children }: { children: ReactNode }): JSX.Element {
-  const [theme, setThemeState] = useState<Theme>(readTheme);
+export function ThemeProvider({ children, initialTheme }: { children: ReactNode; initialTheme?: Theme }): JSX.Element {
+  const [theme, setThemeState] = useState<Theme>(() => initialTheme ?? readTheme());
+  const [restored, setRestored] = useState(initialTheme === undefined);
+  useEffect(() => {
+    if (initialTheme !== undefined) { setThemeState(readTheme()); setRestored(true); }
+  }, [initialTheme]);
 
   useEffect(() => {
+    if (!restored) return;
     document.documentElement.dataset['theme'] = theme;
     try {
       window.localStorage.setItem(STORAGE_KEY, theme);
     } catch {
       // Non-fatal: preference simply won't persist.
     }
-  }, [theme]);
+  }, [theme, restored]);
 
   const setTheme = useCallback((next: Theme) => setThemeState(next), []);
   const toggleTheme = useCallback(() => {

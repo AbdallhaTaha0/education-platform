@@ -1,3 +1,5 @@
+import { usePublicData } from '../../seo/publicData';
+import { publicHref } from '../../seo/paths';
 import { useState } from 'react';
 import { useAuth } from '../../auth';
 import { useLang, type Lang } from '../../i18n';
@@ -42,6 +44,9 @@ export function Header({
   route: Route;
 }): JSX.Element {
   const { lang, t } = useLang();
+  const publicData = usePublicData();
+  const alternateHref = publicData && ["home", "courses", "course-detail", "package", "support"].includes(route)
+    ? "/" + (lang === "ar" ? "en" : "ar") + publicData.path.slice(3) : undefined;
   const { theme, toggleTheme } = useTheme();
   const { status, user, logout } = useAuth();
   const confirmLeave = useConfirmNavigation();
@@ -196,7 +201,7 @@ export function Header({
       <header className="site-header">
         <Container>
           <div className="site-header__inner">
-            <a className="site-brand" href="#/" aria-label={`${t.brand} — ${t.slogan}`}>
+            <a className="site-brand" href={publicHref("#/", lang)} aria-label={`${t.brand} — ${t.slogan}`}>
               <Wordmark variant="compact" markSize={36} />
             </a>
             <nav
@@ -206,7 +211,7 @@ export function Header({
               {desktopEntries.map((entry) => (
                 <a
                   key={entry.href}
-                  href={entry.href}
+                  href={publicHref(entry.href, lang)}
                   aria-current={entry.active ? 'page' : undefined}
                 >
                   {entry.label}
@@ -226,10 +231,10 @@ export function Header({
             <div className="site-header__tools">
               {signedIn ? <NotificationEntry current={route === 'notifications'} compact /> : null}
               <div className="header-auth-actions">
-                {status === 'anonymous' ? <a href="#/login" data-testid="header-login" aria-label={t.navLogin}
+                {status === 'anonymous' ? <a href="#/login" data-testid="header-login"
                   className="inline-flex min-h-[44px] items-center justify-center rounded-control bg-primary px-4 py-2 font-bold text-primary-ink whitespace-nowrap">
                   <span className="hidden lg:inline">{t.navLogin}</span><span className="lg:hidden">{label('دخول', 'Login')}</span>
-                </a> : signedIn ? <Button variant="secondary" className="whitespace-nowrap px-4" aria-label={t.logout}
+                </a> : signedIn ? <Button variant="secondary" className="whitespace-nowrap px-4"
                   data-testid="header-logout" disabled={signingOut} onClick={() => void signOut()}>
                   <span className="hidden lg:inline">{signingOut ? t.loading : t.logout}</span><span className="lg:hidden">{label('خروج', 'Logout')}</span>
                 </Button> : null}
@@ -244,15 +249,16 @@ export function Header({
               >
                 <span aria-hidden="true">{theme === 'dark' ? '☾' : '☀'}</span>
               </button>
-              <button
+              {alternateHref ? <a className="header-tool language-tool" href={alternateHref} hrefLang={lang === "ar" ? "en" : "ar"}
+                lang={lang === "ar" ? "en" : "ar"} aria-label={lang === "ar" ? "EN — Switch to English" : "ع — التبديل إلى العربية"}>{lang === "ar" ? "EN" : "ع"}</a> : <button
                 type="button"
                 className="header-tool language-tool"
                 onClick={() => onSwitch(lang === 'ar' ? 'en' : 'ar')}
-                aria-label={lang === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
+                aria-label={lang === 'ar' ? 'EN — Switch to English' : 'ع — التبديل إلى العربية'}
                 lang={lang === 'ar' ? 'en' : 'ar'}
               >
                 {lang === 'ar' ? 'EN' : 'ع'}
-              </button>
+              </button>}
             </div>
           </div>
           {logoutError ? <Notice kind="error">{label('تعذّر تسجيل الخروج. حاول مرة أخرى.', 'Could not log out. Please retry.')}</Notice> : null}
@@ -265,7 +271,7 @@ export function Header({
         data-testid="mobile-dock"
       >
         {mobileEntries.map((entry) => (
-          <a key={entry.href} href={entry.href} aria-current={entry.active ? 'page' : undefined}>
+          <a key={entry.href} href={publicHref(entry.href, lang)} aria-current={entry.active ? 'page' : undefined}>
             <span className="mobile-dock__icon">
               <NavIcon kind={entry.icon} />
             </span>

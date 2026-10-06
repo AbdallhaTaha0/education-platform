@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 // M1: the browser calls same-origin /api/* (Nginx proxies to the backend),
 // so no dev-time backend URL is baked into the bundle.
-export default defineConfig({
+export default defineConfig(({ isSsrBuild }) => ({
   plugins: [react()],
   // The formatter worker lazily loads its Python WASM formatter chunk.
   worker: { format: 'es' },
@@ -25,8 +25,10 @@ export default defineConfig({
       },
     },
   },
+  ssr: { noExternal: true },
   build: {
     outDir: 'dist',
     sourcemap: false,
+    rollupOptions: { output: { entryFileNames: isSsrBuild ? "[name].mjs" : "assets/[name]-[hash].js" } },
   },
-});
+}));

@@ -1,3 +1,4 @@
+import { usePublicData } from '../../../seo/publicData';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiError } from '../../../auth';
 import { fetchPublicCourses } from '../api/client';
@@ -9,8 +10,9 @@ export function usePublicCourses(): {
   error: string | null;
   reload: () => void;
 } {
-  const [loading, setLoading] = useState(true);
-  const [courses, setCourses] = useState<PublicCourse[]>([]);
+  const initial = usePublicData()?.courses;
+  const [loading, setLoading] = useState(initial === undefined);
+  const [courses, setCourses] = useState<PublicCourse[]>(initial ?? []);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
     setLoading(true);
@@ -24,7 +26,7 @@ export function usePublicCourses(): {
     }
   }, []);
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (initial === undefined) void load();
+  }, [load, initial]);
   return { loading, courses, error, reload: load };
 }
