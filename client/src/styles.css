@@ -1267,3 +1267,24 @@ html[data-theme="light"] { --ide-keyword: #6d28d9; --ide-string: #166534; --ide-
     max-width: 8rem;
   }
 }
+
+/* Single bottom video control bar, also inside whole-frame fullscreen. */
+.learning-player-controls {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 40;
+  padding: 20px 12px max(8px, env(safe-area-inset-bottom));
+  color: white;
+  background: linear-gradient(transparent, rgb(0 0 0 / 85%));
+}
+.learning-player-controls__row { display: flex; align-items: center; gap: 4px; }
+.learning-player-controls button {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 44px; min-height: 44px; border-radius: 6px;
+}
+.learning-player-controls button:hover { background: rgb(255 255 255 / 15%); }
+.learning-player-controls button:disabled { opacity: .45; }
+.learning-player-controls :focus-visible { outline: 2px solid white; outline-offset: 2px; }
+.learning-player-controls__time { font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.learning-player-controls__spacer { flex: 1; }
+.learning-player-controls input { display: block; width: 100%; height: 20px; margin: 0; accent-color: white; }

@@ -1,4 +1,3 @@
-import { Button } from '../../../components/ui/Button';
 /**
  * DASH/EME lesson player (M5).
  *
@@ -21,6 +20,7 @@ import { protectedRequestUrl } from './requests';
 import { classifyPlayRejection } from './playRejection';
 import { awaitsEncryptionInitData } from './errors';
 import { usePlayerFullscreen } from './fullscreen';
+import { PlayerControls } from './PlayerControls';
 import type { PlaybackGrant, PlayerState } from '../types/models';
 
 type MediaPlayerClass = ReturnType<ReturnType<typeof dashjs.MediaPlayer>['create']>;
@@ -35,11 +35,6 @@ export interface PlayerProps {
   /** True when entitlement is known to have lapsed; forces the expired state. */
   entitlementLost?: boolean;
   autoPlay?: boolean;
-  /** Short-lived caption Blob URLs; revoked by the materials hook. */
-  captionUrls?: { ar: string | null; en: string | null };
-  captionChoice?: 'off' | 'ar' | 'en';
-  /** Caption language selector rendered inside the whole-player fullscreen frame. */
-  captionControls?: React.ReactNode;
   onProgress?: (
     positionSeconds: number,
     durationSeconds: number | null,
@@ -61,9 +56,6 @@ export function DashLessonPlayer({
   labels,
   entitlementLost = false,
   autoPlay = false,
-  captionUrls,
-  captionChoice = 'off',
-  captionControls,
   onProgress,
   onEnded,
   onError,
@@ -215,8 +207,7 @@ export function DashLessonPlayer({
     // attachSource/attachView/settings touched before initialize(). Protection
     // data is set before initialize (the one legal pre-initialization spot);
     // initialize(video, url, autoplay=false) then performs attachView and
-    // attachSource internally. Autoplay stays off: the native controls and the
-    // explicit play control drive playback.
+    // attachSource internally. Autoplay stays off: the bottom control bar drives playback.
     try {
       player = dashjs.MediaPlayer().create();
       playerRef.current = player;
@@ -415,8 +406,6 @@ export function DashLessonPlayer({
             videoRef.current = element;
           }}
           className="h-full w-full"
-          controls
-          controlsList="nofullscreen"
           playsInline
           preload="metadata"
           aria-label={labels.playerLabel}
@@ -428,64 +417,21 @@ export function DashLessonPlayer({
           onEnded={handleEnded}
           onDoubleClick={() => void toggleFullscreen()}
         >
-          {captionChoice !== 'off' && captionUrls?.[captionChoice] ? (
-            <track
-              key={captionChoice}
-              kind="subtitles"
-              srcLang={captionChoice}
-              label={captionChoice === 'ar' ? 'العربية' : 'English'}
-              src={captionUrls[captionChoice] as string}
-              default
-            />
-          ) : null}
         </video>
-        {captionControls ? (
-          <div className="absolute start-3 top-3 z-40 max-w-[calc(100%-7rem)]">
-            {captionControls}
-          </div>
-        ) : null}
         <PlayerOverlay
           phase={state.phase}
           labels={labels}
           code={state.errorCode ?? playFailure}
           canPlay={canPlay}
         />
-        {(
-          <button
-            type="button"
-            data-testid="player-fullscreen"
-            aria-pressed={fullscreen}
-            title={fullscreen ? labels.exitFullscreen : labels.fullscreen}
-            className="absolute end-3 top-3 z-40 inline-flex min-h-[44px] items-center gap-2 rounded-control border border-white/30 bg-black/80 px-3 text-sm font-semibold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
-            onClick={() => void toggleFullscreen()}
-          >
-            <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d={fullscreen ? 'M9 3v6H3m18 0h-6V3M3 15h6v6m6 0v-6h6' : 'M9 3H3v6m12-6h6v6M3 15v6h6m6 0h6v-6'} /></svg>
-            {fullscreen ? labels.exitFullscreen : labels.fullscreen}
-          </button>
-        )}
-        {/* In-frame playback control: inside the whole-player fullscreen frame
-            alongside captions and watermark, with safe-area spacing above the
-            native controls. Single accessible control; no duplicate outside. */}
-        <div
-          className="absolute inset-x-0 bottom-0 z-40 flex items-center gap-2 px-3 pb-[max(3.5rem,env(safe-area-inset-bottom))] pt-2"
-          style={{ pointerEvents: 'none' }}
-        >
-          <Button unstyled
-            type="button"
-            style={{ pointerEvents: 'auto' }}
-            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-control border border-white/30 bg-black/80 px-4 py-2 text-sm font-bold text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
-            data-testid="player-toggle-playback"
-            aria-label={state.phase === 'playing' ? labels.pause : state.phase === 'paused' ? labels.resume : labels.play}
-            aria-pressed={state.phase === 'playing'}
-            onClick={toggle}
-            disabled={state.phase === 'expired' || state.phase === 'error'} disabledReason={state.phase === 'expired' ? { ar: "انتهت صلاحية جلسة المشاهدة. أعد بدء الدرس إن كان اشتراكك ساريًا.", en: "This playback session expired. Start the lesson again if your subscription is active." } : { ar: "توقف التشغيل بسبب خطأ. راجع رسالة الخطأ وأعد المحاولة.", en: "Playback stopped after an error. Review the error message and retry." }}
-          >
-            {state.phase === 'playing' ? labels.pause : state.phase === 'paused' ? labels.resume : labels.play}
-          </Button>
-          <span aria-live="polite" className="rounded bg-black/60 px-2 py-1 text-xs text-white">
-            {needsGesture && labels.needsGesture ? labels.needsGesture : phaseLabel(state.phase, labels)}
-          </span>
-        </div>
+        <PlayerControls
+          videoRef={videoRef}
+          labels={labels}
+          disabled={state.phase === 'expired' || state.phase === 'error'}
+          fullscreen={fullscreen}
+          onTogglePlayback={toggle}
+          onToggleFullscreen={() => void toggleFullscreen()}
+        />
         {/* Watermark last: it must stay visible over every state overlay. */}
         <WatermarkOverlay grant={grant} />
       </div>

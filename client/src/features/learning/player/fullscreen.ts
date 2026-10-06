@@ -26,7 +26,7 @@ export function usePlayerFullscreen(frameRef: RefObject<HTMLDivElement>) {
     const keyboard = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setExpanded(false);
       if (event.key !== 'Tab') return;
-      const controls = frameRef.current?.querySelectorAll<HTMLElement>('video[controls], button:not(:disabled), [tabindex="0"]');
+      const controls = frameRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), [tabindex="0"]');
       if (!controls?.length) return;
       const first = controls[0]; const last = controls[controls.length - 1];
       if (event.shiftKey && (document.activeElement === first || !frameRef.current?.contains(document.activeElement))) {

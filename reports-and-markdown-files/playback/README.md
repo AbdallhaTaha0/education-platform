@@ -10,3 +10,5 @@
 - [playback-recovery-repair-prompt-20261004.md](playback-recovery-repair-prompt-20261004.md)
 - [playback-recovery-second-repair-prompt-20261004.md](playback-recovery-second-repair-prompt-20261004.md)
 - [playback-recovery-second-review-20261004.md](playback-recovery-second-review-20261004.md)
+
+- [Lesson player controls and bottom fullscreen](player-controls-20261006.md)
