@@ -12,7 +12,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { Pool } from 'pg';
 import type Redis from 'ioredis';
 import { createApp } from '../../src/app.js';
-import { createLogger } from '../../src/logger.js';
+import { createLogger, serializeSafeError, serializeSafeRequest } from '../../src/logger.js';
 import type { ServerConfig } from '../../src/config.js';
 
 const SECRETS = {
@@ -116,5 +116,40 @@ describe('sensitive header redaction', () => {
     const logs = dumpedLogs(stream);
     expect(logs.length).toBeGreaterThan(0);
     expectNoSecrets(logs);
+  });
+});
+
+
+describe('unstructured secret-bearing log inputs', () => {
+  it('omits exception messages and nested causes while keeping diagnostics', () => {
+    const stream = new CaptureStream();
+    const logger = createLogger('info', stream);
+    const error = Object.assign(new Error('fixture-private-data-in-message'), { code: 'P2002', cause: new Error('fixture-private-cause') });
+    logger.error({ err: error, requestId: 'audit-request' }, 'unhandled request error');
+    const logs = dumpedLogs(stream);
+    expect(logs).not.toContain('fixture-private-data-in-message');
+    expect(logs).not.toContain('fixture-private-cause');
+    expect(logs).toContain('P2002');
+    expect(logs).toContain('audit-request');
+    expect(logs).toContain('frames');
+  });
+  it('drops request queries while preserving the route and header redaction', async () => {
+    const stream = new CaptureStream();
+    const app = express(); app.use(pinoHttp({ logger: createLogger('info', stream), serializers: { req: serializeSafeRequest, err: serializeSafeError } }));
+    app.get('/account', (_req, res) => res.json({ ok: true }));
+    await request(app).get('/account?private=fixture-private-query').set('Authorization', SECRETS.authorization);
+    const logs = dumpedLogs(stream);
+    expect(logs).not.toContain('fixture-private-query');
+    expect(logs).not.toContain(SECRETS.authorization);
+    expect(logs).toContain('/account');
+  });
+});
+
+
+describe('API cache defaults', () => {
+  it.each(['/health/live', '/auth/me', '/wallet/balance', '/assessments/practice', '/missing-route'])('prevents caching of %s including error responses', async (route) => {
+    const app = createApp({ config, postgresPool: {} as Pool, redisClient: {} as Redis, prisma: {} as PrismaClient }, { logger: createLogger('silent', new CaptureStream()) });
+    const response = await request(app).get(route);
+    expect(response.headers['cache-control']).toBe('no-store');
   });
 });

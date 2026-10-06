@@ -1,6 +1,8 @@
 import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createRoot, hydrateRoot } from 'react-dom/client';
 import App from './App';
+import { PublicDataProvider, readPublicData } from './seo/publicData';
+import { publicHref } from './seo/paths';
 // Self-hosted fonts (fontsource, OFL-licensed): no runtime third-party fetch.
 // Latin display + Arabic weights needed by the type scale; nothing else.
 import '@fontsource/plus-jakarta-sans/latin-700.css';
@@ -18,8 +20,14 @@ import './styles.css';
 const root = document.getElementById('root');
 if (!root) throw new Error('Missing #root element');
 
-createRoot(root).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+const publicData = readPublicData();
+let preferredLang: 'ar' | 'en' = publicData?.lang ?? 'ar';
+try { if ((!publicData || window.location.hash) && localStorage.getItem('edu-platform-lang') === 'en') preferredLang = 'en'; } catch { /* Storage is optional. */ }
+const legacyTarget = publicHref(window.location.hash, preferredLang);
+if (window.location.hash && legacyTarget !== window.location.hash) {
+  window.location.replace(legacyTarget);
+} else {
+  const application = <StrictMode><PublicDataProvider data={publicData}><App /></PublicDataProvider></StrictMode>;
+  if (publicData && !window.location.hash) hydrateRoot(root, application);
+  else createRoot(root).render(application);
+}

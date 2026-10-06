@@ -1,3 +1,4 @@
+import { publicHref } from '../../../seo/paths';
 import { useState } from 'react';
 import { useLang } from '../../../i18n';
 import { PaginatedCollection } from '../../../components/ui/Pagination';
@@ -12,7 +13,6 @@ import { usePublicCourses } from '../hooks/usePublicCourses';
 import { PriceDisplay } from '../components/PriceDisplay';
 
 export function PublicCatalogSections({
-  onSelect,
   compact = false,
 }: {
   onSelect: (slug: string) => void;
@@ -151,7 +151,7 @@ export function PublicCatalogSections({
             </div>
             {compact ? (
               <a
-                href="#/courses"
+                href={publicHref("#/courses", lang)}
                 className="font-bold text-primary-strong underline-offset-4 hover:underline"
               >
                 {lang === 'ar' ? 'عرض كل الدورات' : 'View all courses'} →
@@ -207,13 +207,9 @@ export function PublicCatalogSections({
                       accessEndsAt={c.plans[0].accessEndsAt}
                     />
                   ) : null}
-                  <Button
-                    variant="primary"
-                    className="mt-auto w-full"
-                    onClick={() => onSelect(c.slug)}
-                  >
+                  <a href={publicHref(`#/courses/${encodeURIComponent(c.slug)}`, lang)} aria-label={(lang === "ar" ? "عرض العرض: " : "View offer: ") + (lang === "ar" ? c.titleAr : c.titleEn)} className="mt-auto inline-flex min-h-[44px] w-full items-center justify-center rounded-control bg-primary px-6 py-2 font-bold text-primary-ink hover:bg-primary-hover">
                     {lang === 'ar' ? 'عرض العرض' : 'View offer'}
-                  </Button>
+                  </a>
                 </Card>
               </article>
             ))}

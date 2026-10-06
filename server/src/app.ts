@@ -6,7 +6,7 @@ import type { PrismaClient } from '@prisma/client';
 import type { Pool } from 'pg';
 import type Redis from 'ioredis';
 import type { Logger } from 'pino';
-import { getLogger } from './logger.js';
+import { getLogger, serializeSafeError, serializeSafeRequest } from './logger.js';
 import type { ServerConfig } from './config.js';
 import { checkPostgres } from './infra/postgres.js';
 import { checkRedis } from './infra/redis.js';
@@ -23,6 +23,8 @@ import type { Clock } from './modules/identity/tokens.js';
 import { createAssertionJwks } from './modules/learning/playback/assertion.js';
 import { createNotificationRouter } from './modules/notifications/index.js';
 import { assessmentRouters } from './modules/assessments/routes.js';
+import { createSeoRouter } from './modules/seo/router.js';
+import { readSeoSettings } from './modules/seo/config.js';
 import { createSupportRouter } from './modules/support/routes.js';
 
 export interface AppDependencies {
@@ -59,6 +61,7 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
   app.use(
     pinoHttp({
       logger: tunables.logger ?? getLogger(),
+      serializers: { req: serializeSafeRequest, err: serializeSafeError },
       genReqId: (req) => (req as unknown as { requestId?: string }).requestId ?? 'unknown',
       customLogLevel: (_req, res, err) => {
         if (err !== undefined || res.statusCode >= 500) return 'error';
@@ -68,6 +71,11 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
     }),
   );
   app.use(helmet());
+  // Cookie-authenticated and credential-bearing API responses must not persist
+  // in browser/shared caches. Public-only discovery can explicitly override.
+  app.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
+  app.use((_req, res, next) => { res.set('X-Robots-Tag', 'noindex'); next(); });
+  app.use('/seo', createSeoRouter(deps.prisma, readSeoSettings()));
   app.use(cors({ origin: false }));
   // Proof submission is the only JSON route allowed above the global 256 KiB
   // ceiling. Select the parser before any body has been consumed; mounting a

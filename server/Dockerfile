@@ -33,6 +33,17 @@ COPY server/src ./src
 COPY server/tests ./tests
 RUN npx prisma generate && npm run build
 
+# Reuse public React components for HTML inside this same Express application.
+FROM ${NODE_IMAGE} AS seo-client
+WORKDIR /srv/client
+COPY client/package.json client/package-lock.json ./
+COPY client/scripts ./scripts
+RUN npm ci
+COPY client/index.html client/vite.config.ts client/tsconfig.json client/postcss.config.js client/tailwind.config.js ./
+COPY client/public ./public
+COPY client/src ./src
+RUN npm run build
+
 # Minimal runtime: production-only dependencies + built output + generated
 # Prisma Client, non-root. Assembled by copy (not prune) so devDependencies
 # and sources can never leak into the runtime layer history.
@@ -40,6 +51,8 @@ FROM base AS runtime
 COPY --chown=app:app server/package.json server/package-lock.json ./
 COPY --chown=app:app --from=prod-deps /srv/server/node_modules ./node_modules
 COPY --chown=app:app --from=build /srv/server/dist ./dist
+COPY --chown=app:app --from=seo-client /srv/client/dist/index.html ./public-render/index.html
+COPY --chown=app:app --from=seo-client /srv/client/dist-ssr ./public-render
 # Generated Prisma Client (identical lockfile/platform in both stages).
 # Both locations are required: @prisma/client re-exports the generated client
 # that `prisma generate` writes under node_modules/.prisma/client.
@@ -68,6 +81,8 @@ CMD ["npx", "prisma", "migrate", "deploy"]
 # Isolated test runner: unit tests (stubbed I/O) + integration tests against
 # real PostgreSQL/Redis provided by docker/compose.test.yml.
 FROM base AS test
+COPY --chown=app:app --from=seo-client /srv/client/dist/index.html ./public-render/index.html
+COPY --chown=app:app --from=seo-client /srv/client/dist-ssr ./public-render
 ENV NODE_ENV=test
 COPY --chown=app:app --from=build /srv/server /srv/server
 USER app

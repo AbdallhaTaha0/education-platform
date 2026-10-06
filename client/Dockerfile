@@ -12,6 +12,7 @@ COPY client/scripts ./scripts
 RUN npm ci
 COPY client/index.html client/vite.config.ts client/tsconfig.json client/postcss.config.js client/tailwind.config.js ./
 COPY client/nginx.conf ./nginx.conf
+COPY client/public ./public
 COPY client/src ./src
 RUN npm run build
 

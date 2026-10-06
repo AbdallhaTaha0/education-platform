@@ -8,11 +8,17 @@ map $http_upgrade $connection_upgrade {
   "" close;
 }
 server {
+  gzip on;
+  gzip_vary on;
+  gzip_min_length 1024;
+  gzip_types text/css application/javascript image/svg+xml application/xml;
   listen ${PORT};
   listen [::]:${PORT};
   server_name _;
   root /usr/share/nginx/html;
   index index.html;
+  add_header Content-Security-Policy "frame-ancestors 'none'; object-src 'none'; base-uri 'self'" always;
+  add_header X-Frame-Options DENY always;
   resolver ${DNS_RESOLVER} valid=10s;
   set $backend http://${BACKEND_HOST}:${BACKEND_PORT};
   client_max_body_size 11m;
@@ -20,6 +26,9 @@ server {
   add_header Referrer-Policy no-referrer always;
   location = /edge-health { access_log off; return 200 'ok'; }
   location = /api { return 308 /api/; }
+  # The HTML renderer is an internal backend module, never an API URL alias.
+  location = /api/seo { return 404; }
+  location ^~ /api/seo/ { return 404; }
   location /api/ {
     rewrite ^/api/(.*)$ /$1 break;
     proxy_pass $backend;
@@ -43,7 +52,28 @@ server {
     proxy_set_header Host $host;
     proxy_set_header X-Forwarded-Proto https;
   }
-  location /assets/ { try_files $uri =404; expires 30d; add_header Cache-Control 'public, immutable'; }
-  location = /index.html { add_header Cache-Control 'no-store'; }
-  location / { try_files $uri $uri/ /index.html; }
+  location /assets/ {
+    try_files $uri =404; expires 30d;
+    add_header Cache-Control 'public, immutable';
+    add_header Content-Security-Policy "frame-ancestors 'none'; object-src 'none'; base-uri 'self'" always;
+    add_header X-Frame-Options DENY always;
+  }
+  location = /index.html { return 308 /ar; }
+  location ~ ^/(favicon\.svg|site\.webmanifest)$ {
+    try_files $uri =404;
+    add_header Cache-Control 'no-cache';
+    add_header Content-Security-Policy "frame-ancestors 'none'; object-src 'none'; base-uri 'self'" always;
+    add_header X-Frame-Options DENY always;
+  }
+  location / {
+    proxy_pass $backend/seo$request_uri;
+    proxy_hide_header Content-Security-Policy;
+    proxy_hide_header X-Frame-Options;
+    proxy_hide_header X-Content-Type-Options;
+    proxy_hide_header Referrer-Policy;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 15s;
+  }
 }

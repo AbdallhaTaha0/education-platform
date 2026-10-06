@@ -69,6 +69,7 @@ export function buildLoggerOptions(level: string): pino.LoggerOptions {
   return {
     level,
     base: { service: 'education-platform-server' },
+    serializers: { err: serializeSafeError, req: serializeSafeRequest },
     timestamp: pino.stdTimeFunctions.isoTime,
     redact: {
       paths: [...LOG_REDACT_PATHS],
@@ -88,4 +89,25 @@ export function createLogger(level = 'info', destination?: DestinationStream): L
 
 export function getLogger(): Logger {
   return rootLogger ?? createLogger(process.env['LOG_LEVEL'] ?? 'info');
+}
+
+/** Preserve diagnostic categories, excluding raw messages and nested causes. */
+export function serializeSafeError(error: unknown): Record<string, unknown> {
+  if (typeof error !== 'object' || error === null) return { type: 'UnknownError' };
+  const value = error as { name?: unknown; type?: unknown; code?: unknown; stack?: unknown };
+  const name = error instanceof Error ? error.name : value.type;
+  const code = value.code;
+  return {
+    type: typeof name === 'string' && /^[A-Za-z][A-Za-z0-9]{0,63}$/.test(name) ? name : 'Error',
+    ...(typeof code === 'string' && /^[A-Z][A-Z0-9_]{0,63}$/.test(code) ? { code } : {}),
+    frames: (typeof value.stack === 'string' ? value.stack : '').split('\n').filter(line => /^\s+at /.test(line)).slice(0, 12),
+  };
+}
+/** pino-http supplies its standard serialized request to this allowlist. */
+export function serializeSafeRequest(request: { id?: unknown; method?: unknown; url?: unknown; headers?: unknown; remoteAddress?: unknown; remotePort?: unknown }): Record<string, unknown> {
+  return {
+    id: request.id, method: request.method,
+    url: typeof request.url === 'string' ? request.url.split(/[?#]/, 1)[0] : undefined,
+    headers: request.headers, remoteAddress: request.remoteAddress, remotePort: request.remotePort,
+  };
 }

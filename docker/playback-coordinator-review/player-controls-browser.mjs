@@ -19,5 +19,3 @@ await p.setViewport({width:390,height:844});assert(await p.$eval('[data-testid="
 await p.click('[data-testid="disable"]');assert.equal(await p.$eval('[data-testid="player-toggle-playback"]',e=>e.disabled),true);assert.equal(await p.$eval('[data-testid="player-seek"]',e=>e.disabled),true);assert.equal(await p.$eval('[data-testid="player-fullscreen"]',e=>e.disabled),false);pass('inactive playback blocks play/seek and preserves fullscreen');
 console.log(`checks=${checks} failed=0`);
 }finally{await browser.close();}
-
-

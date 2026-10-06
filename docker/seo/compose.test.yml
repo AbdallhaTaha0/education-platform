@@ -1,0 +1,7 @@
+services:
+  migrate:
+    image: fayq-seo-migrate:20261006
+  test:
+    image: fayq-seo-server-test:20261006
+  client-test:
+    image: fayq-seo-client-test:20261006

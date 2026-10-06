@@ -55,6 +55,9 @@ describe('registration', () => {
     expect(refresh.status).toBe(200);
     bodies.push(JSON.stringify(refresh.body));
     const me = await request(world.app).get('/auth/me').set('Cookie', login.jar.header());
+    expect(me.status).toBe(200);
+    expect(me.headers['cache-control']).toBe('no-store');
+    expect(refresh.headers['cache-control']).toBe('no-store');
     bodies.push(JSON.stringify(me.body));
     const secrets = [...issuedSecrets({ headers: {} })];
     const jar2 = login.jar;
@@ -130,6 +133,18 @@ describe('registration', () => {
 });
 
 describe('login with either identifier', () => {
+  it('accepts the maximum account password and rejects oversized login values generically', async () => {
+    const password = 'p'.repeat(256);
+    const reg = await registerStudent(world.app, { password });
+    expect(reg.status).toBe(201);
+    const valid = await loginWith(world.app, reg.user.email, password);
+    expect(valid.status).toBe(200);
+    for (const identifier of [reg.user.email, uniqueEmail()]) {
+      const oversized = await loginWith(world.app, identifier, 'p'.repeat(257));
+      expect(oversized.status).toBe(401);
+      expect(oversized.body.error).toMatchObject({ code: 'INVALID_CREDENTIALS', message: 'Email/phone or password is incorrect.' });
+    }
+  });
   it('logs in independently with normalized email and local phone', async () => {
     const email = uniqueEmail();
     const reg = await registerStudent(world.app, { email });

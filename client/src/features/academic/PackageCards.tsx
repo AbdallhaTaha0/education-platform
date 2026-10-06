@@ -1,3 +1,5 @@
+import { usePublicData } from '../../seo/publicData';
+import { publicHref } from '../../seo/paths';
 import { useEffect, useState } from 'react';
 import { useLang } from '../../i18n';
 import { Card } from '../../components/ui/Card';
@@ -20,11 +22,13 @@ export function PackageCards({
 }): JSX.Element {
   const { lang, t } = useLang();
   const ar = lang === 'ar';
-  const [rows, setRows] = useState<SchoolPackage[]>([]);
-  const [loading, setLoading] = useState(true);
+  const initial = usePublicData()?.packages;
+  const [rows, setRows] = useState<SchoolPackage[]>(initial ?? []);
+  const [loading, setLoading] = useState(initial === undefined);
   const [failed, setFailed] = useState(false);
   const [retry, setRetry] = useState(0);
   useEffect(() => {
+    if (initial !== undefined && retry === 0) return;
     let live = true;
     setLoading(true);
     setFailed(false);
@@ -41,7 +45,7 @@ export function PackageCards({
     return () => {
       live = false;
     };
-  }, [retry]);
+  }, [retry, initial]);
   const visible = rows.filter(
     (p) =>
       (!query || `${p.titleAr} ${p.titleEn}`.toLowerCase().includes(query.toLowerCase())) &&
@@ -102,7 +106,7 @@ export function PackageCards({
                 {t.validUntil}: {displayDeadline(p.endsAt, lang)} ({ar ? 'القاهرة' : 'Cairo'})
               </p>
               {p.available ? (
-                <a className="footer-discovery mt-auto" href={`#/package/${p.id}`}>
+                <a className="footer-discovery mt-auto" href={publicHref(`#/package/${p.id}`, lang)}>
                   {ar ? 'عرض الباقة والاشتراك' : 'Review package and subscribe'} →
                 </a>
               ) : (

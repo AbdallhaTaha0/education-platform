@@ -1,3 +1,4 @@
+import { publicHref } from '../../../seo/paths';
 import { Container } from '../../../components/ui/Card';
 import { PublicCatalogSections } from '../../catalog/pages/PublicCatalogPage';
 import { useLang } from '../../../i18n';
@@ -121,7 +122,7 @@ export function HomePage({
               </p>
               <div className="hero-actions">
                 {!user ? <a className="fayq-action fayq-action--quiet" href="#/register">{c('أنشئ حساب طالب','Create a student account')}</a>:null}
-                <a className="fayq-action" href="#/courses">
+                <a className="fayq-action" href={publicHref("#/courses", lang)}>
                   {c('اكتشف الدورات', 'Explore courses')}
                   <span aria-hidden="true">↗</span>
                 </a>
@@ -141,7 +142,8 @@ export function HomePage({
                 width="1280"
                 height="720"
                 alt=""
-                fetchPriority="high"
+                {...{ fetchpriority: "high" }}
+                decoding="async"
               />
               <div className="hero-art-note">
                 <span aria-hidden="true">&lt;/&gt;</span>
@@ -265,7 +267,7 @@ export function HomePage({
           <div className="landing-final">
             <p className="eyebrow">{t.slogan}</p>
             <h2>{c('أول خطوة مستنياك.', 'Your first step is waiting.')}</h2>
-            <a href="#/courses" className="fayq-action">
+            <a href={publicHref("#/courses", lang)} className="fayq-action">
               {c('اختار دورتك', 'Find your course')}
               <span aria-hidden="true">↗</span>
             </a>

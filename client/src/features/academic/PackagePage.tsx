@@ -1,3 +1,5 @@
+import { usePublicData } from '../../seo/publicData';
+import { publicHref } from '../../seo/paths';
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, ApiError, useAuth } from '../../auth';
 import { useLang } from '../../i18n';
@@ -14,12 +16,14 @@ export function PackagePage({ id }: { id: string }): JSX.Element {
   const { lang, t } = useLang();
   const ar = lang === 'ar';
   const { status, user } = useAuth();
-  const [pkg, setPkg] = useState<SchoolPackage | null>(null);
+  const seed = usePublicData()?.pkg;
+  const initial = seed?.id === id ? seed : undefined;
+  const [pkg, setPkg] = useState<SchoolPackage | null>(initial ?? null);
   const [review, setReview] = useState<Awaited<ReturnType<typeof packageReview>> | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [receipt, setReceipt] = useState<PackageReceipt | null>(null);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(initial === undefined);
   const [busy, setBusy] = useState(false);
   const [key] = useState(newIdempotencyKey);
   const load = useCallback(async () => {
@@ -85,9 +89,12 @@ export function PackagePage({ id }: { id: string }): JSX.Element {
     <main id="main">
       <Container>
         <section className="py-10">
-          <a href="#/courses" className="footer-discovery">
+          <nav aria-label={lang === "ar" ? "مسار الصفحة" : "Breadcrumb"} className="flex flex-col items-center gap-2">
+          <a href={publicHref("#/courses", lang)} className="footer-discovery">
             ← {t.navCourses}
           </a>
+          {pkg ? <span aria-current="page"> / {ar ? pkg.titleAr : pkg.titleEn}</span> : null}
+          </nav>
           {loading ? <Loading text={t.loading} /> : null}
           {error ? (
             <>
@@ -128,7 +135,7 @@ export function PackagePage({ id }: { id: string }): JSX.Element {
               <ol className="my-5 list-inside list-decimal space-y-3">
                 {pkg.courses.map((c) => (
                   <li key={c.id}>
-                    {ar ? c.titleAr : c.titleEn}
+                    {c.published ? <a className="underline" href={publicHref("#/courses/" + encodeURIComponent(c.slug), lang)}>{ar ? c.titleAr : c.titleEn}</a> : (ar ? c.titleAr : c.titleEn)}
                     {!c.published ? (
                       <Notice kind="info">
                         {ar

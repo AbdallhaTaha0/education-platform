@@ -1,3 +1,5 @@
+import { publicLocation } from './seo/paths';
+
 export type Route =
   | 'home'
   | 'register'
@@ -25,7 +27,7 @@ export type Route =
   | 'admin-practice' | 'admin-students' | 'admin-policies' | 'admin-support' | 'support' | 'terms' | 'privacy' | 'refunds' | 'not-found';
 
 export function routeFromHash(): Route {
-  const hash = window.location.hash;
+  const hash = window.location.hash || publicLocation(window.location.pathname)?.hash || (window.location.pathname === '/' || window.location.pathname === '/index.html' ? '' : '#/unknown');
   if (hash === '#/admin/support') return 'admin-support';
   if (hash === '#/admin/students') return 'admin-students';
   if (hash === '#/admin/policies') return 'admin-policies';
@@ -66,13 +68,14 @@ export function planIdFromHash(): string {
 }
 
 export function packageIdFromHash(): string {
-  return window.location.hash.startsWith('#/package/')
-    ? decodeURIComponent(window.location.hash.slice('#/package/'.length))
+  const hash = window.location.hash || publicLocation(window.location.pathname)?.hash || '';
+  return hash.startsWith('#/package/')
+    ? decodeURIComponent(hash.slice('#/package/'.length))
     : '';
 }
 
 export function slugFromHash(): string {
-  const hash = window.location.hash;
+  const hash = window.location.hash || publicLocation(window.location.pathname)?.hash || '';
   if (hash.startsWith('#/courses/')) return decodeURIComponent(hash.slice('#/courses/'.length));
   return '';
 }

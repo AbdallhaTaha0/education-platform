@@ -1,0 +1,12 @@
+services:
+  test:
+    image: fayq-security-audit-server:20261005
+    volumes:
+      - ../server/src:/srv/server/src:ro
+      - ../server/tests:/srv/server/tests:ro
+  migrate:
+    image: fayq-security-audit-migrate:20261005
+  client-test:
+    image: fayq-security-audit-client:20261005
+    volumes:
+      - ../client/src:/srv/client/src:ro

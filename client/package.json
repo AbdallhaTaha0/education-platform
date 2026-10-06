@@ -6,11 +6,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/patch-braces.mjs --verify && tsc -b && vite build && vite build --ssr src/seo/entry-server.tsx --outDir dist-ssr",
     "preview": "vite preview",
     "typecheck": "tsc -b",
-    "test": "node --test scripts/patch-dashjs.test.mjs && vitest run",
-    "postinstall": "node scripts/patch-dashjs.mjs"
+    "test": "node --test scripts/patch-braces.test.mjs && node --test scripts/patch-dashjs.test.mjs && vitest run",
+    "postinstall": "node scripts/patch-dashjs.mjs && node scripts/patch-braces.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "6.11.1",
