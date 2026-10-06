@@ -34,16 +34,11 @@ try{
  admin=await page('materials-admin@example.test','en');student=await page('materials-student@example.test','ar');
  const synced=await api(admin,`/admin/catalog/lessons/${f.lessonId}/media/sync`,'POST',{});pass('actual external duration sync',synced.status===200);
  await admin.goto(BASE+`/#/admin/courses/${f.courseId}`);
+ await admin.waitForSelector('#course-workspace-tab-materials');await admin.click('#course-workspace-tab-materials');
  await admin.waitForSelector(`[data-testid="admin-materials-${f.lessonId}"]`,{timeout:30000});
- await admin.waitForSelector(`[data-testid="admin-caption-ar-${f.lessonId}"]`,{visible:true});
+ await admin.waitForSelector(`[data-testid="admin-resource-file-${f.lessonId}"]`,{visible:true});
  pass('ADMIN panels load through the real contract');
- fs.writeFileSync('/evidence/ar.vtt','WEBVTT\r\n\r\n00:00:00.000 --> 00:00:15.000\r\nترجمة تجريبية للفيديو\r\n');
- fs.writeFileSync('/evidence/en.vtt','WEBVTT\n\n00:00:00.000 --> 00:00:15.000\nDemo captions for the test video\n');
  fs.writeFileSync('/evidence/lesson.txt','Protected Arabic resource: مرحبا');
- await (await admin.$(`[data-testid="admin-caption-ar-${f.lessonId}"]`)).uploadFile('/evidence/ar.vtt');
- await (await admin.$(`[data-testid="admin-caption-en-${f.lessonId}"]`)).uploadFile('/evidence/en.vtt');
- await admin.click(`[data-testid="admin-caption-upload-${f.lessonId}"]`);
- await admin.waitForFunction(()=>document.querySelectorAll('[data-testid="admin-caption-row"]').length===2);pass('real bilingual multipart authoring');
  await admin.type(`[data-testid="admin-resource-label-ar-${f.lessonId}"]`,'ملف الدرس');await admin.type(`[data-testid="admin-resource-label-en-${f.lessonId}"]`,'Lesson notes');
  await (await admin.$(`[data-testid="admin-resource-file-${f.lessonId}"]`)).uploadFile('/evidence/lesson.txt');await admin.click(`[data-testid="admin-resource-upload-${f.lessonId}"]`);
  await admin.waitForFunction(()=>document.querySelectorAll('[data-testid="admin-resource-row"]').length===1);pass('real protected resource authoring');
@@ -58,26 +53,20 @@ try{
  pass('encrypted real playback advances');
  await student.click('[data-testid="player-toggle-playback"]');
  await student.waitForFunction(()=>document.querySelector('video')?.paused===true);
- pass('real video pauses before caption inspection');
- await student.select('[data-testid="caption-choice"]','ar');
- await student.waitForFunction(()=>{const t=document.querySelector('video track');return t?.src.startsWith('blob:')&&t.track.cues?.length>0;});
- const ar=await student.evaluate(()=>{const t=document.querySelector('video track');return {language:t.srclang,mode:t.track.mode,cues:Array.from(t.track.cues??[]).map(c=>c.text)};});pass('real Arabic CRLF cue bytes load and display',ar.language==='ar'&&ar.mode==='showing'&&ar.cues[0].includes('ترجمة'));
- await student.click('[data-testid="player-fullscreen"]');await student.waitForFunction(()=>!!document.fullscreenElement);pass('captions and controls remain in native fullscreen',await student.evaluate(()=>document.fullscreenElement.contains(document.querySelector('video track'))&&!!document.fullscreenElement.querySelector('[data-testid="caption-choice"]')));
+ pass('real video pauses before fullscreen inspection');
+ await student.click('[data-testid="player-fullscreen"]');await student.waitForFunction(()=>!!document.fullscreenElement);pass('bottom controls remain in native fullscreen',await student.evaluate(()=>!!document.fullscreenElement.querySelector('[data-testid="player-controls"]')));
  await student.keyboard.press('Escape');
  // Headless Chrome may not perform its native-window Escape action. Exercise
  // the actual exit API in that case; do not claim this proves native OS Escape.
  await student.evaluate(async()=>{if(document.fullscreenElement)await document.exitFullscreen();});
  await student.waitForFunction(()=>!document.fullscreenElement);
- await student.select('[data-testid="caption-choice"]','en');await student.waitForFunction(()=>document.querySelector('video track')?.srclang==='en'&&document.querySelector('video track')?.track.cues?.length>0);pass('real English cue bytes load');
- await student.select('[data-testid="caption-choice"]','off');await student.waitForFunction(()=>!document.querySelector('video track'));pass('Off removes the caption track');
- pass('caption state changes preserve exactly one assessments section',await student.evaluate(()=>Array.from(document.querySelectorAll('h2')).filter(e=>e.textContent.includes('الواجبات والاختبارات')||e.textContent.includes('Assignments and quizzes')).length===1));
  const resource=(await api(student,`/learning/lessons/${f.lessonId}/materials`)).body.data.resources[0];
  const text=await student.evaluate(async id=>{const r=await fetch(`/api/learning/resources/${id}/download`,{credentials:'include'});return {status:r.status,text:await r.text()};},resource.id);pass('real protected bytes downloaded',text.status===200&&text.text==='Protected Arabic resource: مرحبا');
  const response=student.waitForResponse(r=>r.url().endsWith(`/resources/${resource.id}/download`));
  await student.click(`[data-testid="resource-download-${resource.id}"]`);pass('resource UI receives real protected bytes',(await response).status()===200);
  await student.setViewport({width:390,height:844});await student.screenshot({path:'/evidence/student-ar-mobile.png',fullPage:true});pass('Arabic mobile layout has no horizontal overflow',await student.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
  await admin.screenshot({path:'/evidence/admin-en-materials.png',fullPage:true});
- await student.goto(BASE+'/#/account');await student.waitForFunction(()=>!document.querySelector('video'));pass('navigation removes protected player/captions');
+ await student.goto(BASE+'/#/account');await student.waitForFunction(()=>!document.querySelector('video'));pass('navigation removes protected player');
  pass('no uncaught browser errors',errors.length===0);
  console.log(`REAL_MATERIALS_BROWSER_CHECKS=${checks}`);
 }catch(error){

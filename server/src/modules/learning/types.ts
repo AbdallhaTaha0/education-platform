@@ -68,15 +68,6 @@ export interface WatermarkPresentation {
   expiresAt: string | null;
 }
 
-/** Caption metadata returned to students (no storage keys). */
-export interface CaptionMetadata {
-  id: string;
-  language: 'ar' | 'en';
-  labelAr: string;
-  labelEn: string;
-  byteSize: number;
-}
-
 /** Resource metadata returned to students (no storage keys). */
 export interface ResourceMetadata {
   id: string;
@@ -91,12 +82,10 @@ export interface ResourceMetadata {
 export interface LessonMaterials {
   lessonId: string;
   durationSeconds: number | null;
-  captions: CaptionMetadata[];
   resources: ResourceMetadata[];
 }
 
 /** Admin-facing materials response includes validation state. */
 export interface AdminLessonMaterials extends LessonMaterials {
-  captions: (CaptionMetadata & { state: string; errorCategory?: string | null })[];
   resources: ResourceMetadata[];
 }

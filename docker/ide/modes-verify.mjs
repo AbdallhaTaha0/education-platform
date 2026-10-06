@@ -7,8 +7,9 @@ import {mkdirSync,readFileSync,writeFileSync,openSync,closeSync} from 'node:fs';
 import {resolve,join} from 'node:path';
 const root=resolve(import.meta.dirname,'../..'),docker=process.env.DOCKER_EXE||'docker',project='fayq-ide-modes-test';
 if(resolve(process.cwd())!==root)throw Error('Run from repository root');
-const prefix=['compose','-p',project,'-f','docker/ide/modes.compose.test.yml'];
-const volumes=[`${project}_pg-test`,`${project}_redis-test`],dir=join(root,'docker/browser/evidence/ide-modes');mkdirSync(dir,{recursive:true});
+const materialsOnly=process.argv.includes('--materials-only');
+const prefix=['compose','-p',project,'-f','docker/ide/modes.compose.test.yml',...(materialsOnly?['-f','docker/ide/materials.compose.test.yml']:[])];
+const volumes=[`${project}_pg-test`,`${project}_redis-test`,...(materialsOnly?[`${project}_objects-test`]:[])],dir=join(root,'docker/browser/evidence/ide-modes');mkdirSync(dir,{recursive:true});
 const formatOnly=process.argv.includes('--format-only');
 const previewOnly=process.argv.includes('--preview-only');
 const syntaxOnly=process.argv.includes('--syntax-only');
@@ -17,16 +18,17 @@ const progressOnly=process.argv.includes('--progress-only');
 const adminTabsOnly=process.argv.includes('--admin-tabs-only');
 const courseWorkspaceOnly=process.argv.includes('--course-workspace-only');
 const catalogOnly=process.argv.includes('--catalog-only');
+const assessmentAuthoringOnly=process.argv.includes('--assessment-authoring-only');
 const assessmentSaveOnly=process.argv.includes('--assessment-save-only');
 const assessmentReturnOnly=process.argv.includes('--assessment-return-only');
 const walletBrowserOnly=process.argv.includes('--wallet-browser-only');
 const paginationOnly=process.argv.includes('--pagination-only');
 const walletOnly=process.argv.includes('--wallet-only')||walletBrowserOnly||paginationOnly;
-const editorOnly=process.argv.includes('--editor-only')||formatOnly||previewOnly||syntaxOnly||studentOnly||progressOnly||walletOnly||adminTabsOnly||courseWorkspaceOnly||catalogOnly||assessmentSaveOnly||assessmentReturnOnly;
+const editorOnly=materialsOnly||process.argv.includes('--editor-only')||formatOnly||previewOnly||syntaxOnly||studentOnly||progressOnly||walletOnly||adminTabsOnly||courseWorkspaceOnly||catalogOnly||assessmentSaveOnly||assessmentAuthoringOnly||assessmentReturnOnly;
 function capture(args,input){const r=spawnSync(docker,args,{cwd:root,input,encoding:'utf8',maxBuffer:8*1024*1024});if(r.status!==0)throw Error('Verification inspection/action failed');return r.stdout;}
 function guard(){
  const c=JSON.parse(capture([...prefix,'config','--format','json']));
- if(c.name!==project||Object.keys(c.volumes||{}).length!==2||Object.values(c.volumes).some(v=>v.external||!volumes.includes(v.name)))throw Error('Disposable volumes refused');
+ if(c.name!==project||Object.keys(c.volumes||{}).length!==volumes.length||Object.values(c.volumes).some(v=>v.external||!volumes.includes(v.name)))throw Error('Disposable volumes refused');
  for(const [name,s]of Object.entries(c.services)){
   if(s.ports?.length)throw Error('Published test ports refused');
   for(const m of s.volumes||[]){if(['test','grading'].includes(name)&&m.type==='bind'&&m.source==='/var/run/docker.sock'&&m.target==='/var/run/docker.sock')continue;if(m.type!=='volume'||!volumes.includes(c.volumes[m.source]?.name))throw Error('Test mount refused');}
@@ -49,12 +51,13 @@ else{
   if(walletOnly&&!walletBrowserOnly&&!process.argv.includes('--browser-only'))run('wallet-integration',[...prefix,'run','--rm','--no-deps','identity-test','npx','vitest','run','tests/integration/wallet-payment-qr.test.ts','tests/integration/wallet-payment-settings.test.ts','tests/integration/wallet-vodafone-settings.test.ts','tests/integration/wallet-recharge.test.ts','tests/integration/wallet-review.test.ts','tests/integration/wallet-integrity.test.ts','tests/integration/wallet-purchase.test.ts','tests/integration/wallet-proof-cleanup.test.ts']);
   if(studentOnly&&!process.argv.includes('--browser-only'))run('student-integration',[...prefix,'run','--rm','--no-deps','identity-test','npx','vitest','run','tests/integration/student-profile.test.ts','tests/integration/identity-auth.test.ts','tests/integration/identity-session.test.ts','tests/integration/identity-security.test.ts','tests/integration/identity-redis.test.ts']);
   if(!editorOnly)run('integration',[...prefix,'run','--rm','--no-deps','test','npx','vitest','run','tests/integration/ide-modes.test.ts','tests/integration/m9-assessments.test.ts','tests/integration/m9-program.test.ts']);
-  run('browser-stack',[...prefix,'up','-d','--wait','nginx',...(!editorOnly?['grading']:[])]);
+  run('browser-stack',[...prefix,'up','-d','--wait','nginx',...(!editorOnly||assessmentAuthoringOnly?['grading']:[])]);
+  if(materialsOnly)capture([...prefix,'exec','-T','server','node','-e',"require('./dist/infra/storage.js').createStorageClient(require('./dist/config.js').loadConfig(process.env)).putObject('',new Uint8Array(),'application/octet-stream').then(()=>console.log('bucket ready')).catch(()=>process.exit(1));"]);
   const fixtures=JSON.parse(capture([...prefix,'exec','-T','server','node','-'],readFileSync(join(root,'docker/ide/modes-fixtures.cjs'))));
   writeFileSync(join(dir,'fixtures.json'),JSON.stringify(fixtures),{mode:0o600});
   if(courseWorkspaceOnly){const extra=JSON.parse(capture([...prefix,'exec','-T','server','node','-'],readFileSync(join(root,'docker/ide/course-workspace-fixtures.cjs'))));writeFileSync(join(dir,'fixtures.json'),JSON.stringify({...fixtures,...extra}),{mode:0o600});}
   if(paginationOnly)capture([...prefix,'exec','-T','server','node','-'],readFileSync(join(root,'docker/ide/pagination-fixtures.cjs')));
-  for(const name of courseWorkspaceOnly?['course-workspace-flow','admin-dashboard-flow','assessment-save-flow']:assessmentReturnOnly?['assessment-return-flow']:assessmentSaveOnly?['assessment-save-flow']:catalogOnly?['catalog-editor-flow']:paginationOnly?['pagination-flow']:adminTabsOnly?['admin-dashboard-flow']:walletOnly?['wallet-flow']:progressOnly?['progress-flow']:studentOnly?['student-profile-flow']:syntaxOnly?['syntax-theme-flow']:previewOnly?['web-preview-flow']:formatOnly?['python-format-flow']:editorOnly?['editor-keyboard-flow']:['modes-flow','modes-admin-flow'])run(name,['run','--rm','--name',`${project}-${name}`,'--label',`com.docker.compose.project=${project}`,'--network',`${project}_default`,'--mount',`type=bind,source=${join(root,`docker/ide/${name}.mjs`)},target=/srv/browser/${name}.mjs,readonly`,'--mount',`type=bind,source=${dir},target=/evidence`,'fayq-m9-browser:0.9.0','node',`${name}.mjs`]);
+  for(const name of materialsOnly?['materials-admin-flow']:courseWorkspaceOnly?['course-workspace-flow','admin-dashboard-flow','assessment-save-flow']:assessmentAuthoringOnly?['assessment-authoring-flow','assessment-save-flow']:assessmentReturnOnly?['assessment-return-flow']:assessmentSaveOnly?['assessment-save-flow']:catalogOnly?['catalog-editor-flow']:paginationOnly?['pagination-flow']:adminTabsOnly?['admin-dashboard-flow']:walletOnly?['wallet-flow']:progressOnly?['progress-flow']:studentOnly?['student-profile-flow']:syntaxOnly?['syntax-theme-flow']:previewOnly?['web-preview-flow']:formatOnly?['python-format-flow']:editorOnly?['editor-keyboard-flow']:['modes-flow','modes-admin-flow'])run(name,['run','--rm','--name',`${project}-${name}`,'--label',`com.docker.compose.project=${project}`,'--network',`${project}_default`,'--mount',`type=bind,source=${join(root,`docker/ide/${name}.mjs`)},target=/srv/browser/${name}.mjs,readonly`,'--mount',`type=bind,source=${dir},target=/evidence`,'fayq-m9-browser:0.9.0','node',`${name}.mjs`]);
  }catch(e){failed=true;console.error(e.message);}
  finally{try{guard();run('cleanup',[...prefix,'down','-v']);}catch(e){failed=true;console.error(e.message);}}
  if(failed)process.exitCode=1;

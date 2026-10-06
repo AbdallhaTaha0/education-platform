@@ -20,6 +20,7 @@ import { lessonAdditionBlockCode, structuralBlockCode } from '../editability';
 const courseTabs: SectionTab[] = [
   { id: 'outline', ar: 'الأقسام والدروس', en: 'Sections & lessons', descriptionAr: 'اختَر قسمًا ودرسًا لتعديل الفيديو أو الاسم. إضافة الأقسام والدروس وترتيبها لها أدوات مستقلة.', descriptionEn: 'Choose a section and lesson to edit its video or title. Adding and ordering content has separate controls.' },
   { id: 'assessments', ar: 'الاختبارات والواجبات', en: 'Assessments', descriptionAr: 'اختَر القسم والدرس ثم أدر الاختبارات والواجبات وحلول الطلاب، دون ازدحام أدوات الفيديو.', descriptionEn: 'Choose the section and lesson, then manage quizzes, assignments and submissions in a dedicated area.' },
+  { id: 'materials', ar: 'ملفات الدروس', en: 'Lesson files', descriptionAr: 'اختَر درسًا لإرفاق الملفات أو إزالتها. الملفات متاحة للمشتركين فقط.', descriptionEn: 'Choose a lesson to upload or remove files. Files are available only to entitled students.' },
   { id: 'details', ar: 'تعديل بيانات الكورس', en: 'Edit course details', descriptionAr: 'عدّل العنوان والوصف والتصنيف الدراسي باللغتين، ثم احفظ بيانات الكورس.', descriptionEn: 'Edit bilingual titles, descriptions and academic classification, then save the course details.' },
   { id: 'access', ar: 'الأسعار ومدة الاشتراك', en: 'Prices & subscription access', descriptionAr: 'أضف أو عدّل عروض السعر ومدة أو نهاية الوصول. تغييرات كل عرض تُحفظ من نموذجه.', descriptionEn: 'Add or edit price offers and access duration/deadline. Save each offer using its own form.' },
   { id: 'publish', ar: 'النشر والأرشفة والحذف', en: 'Publish, archive & delete', descriptionAr: 'راجع جاهزية النشر. الأرشفة قابلة للتراجع؛ الحذف النهائي يزيل المحتوى عبر التأكيد المطلوب.', descriptionEn: 'Review publication readiness. Archiving can be reversed; permanent deletion removes content through the required confirmation.' },
@@ -150,6 +151,7 @@ export function AdminDetailPage({ courseId }: { courseId: string }): JSX.Element
           <CourseContentWorkspace key={courseId} course={course} mode="video" onChanged={reload} blockedReason={structuralReason} additionBlockedReason={additionReason} />
           </> : null}
           {workspace === 'assessments' && !course.workingCopyId ? <CourseContentWorkspace key={courseId} course={course} mode="assessments" onChanged={reload} blockedReason={structuralReason} additionBlockedReason={additionReason} /> : null}
+          {workspace === 'materials' ? <CourseContentWorkspace key={courseId} course={course} mode="materials" onChanged={reload} blockedReason={course.workingCopyId ? (lang === 'ar' ? 'افتح مسودة التعديل لإدارة الملفات؛ الإصدار المنشور محفوظ.' : 'Open the working draft to manage files; the published version is retained.') : course.status === 'ARCHIVED' || course.deletionRequestedAt ? (lang === 'ar' ? 'إدارة الملفات غير متاحة أثناء الأرشفة أو الحذف.' : 'File changes are unavailable while archived or deleting.') : undefined} /> : null}
 
           </> : null}
           </SectionPanel>)}

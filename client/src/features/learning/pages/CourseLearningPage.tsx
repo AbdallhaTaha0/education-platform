@@ -13,7 +13,7 @@ import { DashLessonPlayer } from '../player/Player';
 import { clear as clearSession } from '../player/session';
 import { LessonAssessments } from '../../assessments/LessonAssessments';
 import { CoursePlan, useLearningLabels } from '../components/CoursePlan';
-import { CaptionControls, ResourcesPanel } from '../materials/LessonMaterials';
+import { ResourcesPanel } from '../materials/LessonMaterials';
 import { useLessonMaterials } from '../materials/useLessonMaterials';
 import { OwnSessionRecovery } from '../sessions/OwnSessionRecovery';
 import { Button } from '../../../components/ui/Button';
@@ -136,10 +136,10 @@ export function CourseLearningPage({ courseSlug, onRenew, initialLessonId, autoR
     [playback, selectedLessonId],
   );
 
-  // Lesson materials (captions/resources) for the currently selected lesson.
+  // Lesson materials (lesson files) for the currently selected lesson.
   // This hook is called unconditionally before every early return so the hook
   // order stays stable across loading/error/ready renders. It fetches only the
-  // entitlement-checked materials payload and validates caption bytes; the
+  // entitlement-checked materials payload; the
   // server re-checks access on every request.
   const accessLost =
     errorCode === 'LESSON_NOT_FOUND' ||
@@ -261,20 +261,6 @@ export function CourseLearningPage({ courseSlug, onRenew, initialLessonId, autoR
                 autoPlay={autoResume && selectedLessonId === initialLessonId}
                 entitlementLost={entitlementLost}
                 labels={playerLabels(t)}
-                captionUrls={lessonMaterials.captionUrls}
-                captionChoice={lessonMaterials.captionChoice}
-                captionControls={
-                  <CaptionControls
-                    lang={lang}
-                    choice={lessonMaterials.captionChoice}
-                    onChoice={lessonMaterials.setCaptionChoice}
-                    hasAr={(lessonMaterials.materials?.captions ?? []).some((c) => c.language === 'ar')}
-                    hasEn={(lessonMaterials.materials?.captions ?? []).some((c) => c.language === 'en')}
-                    loading={lessonMaterials.captionLoading}
-                    errorCode={lessonMaterials.captionErrorCode}
-                    onRetry={lessonMaterials.retryCaptions}
-                  />
-                }
                 onRetry={() => void playback.start(selectedLesson.lessonId)}
                 onProgress={(position, duration, completed, keepalive) =>
                   playback.reportProgress(selectedLesson.lessonId, position, duration, completed, keepalive)

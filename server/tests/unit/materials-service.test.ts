@@ -1,16 +1,12 @@
 // Database/storage lifecycle behavior is covered by the real integration suite.
 import { describe, it, expect, vi } from 'vitest';
 import type { MaterialsDeps, ResourceUploadInput } from '../../src/modules/learning/materials/service.js';
-import { uploadCaptionPair, uploadResource } from '../../src/modules/learning/materials/service.js';
+import { uploadResource } from '../../src/modules/learning/materials/service.js';
 import { validateMediaStatusResponse } from '../../src/modules/catalog/drm/schemas.js';
 const transaction = vi.fn();
 const deps = { prisma: { $transaction: transaction }, storage: {}, now: Date.now } as unknown as MaterialsDeps;
-const caption = (language: 'ar' | 'en') => ({ language, labelAr: 'Arabic label', labelEn: 'English label', content: Buffer.from('WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nHello\n') });
 const resource = (): ResourceUploadInput => ({ labelAr: 'Arabic label', labelEn: 'English label', fileName: 'lesson.txt', mimeType: 'text/plain', content: Buffer.from('hello') });
 describe('material inputs fail before persistence or storage', () => {
-  it('requires the correct language pair', async () => { await expect(uploadCaptionPair(deps, 'lesson', caption('en'), caption('en'), 'actor')).rejects.toMatchObject({ code: 'MATERIAL_INVALID' }); });
-  it('rejects malformed WebVTT', async () => { await expect(uploadCaptionPair(deps, 'lesson', { ...caption('ar'), content: Buffer.from('invalid') }, caption('en'), 'actor')).rejects.toMatchObject({ code: 'MATERIAL_INVALID' }); });
-  it('rejects oversized captions', async () => { await expect(uploadCaptionPair(deps, 'lesson', { ...caption('ar'), content: Buffer.alloc(1048577) }, caption('en'), 'actor')).rejects.toMatchObject({ code: 'MATERIAL_TOO_LARGE' }); });
   it('rejects labels of the wrong runtime type', async () => { await expect(uploadResource(deps, 'lesson', { ...resource(), labelAr: 1 as unknown as string }, 'actor')).rejects.toMatchObject({ code: 'MATERIAL_INVALID' }); });
   it('rejects long bilingual labels', async () => { await expect(uploadResource(deps, 'lesson', { ...resource(), labelEn: 'x'.repeat(201) }, 'actor')).rejects.toMatchObject({ code: 'MATERIAL_INVALID' }); });
   it('rejects traversal filenames', async () => { await expect(uploadResource(deps, 'lesson', { ...resource(), fileName: '../lesson.txt' }, 'actor')).rejects.toMatchObject({ code: 'MATERIAL_INVALID' }); });

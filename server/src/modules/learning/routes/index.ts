@@ -249,7 +249,7 @@ export function createLearningRouter(ctx: LearningRouteContext): Router {
     }),
   );
 
-  // Mount materials sub-router (captions + resources)
+  // Mount materials sub-router (lesson resources)
   router.use('/', createMaterialsRouter(ctx));
 
   return router;

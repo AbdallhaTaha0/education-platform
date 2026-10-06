@@ -247,3 +247,12 @@ The owner's subsequent instruction supersedes the same-day in-place return-to-dr
 The owner explicitly chose **Require a replacement before publishing** after removing a draft lesson's video and **Yes, safely delete unused superseded videos**. Draft video removal leaves the lesson in place. Inherited live media stays intact until publication; superseded media is retired durably and deleted only through the external DRM API after references and active sessions no longer need it. These instructions authorize the bounded additive platform schema and local Docker upgrade; they do not authorize DRM source changes, production deployment, capacity certification, milestone acceptance or commit/push. See [implementation and evidence](published-course-working-copies-20261005.md).
 
 Owner follow-up: create/open an editing draft **only from a published canonical course**, never from another draft. Remove the preparation-state reopen exception and hide the create-draft action throughout DRAFT/PROCESSING/READY. Repeated published-root requests still reuse its one working copy. No existing drafts or content are deleted by this correction.
+
+## DRM security review follow-up — 2026-10-06
+
+The owner instructed **“fix all these bugs”** after the independent security review. This assigns the bounded per-destination webhook delivery-status correction inside the external DRM, guarded local API/worker refresh, correction of the platform's DRM Git reference and missing security reports. The platform continues to consume DRM only through its API. Preserve retained databases, videos, credentials and the port 8080 preview. A local DRM commit is necessary to give the corrected dependency a reproducible Git reference; no remote push or production release is inferred. See [repair evidence](drm-security-repair-20261006.md) and [local delivery](security-delivery-20261006.md).
+
+
+## Caption removal — 2026-10-06
+
+Owner explicitly requested permanent caption removal in frontend/backend while retaining lesson files. This supersedes caption-pair authoring/playback requirements; bilingual course content and resource labels remain. Caption metadata/schema and known owned objects are retired through an atomic migration with durable deletion intents. Student/admin file flows, protected downloads, videos and the external DRM boundary remain. See [delivery and evidence](caption-removal-20261006.md). No commit/push or production approval is implied.

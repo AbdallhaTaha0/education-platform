@@ -1,5 +1,19 @@
 # Education platform documentation
 
+Captions permanently removed (2026-10-06): [backend/frontend/schema removal, retained lesson files and Docker evidence](caption-removal-20261006.md). 23 backend unit, 20 integration, 166 frontend and 22 browser checks pass; port 8080 updated, protected data unchanged.
+
+Player controls synchronized locally (2026-10-06): [remote/local source diagnosis, bottom fullscreen integration and verification](player-controls-sync-20261006.md). 173 frontend unit and 11 browser checks pass; captions and pending work preserved.
+
+Local Docker refresh (2026-10-06): [all 11 application images, runtime synchronization, preservation and network fallback](docker-image-refresh-20261006.md). Port 8080 is healthy; 18 execution proofs, Python and private file-storage smokes pass. Retained data preserved; no commit/push.
+
+Lesson files restored (2026-10-06): [dedicated ADMIN files/captions tab, private Docker storage, empty-state correction and verified student downloads](lesson-file-management-20261006.md). 26 browser, 26 materials integration, 56 materials unit and 173 frontend checks pass. Local preview updated; protected data and DRM preserved.
+
+Assessment authoring repair (2026-10-06): [native dropdown and question-type fixes, focused questions, typed answers, validation and mobile UX](assessment-authoring-ux-20261006.md). 54 authoring browser checks, 11 save-validation checks and 173 frontend tests pass in Docker. Local frontend refreshed on port 8080; retained data and DRM preserved.
+
+DRM security fixes installed locally (2026-10-06): [delivery, preservation and rollback](security-delivery-20261006.md) and [source repair/regressions](drm-security-repair-20261006.md). 103 unit/security and four PostgreSQL/BullMQ tests pass; updated API/worker contain the fixes, nine retained table fingerprints and ten protected containers are unchanged. Local DRM commit `d1bfd69` is referenced by the parent Git index; platform commit/remote push remain pending.
+
+Latest DRM security review (2026-10-06): [independent review of `52853b3` and fresh Docker evidence](drm-security-independent-review-20261006.md). 103 unit/security tests and two PostgreSQL/BullMQ tests pass. The parent DRM reference and retained running images still predate this repair; delivery remains pending. Port 8080 restored, retained data preserved, disposable resources removed.
+
 Published-course working copies (2026-10-05): [keep the live course available while editing, replace/remove draft videos, and retire unused videos safely](published-course-working-copies-20261005.md). Fresh isolated Docker verification: 187 catalog/learning checks, 45 browser checks, and a separate 271-unit/76-materials-playback check suite pass. Port 8080 updated with a protected backup; all 18 retained data fingerprints preserved.
 
 Historical same-day predecessor: [in-place return to draft](published-course-return-to-draft-20261005.md), superseded by the working-copy requirement above.

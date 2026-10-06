@@ -1,0 +1,23 @@
+import puppeteer from '/srv/browser/node_modules/puppeteer-core/lib/esm/puppeteer/puppeteer-core.js';
+import assert from 'node:assert/strict';
+import {lookup} from 'node:dns/promises';
+const address=(await lookup('fayq-player-controls-ui')).address;
+const browser=await puppeteer.launch({executablePath:'/usr/bin/chromium',args:['--no-sandbox','--disable-dev-shm-usage','--host-resolver-rules=MAP localhost '+address]});
+let checks=0;const pass=(name)=>{console.log(`PASS ${name}`);checks++;};
+try{const p=await browser.newPage();await p.goto('http://localhost:5173/',{waitUntil:'networkidle0'});await p.waitForSelector('[data-testid="player-controls"]');
+assert.equal(await p.$$eval('[data-testid="player-fullscreen"]',x=>x.length),1);assert.equal(await p.$eval('video',v=>v.controls),false);pass('one custom fullscreen control, no native duplicate');
+assert.equal(await p.$eval('[data-testid="player-controls"]',e=>getComputedStyle(e).bottom),'0px');pass('controls placed at frame bottom');
+await p.evaluate(()=>{const v=document.querySelector('video');Object.defineProperty(v,'duration',{value:120,configurable:true});v.dispatchEvent(new Event('loadedmetadata'));});
+await p.waitForFunction(()=>document.querySelector('[data-testid="player-seek"]').max==='120');pass('duration and seek synchronize');
+await p.click('[data-testid="player-toggle-playback"]');await p.waitForFunction(()=>document.querySelector('[data-testid="player-toggle-playback"]').getAttribute('aria-label')==='Pause');pass('play/pause reacts to media events');
+await p.evaluate(()=>{const seek=document.querySelector('[data-testid="player-seek"]');const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;setter.call(seek,'30');seek.dispatchEvent(new Event('input',{bubbles:true}));seek.dispatchEvent(new Event('change',{bubbles:true}));});assert.equal(await p.$eval('video',v=>v.currentTime),30);pass('seek updates actual video time');
+await p.click('[data-testid="player-controls"] button:nth-last-child(2)');assert.equal(await p.$eval('video',v=>v.muted),true);pass('mute updates media');
+await p.click('[data-testid="player-fullscreen"]');await p.waitForFunction(()=>document.fullscreenElement?.classList.contains('learning-video-frame'));assert.equal(await p.$eval('[data-testid="player-fullscreen"]',e=>e.getAttribute('aria-pressed')),'true');assert(await p.$eval('[data-testid="retained-watermark"]',e=>document.fullscreenElement.contains(e)));pass('native fullscreen contains controls and watermark');
+await p.click('[data-testid="player-fullscreen"]');await p.waitForFunction(()=>!document.fullscreenElement);pass('bottom control exits fullscreen');
+await p.evaluate(()=>{document.querySelector('.learning-video-frame').requestFullscreen=()=>Promise.reject(new Error('Synthetic refusal'));});await p.click('[data-testid="player-fullscreen"]');await p.waitForSelector('.learning-video-frame--expanded');await p.keyboard.press('Escape');await p.waitForFunction(()=>!document.querySelector('.learning-video-frame--expanded'));pass('browser refusal falls back and Escape exits');
+await p.setViewport({width:390,height:844});assert(await p.$eval('[data-testid="player-controls"]',e=>e.getBoundingClientRect().right<=innerWidth));pass('mobile controls fit viewport');
+await p.click('[data-testid="disable"]');assert.equal(await p.$eval('[data-testid="player-toggle-playback"]',e=>e.disabled),true);assert.equal(await p.$eval('[data-testid="player-seek"]',e=>e.disabled),true);assert.equal(await p.$eval('[data-testid="player-fullscreen"]',e=>e.disabled),false);pass('inactive playback blocks play/seek and preserves fullscreen');
+console.log(`checks=${checks} failed=0`);
+}finally{await browser.close();}
+
+

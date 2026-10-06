@@ -5,7 +5,7 @@ import { LearningError } from '../errors.js';
 import { asyncRoute, ctxOf, studentOf, type LearningRouteContext } from '../routes/shared.js';
 import { parseMaterialForm } from './multipart.js';
 import { makeContentDisposition } from './validation.js';
-import { uploadCaptionPair, deleteCaptions, uploadResource, deleteResource, getStudentMaterials, getAdminMaterials, getCaptionContent, getResourceContent, type MaterialsDeps } from './service.js';
+import { uploadResource, deleteResource, getStudentMaterials, getAdminMaterials, getResourceContent, type MaterialsDeps } from './service.js';
 import type { Request } from 'express';
 const read = [requireAuth];
 const adminRead = [requireAuth, requireAdmin];
@@ -17,16 +17,16 @@ function depsOf(req: Request): MaterialsDeps {
   if (!ctx.storage) throw new LearningError('MATERIAL_STORAGE_UNAVAILABLE');
   return { prisma: ctx.prisma, storage: ctx.storage, now: ctx.now };
 }
+// Metadata is held in PostgreSQL: an empty list must not require object storage.
+function readDepsOf(req: Request) {
+  const ctx = ctxOf(req);
+  return { prisma: ctx.prisma, now: ctx.now };
+}
 export function createMaterialsRouter(_ctx: LearningRouteContext): Router {
   const router = Router();
   router.get('/lessons/:lessonId/materials', ...read, readLimit(), asyncRoute(async (req, res) => {
     const user = studentOf(req);
-    res.json(ok(await getStudentMaterials(depsOf(req), user.userId, '', req.params['lessonId'])));
-  }));
-  router.get('/captions/:id', ...read, readLimit(), asyncRoute(async (req, res) => {
-    const user = studentOf(req);
-    const { content } = await getCaptionContent(depsOf(req), user.userId, '', req.params['id']);
-    res.set({ 'Content-Type': 'text/vtt; charset=utf-8', 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' }).send(Buffer.from(content));
+    res.json(ok(await getStudentMaterials(readDepsOf(req), user.userId, '', req.params['lessonId'])));
   }));
   router.get('/resources/:id/download', ...read, readLimit(), asyncRoute(async (req, res) => {
     const user = studentOf(req);
@@ -38,21 +38,7 @@ export function createMaterialsRouter(_ctx: LearningRouteContext): Router {
 export function createAdminMaterialsRouter(_ctx: LearningRouteContext): Router {
   const router = Router();
   router.get('/learning/lessons/:lessonId/materials', ...adminRead, readLimit(), asyncRoute(async (req, res) => {
-    res.json(ok(await getAdminMaterials(depsOf(req), req.params['lessonId'])));
-  }));
-  router.post('/learning/lessons/:lessonId/captions', ...write, writeLimit(), asyncRoute(async (req, res) => {
-    const deps = depsOf(req), lessonId = req.params['lessonId'];
-    const form = await parseMaterialForm(req, ['ar', 'en'], 2 * 1_048_576 + 8192);
-    const ar = form.get('ar'), en = form.get('en');
-    if (!ar || !en || typeof ar === 'string' || typeof en === 'string' || !ar.name.toLowerCase().endsWith('.vtt') || !en.name.toLowerCase().endsWith('.vtt')) throw new LearningError('MATERIAL_INVALID');
-    await uploadCaptionPair(deps, lessonId,
-      { language: 'ar', labelAr: 'العربية', labelEn: 'Arabic', content: new Uint8Array(await ar.arrayBuffer()) },
-      { language: 'en', labelAr: 'الإنجليزية', labelEn: 'English', content: new Uint8Array(await en.arrayBuffer()) }, req.auth!.userId);
-    res.json(ok(await getAdminMaterials(deps, lessonId)));
-  }));
-  router.delete('/learning/lessons/:lessonId/captions', ...write, writeLimit(), asyncRoute(async (req, res) => {
-    await deleteCaptions(depsOf(req), req.params['lessonId'], req.auth!.userId);
-    res.json(ok({ removed: true }));
+    res.json(ok(await getAdminMaterials(readDepsOf(req), req.params['lessonId'])));
   }));
   router.post('/learning/lessons/:lessonId/resources', ...write, writeLimit(), asyncRoute(async (req, res) => {
     const deps = depsOf(req);

@@ -2,10 +2,11 @@
 import { spawnSync, execSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { checkContainerIdentity, checkContainerMounts, checkNetworkMembers, checkNoUnexpectedVolumes, checkVolumeIdentity } from '../playback-recovery-review/guards.mjs';
+import { verifyCaptionRemovalUpgrade } from './caption-removal-upgrade.mjs';
 const root = resolve(import.meta.dirname, '../..'), docker = process.env.DOCKER_EXE || 'docker';
 const project = 'fayq-course-learning-backend-final-20261004';
 const compose = ['compose', '-p', project, '-f', 'docker/course-learning-backend/compose.test.yml'];
-const SERVER = process.argv.includes('--course-revisions') ? 'fayq-ide-modes-server:test' : 'fayq-materials-final-server-test:20261004';
+const SERVER = process.argv.includes('--materials-only') ? 'fayq-ide-modes-server:test' : process.argv.includes('--course-revisions') ? 'fayq-ide-modes-server:test' : 'fayq-materials-final-server-test:20261004';
 function sh(args, opts = {}) {
   const r = spawnSync(docker, args, { cwd: root, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024, ...opts });
   return r;
@@ -193,7 +194,7 @@ let failure;
 try {
   if (process.argv.includes('--cleanup')) { cleanupProject(compose, project); process.exit(0); }
   must([...compose, 'up','-d','--wait'], 'start isolated fixtures');
-  if (!process.argv.includes('--course-revisions')) {
+  if (!process.argv.includes('--course-revisions') && !process.argv.includes('--materials-only')) {
   // Upgrade a populated accepted pre-materials schema before testing a fresh DB.
   must([...compose, 'exec','-T','postgres','psql','-U','materials','-d','course_learning_test','-c','CREATE DATABASE materials_upgrade_test'], 'create upgrade fixture');
   const upgradeEnv = ['-e','DATABASE_URL=postgresql://materials:synthetic_materials_test_only@postgres:5432/materials_upgrade_test'];
@@ -210,11 +211,12 @@ try {
   if (before !== fingerprint()) throw Error('Populated migration changed retained fixture data');
   console.log('Populated migration/repeat gate passed; existing string IDs and rows preserved.');
   }
+  if (process.argv.includes('--materials-only')) verifyCaptionRemovalUpgrade({docker,project,server:SERVER,compose});
   run(['npx','prisma','migrate','deploy']);
   run(['npx','prisma','migrate','deploy']);
   run(['npm','run','typecheck']);
-  run(['npm','run','test:unit']);
-  run(['npx','vitest','run','tests/integration/learning-materials.test.ts','tests/integration/learning-playback.test.ts','tests/integration/playback-recovery.test.ts','tests/integration/device-release-recovery-regressions.test.ts']);
+  if(process.argv.includes('--materials-only'))run(['npx','vitest','run','tests/unit/materials-validation.test.ts','tests/unit/materials-service.test.ts']);else run(['npm','run','test:unit']);
+  run(['npx','vitest','run','tests/integration/learning-materials.test.ts',...(process.argv.includes('--materials-only')?[]:['tests/integration/learning-playback.test.ts','tests/integration/playback-recovery.test.ts','tests/integration/device-release-recovery-regressions.test.ts'])]);
 } catch (err) { failure = err; console.error(err.message); }
 finally { if (!process.argv.includes('--retain')) cleanupProject(compose, project); }
 if (failure) process.exit(1);

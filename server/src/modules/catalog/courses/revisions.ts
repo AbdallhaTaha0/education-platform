@@ -71,14 +71,6 @@ export async function publishWorkingCopy(tx: TxClient, actor: string, draft: Cou
         const oldMedia = await tx.mediaMapping.findUnique({ where: { lessonId } });
         if (l.media && oldMedia) await retire(oldMedia.id);
         if (l.media) await tx.mediaMapping.update({ where: { id: l.media.id }, data: { lessonId } });
-        // New caption uploads replace the old pair only at publication.
-        const captions = await tx.lessonCaption.findMany({ where: { lessonId: l.id } });
-        if (captions.length) {
-          const old = await tx.lessonCaption.findMany({ where: { lessonId } });
-          await tx.materialObject.updateMany({ where: { storageKey: { in: old.map(c => c.storageKey) } }, data: { state: 'DELETE' } });
-          await tx.lessonCaption.deleteMany({ where: { lessonId } });
-          await tx.lessonCaption.updateMany({ where: { lessonId: l.id }, data: { lessonId } });
-        }
         await tx.lessonResource.updateMany({ where: { lessonId: l.id }, data: { lessonId } });
       }
       await tx.lesson.update({ where: { id: lessonId }, data: { sectionId, titleAr: l.titleAr, titleEn: l.titleEn, position: l.position, originId: null, inheritedMediaId: null } });

@@ -6,12 +6,11 @@ import { evaluateEntitlement } from '../access/entitlement.js';
 import { assertLessonUnlocked } from '../../assessments/progression.js';
 import { lockCourseRow } from '../../catalog/locks.js';
 import { ensureMutable } from '../../catalog/courses/service.js';
-import { validateWebVTT, validateResourceBytes, sanitizeFilename } from './validation.js';
+import { validateResourceBytes, sanitizeFilename } from './validation.js';
 
-export interface CaptionUploadInput { language: 'ar' | 'en'; labelAr: string; labelEn: string; content: Uint8Array }
 export interface ResourceUploadInput { labelAr: string; labelEn: string; fileName: string; mimeType: string; content: Uint8Array }
 export interface MaterialsDeps { prisma: PrismaClient; storage: StorageClient; now: () => number }
-export interface UploadedCaption { id: string; language: 'ar' | 'en'; labelAr: string; labelEn: string; byteSize: number; cueCount: number }
+export type MaterialsReadDeps = Pick<MaterialsDeps, 'prisma' | 'now'>;
 export interface UploadedResource { id: string; labelAr: string; labelEn: string; fileName: string; mimeType: string; byteSize: number }
 
 function label(value: unknown): string {
@@ -66,42 +65,6 @@ export async function reconcileMaterialObjects(deps: MaterialsDeps, limit = 25):
   }
   return deleted;
 }
-export async function uploadCaptionPair(deps: MaterialsDeps, lessonId: string, ar: CaptionUploadInput, en: CaptionUploadInput, actorId: string): Promise<{ ar: UploadedCaption; en: UploadedCaption }> {
-  const files = [ar, en];
-  if (ar.language !== 'ar' || en.language !== 'en') throw new LearningError('MATERIAL_INVALID');
-  const data = files.map(input => {
-    if (!(input.content instanceof Uint8Array)) throw new LearningError('MATERIAL_INVALID');
-    if (input.content.length > 1_048_576) throw new LearningError('MATERIAL_TOO_LARGE');
-    const validated = validateWebVTT(input.content);
-    if (!validated.valid || !validated.cueCount) throw new LearningError('MATERIAL_INVALID');
-    const id = randomUUID();
-    return { id, lessonId, language: input.language, labelAr: label(input.labelAr), labelEn: label(input.labelEn), byteSize: input.content.length, cueCount: validated.cueCount, storageKey: `captions/${lessonId}/${id}`, state: 'VALIDATED' as const, validatedAt: new Date(deps.now()) };
-  });
-  const keys = data.map(r => r.storageKey);
-  await reserve(deps, lessonId, keys);
-  try {
-    try { for (let i = 0; i < files.length; i++) await deps.storage.putObject(keys[i], files[i].content, 'text/vtt; charset=utf-8'); }
-    catch { throw new LearningError('MATERIAL_STORAGE_UNAVAILABLE'); }
-    await deps.prisma.$transaction(async tx => {
-      await mutableLesson(tx, lessonId);
-      // DELETE triggers durably enqueue old objects in the same transaction.
-      await tx.lessonCaption.deleteMany({ where: { lessonId } });
-      await tx.lessonCaption.createMany({ data });
-      const live = await tx.materialObject.updateMany({ where: { storageKey: { in: keys }, state: 'PENDING' }, data: { state: 'LIVE' } });
-      if (live.count !== 2) throw new LearningError('MATERIAL_STORAGE_UNAVAILABLE');
-      await tx.auditEvent.create({ data: { actorUserId: actorId, action: 'CAPTIONS_UPLOADED', entityType: 'Lesson', entityId: lessonId, metadata: { arId: data[0].id, enId: data[1].id } } });
-    });
-  } catch (err) { await abandon(deps, keys); throw err; }
-  const dto = (r: typeof data[number]): UploadedCaption => ({ id: r.id, language: r.language, labelAr: r.labelAr, labelEn: r.labelEn, byteSize: r.byteSize, cueCount: r.cueCount });
-  return { ar: dto(data[0]), en: dto(data[1]) };
-}
-export async function deleteCaptions(deps: MaterialsDeps, lessonId: string, actorId: string): Promise<void> {
-  await deps.prisma.$transaction(async tx => {
-    await mutableLesson(tx, lessonId);
-    const result = await tx.lessonCaption.deleteMany({ where: { lessonId } });
-    if (result.count) await tx.auditEvent.create({ data: { actorUserId: actorId, action: 'CAPTIONS_DELETED', entityType: 'Lesson', entityId: lessonId, metadata: { count: result.count } } });
-  });
-}
 export async function uploadResource(deps: MaterialsDeps, lessonId: string, input: ResourceUploadInput, actorId: string): Promise<UploadedResource> {
   const labelAr = label(input.labelAr), labelEn = label(input.labelEn);
   if (typeof input.fileName !== 'string' || !input.fileName.trim() || input.fileName.length > 255 || /[/\\]|[\x00-\x1f\x7f]/.test(input.fileName) || ['.', '..'].includes(input.fileName)) throw new LearningError('MATERIAL_INVALID');
@@ -133,11 +96,11 @@ export async function deleteResource(deps: MaterialsDeps, resourceId: string, ac
   });
 }
 export async function getStudentMaterials(
-  deps: MaterialsDeps,
+  deps: MaterialsReadDeps,
   studentId: string,
   courseRef: string,
   lessonId: string,
-): Promise<{ lessonId: string; durationSeconds: number | null; captions: CaptionMetadata[]; resources: ResourceMetadata[] }> {
+): Promise<{ lessonId: string; durationSeconds: number | null; resources: ResourceMetadata[] }> {
   const lesson = await deps.prisma.lesson.findUnique({
     where: { id: lessonId },
     include: { media: true, section: { select: { courseId: true } } },
@@ -163,12 +126,6 @@ export async function getStudentMaterials(
 
   await assertLessonUnlocked(deps.prisma, studentId, course.id, lessonId);
 
-  // Get validated captions only
-  const captions = await deps.prisma.lessonCaption.findMany({
-    where: { lessonId, state: 'VALIDATED' },
-    select: { id: true, language: true, labelAr: true, labelEn: true, byteSize: true },
-  });
-
   const resources = await deps.prisma.lessonResource.findMany({
     where: { lessonId },
     select: { id: true, labelAr: true, labelEn: true, fileName: true, mimeType: true, byteSize: true },
@@ -177,13 +134,6 @@ export async function getStudentMaterials(
   return {
     lessonId,
     durationSeconds: lesson.media?.durationSeconds ?? null,
-    captions: (captions.length === 2 && captions.some(c => c.language === 'ar') && captions.some(c => c.language === 'en') ? captions : []).map((c) => ({
-      id: c.id,
-      language: c.language as 'ar' | 'en',
-      labelAr: c.labelAr,
-      labelEn: c.labelEn,
-      byteSize: c.byteSize,
-    })),
     resources: resources.map((r) => ({
       id: r.id,
       labelAr: r.labelAr,
@@ -196,45 +146,25 @@ export async function getStudentMaterials(
 }
 
 export async function getAdminMaterials(
-  deps: MaterialsDeps,
+  deps: MaterialsReadDeps,
   lessonId: string,
-): Promise<{ lessonId: string; durationSeconds: number | null; captions: (CaptionMetadata & { inherited?: boolean; state: string; errorCategory?: string | null })[]; resources: (ResourceMetadata & { inherited?: boolean })[] }> {
+): Promise<{ lessonId: string; durationSeconds: number | null; resources: (ResourceMetadata & { inherited?: boolean })[] }> {
   const lesson = await deps.prisma.lesson.findUnique({
     where: { id: lessonId },
     include: { media: true },
   });
   if (!lesson) throw new LearningError('LESSON_NOT_FOUND');
 
-  let captions = await deps.prisma.lessonCaption.findMany({
-    where: { lessonId },
-    select: { id: true, language: true, labelAr: true, labelEn: true, byteSize: true, state: true, errorCategory: true },
-  });
-
   const resources = await deps.prisma.lessonResource.findMany({
     where: { lessonId },
     select: { id: true, labelAr: true, labelEn: true, fileName: true, mimeType: true, byteSize: true },
   });
 
-  let inheritedCaptions = false;
   const inheritedResources = lesson.originId ? await deps.prisma.lessonResource.findMany({ where: { lessonId: lesson.originId }, select: { id: true, labelAr: true, labelEn: true, fileName: true, mimeType: true, byteSize: true } }) : [];
-  if (lesson.originId && !captions.length) {
-    captions = await deps.prisma.lessonCaption.findMany({ where: { lessonId: lesson.originId }, select: { id: true, language: true, labelAr: true, labelEn: true, byteSize: true, state: true, errorCategory: true } });
-    inheritedCaptions = true;
-  }
   const inheritedMedia = lesson.inheritedMediaId ? await deps.prisma.mediaMapping.findUnique({ where: { id: lesson.inheritedMediaId }, select: { durationSeconds: true } }) : null;
   return {
     lessonId,
     durationSeconds: lesson.media?.durationSeconds ?? inheritedMedia?.durationSeconds ?? null,
-    captions: captions.map((c) => ({
-      inherited: inheritedCaptions,
-      id: c.id,
-      language: c.language as 'ar' | 'en',
-      labelAr: c.labelAr,
-      labelEn: c.labelEn,
-      byteSize: c.byteSize,
-      state: c.state,
-      errorCategory: c.errorCategory,
-    })),
     resources: [...inheritedResources.map(r => ({ ...r, inherited: true })), ...resources.map((r) => ({
       id: r.id,
       labelAr: r.labelAr,
@@ -244,44 +174,6 @@ export async function getAdminMaterials(
       byteSize: r.byteSize,
     }))],
   };
-}
-
-export async function getCaptionContent(
-  deps: MaterialsDeps,
-  studentId: string,
-  courseRef: string,
-  captionId: string,
-): Promise<{ content: Uint8Array; language: 'ar' | 'en' }> {
-  const caption = await deps.prisma.lessonCaption.findUnique({
-    where: { id: captionId },
-    include: { lesson: { include: { media: true, section: { select: { courseId: true } } } } },
-  });
-  if (!caption || caption.state !== 'VALIDATED') throw new LearningError('MATERIAL_NOT_FOUND');
-
-  const lesson = caption.lesson;
-
-  // Resolve course and check entitlement
-  const course = await deps.prisma.course.findUnique({
-    where: { id: lesson.section.courseId },
-  });
-  if (!course || course.deletionRequestedAt !== null || course.status !== 'PUBLISHED') {
-    throw new LearningError('LESSON_NOT_FOUND');
-  }
-
-  const subscriptions = await deps.prisma.subscription.findMany({
-    where: { studentId },
-    select: { courseId: true, startsAt: true, expiresAt: true },
-  });
-  const decision = evaluateEntitlement(subscriptions, course.id, deps.now());
-  if (!decision.allowed) {
-    throw new LearningError(decision.reason);
-  }
-
-  await assertLessonUnlocked(deps.prisma, studentId, course.id, lesson.id);
-
-  let result;
-  try { result = await deps.storage.getObject(caption.storageKey); } catch { throw new LearningError('MATERIAL_STORAGE_UNAVAILABLE'); }
-  return { content: result.body, language: caption.language as 'ar' | 'en' };
 }
 
 export async function getResourceContent(
@@ -320,14 +212,6 @@ export async function getResourceContent(
   let result;
   try { result = await deps.storage.getObject(resource.storageKey); } catch { throw new LearningError('MATERIAL_STORAGE_UNAVAILABLE'); }
   return { content: result.body, fileName: resource.fileName, mimeType: resource.mimeType };
-}
-
-export interface CaptionMetadata {
-  id: string;
-  language: 'ar' | 'en';
-  labelAr: string;
-  labelEn: string;
-  byteSize: number;
 }
 
 export interface ResourceMetadata {

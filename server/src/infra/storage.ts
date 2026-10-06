@@ -2,7 +2,7 @@
  * Platform-owned private object storage client (S3-compatible).
  *
  * Separate from DRM-owned video storage. Server-side credentials only.
- * Used for bilingual WebVTT captions and lesson resources.
+ * Used for protected lesson resources.
  * No public URLs; all access goes through authenticated backend routes.
  */
 

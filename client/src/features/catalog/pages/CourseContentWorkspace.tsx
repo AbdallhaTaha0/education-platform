@@ -10,7 +10,7 @@ import { SectionEditor } from './SectionEditor';
 import { DeletionPanel } from './DeletionPanel';
 
 export function CourseContentWorkspace({ course, mode, onChanged, blockedReason, additionBlockedReason }: {
-  course: AdminCourseDetail; mode: 'video' | 'assessments'; onChanged: () => Promise<void>; blockedReason?: string; additionBlockedReason?: string;
+  course: AdminCourseDetail; mode: 'video' | 'assessments' | 'materials'; onChanged: () => Promise<void>; blockedReason?: string; additionBlockedReason?: string;
 }): JSX.Element {
   const { lang } = useLang(); const ar = lang === 'ar'; const confirmLeave = useConfirmNavigation();
   const [selected, setSelected] = useState(course.sections[0]?.id ?? ''), [search, setSearch] = useState('');

@@ -10,6 +10,8 @@ export function useFocusedWorkspace(active:boolean, ref:RefObject<HTMLElement>, 
     while(element.parentElement && element.parentElement!==document.body){for(const sibling of element.parentElement.children){if(sibling!==element && sibling instanceof HTMLElement){siblings.set(sibling,sibling.inert);sibling.inert=true;}}element=element.parentElement;}
     root.setAttribute('tabindex','-1');root.focus();
     const key=(event:KeyboardEvent)=>{
+      // Let native dropdowns and code-editor popups consume Escape themselves.
+      if(event.defaultPrevented || (event.key==='Escape' && event.target instanceof HTMLSelectElement))return;
       if(event.key==='Escape'){event.preventDefault();current.current();return;}
       if(event.key!=='Tab' || (event.target as HTMLElement)?.closest('[data-testid="error-feedback-stack"]'))return;
       const controls=[...root.querySelectorAll<HTMLElement>('button:not(:disabled),a[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"],[contenteditable="true"]')].filter(e=>e.getClientRects().length && !e.closest('[inert]'));

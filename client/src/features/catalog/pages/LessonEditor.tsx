@@ -12,6 +12,7 @@ import { createLesson, patchLesson, reorderLessons } from '../api/client';
 import type { AdminLesson } from '../types/models';
 import { MediaUploader } from './MediaUploader';
 import { AdminAssessmentPanel } from '../../assessments/AdminAssessmentPanel';
+import { AdminLessonMaterials } from '../../learning/materials/AdminLessonMaterials';
 import { DeletionPanel } from './DeletionPanel';
 import { businessState } from '../../../components/ui/AdminNavigation';
 import { EntityRename } from './EntityRename';
@@ -30,7 +31,7 @@ export function LessonList({
   onChanged: () => Promise<void>;
   blockedReason?: string;
   additionBlockedReason?: string;
-  workspaceMode?: 'video' | 'assessments';
+  workspaceMode?: 'video' | 'assessments' | 'materials';
 }): JSX.Element {
   const { t, lang } = useLang();
   const [titleAr, setTitleAr] = useState('');
@@ -119,7 +120,7 @@ export function LessonList({
               canReplace={!blockedReason}
             />
             <DeletionPanel kind="lessons" targetId={l.id} entityName={lang==='ar'?l.titleAr:l.titleEn} expectedConfirmation={l.id} onChanged={onChanged}/>
-            </> : <AdminAssessmentPanel lessonId={l.id} initiallyOpen />}
+            </> : workspaceMode === 'materials' ? <AdminLessonMaterials lessonId={l.id} blockedReason={blockedReason} /> : <AdminAssessmentPanel lessonId={l.id} initiallyOpen />}
           </li>
         ) : null)}
       </ul>

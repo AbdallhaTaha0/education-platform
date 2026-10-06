@@ -5,28 +5,41 @@
  * Auth is cookies (`credentials: include`); mutations carry the readable
  * CSRF synchronizer. No provider credentials are ever embedded in the client.
  */
-import { apiFetch as authApiFetch, apiResponse as authApiResponse } from '../../../auth';
-import { LearningApiError } from '../api/client';
-import type { AdminLessonMaterials, LessonMaterials, MaterialResource } from './types';
+import {
+  apiFetch as authApiFetch,
+  apiResponse as authApiResponse,
+} from "../../../auth";
+import { LearningApiError } from "../api/client";
+import type {
+  AdminLessonMaterials,
+  LessonMaterials,
+  MaterialResource,
+} from "./types";
 
-async function apiFetch<T>(...args: Parameters<typeof authApiFetch<T>>): Promise<T> {
-  try { return await authApiFetch<T>(...args); }
-  catch (err) {
+async function apiFetch<T>(
+  ...args: Parameters<typeof authApiFetch<T>>
+): Promise<T> {
+  try {
+    return await authApiFetch<T>(...args);
+  } catch (err) {
     const error = err as { code?: string; status?: number };
-    throw new LearningApiError(error.code ?? 'UNKNOWN', error.status ?? 0);
+    throw new LearningApiError(error.code ?? "UNKNOWN", error.status ?? 0);
   }
 }
 
-async function apiResponse(...args: Parameters<typeof authApiResponse>): Promise<Response> {
-  try { return await authApiResponse(...args); }
-  catch (err) {
+async function apiResponse(
+  ...args: Parameters<typeof authApiResponse>
+): Promise<Response> {
+  try {
+    return await authApiResponse(...args);
+  } catch (err) {
     const error = err as { code?: string; status?: number };
-    throw new LearningApiError(error.code ?? 'UNKNOWN', error.status ?? 0);
+    throw new LearningApiError(error.code ?? "UNKNOWN", error.status ?? 0);
   }
 }
 
 export const lessonMaterialsApi = {
-  /** Authorized student view: validated available captions/resources only. */
+  /** Authorized student view: protected resources only. */
   async getLessonMaterials(lessonId: string): Promise<LessonMaterials> {
     const body = await apiFetch<{ data: LessonMaterials }>(
       `/learning/lessons/${encodeURIComponent(lessonId)}/materials`,
@@ -35,27 +48,29 @@ export const lessonMaterialsApi = {
     return body.data;
   },
 
-  /** Authenticated WebVTT bytes; caller validates and creates a Blob URL. */
-  async fetchCaptionText(captionId: string): Promise<string> {
-    const response = await apiResponse(
-      `/learning/captions/${encodeURIComponent(captionId)}`,
-      { headers: { Accept: 'text/vtt' } },
-    );
-    return response.text();
-  },
-
   /** Authenticated resource download through a short-lived Blob URL. */
-  async downloadResource(resourceId: string): Promise<{ blob: Blob; fileName: string; mimeType: string }> {
+  async downloadResource(
+    resourceId: string,
+  ): Promise<{ blob: Blob; fileName: string; mimeType: string }> {
     const response = await apiResponse(
       `/learning/resources/${encodeURIComponent(resourceId)}/download`,
-      { headers: { Accept: '*/*' } },
+      { headers: { Accept: "*/*" } },
     );
     const blob = await response.blob();
-    const disposition = response.headers.get('content-disposition') ?? '';
-    const match = /filename\*=UTF-8''([^;\n]+)/i.exec(disposition) ?? /filename="([^"\n]+)"/i.exec(disposition);
+    const disposition = response.headers.get("content-disposition") ?? "";
+    const match =
+      /filename\*=UTF-8''([^;\n]+)/i.exec(disposition) ??
+      /filename="([^"\n]+)"/i.exec(disposition);
     let fileName = `resource-${resourceId}`;
-    try { if (match?.[1]) fileName = decodeURIComponent(match[1].trim()); } catch { /* safe fallback */ }
-    const mimeType = response.headers.get('content-type')?.split(';')[0]?.trim() || blob.type || 'application/octet-stream';
+    try {
+      if (match?.[1]) fileName = decodeURIComponent(match[1].trim());
+    } catch {
+      /* safe fallback */
+    }
+    const mimeType =
+      response.headers.get("content-type")?.split(";")[0]?.trim() ||
+      blob.type ||
+      "application/octet-stream";
     return { blob, fileName, mimeType };
   },
 };
@@ -70,47 +85,31 @@ export const adminLessonMaterialsApi = {
     return body.data;
   },
 
-  /** Atomically replaces the validated Arabic+English pair. Both files required. */
-  async uploadCaptionPair(lessonId: string, ar: File, en: File): Promise<AdminLessonMaterials> {
-    const form = new FormData();
-    form.append('ar', ar, ar.name);
-    form.append('en', en, en.name);
-    const response = await apiResponse(
-      `/admin/learning/lessons/${encodeURIComponent(lessonId)}/captions`,
-      { method: 'POST', retryOnAuth: true, body: form },
-    );
-    const payload = (await response.json()) as { data: AdminLessonMaterials };
-    return payload.data;
-  },
-
-  async deleteCaptions(lessonId: string): Promise<{ removed: boolean }> {
-    const body = await apiFetch<{ data: { removed: boolean } }>(
-      `/admin/learning/lessons/${encodeURIComponent(lessonId)}/captions`,
-      { method: 'DELETE', retryOnAuth: true },
-    );
-    return body.data;
-  },
-
   async uploadResource(
     lessonId: string,
     input: { labelAr: string; labelEn: string },
     file: File,
   ): Promise<{ resource: MaterialResource }> {
     const form = new FormData();
-    form.append('metadata', JSON.stringify({ labelAr: input.labelAr, labelEn: input.labelEn }));
-    form.append('file', file, file.name);
+    form.append(
+      "metadata",
+      JSON.stringify({ labelAr: input.labelAr, labelEn: input.labelEn }),
+    );
+    form.append("file", file, file.name);
     const response = await apiResponse(
       `/admin/learning/lessons/${encodeURIComponent(lessonId)}/resources`,
-      { method: 'POST', retryOnAuth: true, body: form },
+      { method: "POST", retryOnAuth: true, body: form },
     );
-    const payload = (await response.json()) as { data: { resource: MaterialResource } };
+    const payload = (await response.json()) as {
+      data: { resource: MaterialResource };
+    };
     return payload.data;
   },
 
   async deleteResource(resourceId: string): Promise<{ removed: boolean }> {
     const body = await apiFetch<{ data: { removed: boolean } }>(
       `/admin/learning/resources/${encodeURIComponent(resourceId)}`,
-      { method: 'DELETE', retryOnAuth: true },
+      { method: "DELETE", retryOnAuth: true },
     );
     return body.data;
   },

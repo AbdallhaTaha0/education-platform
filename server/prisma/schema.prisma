@@ -360,14 +360,6 @@ model CourseSection {
   @@index([courseId, position])
 }
 
-/// Platform-owned caption state for a lesson. Both languages must be validated
-/// together before either becomes available.
-enum CaptionState {
-  PENDING
-  VALIDATED
-  FAILED
-}
-
 model Lesson {
   originId String?
   inheritedMediaId String?
@@ -385,15 +377,12 @@ model Lesson {
 
   assessments Assessment[]
   preservedUnlocks PreservedLessonUnlock[]
-  captions    LessonCaption[]
   resources   LessonResource[]
 
   @@unique([sectionId, position])
   @@index([sectionId, position])
 }
 
-/// Bilingual WebVTT caption pair for a lesson. Storage key is platform-owned and
-/// private; never exposed to clients. Both languages are required for availability.
 // Object intents survive lesson/course cascades and process crashes.
 model MaterialObject {
   storageKey String @id
@@ -401,26 +390,6 @@ model MaterialObject {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   @@index([state, updatedAt])
-}
-
-model LessonCaption {
-  id           String        @id @default(uuid())
-  lessonId     String
-  lesson       Lesson        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  language     String        // 'ar' | 'en'
-  labelAr      String
-  labelEn      String
-  storageKey   String        @unique
-  byteSize     Int
-  cueCount     Int
-  state        CaptionState  @default(PENDING)
-  errorCategory String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  validatedAt  DateTime?
-
-  @@unique([lessonId, language])
-  @@index([lessonId])
 }
 
 /// Platform-owned lesson resource (attachment). Separate from DRM video storage.

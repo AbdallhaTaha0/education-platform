@@ -1,5 +1,5 @@
 /** Persistent local preview, repository-root invocation:
- * node docker/local-preview.mjs check|build|up|stop|status
+ * node docker/local-preview.mjs check|build|up|stop|status|drm-build|drm-up|client-up|web-up
  * build uses --no-cache --pull; stop preserves all data. No destructive command.
  * docker/local-settings.env.local stores volume names only, never credentials.
  * Platform and external DRM credentials remain in their ignored .env files.
@@ -67,7 +67,19 @@ function run(group, argv) {
 }
 const action = process.argv[2] || 'check';
 if (action === 'check') process.exit(0);
-if (action === 'build') {
+if (action === 'drm-build') {
+  run(platforms.drm,['build','api','worker']);
+} else if (action === 'drm-up') {
+  // Bounded maintenance: existing dependencies and data containers stay intact.
+  run(platforms.drm,['up','-d','--wait','--no-deps','--force-recreate','api','worker']);
+} else if (action === 'web-up') {
+  run(platforms.platform,['up','-d','--wait','--no-deps','--force-recreate','server','client']);
+  run(platforms.platform,['up','-d','--wait','--no-deps','--force-recreate','nginx']);
+} else if (action === 'client-up') {
+  // UI-only refresh: preserve backend, grading, DRM, and retained data services.
+  run(platforms.platform,['up','-d','--wait','--no-deps','--force-recreate','client']);
+  run(platforms.platform,['up','-d','--wait','--no-deps','--force-recreate','nginx']);
+} else if (action === 'build') {
   run(platforms.platform,['build','--no-cache','--pull','server','migrate','client','nginx']);
   run(platforms.platform,['build','grading']);
   run(platforms.drm,['build','--no-cache','--pull','api','worker','migrate']);
@@ -79,4 +91,4 @@ if (action === 'build') {
   run(platforms.platform,['stop']); run(platforms.drm,['stop']);
 } else if (action === 'status') {
   run(platforms.platform,['ps']); run(platforms.drm,['ps']);
-} else throw new Error('Supported commands: check, build, up, stop, status.');
+} else throw new Error('Supported commands: check, build, up, stop, status, drm-build, drm-up, client-up, web-up.');
