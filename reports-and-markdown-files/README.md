@@ -2,6 +2,8 @@
 
 ## Deployment preparation — 2026-10-07
 
+- [Railway migration from GitHub](deployment/railway-github-migration-20261007.md): owner-approved trial-compatible build path, dedicated migration image and isolated PostgreSQL verification.
+
 - [Current release: IDE disabled, choice quizzes retained](deployment/ide-disabled-release-20261007.md): backend-enforced suspension, preserved data, worker-free choice marking and local Docker verification.
 
 - [Railway sandbox compatibility test](deployment/railway-sandbox-compatibility-20261007.md): JavaScript/Python/Docker passed; sandbox destroyed; production grading security remains unqualified.

@@ -80,6 +80,10 @@ The only nested DRM change is this deployment stage alias; no source logic chang
 
 ## Railway setup and migrations
 
+Owner-approved trial-compatible alternative: [build migration directly from
+GitHub](railway-github-migration-20261007.md). Registry-backed IaC must not be
+applied over the manually configured GitHub sources without reconciliation.
+
 Use separate `testing` and `production` environments, with independent databases,
 keys, receiving accounts, storage scopes and tenants. Platform backend, workers,
 databases and migration jobs have no public domain. Gateway and DRM API get the
