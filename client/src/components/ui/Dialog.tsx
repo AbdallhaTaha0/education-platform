@@ -29,12 +29,12 @@ export function ConfirmDialog({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4"
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
-      <div className="w-full max-w-md rounded-card border border-border bg-surface p-6 shadow-rest">
+      <div className="w-full max-w-md rounded-card border border-border-strong bg-elevated p-6 shadow-lift">
         <h2 className="mb-2 text-xl font-bold">{title}</h2>
         <p className="mb-6 text-muted">{body}</p>
         <FormActions className="mt-0">
@@ -76,12 +76,12 @@ export function Dialog({ open, title, onClose, children }: DialogProps): JSX.Ele
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-ink/40 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-scrim p-4"
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
-      <div className="w-full max-w-lg rounded-card border border-border bg-surface p-6 shadow-rest">
+      <div className="w-full max-w-lg rounded-card border border-border-strong bg-elevated p-6 shadow-lift">
         <h2 ref={titleRef} tabIndex={-1} className="mb-2 text-xl font-bold">
           {title}
         </h2>
@@ -103,7 +103,7 @@ export function StatusBadge({
     success: 'border-success-fg bg-success-bg text-success-fg',
     pending: 'border-pending-fg bg-pending-bg text-pending-fg',
     error: 'border-error-fg bg-error-bg text-error-fg',
-    info: 'border-border bg-canvas text-ink',
+    info: 'border-info-fg bg-info-bg text-info-fg',
   } as const;
   return (
     <span

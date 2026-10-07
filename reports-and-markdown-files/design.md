@@ -62,7 +62,7 @@ Dark mode is the default experience. Keep an accessible light alternative and
 an explicit theme control; persist only the non-sensitive UI preference (never
 auth/session data) and apply it before first paint to avoid a theme flash.
 
-Use a calm, modern developer-learning aesthetic: deep forest rather than pure
+Use a calm, modern developer-learning aesthetic: layered charcoal rather than pure
 black, lime actions, restrained amber highlights, layered surfaces,
 strong typography and generous spacing. Avoid neon gradients, excessive glow,
 glass effects that reduce legibility, decorative dashboard clutter and color-
@@ -72,14 +72,18 @@ Dark semantic palette:
 
 | Token | Value | Usage |
 | --- | --- | --- |
-| Canvas | `#0B140E` | Main application background |
-| Surface | `#12241A` | Cards, forms and sidebars |
-| Elevated | `#1A3123` | Dialogs, menus and selected panels |
+| Canvas | `#101318` | Main application background |
+| Surface | `#1B2028` | Cards, forms and sidebars |
+| Elevated | `#29313D` | Dialogs and menus |
+| Field | `#11151B` | Inputs within cards |
+| Hover | `#343E4B` | Pointer feedback |
+| Selected | `#303A24` | Selected rows/tabs, with an explicit marker |
+| Control border | `#747B86` | Essential control boundaries |
 | Primary | `#C9F24D` | Primary actions and selected navigation |
 | Primary hover | `#B7E244` | Hover/focus emphasis |
-| Text | `#F8F7EE` | Primary text and headings |
-| Muted text | `#B7C2B0` | Supporting copy |
-| Border | `#2C4232` | Inputs, separators and card edges |
+| Text | `#F4F6F8` | Primary text and headings |
+| Muted text | `#B5BDC8` | Supporting copy |
+| Border | `#3B4553` | Inputs, separators and card edges |
 | Accent | `#F7B500` | Small learning/payment highlights |
 | Focus | `#C9F24D` | Keyboard focus ring |
 | Success | `#8FE3A8` on `#0E2A1A` | Approved/active |

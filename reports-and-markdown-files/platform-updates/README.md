@@ -2,6 +2,8 @@
 
 [Main documentation index](../README.md).
 
+- [Dark-mode redesign plan: charcoal and lime](dark-mode-redesign-plan-20261007.md)
+
 - [admin-dashboard-tabs-20261005.md](admin-dashboard-tabs-20261005.md)
 - [auth-form-centering-20261005.md](auth-form-centering-20261005.md)
 - [catalog-editor-and-docker-cleanup-20261005.md](catalog-editor-and-docker-cleanup-20261005.md)
@@ -18,3 +20,5 @@
 - [support-contact-settings-20261002.md](support-contact-settings-20261002.md)
 - [report.md](ux-improvements-20261002/report.md)
 - [report.md](ux-review-20261002/report.md)
+- [Charcoal theme and player implementation](dark-mode-and-player-implementation-20261007.md)
+- [Player settings refinement](player-settings-refinement-20261007.md)

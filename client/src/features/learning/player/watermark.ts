@@ -12,7 +12,7 @@
  * attributable watermarking is the external DRM's responsibility (D07).
  *
  * Owner instruction (2026-10-05): show the authenticated student phone instead
- * of the dependency masked identity. Keep dependency placement policy unchanged.
+ * of the dependency masked identity. Use one randomly moving label (owner clarification, 2026-10-07).
  * Missing/invalid account data falls back to the dependency identity.
  */
 import type { PlaybackGrant } from '../types/models';
@@ -26,54 +26,38 @@ export interface WatermarkLabel {
   y: number;
 }
 
-/** Upper bound on labels, so a dependency response cannot flood the player. */
-export const MAX_WATERMARK_LABELS = 12;
+/** Owner-selected single label, relocated every eight seconds in the video frame. */
+export const WATERMARK_MOVE_INTERVAL_MS = 8_000;
+export const MAX_WATERMARK_LABELS = 1;
 
-/** The single centre position used when the dependency supplies none. */
-const CENTRE: WatermarkLabel = { key: '0-50-50', x: 50, y: 50 };
-
-/** A position is a percentage; anything unusable falls back to the centre. */
-function clampPercent(value: number): number {
-  if (!Number.isFinite(value)) return 50;
-  return Math.min(100, Math.max(0, value));
-}
-
-/**
- * Whether a watermark is renderable at all. An absent policy or an empty
- * masked identity means nothing is drawn — the player must not invent one,
- * because an invented label would misattribute the session.
- */
 export function isWatermarkVisible(watermark: PlaybackGrant['watermark']): boolean {
-  return (
-    watermark !== null &&
-    typeof watermark.maskedIdentity === 'string' &&
-    watermark.maskedIdentity !== ''
-  );
+  return watermark !== null && typeof watermark.maskedIdentity === 'string' && watermark.maskedIdentity.trim() !== '';
 }
 
-/**
- * Resolve the label set. Empty, malformed or out-of-range positions degrade to
- * one centred label rather than disappearing, because a watermark that vanishes
- * is not a watermark. Positions are de-duplicated so a repeated coordinate
- * cannot stack identical labels on top of each other.
- */
+/** Dependency positions no longer duplicate the visible account label. */
 export function watermarkLabels(watermark: PlaybackGrant['watermark']): WatermarkLabel[] {
-  if (!isWatermarkVisible(watermark) || watermark === null) return [];
-  const raw = Array.isArray(watermark.positions) ? watermark.positions : [];
-  const seen = new Set<string>();
-  const labels: WatermarkLabel[] = [];
-  for (const position of raw.slice(0, MAX_WATERMARK_LABELS)) {
-    if (position === null || typeof position !== 'object') continue;
-    const x = clampPercent(position.x);
-    const y = clampPercent(position.y);
-    const key = `${labels.length}-${x}-${y}`;
-    if (seen.has(`${x}-${y}`)) continue;
-    seen.add(`${x}-${y}`);
-    labels.push({ key, x, y });
-  }
-  return labels.length > 0 ? labels : [CENTRE];
+  return isWatermarkVisible(watermark) ? [{ key: 'single', x: 50, y: 50 }] : [];
 }
 
+export interface WatermarkPosition { x: number; y: number }
+/** Pixel bounds use the measured available overlay area and label dimensions. */
+export function randomWatermarkPosition(
+  width: number, height: number, labelWidth: number, labelHeight: number,
+  previous?: WatermarkPosition, random: () => number = Math.random,
+): WatermarkPosition {
+  const bound = (value: number) => Number.isFinite(value) ? Math.max(0, value) : 0;
+  const maxX = Math.max(0, bound(width) - bound(labelWidth));
+  const maxY = Math.max(0, bound(height) - bound(labelHeight));
+  const fraction = () => { const value = random(); return Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0.5; };
+  let x = fraction() * maxX;
+  let y = fraction() * maxY;
+  // Prevent a random draw from repeatedly looking fixed. Resize still clamps.
+  if (previous && Math.abs(x - previous.x) < 16 && Math.abs(y - previous.y) < 16) {
+    x = previous.x < maxX / 2 ? maxX : 0;
+    y = previous.y < maxY / 2 ? maxY : 0;
+  }
+  return { x, y };
+}
 /** The single visible text, or `null` when nothing should be drawn. */
 export function watermarkText(watermark: PlaybackGrant['watermark'], phone?: string): string | null {
   if (!isWatermarkVisible(watermark) || watermark === null) return null;

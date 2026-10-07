@@ -14,7 +14,7 @@ const VARIANTS: Record<NonNullable<ButtonProps['variant']>, string> = {
   primary:
     'bg-primary text-primary-ink hover:bg-primary-hover active:bg-primary-pressed border border-transparent shadow-rest hover:shadow-lift',
   secondary:
-    'bg-surface text-ink border border-border-strong hover:border-primary hover:bg-interactive',
+    'bg-elevated text-ink border border-border-strong hover:border-primary hover:bg-interactive',
   danger: 'bg-error-bg text-error-fg border border-error-fg hover:brightness-95',
 };
 
@@ -34,7 +34,7 @@ export function Button({
       : 'Wait for the current request to finish, then try again.') : undefined;
   return (
     <button
-      className={`${unstyled ? '' : `inline-flex min-h-[44px] items-center justify-center gap-2 rounded-control px-6 py-2 text-base font-bold no-underline transition-[background-color,border-color,box-shadow,transform] duration-150 hover:-translate-y-px disabled:translate-y-0 disabled:opacity-75 ${VARIANTS[variant]}`} ${className} ${reason ? 'flex-col !cursor-not-allowed' : ''}`}
+      className={`${unstyled ? '' : `inline-flex min-h-[44px] items-center justify-center gap-2 rounded-control px-6 py-2 text-base font-bold no-underline transition-[background-color,border-color,box-shadow,transform] duration-150 enabled:hover:-translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2 ${VARIANTS[variant]} disabled:translate-y-0 disabled:!bg-disabled disabled:!text-muted disabled:!border-border disabled:!shadow-none`} ${className} ${reason ? 'flex-col !cursor-not-allowed' : ''}`}
       {...rest}
       aria-labelledby={rest['aria-labelledby'] ?? (rest['aria-label'] ? undefined : `${id}-label`)}
       aria-describedby={[rest['aria-describedby'], reason ? `${id}-reason` : undefined].filter(Boolean).join(' ') || undefined}

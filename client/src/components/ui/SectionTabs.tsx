@@ -13,7 +13,7 @@ export function SectionTabs({ tabs, value, onChange, prefix, label, disabled = f
     {tabs.map((tab, index) => <button key={tab.id} type="button" role="tab"
       id={`${prefix}-tab-${tab.id}`} aria-controls={`${prefix}-panel-${tab.id}`}
       aria-selected={value === tab.id} tabIndex={value === tab.id ? 0 : -1} disabled={disabled}
-      className={`min-h-[44px] rounded-control border px-4 py-3 text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${value === tab.id ? 'border-primary bg-primary text-canvas' : 'border-border bg-surface text-ink hover:bg-elevated'} disabled:opacity-60`}
+      className={`min-h-[44px] rounded-control border px-4 py-3 text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${value === tab.id ? 'border-primary-strong bg-selected text-ink shadow-[inset_0_-3px_0_var(--color-primary-strong)]' : 'border-border-strong bg-surface text-muted hover:bg-interactive hover:text-ink'} disabled:bg-disabled disabled:text-muted`}
       onClick={() => onChange(tab.id)} onKeyDown={event => {
         const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1
           : event.key === 'ArrowRight' ? (index + (ar ? -1 : 1) + tabs.length) % tabs.length

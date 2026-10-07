@@ -5,6 +5,8 @@ services:
     image: fayq-m10-migrate:20261007
   server:
     image: fayq-m10-server:20261007
+    # Preview startup must never inherit a test-stage default command.
+    command: ["node", "dist/index.js"]
     environment:
       SERVICE_VERSION: m10-local-20261007
   client:

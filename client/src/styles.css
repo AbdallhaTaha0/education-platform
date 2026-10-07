@@ -20,8 +20,8 @@
  * never relies on color alone.
  *
  * Contrast rule: lime and amber always pair with forest (near-black) text,
- * never white. Every text/background pair below was checked against 4.5:1
- * (normal text) or 3:1 (large text, controls, focus). */
+ * never white. Targeted rendered field contrast checks are documented in the
+ * 2026-10-07 implementation report; this is not a whole-site certification. */
 :root {
   /* Brand primitives — never used directly in components; roles below consume them. */
   --fayq-forest: #0f1f12;
@@ -39,14 +39,17 @@
   --color-accent: var(--fayq-amber);
   --color-accent-ink: var(--fayq-forest);
 
-  --color-ink: var(--fayq-cream);
-  --color-bg: #0b140e;
-  --color-surface: #12241a;
-  --color-elevated: #1a3123;
-  --color-interactive: #223a2b;
-  --color-muted: #b7c2b0;
-  --color-border: #2c4232;
-  --color-border-strong: #3e5a46;
+  --color-ink: #f4f6f8;
+  --color-bg: #101318;
+  --color-surface: #1b2028;
+  --color-elevated: #29313d;
+  --color-interactive: #343e4b;
+  --color-field: #11151b;
+  --color-selected: #303a24;
+  --color-disabled: #262c35;
+  --color-muted: #b5bdc8;
+  --color-border: #3b4553;
+  --color-border-strong: #747b86;
   --color-focus: var(--fayq-lime);
 
   --color-success-fg: #8fe3a8;
@@ -55,8 +58,8 @@
   --color-pending-bg: #3a2c10;
   --color-error-fg: #fda4af;
   --color-error-bg: #4c1822;
-  --color-info-fg: #d9cfb4;
-  --color-info-bg: #2b2a1e;
+  --color-info-fg: #a9d4ff;
+  --color-info-bg: #172b42;
 
   /* Player chrome stays deep forest/near-black in both themes so the video
    * frame, overlays and watermark render identically. */
@@ -89,9 +92,12 @@ html[data-theme='light'] {
   --color-surface: #fffef9;
   --color-elevated: #f2f6df;
   --color-interactive: #e8eed3;
+  --color-field: #ffffff;
+  --color-selected: #e8eed3;
+  --color-disabled: #e7e5dc;
   --color-muted: #4f5c50;
   --color-border: #d2ccb6;
-  --color-border-strong: #929b7f;
+  --color-border-strong: #788468;
   --color-focus: var(--fayq-forest);
 
   --color-success-fg: #166534;
@@ -148,6 +154,23 @@ select,
 textarea {
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Field roles apply even to older feature-local bg-surface utilities. Range
+ * controls, checkboxes, IDE editing canvases and player controls are separate. */
+input:not([type='range']):not([type='checkbox']):not([type='radio']):not([type='button']):not([type='submit']),
+select, textarea {
+  background-color: var(--color-field);
+  border-color: var(--color-border-strong);
+}
+input::placeholder, textarea::placeholder { color: var(--color-muted); opacity: 1; }
+input:autofill { box-shadow: 0 0 0 1000px var(--color-field) inset; -webkit-text-fill-color: var(--color-ink); }
+input:-webkit-autofill { box-shadow: 0 0 0 1000px var(--color-field) inset; -webkit-text-fill-color: var(--color-ink); }
+input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid var(--color-focus); outline-offset: 3px;
+}
+input[aria-invalid='true'], textarea[aria-invalid='true'], select[aria-invalid='true'],
+input.border-error-fg, textarea.border-error-fg, select.border-error-fg { border-color: var(--color-error-fg); }
+input:disabled, textarea:disabled, select:disabled { background-color: var(--color-disabled); color: var(--color-muted); }
 
 a,
 button {
@@ -230,7 +253,7 @@ html[data-theme='light'] textarea {
   inset-inline-start: 16px;
   top: -100px;
   background: var(--color-ink);
-  color: #fff;
+  color: var(--color-bg);
   padding: 8px 16px;
   border-radius: 8px;
   z-index: 100;
@@ -372,7 +395,7 @@ html[data-theme='light'] .hero-grid::before {
  * size are CSS variables rather than scattered utility classes. */
 .learning-watermark {
   position: absolute;
-  inset: 0;
+  inset: 12px 12px 100px;
   pointer-events: none;
   user-select: none;
   z-index: 30;
@@ -383,9 +406,11 @@ html[data-theme='light'] .hero-grid::before {
 
 .learning-watermark__label {
   position: absolute;
-  transform: translate(-50%, -50%);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-family: var(--font-latin), var(--font-arabic);
-  font-size: var(--watermark-font-size, 11px);
+  font-size: var(--watermark-font-size, 12px);
   font-weight: 600;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -410,6 +435,7 @@ html[data-theme='light'] .hero-grid::before {
 /* Video surfaces keep white controls readable in either site theme. */
 .learning-video-surface {
   background: var(--player-background, #000000);
+  container-type: inline-size;
 }
 .learning-video-frame:fullscreen {
   width: 100vw;
@@ -1156,7 +1182,7 @@ html[data-theme="light"] { --ide-keyword: #6d28d9; --ide-string: #166534; --ide-
   font-size: 14px;
 }
 .workspace-sidebar a[aria-current='page'] {
-  background: var(--color-interactive);
+  background: var(--color-selected);
   color: var(--color-primary-strong);
 }
 .workspace-mobile-menu {
@@ -1197,7 +1223,7 @@ html[data-theme="light"] { --ide-keyword: #6d28d9; --ide-string: #166534; --ide-
   font-weight: 700;
 }
 .workspace-mobile-menu nav a[aria-current='page'] {
-  background: var(--color-interactive);
+  background: var(--color-selected);
   color: var(--color-primary-strong);
 }
 .workspace-content {
@@ -1256,13 +1282,41 @@ html[data-theme="light"] { --ide-keyword: #6d28d9; --ide-string: #166534; --ide-
   background: linear-gradient(transparent, rgb(0 0 0 / 85%));
 }
 .learning-player-controls__row { display: flex; align-items: center; gap: 4px; }
+.learning-player-settings { position: absolute; bottom: calc(100% - 8px); right: 8px; width: 240px; max-width: calc(100% - 16px); padding: 8px; border: 1px solid #535e6d; border-radius: 14px; background: #1b2028; box-shadow: 0 8px 24px rgb(0 0 0 / 40%); }
+.learning-player-settings__row { width: 100%; justify-content: space-between !important; gap: 12px; padding: 0 12px; font-size: 13px; }
+.learning-player-settings__value { color: #d1d8e2; font-variant-numeric: tabular-nums; min-width: 0; max-width: 148px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.learning-player-settings__back { gap: 8px; width: 100%; justify-content: flex-start !important; min-height: 32px !important; padding: 0 8px; font-size: 13px; }
+.learning-player-settings[dir='rtl'] .learning-player-settings__back svg { transform: rotate(180deg); }
+.learning-player-settings__options { display: grid; gap: 4px; margin-top: 4px; max-height: 100px; overflow-y: auto; overscroll-behavior: contain; padding: 4px; }
+.learning-player-settings__options--speed { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.learning-player-settings__options--quality { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.learning-player-settings__options button { font-size: 12px; padding: 0 4px; background: #29313d; }
+.learning-player-settings__options button[aria-pressed='true'] { background: #c9f24d; color: #0f1f12; font-weight: 700; }
+.learning-player-controls__volume { width: 80px; flex-shrink: 0; }
 .learning-player-controls button {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 44px; min-height: 44px; border-radius: 6px;
 }
 .learning-player-controls button:hover { background: rgb(255 255 255 / 15%); }
 .learning-player-controls button:disabled { opacity: .45; }
-.learning-player-controls :focus-visible { outline: 2px solid white; outline-offset: 2px; }
+.learning-player-controls :focus-visible { outline: 2px solid #c9f24d; outline-offset: 1px; }
 .learning-player-controls__time { font-size: 13px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .learning-player-controls__spacer { flex: 1; }
 .learning-player-controls input { display: block; width: 100%; height: 20px; margin: 0; accent-color: white; }
+.learning-player-controls input[data-testid='player-volume'] { min-height: 44px; }
+@container (max-width: 560px) {
+  .learning-player-controls { padding: 8px; }
+  .learning-player-controls__row { flex-wrap: wrap; justify-content: space-between; }
+  .learning-player-controls__spacer { display: none; }
+  .learning-player-controls__volume { flex: 1; min-width: 44px; max-width: 80px; }
+  .learning-player-controls__time { font-size: 11px; }
+}
+@media (max-width: 640px) {
+  .learning-video-frame:not(:fullscreen):not(.learning-video-frame--expanded) { min-height: 240px; }
+}
+@container (max-width: 360px) {
+  .learning-player-controls__row { gap: 0; }
+  .learning-player-controls__volume { flex: 0 0 32px; min-width: 32px; max-width: 32px; }
+  .learning-player-controls__time { font-size: 10px; }
+}
+.learning-video-frame video { object-fit: contain; }

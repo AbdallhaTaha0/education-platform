@@ -7,7 +7,7 @@ type Kind = 'error' | 'success' | 'info' | 'pending';
 const CLASSES: Record<Kind, string> = {
   error: 'border-error-fg bg-error-bg text-error-fg',
   success: 'border-success-fg bg-success-bg text-success-fg',
-  info: 'border-border bg-canvas text-ink',
+  info: 'border-info-fg bg-info-bg text-info-fg',
   pending: 'border-pending-fg bg-pending-bg text-pending-fg',
 };
 

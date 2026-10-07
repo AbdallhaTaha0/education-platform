@@ -139,7 +139,7 @@ export function AdminCourseRoster({
                 <button type="button" aria-pressed={active}
                   data-testid={`select-student-${row.studentId}`}
                   onClick={() => onSelect({ studentId: row.studentId, name: row.name, guardianContactAvailable: row.guardianContactAvailable })}
-                  className={`flex min-h-[64px] w-full items-center justify-between gap-3 px-3 py-2 text-start transition-colors hover:bg-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2 ${active ? 'bg-elevated border-s-4 border-primary' : 'border-s-4 border-transparent'}`}>
+                  className={`flex min-h-[64px] w-full items-center justify-between gap-3 px-3 py-2 text-start transition-colors hover:bg-interactive focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary focus-visible:-outline-offset-2 ${active ? 'bg-selected border-s-4 border-primary' : 'border-s-4 border-transparent'}`}>
                   <span className="min-w-0">
                     <span className="block break-words text-sm font-semibold">{row.name}</span>
                     {openedReports?.has(`${courseId}:${row.studentId}`) ? (

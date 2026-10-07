@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   MAX_WATERMARK_LABELS,
+  randomWatermarkPosition,
   isWatermarkVisible,
   watermarkLabels,
   watermarkText,
@@ -53,86 +54,30 @@ describe('watermark visibility', () => {
   });
 });
 
-describe('watermark positions', () => {
-  it('keeps the supplied positions', () => {
-    const labels = watermarkLabels(
-      watermark({
-        positions: [
-          { x: 20, y: 40 },
-          { x: 80, y: 60 },
-        ],
-      }),
-    );
-    expect(labels).toHaveLength(2);
-    expect(labels[0]).toMatchObject({ x: 20, y: 40 });
-    expect(labels[1]).toMatchObject({ x: 80, y: 60 });
+describe('single random watermark', () => {
+  it('renders one label regardless of dependency positions', () => {
+    expect(watermarkLabels(watermark({ positions: [{ x: 20, y: 40 }, { x: 80, y: 60 }] }))).toHaveLength(1);
+    expect(watermarkLabels(watermark({ positions: [] }))).toHaveLength(1);
+    expect(watermarkLabels(watermark({ positions: [null as never] }))).toHaveLength(1);
+    expect(MAX_WATERMARK_LABELS).toBe(1);
   });
-
-  it('falls back to one centred label when the dependency supplies none', () => {
-    const labels = watermarkLabels(watermark({ positions: [] }));
-    expect(labels).toEqual([{ key: '0-50-50', x: 50, y: 50 }]);
+  it('keeps the entire measured label within the available video area', () => {
+    expect(randomWatermarkPosition(300, 100, 100, 20, undefined, () => 1)).toEqual({ x: 200, y: 80 });
+    expect(randomWatermarkPosition(300, 100, 100, 20, undefined, () => 0)).toEqual({ x: 0, y: 0 });
   });
-
-  it('clamps out-of-range and non-finite positions instead of hiding the label', () => {
-    const labels = watermarkLabels(
-      watermark({
-        positions: [
-          { x: -25, y: 900 },
-          { x: Number.NaN, y: Number.POSITIVE_INFINITY },
-        ],
-      }),
-    );
-    expect(labels).toHaveLength(2);
-    expect(labels[0]).toMatchObject({ x: 0, y: 100 });
-    expect(labels[1]).toMatchObject({ x: 50, y: 50 });
+  it('moves again even when the random sample would repeat the last position', () => {
+    const previous = { x: 100, y: 40 };
+    const next = randomWatermarkPosition(300, 100, 100, 20, previous, () => 0.5);
+    expect(next).not.toEqual(previous);
+    expect(next.x).toBeLessThanOrEqual(200);
+    expect(next.y).toBeLessThanOrEqual(80);
   });
-
-  it('drops duplicate coordinates so identical labels cannot stack', () => {
-    const labels = watermarkLabels(
-      watermark({
-        positions: [
-          { x: 30, y: 30 },
-          { x: 30, y: 30 },
-          { x: 70, y: 70 },
-        ],
-      }),
-    );
-    expect(labels).toHaveLength(2);
-  });
-
-  it('bounds how many labels a dependency response can add', () => {
-    const many = Array.from({ length: MAX_WATERMARK_LABELS * 3 }, (_, i) => ({
-      x: i % 100,
-      y: (i * 7) % 100,
-    }));
-    expect(watermarkLabels(watermark({ positions: many })).length).toBeLessThanOrEqual(
-      MAX_WATERMARK_LABELS,
-    );
-  });
-
-  it('ignores malformed entries but still draws a label', () => {
-    const labels = watermarkLabels(
-      watermark({ positions: [null as never, 'nope' as never, { x: 10, y: 10 }] }),
-    );
-    expect(labels).toHaveLength(1);
-    expect(labels[0]).toMatchObject({ x: 10, y: 10 });
-  });
-
-  it('gives every label a distinct, identity-free key', () => {
-    const labels = watermarkLabels(
-      watermark({
-        positions: [
-          { x: 10, y: 10 },
-          { x: 20, y: 20 },
-        ],
-      }),
-    );
-    expect(new Set(labels.map((l) => l.key)).size).toBe(labels.length);
-    for (const label of labels) expect(label.key).not.toContain('fixt');
+  it('clamps safely on small frames, resize, and invalid measurements/random values', () => {
+    expect(randomWatermarkPosition(60, 10, 100, 20)).toEqual({ x: 0, y: 0 });
+    expect(randomWatermarkPosition(Number.NaN, -10, 100, 20)).toEqual({ x: 0, y: 0 });
+    expect(randomWatermarkPosition(300, 100, 100, 20, { x: 999, y: 999 }, () => Number.NaN)).toEqual({ x: 100, y: 40 });
   });
 });
-
-
 describe('owner-selected phone watermark', () => {
   it('replaces dependency identity with the authenticated E.164 phone', () => {
     expect(watermarkText(watermark(), '+201005344368')).toBe('+201005344368');

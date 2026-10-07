@@ -1,0 +1,6 @@
+// Docker-contained build only; generated bundles stay under ignored evidence.
+const {build}=require('/srv/client/node_modules/esbuild');
+const {readFileSync,writeFileSync}=require('node:fs');
+const css=readFileSync('/evidence/dist/index.html','utf8').match(/href="\/assets\/(index-[^"]+\.css)"/)[1];
+writeFileSync('/evidence/dist/player-test.html',`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/assets/${css}"></head><body><div id="root"></div><script>window.__language=new URLSearchParams(location.search).get('lang')||'en';document.documentElement.lang=window.__language;document.documentElement.dir=window.__language==='ar'?'rtl':'ltr';document.documentElement.dataset.theme=new URLSearchParams(location.search).get('theme')||'dark';</script><script src="/player-test.js"></script></body></html>`);
+build({entryPoints:['/fixture/entry.tsx'],outfile:'/evidence/dist/player-test.js',bundle:true,format:'iife',jsx:'automatic',nodePaths:['/srv/client/node_modules'],alias:{dashjs:'/fixture/dash.ts'},plugins:[{name:'synthetic-auth',setup(builder){builder.onResolve({filter:/^\.\.\/\.\.\/\.\.\/(auth|i18n)$/},()=>({path:'/fixture/auth.ts'}));}}]}).catch(()=>process.exit(1));

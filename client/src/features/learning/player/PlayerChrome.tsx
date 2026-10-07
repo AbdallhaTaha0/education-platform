@@ -4,8 +4,9 @@
  * Split out of Player.tsx so the player keeps to a single responsibility and
  * both files stay small enough to review.
  */
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../../auth';
-import { isWatermarkVisible, watermarkLabels, watermarkText } from './watermark';
+import { isWatermarkVisible, randomWatermarkPosition, WATERMARK_MOVE_INTERVAL_MS, watermarkText } from './watermark';
 import type { PlaybackGrant, PlayerPhase } from '../types/models';
 
 export interface PlayerLabels {
@@ -67,8 +68,8 @@ export function phaseLabel(phase: PlayerPhase, labels: PlayerLabels): string {
 /**
  * Visible watermark overlay.
  *
- * Renders the authenticated student phone at the DRM-supplied positions, per
- * the owner instruction on 2026-10-05. The trace code and the
+ * Renders one authenticated student phone label, randomly relocated inside
+ * measured video-frame bounds (owner instruction, 2026-10-07). The trace code and the
  * signature are never sent to the client, so nothing here is attributable on its
  * own; this is a visible account label, not a claim that
  * screen capture is prevented.
@@ -83,29 +84,49 @@ export function phaseLabel(phase: PlayerPhase, labels: PlayerLabels): string {
 export function WatermarkOverlay({ grant }: { grant: PlaybackGrant }): JSX.Element | null {
   const { user } = useAuth();
   const watermark = grant.watermark;
-  if (!isWatermarkVisible(watermark)) return null;
+  const visible = isWatermarkVisible(watermark);
   const text = watermarkText(watermark, user?.phone) ?? '';
-  const labels = watermarkLabels(watermark);
+  const areaRef = useRef<HTMLDivElement>(null);
+  const labelRef = useRef<HTMLSpanElement>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  useEffect(() => {
+    if (!visible) return;
+    const relocate = () => {
+      const area = areaRef.current, label = labelRef.current;
+      if (!area || !label) return;
+      const controls = area.parentElement?.querySelector('[data-testid="player-controls"]');
+      if (controls) area.style.bottom = `${controls.getBoundingClientRect().height + 8}px`;
+      setPosition(previous => randomWatermarkPosition(area.clientWidth, area.clientHeight, label.offsetWidth, label.offsetHeight, previous));
+    };
+    relocate();
+    const timer = setInterval(relocate, WATERMARK_MOVE_INTERVAL_MS);
+    const observer = new ResizeObserver(relocate);
+    if (areaRef.current) observer.observe(areaRef.current);
+    if (labelRef.current) observer.observe(labelRef.current);
+    const controls = areaRef.current?.parentElement?.querySelector('[data-testid="player-controls"]');
+    if (controls) observer.observe(controls);
+    return () => { clearInterval(timer); observer.disconnect(); };
+  }, [visible, text, grant.referenceId]);
+  if (!visible) return null;
   return (
     <div
       aria-hidden="true"
       data-testid="watermark-overlay"
-      data-watermark-labels={labels.length}
+      ref={areaRef}
+      data-watermark-labels={1}
       className="learning-watermark"
     >
-      {labels.map((label) => (
         <span
-          key={label.key}
+          ref={labelRef}
           data-testid="watermark-label"
           // `dir="auto"` keeps a mixed-direction masked identity from being
           // reordered inside the Arabic (RTL) and English (LTR) layouts.
           dir="auto"
           className="learning-watermark__label"
-          style={{ left: `${label.x}%`, top: `${label.y}%` }}
+          style={{ left: position.x, top: position.y }}
         >
           {text}
         </span>
-      ))}
     </div>
   );
 }

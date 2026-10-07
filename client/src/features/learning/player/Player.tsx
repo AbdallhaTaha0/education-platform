@@ -12,6 +12,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as dashjs from 'dashjs';
+import { useLang } from '../../../i18n';
 import { INITIAL_PLAYER_STATE, reducePlayerState, shouldFlushProgress } from './state';
 import { authHeaders, clear as clearSession, isExpired, setSession } from './session';
 import { emeKeyForProvider, isUnsupportedProvider } from './eme';
@@ -23,6 +24,7 @@ import { usePlayerFullscreen } from './fullscreen';
 import { PlayerControls } from './PlayerControls';
 import { useViewTracking } from './useViewTracking';
 import { finishAfterViewFlush } from './finalViewFlush';
+import { videoQualityOptions, type VideoQualityOption } from './playbackOptions';
 import type { PlaybackGrant, PlayerState } from '../types/models';
 
 type MediaPlayerClass = ReturnType<ReturnType<typeof dashjs.MediaPlayer>['create']>;
@@ -73,6 +75,7 @@ export function DashLessonPlayer({
   onExpire,
   onRetry,
 }: PlayerProps): JSX.Element {
+  const { lang } = useLang();
   const frameRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const playerRef = useRef<MediaPlayerClass | null>(null);
@@ -85,6 +88,9 @@ export function DashLessonPlayer({
   }, [grant.referenceId]);
   const [state, setState] = useState<PlayerState>(INITIAL_PLAYER_STATE);
   const [canPlay, setCanPlay] = useState(false);
+  const [qualities, setQualities] = useState<VideoQualityOption[]>([]);
+  const [quality, setQuality] = useState('auto');
+  const [qualityFailed, setQualityFailed] = useState(false);
   const { fullscreen, expanded, toggle: toggleFullscreen } = usePlayerFullscreen(frameRef);
 
   // The reducer needs the current phase, so it is read through a ref to keep
@@ -216,6 +222,8 @@ export function DashLessonPlayer({
   useEffect(() => {
     const video = videoRef.current;
     if (video === null) return;
+    setCanPlay(false); setQualities([]); setQuality('auto'); setQualityFailed(false);
+    video.playbackRate = 1;
     const keySystem = emeKeyForProvider(grant.drmProvider);
     if (keySystem === null || isUnsupportedProvider(grant)) {
       dispatch({ type: 'FAILED', code: 'UNSUPPORTED_PROVIDER' });
@@ -267,11 +275,19 @@ export function DashLessonPlayer({
       // token, read from memory at request time so a refreshed grant is used.
       player.addRequestInterceptor(interceptor);
       player.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
+        if (playerRef.current !== player || !player) return;
+        try { setQualities(videoQualityOptions(player.getRepresentationsByType('video'))); } catch { setQualities([]); }
         setCanPlay(true);
         dispatch({ type: 'LOADING' });
       });
       player.on(dashjs.MediaPlayer.events.QUALITY_CHANGE_RENDERED, () => {
         dispatch({ type: 'READY' });
+      });
+      player.on(dashjs.MediaPlayer.events.STREAM_ACTIVATED, () => {
+        if (playerRef.current !== player || !player) return;
+        try {
+          setQualities(videoQualityOptions(player.getRepresentationsByType('video')));
+        } catch { setQualities([]); }
       });
       player.on(dashjs.MediaPlayer.events.PLAYBACK_ERROR, () => {
         dispatch({ type: 'FAILED', code: 'PLAYBACK_ERROR' });
@@ -475,6 +491,21 @@ export function DashLessonPlayer({
     else video.pause();
   }, [play]);
 
+  const changeQuality = useCallback((value: string) => {
+    const player = playerRef.current;
+    if (!player || !canPlay || entitlementLost || phaseRef.current === 'expired' || phaseRef.current === 'error') return;
+    const id = value.startsWith('representation:') ? value.slice('representation:'.length) : null;
+    if (value !== 'auto' && !qualities.some(option => option.id === id)) return;
+    try {
+      player.updateSettings({ streaming: { abr: { autoSwitchBitrate: { video: value === 'auto' } } } });
+      if (id !== null) player.setRepresentationForTypeById('video', id, true);
+      setQuality(value); setQualityFailed(false);
+    } catch {
+      try { player.updateSettings({ streaming: { abr: { autoSwitchBitrate: { video: true } } } }); setQuality('auto'); } catch { /* preserve existing media-error handling */ }
+      setQualityFailed(true);
+    }
+  }, [canPlay, entitlementLost, qualities]);
+
   const autoPlayAttempt = useRef<string | null>(null);
   useEffect(() => {
     if (!autoPlay || !canPlay || entitlementLost || autoPlayAttempt.current === grant.referenceId)
@@ -523,6 +554,9 @@ export function DashLessonPlayer({
           labels={labels}
           disabled={state.phase === 'expired' || state.phase === 'error'}
           fullscreen={fullscreen}
+          qualities={qualities}
+          quality={quality}
+          onQualityChange={changeQuality}
           onTogglePlayback={toggle}
           onToggleFullscreen={() => void toggleFullscreen()}
         />
@@ -545,6 +579,7 @@ export function DashLessonPlayer({
             ? labels.needsGesture
             : phaseLabel(state.phase, labels)}
         </span>
+        {qualityFailed ? <span role="status" className="text-sm text-error-fg">{lang === 'ar' ? 'تعذّر تغيير الجودة. حاول مجددًا.' : 'Could not change quality. Try again.'}</span> : null}
       </div>
     </div>
   );

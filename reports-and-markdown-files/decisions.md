@@ -275,3 +275,7 @@ Owner requested important results in one short WhatsApp message and a free cours
 ## Compact parent-report interface and Arabic layout — 2026-10-07
 
 Owner requested compact student rows and period/send as the primary controls, then correction of broken icons and overlapping Arabic report text. Show additional courses/tracking only on demand. Keep SHORT single-message handoff and existing privacy/contact guards. Arabic-first text, Arabic digits, written dates and separate assessment exception lines supersede mixed fractions/icons. See milestones/m10/m10-compact-ui-and-message-layout-20261007.md.
+
+## Charcoal theme and video controls — 2026-10-07
+
+Owner approved implementation of layered charcoal with lime accents, playback speed and available quality choices, adjustable volume, and one authenticated visible watermark that moves randomly. External DRM still owns protected processing and watermark policy; platform changes consume its existing API. Speed and quality belong in a compact settings panel matching the other player icons. The latest owner clarification, 'let the dark be the basic', supersedes the brief request for light as the default: dark remains default and saved theme preferences remain respected. No DRM source edit, production deployment or new commit/push is authorized.
