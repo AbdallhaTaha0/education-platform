@@ -7,6 +7,7 @@
  */
 
 import { createPrivateKey } from 'node:crypto';
+import { parseCodingIdeEnabled } from './modules/assessments/availability.js';
 import { parseStudentDataKeys, type StudentDataKeys } from './modules/identity/student-data.js';
 import type { Argon2Params } from './modules/identity/password.js';
 import {
@@ -249,6 +250,7 @@ function parseIdentifierValue(raw: string | undefined, name: string): string {
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
+  parseCodingIdeEnabled(env.CODING_IDE_ENABLED);
   const databaseUrl = optionalEnv(env, 'DATABASE_URL');
   if (!databaseUrl) {
     throw new Error(

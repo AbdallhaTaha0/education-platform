@@ -23,7 +23,7 @@ export default defineRailway(ctx => {
     env: { VALKEY_PASSWORD: preserve() }, volumeMounts: { '/data': drmCacheData },
   });
   const platformEnv = {
-    NODE_ENV: 'production', PORT: '3000', COOKIE_SECURE: 'true',
+    NODE_ENV: 'production', PORT: '3000', COOKIE_SECURE: 'true', CODING_IDE_ENABLED: 'false',
     ARGON2_MEMORY_KB: '65536', ARGON2_TIME_COST: '3', ARGON2_PARALLELISM: '4',
     DATABASE_URL: db.env.DATABASE_URL, REDIS_URL: cache.env.REDIS_URL,
     SEO_INDEXING_ENABLED: ctx.environment === 'production' ? 'true' : 'false',
@@ -67,6 +67,7 @@ export default defineRailway(ctx => {
     source: image(pinned('DRM_API_IMAGE')), start: 'node packages/database/dist/generate.js',
     deploy: { restartPolicyType: 'NEVER' }, env: { DATABASE_URL: drmDb.env.DATABASE_URL },
   });
-  // Domain names, budgets, scaling and IDE execution host are owner release gates.
+  // Domain names, budgets and scaling remain owner release gates. Coding IDE
+  // is disabled for this release; a qualified execution host is required before reactivation.
   return project(ctx.projectName, { resources: [db, cache, drmDb, drmCacheData, drmCache, backend, migrate, gateway, drmApi, drmWorker, drmMigrate] });
 });

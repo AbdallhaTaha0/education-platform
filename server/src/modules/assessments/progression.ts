@@ -1,13 +1,18 @@
 import type { PrismaClient } from '@prisma/client';
 import { ApiError } from '../identity/errors.js';
+import { codingIdeEnabled, choiceOnly } from './availability.js';
 
 export async function lessonLocks(db: PrismaClient, studentId: string, courseId: string): Promise<Map<string, string[]>> {
   const [sections, passed, preserved] = await Promise.all([
-    db.courseSection.findMany({ where: { courseId }, orderBy: { position: 'asc' }, include: { lessons: { orderBy: { position: 'asc' }, select: { id: true, assessments: { where: { status: 'PUBLISHED', required: true }, select: { id: true } } } } } }),
+    db.courseSection.findMany({ where: { courseId }, orderBy: { position: 'asc' }, include: { lessons: { orderBy: { position: 'asc' }, select: { id: true, assessments: { where: { status: 'PUBLISHED', required: true }, select: { id: true, version: true } } } } } }),
     db.assessmentPass.findMany({ where: { studentId, assessment: { lesson: { section: { courseId } } } }, select: { assessmentId: true } }),
     db.preservedLessonUnlock.findMany({ where: { studentId, lesson: { section: { courseId } } }, select: { lessonId: true } }),
   ]);
   const lessons = sections.flatMap((s) => s.lessons);
+  const requirements = lessons.flatMap((l) => l.assessments);
+  const enabled = codingIdeEnabled();
+  const versions = !enabled && requirements.length ? await db.assessmentVersion.findMany({ where: { OR: requirements.map((a) => ({ assessmentId: a.id, version: a.version })) }, select: { assessmentId: true, content: true } }) : [];
+  const available = new Set(versions.filter((v) => choiceOnly(v.content)).map((v) => v.assessmentId));
   const earned = new Set(passed.map((p) => p.assessmentId));
   const existing = new Set(preserved.map((p) => p.lessonId));
   // Requirements before the furthest pre-rollout reached lesson must not
@@ -16,7 +21,7 @@ export async function lessonLocks(db: PrismaClient, studentId: string, courseId:
   const pending: string[] = []; const locks = new Map<string, string[]>();
   lessons.forEach((l, i) => {
     locks.set(l.id, existing.has(l.id) ? [] : [...pending]);
-    if (i >= furthest) pending.push(...l.assessments.filter((a) => !earned.has(a.id)).map((a) => a.id));
+    if (i >= furthest) pending.push(...l.assessments.filter((a) => !earned.has(a.id) && (enabled || available.has(a.id))).map((a) => a.id));
   });
   return locks;
 }

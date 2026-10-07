@@ -1,0 +1,33 @@
+# Combine with compose.test.yml + compose.ide-disabled.yml, same disposable project.
+services:
+  server:
+    extends:
+      file: compose.test.yml
+      service: test
+    image: fayq-ide-disabled-test:20261007
+    command: ['node', 'dist/index.js']
+    environment:
+      CODING_IDE_ENABLED: 'false'
+      COOKIE_SECURE: 'false'
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      retries: 20
+  client:
+    build:
+      context: ..
+      dockerfile: client/Dockerfile
+      target: runtime
+    image: fayq-ide-disabled-client:20261007
+  nginx:
+    image: fayq-platform-nginx:0.8.0-local
+    depends_on:
+      server: { condition: service_healthy }
+      client: { condition: service_started }
+  browser:
+    image: fayq-m9-browser:0.9.0
+    volumes:
+      - ./verification/ide-disabled-browser.mjs:/srv/browser/ide-disabled-browser.mjs:ro
+    command: ['node', 'ide-disabled-browser.mjs']
+    depends_on:
+      nginx: { condition: service_started }

@@ -4,8 +4,10 @@ import { ApiError } from '../identity/errors.js';
 import { content, type Content } from './contracts.js';
 import { preparationHash, freezePrograms } from './program-contracts.js';
 import { executeIsolated } from './launcher.js';
+import { codingIdeEnabled, requireCodingIde } from './availability.js';
 
 export async function requestPreparation(db: PrismaClient, actor: string, assessmentId: string) {
+  requireCodingIde();
   return db.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(174923)`;
     await tx.$queryRaw`SELECT id FROM "Assessment" WHERE id=${assessmentId} FOR UPDATE`;
@@ -31,6 +33,7 @@ export async function preparationStatus(db: PrismaClient, assessmentId: string) 
 }
 
 export async function processPreparation(db: PrismaClient, id: string, execute = executeIsolated): Promise<void> {
+  if (!codingIdeEnabled()) return;
   const token = randomUUID(); const now = new Date();
   const won = await db.assessmentPreparation.updateMany({ where: { id, OR: [{ state: 'PENDING' }, { state: 'RUNNING', leasedUntil: { lt: now } }] }, data: { state: 'RUNNING', leaseToken: token, leasedUntil: new Date(now.getTime() + 60000) } });
   if (!won.count) return;

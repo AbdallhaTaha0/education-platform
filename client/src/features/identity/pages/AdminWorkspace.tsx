@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useLang } from '../../../i18n';
 import type { Route } from '../../../routes';
+import { useCodingIde } from '../../../features';
 
 const groups = [
   { id: 'overview', ar: 'نظرة عامة', en: 'Overview', descriptionAr: 'أرقام المنصة والمهام التي تحتاج متابعة.', descriptionEn: 'Platform totals and tasks needing attention.', links: [{ href: '#/admin/summary', ar: 'ملخص المنصة', en: 'Platform summary', routes: ['admin-summary', 'account'] }] },
@@ -13,12 +14,14 @@ const groups = [
 
 export function AdminWorkspace({ route, children }: { route: Route; children: ReactNode }): JSX.Element {
   const { lang } = useLang(); const ar = lang === 'ar';
-  const current = groups.find(group => group.links.some(link => link.routes.includes(route))) ?? groups[0];
+  const codingEnabled = useCodingIde();
+  const visibleGroups = groups.map(group => ({ ...group, ...(group.id === 'students' && !codingEnabled ? { ar: 'الطلاب', en: 'Students', descriptionAr: 'راجع بيانات الطلاب والاشتراكات.', descriptionEn: 'Review student details and subscriptions.' } : {}), links: group.links.filter(link => codingEnabled || link.href !== '#/admin/practice') }));
+  const current = visibleGroups.find(group => group.links.some(link => link.routes.includes(route))) ?? visibleGroups[0];
   return <div className="mx-auto w-full max-w-[1440px] px-4 pb-6 sm:px-6" data-testid="admin-workspace">
     <header className="mt-6 rounded-card border border-border bg-surface p-4 sm:p-6">
       <p className="text-xl font-bold">{ar ? 'لوحة الإدارة' : 'Admin dashboard'}</p>
       <nav aria-label={ar ? 'تبويبات لوحة الإدارة' : 'Admin dashboard tabs'} className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6" data-testid="admin-dashboard-tabs">
-        {groups.map(group => <a key={group.id} href={group.links[0].href} aria-current={group.id === current.id ? 'page' : undefined}
+        {visibleGroups.map(group => <a key={group.id} href={group.links[0].href} aria-current={group.id === current.id ? 'page' : undefined}
           className={`flex min-h-[48px] items-center justify-center rounded-control border px-3 py-3 text-center text-sm font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${group.id === current.id ? 'border-primary bg-primary text-canvas' : 'border-border text-ink hover:bg-elevated'}`}>{ar ? group.ar : group.en}</a>)}
       </nav>
       <p className="mt-4 text-sm leading-7 text-muted">{ar ? current.descriptionAr : current.descriptionEn}</p>

@@ -7,6 +7,7 @@ import { Notice } from '../../../components/ui/Notice';
 import { useLang } from '../../../i18n';
 import { localize, useTitleFocus } from '../components/IdentityForm';
 import { AccountSettings } from './AccountSettings';
+import { useCodingIde } from '../../../features';
 
 function formatDate(value: string, lang: string): string {
   try {
@@ -20,6 +21,7 @@ function formatDate(value: string, lang: string): string {
   }
 }
 export function AccountScreen({ go }: { go: (route: string) => void }): JSX.Element {
+  const codingEnabled = useCodingIde();
   const { t, lang } = useLang();
   const { status, user, lastAuthCode, logout, logoutAll } = useAuth();
   const titleRef = useTitleFocus();
@@ -102,7 +104,7 @@ export function AccountScreen({ go }: { go: (route: string) => void }): JSX.Elem
               <a href="#/admin/packages">{lang === 'ar' ? 'الباقات' : 'Packages'}</a>
               <a href="#/admin/catalog">{t.navCatalog}</a>
               <a href="#/admin/recharge">{t.navRecharge}</a>
-              <a href="#/admin/practice">{lang==='ar'?'حدود التدريب':'Practice limits'}</a>
+              {codingEnabled ? <a href="#/admin/practice">{lang==='ar'?'حدود التدريب':'Practice limits'}</a> : null}
             </>
           )}
           <a href="#/notifications">{t.navNotifications}</a>

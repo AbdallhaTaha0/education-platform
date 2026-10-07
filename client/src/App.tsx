@@ -1,4 +1,5 @@
 import { Footer } from './components/layout/Footer';
+import { FeaturesProvider, useCodingIde } from './features';
 import { usePublicData } from './seo/publicData';
 import { updateDocumentMetadata } from './seo/metadata';
 import { publicHref } from './seo/paths';
@@ -55,6 +56,7 @@ const AssessmentPage = lazy(() => import('./features/assessments/AssessmentPage'
 const AdminQuotaPage = lazy(() => import('./features/assessments/AdminQuotaPage').then((m) => ({ default: m.AdminQuotaPage })));
 
 function Shell(): JSX.Element {
+  const codingEnabled = useCodingIde();
   const confirmNavigation = useConfirmNavigation();
   const { lang, t, setLang } = useLang();
   const { user } = useAuth();
@@ -184,14 +186,15 @@ function Shell(): JSX.Element {
         </AccountWorkspace>
       ) : null}
       {route === 'notifications' ? <AccountWorkspace route={route}><NotificationsPage /></AccountWorkspace> : null}
-      {route === 'admin-practice' ? (
+      {route === 'admin-practice' && codingEnabled ? (
         <AccountWorkspace route={route}>
           <Suspense fallback={<main id="main"><Container><Loading text={t.loading} /></Container></main>}>
             <AdminQuotaPage key={user?.id ?? 'anonymous'} />
           </Suspense>
         </AccountWorkspace>
       ) : null}
-      {['practice', 'assessment'].includes(route) ? <Suspense fallback={<main id="main"><Container><Loading text={t.loading} /></Container></main>}>
+      {!codingEnabled && ['practice', 'admin-practice'].includes(route) ? <main id="main"><Container><p className="py-10" role="status">{lang === 'ar' ? 'المحرر متوقف مؤقتًا في هذا الإصدار. أعمالك محفوظة؛ الاختبارات متعددة الخيارات متاحة داخل الدروس.' : 'The IDE is temporarily disabled in this version. Your work is preserved; multiple-choice quizzes remain available in lessons.'}</p></Container></main> : null}
+      {(route === 'assessment' || (route === 'practice' && codingEnabled)) ? <Suspense fallback={<main id="main"><Container><Loading text={t.loading} /></Container></main>}>
         {route === 'practice' ? <PracticePage key={user?.id ?? 'anonymous'} /> : <AssessmentPage key={`${user?.id ?? 'anonymous'}:${hash}`} id={decodeURIComponent(hash.slice('#/assessment/'.length))} />}
       </Suspense> : null}
       {route === 'learn' ? (
@@ -219,7 +222,7 @@ export default function App(): JSX.Element {
     <ThemeProvider initialTheme={publicData ? "dark" : undefined}>
       <AuthProvider initialLang={publicData?.lang}>
         <NotificationsProvider>
-          <ErrorFeedbackProvider><UnsavedChangesProvider><Shell /></UnsavedChangesProvider></ErrorFeedbackProvider>
+          <FeaturesProvider><ErrorFeedbackProvider><UnsavedChangesProvider><Shell /></UnsavedChangesProvider></ErrorFeedbackProvider></FeaturesProvider>
         </NotificationsProvider>
       </AuthProvider>
     </ThemeProvider>

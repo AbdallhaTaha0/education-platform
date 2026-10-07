@@ -58,6 +58,8 @@ services:
     image: edu-platform-server-test:0.4.0-m4
     environment:
       NODE_ENV: test
+      # Existing IDE regression suites explicitly exercise the enabled contract.
+      CODING_IDE_ENABLED: 'true'
       LOG_LEVEL: warn
       SERVICE_VERSION: 0.4.0-m4-test
       READY_TIMEOUT_MS: 2000

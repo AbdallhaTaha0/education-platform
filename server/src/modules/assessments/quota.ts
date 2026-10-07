@@ -1,5 +1,6 @@
 import type { PrismaClient, Prisma } from '@prisma/client';
 import { ApiError } from '../identity/errors.js';
+import { requireCodingIde } from './availability.js';
 
 const DAY = 86_400_000;
 const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -16,6 +17,7 @@ export function quotaWindow(now: number, anchor: Date | null): { start: Date; en
   const value = { start, end: new Date(hi * 1000) }; if (cached.size > 8) cached.clear(); cached.set(date, value); return value;
 }
 export async function practiceEligible(db: PrismaClient, studentId: string, now: number): Promise<void> {
+  requireCodingIde();
   const subs = await db.subscription.findMany({ where: { studentId, startsAt: { lte: new Date(now) }, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date(now) } }] }, select: { courseId: true } });
   const course = await db.course.findFirst({ where: { id: { in: subs.map((s) => s.courseId) }, deletionRequestedAt: null }, select: { id: true } });
   if (!course) throw new ApiError(403, 'SUBSCRIPTION_REQUIRED', 'An active course subscription is required.');

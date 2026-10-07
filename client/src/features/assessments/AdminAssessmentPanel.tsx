@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { useLang } from "../../i18n";
+import { useCodingIde } from "../../features";
 import { PaginatedCollection } from "../../components/ui/Pagination";
 import { Button } from "../../components/ui/Button";
 import { FormActions } from "../../components/ui/FormActions";
@@ -101,6 +102,7 @@ export function AdminAssessmentPanel({
   initiallyOpen?: boolean;
 }): JSX.Element {
   const { lang, setLang } = useLang();
+  const codingEnabled = useCodingIde();
   const ar = lang === "ar";
   const label = (a: string, e: string): string => (ar ? a : e);
   const [mode, setMode] = useState<IDEMode>("javascript");
@@ -168,13 +170,14 @@ export function AdminAssessmentPanel({
   }, [open, lessonId]);
   function edit(entry?: Entry): void {
     if (busy || !discard()) return;
+    if (!codingEnabled && entry?.content.questions.some((q) => q.type !== 'CHOICE')) return;
     const nextContent = entry?.content ?? {
       titleAr: "",
       titleEn: "",
       instructionsAr: "",
       instructionsEn: "",
       ide: mode,
-      questions: [newQuestion(mode === "web" ? "CODING" : "PROGRAM", mode)],
+      questions: [codingEnabled ? newQuestion(mode === "web" ? "CODING" : "PROGRAM", mode) : { id: crypto.randomUUID(), type: 'CHOICE' as const, titleAr: '', titleEn: '', choices: [{ id: 'a', textAr: '', textEn: '' }, { id: 'b', textAr: '', textEn: '' }], correctChoiceId: '' }],
     };
     const nextKind = entry?.kind ?? "ASSIGNMENT";
     const nextRequired = entry
@@ -207,6 +210,7 @@ export function AdminAssessmentPanel({
     }));
   }
   function changeQuestionType(index: number, type: Question["type"]): void {
+    if (!codingEnabled && type !== 'CHOICE') return;
     const current = content.questions[index]!;
     if (current.type === type) return;
     const versions = questionVersions.current.get(current.id) ?? {};
@@ -329,7 +333,7 @@ export function AdminAssessmentPanel({
       </Button>
       {open ? (
         <div className="mt-3 space-y-4">
-          <ModeTabs
+          {codingEnabled ? <ModeTabs
             value={mode}
             onChange={(next) => {
               if (closeEditor()) {
@@ -338,7 +342,7 @@ export function AdminAssessmentPanel({
               }
             }}
             label={label("نوع المحرر", "IDE type")}
-          />
+          /> : <Notice kind="info">{label('تقييمات البرمجة متوقفة مؤقتًا. الاختيار من متعدد متاح؛ جميع الأعمال السابقة محفوظة.', 'Coding assessments are temporarily disabled. Multiple-choice quizzes remain available; existing work is preserved.')}</Notice>}
           {error && editing === false ? (
             <Notice kind="error" key={errorOccurrence}>
               <p>{error}</p>
@@ -373,7 +377,7 @@ export function AdminAssessmentPanel({
             disabled={busy}
           >
             {list
-              .filter((a) => (a.content.ide ?? "javascript") === mode)
+              .filter((a) => codingEnabled ? (a.content.ide ?? "javascript") === mode : a.content.questions.every((q) => q.type === 'CHOICE'))
               .map((a) => (
                 <div
                   key={a.id}
@@ -462,7 +466,7 @@ export function AdminAssessmentPanel({
               <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-border bg-canvas py-3">
                 <h2 className="text-xl font-bold">
                   {label("تحرير التقييم", "Edit assessment")} ·{" "}
-                  {modeName(content.ide ?? "javascript")}
+                  {codingEnabled ? modeName(content.ide ?? "javascript") : label('اختيار من متعدد', 'Multiple choice')}
                 </h2>
                 <Button
                   variant="secondary"
@@ -480,10 +484,10 @@ export function AdminAssessmentPanel({
                 </Button>
               </div>
               <p className="rounded-control border border-border p-3">
-                {label(
+                {codingEnabled ? label(
                   "١. احفظ المسودة ← ٢. حضّر الاختبارات ← ٣. راجعها ← ٤. انشر. النسخة المنشورة الحالية تبقى متاحة حتى نشر التعديل.",
                   "1. Save draft → 2. Prepare tests → 3. Review → 4. Publish. The current published revision remains available until you publish the changes.",
-                )}
+                ) : label('١. أضف الأسئلة والخيارات وحدد الإجابات الصحيحة ← ٢. احفظ المسودة ← ٣. انشر. النسخة المنشورة تبقى متاحة أثناء التحرير.', '1. Add questions and choices; select correct answers → 2. Save draft → 3. Publish. The published revision remains available while editing.')}
               </p>
               <p
                 role="status"
@@ -680,13 +684,13 @@ export function AdminAssessmentPanel({
                             )
                           }
                         >
-                          <option value="PROGRAM">
+                          {codingEnabled ? <option value="PROGRAM">
                             {label(
                               "مسألة مدخلات ومخرجات",
                               "Input/output problem",
                             )}
-                          </option>
-                          {content.ide !== "python" ? (
+                          </option> : null}
+                          {codingEnabled && content.ide !== "python" ? (
                             <option value="CODING">
                               {label("اختبارات سلوك", "Behavior checks")}
                             </option>
@@ -924,10 +928,10 @@ export function AdminAssessmentPanel({
                   onClick={() => {
                     clearFeedback();
                     setSaved(false);
-                    const next = newQuestion(
+                    const next = codingEnabled ? newQuestion(
                       content.ide === "web" ? "CODING" : "PROGRAM",
                       content.ide ?? "javascript",
-                    );
+                    ) : { id: crypto.randomUUID(), type: 'CHOICE' as const, titleAr: '', titleEn: '', choices: [{ id: 'a', textAr: '', textEn: '' }, { id: 'b', textAr: '', textEn: '' }], correctChoiceId: '' };
                     setContent((c) => ({
                       ...c,
                       questions: [...c.questions, next],

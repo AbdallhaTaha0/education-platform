@@ -5,8 +5,10 @@ import { object, key, type Content } from './contracts.js';
 import { practiceEligible, quotaLocked, quotaView } from './quota.js';
 import { assessmentAccess } from './service.js';
 import { runPython } from './python.js';
+import { codingIdeEnabled, requireCodingIde } from './availability.js';
 
 export async function requestPythonRun(db: PrismaClient, userId: string, role: string, value: unknown, now: number) {
+  requireCodingIde();
   const b = object(value); const idempotencyKey = key(b.idempotencyKey);
   if (typeof b.source !== 'string' || b.source.length > 32768 || typeof b.input !== 'string' || b.input.length > 8192) throw new ApiError(400, 'VALIDATION_ERROR', 'Python source or input is invalid.');
   const source = b.source, input = b.input;
@@ -46,6 +48,7 @@ export async function requestPythonRun(db: PrismaClient, userId: string, role: s
   });
 }
 export async function processPythonRun(db: PrismaClient, id: string, execute = runPython) {
+  if (!codingIdeEnabled()) return;
   const token = randomUUID(); const now = new Date();
   const won = await db.pythonRun.updateMany({ where: { id, OR: [{ state: 'PENDING' }, { state: 'RUNNING', leasedUntil: { lt: now } }] }, data: { state: 'RUNNING', leaseToken: token, leasedUntil: new Date(now.getTime() + 60000) } });
   if (!won.count) return;

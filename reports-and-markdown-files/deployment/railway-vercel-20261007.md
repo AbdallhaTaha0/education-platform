@@ -5,6 +5,12 @@ prepare on `dev`, qualify on `testing`, release from `deployment`; domains confi
 This delivery prepares artifacts and instructions. It does not deploy, provision
 accounts, purchase resources, approve new hosting policies, or certify 10,000 users.
 
+Later owner-approved current-release scope: [IDE disabled; choice quizzes
+retained](ide-disabled-release-20261007.md). Railway preparation now pins
+`CODING_IDE_ENABLED=false`. A grading execution host is required before future
+IDE reactivation, not for the current disabled release. Other release gates below
+remain unchanged.
+
 ## Architecture
 
 ```mermaid
@@ -180,11 +186,13 @@ stage alias. This is explicit dependency delivery, not nested source rewriting.
 
 ## Remaining release gates
 
-- **IDE grading host:** existing production controller requires gVisor `runsc` and
-  a trusted Docker daemon. Only the controller may access its socket; web replicas
-  and untrusted jobs never may. Railway placement is not qualified. An owner question
-  for a separate Docker execution host is pending; no new hosting architecture was
-  adopted. Required assessments cannot be released as working without a grader.
+- **IDE grading host (deferred while disabled):** the current release disables
+  practice and coding/mixed assessments; coding requirements do not block lessons,
+  and choice-only quizzes grade in the backend without an execution host. Future
+  IDE reactivation requires qualified gVisor `runsc` and a trusted Docker daemon.
+  Only the controller may access its socket; web replicas and untrusted jobs never
+  may. Railway execution placement remains unqualified; no new hosting architecture
+  was adopted. Do not enable coding until the execution gate is satisfied.
 - **Commercial DRM:** configure/qualify the supported provider. This graph keeps
   `CLEAR_KEY_ENABLED=false` and `PREMIUM_DRM_REQUIRED=true`; missing credentials
   block production. This is also an implementation gate, not just credentials:

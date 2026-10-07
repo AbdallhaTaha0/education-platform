@@ -23,6 +23,7 @@ import type { Clock } from './modules/identity/tokens.js';
 import { createAssertionJwks } from './modules/learning/playback/assertion.js';
 import { createNotificationRouter } from './modules/notifications/index.js';
 import { assessmentRouters } from './modules/assessments/routes.js';
+import { codingIdeEnabled } from './modules/assessments/availability.js';
 import { createSeoRouter } from './modules/seo/router.js';
 import { readSeoSettings } from './modules/seo/config.js';
 import { createSupportRouter } from './modules/support/routes.js';
@@ -78,6 +79,7 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
   app.use((_req, res, next) => { res.set('X-Robots-Tag', 'noindex'); next(); });
   app.use('/seo', createSeoRouter(deps.prisma, readSeoSettings()));
   app.use(cors({ origin: false }));
+  app.get('/features', (_req, res) => { res.json({ data: { codingIdeEnabled: codingIdeEnabled() } }); });
   // Proof submission is the only JSON route allowed above the global 256 KiB
   // ceiling. Select the parser before any body has been consumed; mounting a
   // second parser inside the wallet router would be too late.

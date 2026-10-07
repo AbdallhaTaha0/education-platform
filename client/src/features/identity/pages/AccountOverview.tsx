@@ -1,5 +1,6 @@
 import { AdminSummaryPage } from '../../academic/AdminSummaryPage';
 import { useAuth } from '../../../auth';
+import { useCodingIde } from '../../../features';
 import { useLang } from '../../../i18n';
 import { Container } from '../../../components/ui/Card';
 import { Loading, Notice } from '../../../components/ui/Notice';
@@ -58,6 +59,7 @@ export function AccountOverview({ go }: { go: (hash: string) => void }): JSX.Ele
 }
 
 function StudentAccountOverview({ go }: { go: (hash: string) => void }): JSX.Element {
+  const codingEnabled = useCodingIde();
   const { t, lang } = useLang();
   const ar = lang === 'ar';
   const { data, loading, errorCode, reload } = useDashboard();
@@ -149,7 +151,7 @@ function StudentAccountOverview({ go }: { go: (hash: string) => void }): JSX.Ele
               aria-label={ar ? 'أقسام حسابك' : 'Your account sections'}
             >
               <a href="#/dashboard">{ar ? 'تعلّمي' : 'My learning'}</a>
-              <a href="#/practice">{ar ? 'IDE' : 'IDE'}</a>
+              {codingEnabled ? <a href="#/practice">IDE</a> : null}
               <a href="#/wallet">{t.navWallet}</a>
               <a href="#/purchases">{ar ? 'مشترياتي' : 'My purchases'}</a>
               <a href="#/notifications">{t.navNotifications}</a>
