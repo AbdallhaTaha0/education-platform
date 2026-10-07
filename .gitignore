@@ -8,6 +8,8 @@ client/dist/
 server/dist/
 server/.prisma-fallback/
 *.tsbuildinfo
+client/dist-ssr/
+client/.vercel/
 
 # Env with real values (example file is committed instead)
 .env

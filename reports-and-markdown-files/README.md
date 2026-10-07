@@ -1,5 +1,10 @@
 # Education platform documentation
 
+## Deployment preparation — 2026-10-07
+
+- [Railway/Vercel setup and release runbook](deployment/railway-vercel-20261007.md).
+- [Local deployment artifact verification](deployment/railway-vercel-preparation-report-20261007.md): prepared on `dev`; cloud release and external qualification gates remain.
+
 ## Latest delivery — 2026-10-06
 
 - [Combined delivery and merged Docker verification](delivery-and-reviews/combined-caption-delivery-20261006.md).
