@@ -20,9 +20,9 @@ export function PriceDisplay({
     <p className="m-0 flex flex-wrap items-baseline gap-2">
       <span
         className="text-xl font-extrabold text-ink"
-        aria-label={`${t.priceLabel}: ${formatEgp(current, lang)}`}
+        aria-label={`${t.priceLabel}: ${current === 0 ? (lang === 'ar' ? 'مجاني' : 'Free') : formatEgp(current, lang)}`}
       >
-        {formatEgp(current, lang)}
+        {current === 0 ? (lang === 'ar' ? 'مجاني' : 'Free') : formatEgp(current, lang)}
       </span>
       {previous !== null ? (
         <s

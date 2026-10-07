@@ -11,6 +11,9 @@ describe('academic checkout inputs', () => {
     (value) => expect(() => cairoDeadlineInput(value)).toThrow(),
   );
   it('converts prices exactly without rounding or accepting exponent syntax', () => {
+    expect(moneyInput('0', true)).toBe(0);
+    expect(moneyInput('0.00', true)).toBe(0);
+    expect(() => moneyInput('-1', true)).toThrow();
     expect(moneyInput('900.01')).toBe(90001);
     expect(moneyInput('0.01')).toBe(1);
     for (const value of ['0', '-1', '1.001', '1e3', 'NaN', '20000000.01'])

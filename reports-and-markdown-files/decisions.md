@@ -267,3 +267,11 @@ The owner instructed “do them” for independent review, dual-repository commi
 ## Combined delivery authorization — 2026-10-06
 
 The owner explicitly requested commit and push after caption removal, then instructed continuation. Deliver the verified platform work and the existing bounded DRM repair, merging newer teammate updates. Earlier no-push notes record the permission at their historical task boundary; this instruction supersedes them for this delivery. Preserve retained data and private settings; no production deployment or milestone/capacity acceptance is implied.
+
+## Short parent reports and free course plans — 2026-10-07
+
+Owner requested important results in one short WhatsApp message and a free course-price option. ADMIN defaults to a single compact report across selected courses, preserving unknown coverage; optional detailed reports remain. Zero-price course enrollment creates access without a wallet debit, preserving duration/end and concurrency rules. Packages/recharges remain positive. See milestones/m10/m10-short-report-and-free-plans-20261007.md. Local preview update authorized; no production deployment, acceptance or commit/push inferred.
+
+## Compact parent-report interface and Arabic layout — 2026-10-07
+
+Owner requested compact student rows and period/send as the primary controls, then correction of broken icons and overlapping Arabic report text. Show additional courses/tracking only on demand. Keep SHORT single-message handoff and existing privacy/contact guards. Arabic-first text, Arabic digits, written dates and separate assessment exception lines supersede mixed fractions/icons. See milestones/m10/m10-compact-ui-and-message-layout-20261007.md.

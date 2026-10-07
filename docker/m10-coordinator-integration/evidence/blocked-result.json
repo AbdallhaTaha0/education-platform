@@ -1,0 +1,4 @@
+{
+  "passed": true,
+  "scenario": "Real API generation, deterministic blocked-popup adapter, fallback and disposal"
+}

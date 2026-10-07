@@ -1,0 +1,18 @@
+# M10 agent 3 — disposable Chromium harness (test-only).
+# Drives system Chromium against the disposable synthetic web service and
+# inspects WhatsApp navigation before it can leave the browser. No message is
+# ever sent.
+ARG NODE_IMAGE=node:22-bookworm-slim
+
+FROM ${NODE_IMAGE}
+RUN apt-get update -y && apt-get install -y --no-install-recommends chromium \
+  && rm -rf /var/lib/apt/lists/*
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+WORKDIR /srv/browser
+COPY docker/browser/package.json docker/browser/package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+COPY docker/m10-agent-3/browser ./checks
+RUN mkdir -p /evidence
+ENV BASE_URL=http://web:8080
+ENV EVIDENCE_DIR=/evidence
+CMD ["node", "checks/check.mjs"]

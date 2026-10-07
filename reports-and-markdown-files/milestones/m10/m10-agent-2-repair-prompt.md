@@ -1,0 +1,20 @@
+# OpenCode agent 2 — repair coordinator report findings only
+
+Read root AGENTS.md, reports-and-markdown-files/README.md, agent.md, rules.md, decisions.md, milestones/m10/m10-parent-reports-plan.md, m10-parallel-contract.md, your handoff/report, agent 1's frozen tracking contract and m10-agent-2-coordinator-review.md.
+
+Work only in agent-2 ownership; preserve agents 1/3 and unrelated changes. No frontend/schema/DRM edits, new agent, access-policy change, paid provider, retained-preview upgrade, deployment, commit or push. Keep routes and existing DTOs stable; describe required additive media/summary contract corrections to the coordinator/agent-3 handoff instead of silently changing namespaces.
+
+Required repairs:
+
+1. Fix per-lesson coverage status for weeks entirely before tracking, partial windows, membership gaps and lessons/media introduced after a period. Never label unknown/not-yet-available data as not viewed. Viewed evidence can be positive while a no-evidence result remains unknown for incomplete coverage. Add real API tests asserting actual lesson lines, not only disclaimer existence.
+2. Separate current earned assessment status from week-specific attempts/pass achievements. A Week-4 pass must not appear as an achievement of Week 1. Avoid fabricating unreconstructable historical submission states. Add a deduplicated combined-period summary plus constituent weekly sections; preserve passes and distinguish service errors/not submitted. Keep multiple assessments distinguishable.
+3. Use agent 1's countedAt event time consistently for counted-view windows and enforce [start,cutoff), including countedAt<cutoff. Test start-before/count-after boundaries and reports while grading/count writes occur. Use a coherent read snapshot or an equivalent explicitly verified contract, not unrelated current reads with only a shared timestamp.
+4. Return the actual platform MediaMapping.id as mediaAssetId. Compare recorded media identities with current mapping, surface old-version evidence accurately and avoid summing historical counts under a misleading current-version identity. Preserve owner counts, do not overwrite old facts or claim replaced media was viewed. Publish any necessary additive DTO clarification for agent 3; do not touch agent-1 persistence.
+5. Bound final text parts, including numbering and oversized individual lines. Preserve all content/Unicode safely and provide student/course/week context for each part. Test encoded WhatsApp URL length assumptions with realistic long Arabic titles and four-week/multi-course output. Improve formatted headings/summary while retaining free text and no persisted report archive.
+6. Validate cross-course/unknown lesson cursors, overlong search and null/malformed bodies explicitly; align response codes and docs. Clarify historic roster versus current generation eligibility from actual existing rules without changing subscription terms.
+
+Run affected tests/typecheck in Docker with real PostgreSQL and the real M10 migration; add regressions for every reproduced finding. Re-run existing 17 cases and relevant security/authorization tests; request coordinator addition of five routes to shared security inventory. Use synthetic students/contacts only. No real WhatsApp send. Distinguish source probes from real database/API verification.
+
+Update m10-agent-2-report.md and m10-report-api-contract.md with changed files, exact Docker commands/results, fixed findings, failures/skips/blockers, stable DTO examples and rollback. Keep initial evidence history. Stop for coordinator re-review.
+
+Mandatory Docker cleanup: after success, failure, interruption or stop, inspect exact project labels, resolved resource names and EVERY mount before removing only your owned disposable containers, networks, volumes (including verified anonymous mounts) and fixtures. Preserve retained previews/data, peers/unrelated projects, reusable images and evidence. No global prune or down -v on retained stacks. Report final zero-owned-resource checks or exact resources that could not safely be removed.

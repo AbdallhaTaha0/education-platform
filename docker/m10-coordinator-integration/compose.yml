@@ -1,0 +1,74 @@
+# Disposable real platform API + real React UI verification. No published ports.
+x-env: &env
+  NODE_ENV: test
+  LOG_LEVEL: silent
+  SERVICE_VERSION: m10-integrated-test
+  DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_m10_integrated_test
+  REDIS_URL: redis://redis:6379
+  AUTH_JWT_SECRET: 9f3k7q2m4x8z1v6n7h2j5t9w3q6w8e1r5t9y2u4i6o0p
+  AUTH_ISSUER: m10-integrated-fixture
+  AUTH_AUDIENCE: m10-integrated-browser
+  STUDENT_DATA_ENCRYPTION_KEY_B64: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
+  STUDENT_DATA_INDEX_KEY_B64: YmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmI=
+  ALLOWED_ORIGINS: http://localhost:8080,http://web:8080
+  ARGON2_MEMORY_KB: 8192
+  ARGON2_TIME_COST: 2
+  ARGON2_PARALLELISM: 1
+  READY_TIMEOUT_MS: 2000
+  DRM_REQUEST_TIMEOUT_MS: 1000
+  DRM_MAX_RETRIES: 2
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: education_platform_m10_integrated_test
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U postgres -d education_platform_m10_integrated_test']
+      interval: 2s
+      timeout: 3s
+      retries: 25
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 2s
+      timeout: 3s
+      retries: 25
+  migrate:
+    image: edu-platform-migrate-m10a2:0.4.0
+    environment: *env
+    depends_on:
+      postgres: {condition: service_healthy}
+  web:
+    image: edu-platform-server-test-m10a2:0.4.0
+    environment: *env
+    volumes:
+      - ../../server/src:/review-src:ro
+      - ../../server/tests:/review-tests:ro
+      - ./host.test.ts:/host.test.ts:ro
+      - ./out:/web-output:ro
+    entrypoint: [sh, -c]
+    command: ['cp -R /review-src/. /srv/server/src/ && cp -R /review-tests/. /srv/server/tests/ && cp /host.test.ts /srv/server/tests/integration/m10-browser-host.test.ts && npx vitest run tests/integration/m10-browser-host.test.ts']
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8080/__m10/seed').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 40
+  browser:
+    image: edu-platform-m10a3-browser:0.1.0
+    volumes:
+      - ./browser.mjs:/review-browser.mjs:ro
+      - ./evidence:/evidence
+    entrypoint: [node, /review-browser.mjs]
+    environment:
+      BASE_URL: http://web:8080
+    depends_on:
+      web: {condition: service_healthy}
+volumes:
+  pgdata:

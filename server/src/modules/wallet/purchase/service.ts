@@ -175,7 +175,7 @@ export async function purchaseCourse(
           idempotencyKey,
         },
       });
-      await postEntry(
+      if (plan.currentPricePiastres > 0) await postEntry(
         tx,
         wallet.id,
         -plan.currentPricePiastres,

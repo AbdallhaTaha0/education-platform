@@ -22,3 +22,11 @@ Thumbs.db
 # Docker / volumes (never commit local database data)
 docker/volumes/
 docker/browser/evidence/
+
+# Disposable M10 probe output; retain locally, regenerate from current source.
+docker/m10-agent-1/browser-out/
+docker/m10-agent-1/drill-out/
+docker/m10-agent-1/browser/probe/viewTracking.js
+docker/m10-agent-1/browser/probe/viewSessionManager.js
+docker/m10-coordinator-review/player-wiring/out/
+docker/m10-coordinator-integration/out/

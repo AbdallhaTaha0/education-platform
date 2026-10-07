@@ -1,0 +1,38 @@
+# M10 agent 3 — DISPOSABLE verification project.
+#
+# Distinct project name, no host ports, no named volumes: every resource is
+# anonymous and disposable and is removed after the run. Nothing here touches
+# the retained platform/DRM preview projects.
+services:
+  web:
+    build:
+      context: ../..
+      dockerfile: docker/m10-agent-3/Dockerfile.web
+      target: runtime
+    image: edu-platform-m10a3-web:finish-20261007
+    environment:
+      DIST: /srv/web/dist
+    networks: [m10a3]
+  browser:
+    build:
+      context: ../..
+      dockerfile: docker/m10-agent-3/Dockerfile.browser
+    image: edu-platform-m10a3-browser:0.1.0
+    depends_on: [web]
+    environment:
+      BASE_URL: http://web:8080
+      EVIDENCE_DIR: /evidence
+    volumes:
+      - ./evidence:/evidence
+    networks: [m10a3]
+  client-test:
+    build:
+      context: ../..
+      dockerfile: docker/m10-agent-3/Dockerfile.web
+      target: client-test
+    image: edu-platform-m10a3-client-test:finish-20261007
+    profiles: [unit]
+    networks: [m10a3]
+networks:
+  m10a3:
+    name: ${COMPOSE_PROJECT_NAME}-net

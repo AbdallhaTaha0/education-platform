@@ -109,7 +109,7 @@ export function PurchasePage({
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted">{t.priceLabel}</dt>
                   <dd className="font-bold">
-                    <Money piastres={receipt.pricePiastres} />
+                    {receipt.pricePiastres === 0 ? (lang === 'ar' ? 'مجاني' : 'Free') : <Money piastres={receipt.pricePiastres} />}
                   </dd>
                 </div>
                 {receipt.durationDays !== null ? (
@@ -202,7 +202,7 @@ export function PurchasePage({
               <div className="flex justify-between gap-4">
                 <dt className="text-muted">{t.priceLabel}</dt>
                 <dd className="font-bold">
-                  <Money piastres={price} />
+                  {price === 0 ? (lang === 'ar' ? 'مجاني' : 'Free') : <Money piastres={price} />}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
@@ -219,13 +219,13 @@ export function PurchasePage({
                         : t.planUnavailable}
                 </dd>
               </div>
-              <div className="flex justify-between gap-4">
+              {price > 0 ? <div className="flex justify-between gap-4">
                 <dt className="text-muted">{t.walletBalance}</dt>
                 <dd className="font-bold">
                   {balance !== null ? <Money piastres={balance} /> : '…'}
                 </dd>
-              </div>
-              {balance !== null && !short ? (
+              </div> : null}
+              {price > 0 && balance !== null && !short ? (
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted">{t.balanceAfter}</dt>
                   <dd className="font-bold">
@@ -252,7 +252,7 @@ export function PurchasePage({
             {!short ? (
               <FormActions>
                 <Button onClick={() => void confirm()} disabled={phase === 'confirming'}>
-                  {phase === 'confirming' ? <Loading text={t.confirming} /> : t.confirmPurchase}
+                  {phase === 'confirming' ? <Loading text={t.confirming} /> : price === 0 ? (lang === 'ar' ? 'اشترك مجانًا' : 'Enroll for free') : t.confirmPurchase}
                 </Button>
                 <Button variant="secondary" onClick={() => go('#/courses')}>
                   {t.cancel}

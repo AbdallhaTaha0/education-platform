@@ -9,6 +9,13 @@ import { signAccessToken } from '../../src/modules/identity/tokens.js';
 import { createLogger } from '../../src/logger.js';
 // Explicit snapshot of the audit inventory; update when adding protected routes.
 const routes = [
+  ['get', '/admin/courses/11111111-1111-1111-1111-111111111111/students'],
+  ['get', '/admin/courses/11111111-1111-1111-1111-111111111111/students/11111111-1111-1111-1111-111111111111/views'],
+  ['get', '/admin/students/11111111-1111-1111-1111-111111111111/report-courses'],
+  ['get', '/admin/students/11111111-1111-1111-1111-111111111111/report-contact'],
+  ['post', '/admin/parent-reports/generate'],
+  ['post', '/learning/courses/11111111-1111-1111-1111-111111111111/lessons/11111111-1111-1111-1111-111111111111/views/start'],
+  ['post', '/learning/views/11111111-1111-1111-1111-111111111111/heartbeat'],
   [
     "put",
     "/admin/assessments/11111111-1111-1111-1111-111111111111"
@@ -460,6 +467,11 @@ describe('protected HTTP surface', () => {
 
 
 const adminRoutes = [
+  ['get', '/admin/courses/11111111-1111-1111-1111-111111111111/students'],
+  ['get', '/admin/courses/11111111-1111-1111-1111-111111111111/students/11111111-1111-1111-1111-111111111111/views'],
+  ['get', '/admin/students/11111111-1111-1111-1111-111111111111/report-courses'],
+  ['get', '/admin/students/11111111-1111-1111-1111-111111111111/report-contact'],
+  ['post', '/admin/parent-reports/generate'],
   [
     "put",
     "/admin/assessments/11111111-1111-1111-1111-111111111111"

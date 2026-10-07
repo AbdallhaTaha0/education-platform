@@ -68,6 +68,33 @@ async function balance(): Promise<number> {
 }
 
 describe('course purchase', () => {
+  it('enrolls free plans at zero balance once, without zero ledger entries or extending active access', async () => {
+    await resetFinancialState(world);
+    const { planId, courseId } = await publishedPlan(0, 30);
+    const key = uniqueKey('free');
+    const first = await studentPost(world.app, '/wallet/purchases', world.studentJar, { planId, idempotencyKey: key });
+    expect(first.status).toBe(201);
+    expect(first.body.data.pricePiastres).toBe(0);
+    expect(await balance()).toBe(0);
+    expect(await world.prisma.walletLedgerEntry.count()).toBe(0);
+    const sub = await world.prisma.subscription.findUniqueOrThrow({ where: { purchaseId: first.body.data.id } });
+    expect(sub.courseId).toBe(courseId);
+    expect(sub.expiresAt!.getTime() - sub.startsAt.getTime()).toBe(30 * 86400000);
+    const replay = await studentPost(world.app, '/wallet/purchases', world.studentJar, { planId, idempotencyKey: key });
+    expect(replay.body.data.id).toBe(first.body.data.id);
+    const duplicate = await studentPost(world.app, '/wallet/purchases', world.studentJar, { planId, idempotencyKey: uniqueKey('free-again') });
+    expect(duplicate.status).toBe(409);
+    expect(await world.prisma.purchase.count({ where: { courseId } })).toBe(1);
+    expect(await world.prisma.walletLedgerEntry.count()).toBe(0);
+  });
+  it('serializes concurrent free enrollment with different keys', async () => {
+    await resetFinancialState(world);
+    const { planId, courseId } = await publishedPlan(0, 30);
+    const responses = await Promise.all([1,2,3].map(n => studentPost(world.app, '/wallet/purchases', world.studentJar, { planId, idempotencyKey: uniqueKey(`free-race-${n}`) })));
+    expect(responses.map(r=>r.status).sort()).toEqual([201,409,409]);
+    expect(await world.prisma.subscription.count({ where: { courseId } })).toBe(1);
+    expect(await balance()).toBe(0);
+  });
   it('rejects insufficient funds without creating access', async () => {
     // A zero balance and zero purchase/subscription rows are this test's own
     // precondition, not an accident of running before the funding tests below.

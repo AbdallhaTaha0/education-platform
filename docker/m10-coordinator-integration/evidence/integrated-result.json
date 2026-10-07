@@ -1,0 +1,16 @@
+{
+  "checks": [
+    "Real roster pages 20+5, zero activity and actual lesson pages 20+3",
+    "Real 7/14/28-day reports, weekly composition and assessment outcomes",
+    "Combined report uses two actual memberships, includes zero-activity current videos",
+    "Real registered recipient/encoded part and immediate platform disposal",
+    "Missing guardian still permits preview, sending is disabled with reason",
+    "Actual contact change blocks manual fallback and erases old report",
+    "Real player -> real telemetry -> admin counts: 31s=one, 42s still one, refresh=second",
+    "Arabic/English, RTL/LTR, both themes and mobile layouts against real API",
+    "Navigation clears report state; no browser credential/report storage"
+  ],
+  "whatsappNavigationsAborted": 1,
+  "pageErrors": [],
+  "boundary": "Actual React UI, Express APIs and PG/Redis. Native video + DASH transport fixture and DRM API fixture; no external DRM security or WhatsApp send/delivery claim."
+}

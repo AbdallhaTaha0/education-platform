@@ -10,6 +10,10 @@
 
 Start here for the current rules and reports. Reports are grouped by milestone and topic; filenames and historical decisions are preserved.
 
+Current work: [M10 parent reports and course student tracking](milestones/m10/README.md).
+The owner authorized direct repairs and completion of Agents 2 and 3 on
+2026-10-07. See the milestone index for implementation and verification evidence.
+
 ## Core project documents
 
 | Document | Purpose |

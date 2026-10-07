@@ -1,0 +1,22 @@
+[
+  {
+    "name": "late contact response after cancel cannot navigate, restore text or leave a reserved window",
+    "status": "PASS"
+  },
+  {
+    "name": "manual fallback rechecks changed registered contact and opens no old recipient",
+    "status": "PASS"
+  },
+  {
+    "name": "cancel while clipboard is pending does not resurrect the copied notice",
+    "status": "PASS"
+  },
+  {
+    "name": "mobile Generate and open navigates encoded Arabic text then disposes the report and recipient",
+    "status": "PASS"
+  },
+  {
+    "name": "handoff data does not persist in browser storage",
+    "status": "PASS"
+  }
+]

@@ -1,0 +1,11 @@
+Error: Waiting failed
+    at <instance_members_initializer> (file:///srv/browser/node_modules/puppeteer-core/lib/puppeteer/common/WaitTask.js:21:21)
+    at new WaitTask (file:///srv/browser/node_modules/puppeteer-core/lib/puppeteer/common/WaitTask.js:27:16)
+    at IsolatedWorld.waitForFunction (file:///srv/browser/node_modules/puppeteer-core/lib/puppeteer/api/Realm.js:49:26)
+    at CdpFrame.waitForFunction (file:///srv/browser/node_modules/puppeteer-core/lib/puppeteer/api/Frame.js:585:43)
+    at CdpFrame.<anonymous> (file:///srv/browser/node_modules/puppeteer-core/lib/puppeteer/util/decorators.js:101:27)
+    at CdpPage.waitForFunction (file:///srv/browser/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:1537:37)
+    at start (file:///review-browser.mjs:171:21)
+    at async file:///review-browser.mjs:174:19
+    at async record (file:///review-browser.mjs:88:37)
+    at async file:///review-browser.mjs:160:3

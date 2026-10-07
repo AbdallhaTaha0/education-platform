@@ -1,0 +1,13 @@
+# Owner-authorized latest local preview; combine with dev + local compose files.
+# Existing external database/cache volumes and private .env remain unchanged.
+services:
+  migrate:
+    image: fayq-m10-migrate:20261007
+  server:
+    image: fayq-m10-server:20261007
+    environment:
+      SERVICE_VERSION: m10-local-20261007
+  client:
+    image: fayq-m10-client:20261007
+  nginx:
+    image: fayq-player-controls-nginx:20261006

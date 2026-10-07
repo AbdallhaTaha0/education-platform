@@ -48,7 +48,8 @@ describe('exact price + duration bounds', () => {
     const ok = validatePricePair(60000, 90000);
     expect(ok).toEqual({ current: 60000, previous: 90000 });
     expect(validatePricePair(5000, null).previous).toBeNull();
-    expect(() => validatePricePair(0, null)).toThrow(ApiError);
+    expect(validatePricePair(0, null)).toEqual({ current: 0, previous: null });
+    expect(() => validatePricePair(-1, null)).toThrow(ApiError);
     expect(() => validatePricePair(2000000001, null)).toThrow(ApiError);
     expect(() => validatePricePair(10.5, null)).toThrow(ApiError);
   });

@@ -26,6 +26,7 @@ import { assessmentRouters } from './modules/assessments/routes.js';
 import { createSeoRouter } from './modules/seo/router.js';
 import { readSeoSettings } from './modules/seo/config.js';
 import { createSupportRouter } from './modules/support/routes.js';
+import { createParentReportsRouter } from './modules/parent-reports/index.js';
 
 export interface AppDependencies {
   config: ServerConfig;
@@ -171,6 +172,17 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
     '/notifications',
     createNotificationRouter({
       prisma: deps.prisma,
+      ...(tunables.clock ? { clock: tunables.clock } : {}),
+    }),
+  );
+
+  // M10 ADMIN course rosters, per-student views and transient parent reports.
+  // No persistence of generated reports; guards mirror the other admin modules.
+  app.use(
+    '/admin',
+    createParentReportsRouter({
+      prisma: deps.prisma,
+      config: deps.config,
       ...(tunables.clock ? { clock: tunables.clock } : {}),
     }),
   );

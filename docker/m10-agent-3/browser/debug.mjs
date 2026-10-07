@@ -1,0 +1,33 @@
+import puppeteer from 'puppeteer-core';
+const BASE = process.env.BASE_URL ?? 'http://web:8080';
+const browser = await puppeteer.launch({ executablePath: '/usr/bin/chromium', headless: true, protocolTimeout: 60000, args: ['--no-sandbox', '--disable-dev-shm-usage', '--no-proxy-server'] });
+const page = await browser.newPage();
+await page.setViewport({ width: 1280, height: 900 });
+const blocked = [];
+await page.setRequestInterception(true);
+page.on('request', r => {
+  const url = r.url();
+  if (/^wss?:/.test(url) || /socket\.io/.test(url)) { blocked.push(url); void r.abort().catch(() => {}); return; }
+  void r.continue().catch(() => {});
+});
+await page.evaluateOnNewDocument(() => { window.localStorage.setItem('edu-platform-lang', 'ar'); });
+await page.goto(`${BASE}/#/login`, { waitUntil: 'domcontentloaded' });
+await page.waitForSelector('#login-id');
+await new Promise(r => setTimeout(r, 1200));
+await page.type('#login-id', 'admin.synthetic@m10a3.invalid');
+await page.type('#login-password', 'synthetic-password');
+await page.$eval('form button[type="submit"]', n => n.scrollIntoView({ block: 'center' }));
+await page.click('form button[type="submit"]');
+await page.waitForFunction(() => window.location.hash.startsWith('#/account'), { timeout: 20000 });
+console.log('shot login account...');
+await page.screenshot({ path: '/tmp/a.png' });
+console.log('ok 1');
+await page.goto(`${BASE}/#/admin/courses/course-m10a3`, { waitUntil: 'domcontentloaded' });
+await page.waitForSelector('#course-workspace-tab-students');
+await page.$eval('#course-workspace-tab-students', n => n.scrollIntoView({ block: 'center' }));
+await page.click('#course-workspace-tab-students');
+await page.waitForSelector('[data-testid="roster-list"]');
+console.log('shot students tab...');
+await page.screenshot({ path: '/tmp/b.png' });
+console.log('ok 2', blocked.length, 'ws blocked');
+await browser.close();

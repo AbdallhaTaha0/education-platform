@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>M10 view-tracking browser probe (agent 1, test-only)</title>
+</head>
+<body>
+  <!--
+    Test-only probe page. Uses the REAL compiled viewTracking.js +
+    viewSessionManager.js modules from client sources against the REAL
+    platform API (same-origin cookies + CSRF). The <video> plays a REAL
+    canvas-captured stream so element state (paused/ended/readyState) and the
+    monotonic clock are genuine browser behavior. Protected DRM rendering is
+    NOT exercised (the fixture manifest is deliberately unusable and the probe
+    never attaches it); the playback grant is used only as the counting-session
+    binder, exactly as the player integration does.
+  -->
+  <canvas id="src" width="160" height="90"></canvas>
+  <video id="vid" muted playsinline></video>
+  <pre id="log"></pre>
+  <script type="module" src="./probe.js"></script>
+</body>
+</html>

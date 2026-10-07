@@ -1,0 +1,178 @@
+{
+  "project": "edu-platform-m10a3",
+  "base": "http://web:8080",
+  "total": 28,
+  "passed": 18,
+  "failed": 10,
+  "whatsappNavigationsIntercepted": 0,
+  "whatsappDeliveriesObserved": "not observable and not claimed: click-to-chat only pre-fills a composer draft",
+  "note": "WhatsApp navigation was intercepted inside the browser; no message was sent.",
+  "screenshots": [
+    {
+      "name": "ar-1280-dark-roster.png",
+      "status": "CAPTURED"
+    },
+    {
+      "name": "en-1280-light-report.png",
+      "status": "CAPTURED"
+    },
+    {
+      "name": "ar-1280-dark-handoff.png",
+      "status": "CAPTURED"
+    },
+    {
+      "name": "ar-1280-light-popup-blocked.png",
+      "status": "CAPTURED"
+    },
+    {
+      "name": "ar-390-light-students.png",
+      "status": "CAPTURED"
+    },
+    {
+      "name": "en-390-dark-report.png",
+      "status": "CAPTURED"
+    }
+  ],
+  "results": [
+    {
+      "name": "ar desktop dark: roster renders one server page of 20 students",
+      "status": "PASS",
+      "whatsappNavigations": 0
+    },
+    {
+      "name": "ar desktop dark: roster never exposes a plaintext guardian number",
+      "status": "PASS",
+      "whatsappNavigations": 0
+    },
+    {
+      "name": "ar desktop dark: roster paging advances with the server cursor",
+      "status": "PASS",
+      "whatsappNavigations": 0
+    },
+    {
+      "name": "ar desktop dark: a zero-activity student without a guardian number is listed",
+      "status": "PASS",
+      "whatsappNavigations": 0
+    },
+    {
+      "name": "ar desktop dark: per-video counts and coverage appear for the selected student",
+      "status": "FAIL",
+      "error": "Waiting for selector `[data-testid=\"select-student-student-active\"]` failed"
+    },
+    {
+      "name": "en desktop light: language, direction and theme follow the preference",
+      "status": "PASS",
+      "whatsappNavigations": 0
+    },
+    {
+      "name": "en desktop light: a week report shows the backend text, exact period and statuses",
+      "status": "PASS",
+      "whatsappNavigations": 0
+    },
+    {
+      "name": "en desktop light: two-week and four-week reports keep the weekly components",
+      "status": "PASS",
+      "whatsappNavigations": 0
+    },
+    {
+      "name": "en desktop light: a combined report requests every selected current membership",
+      "status": "PASS",
+      "whatsappNavigations": 0
+    },
+    {
+      "name": "en desktop light: report responses are served with a no-store policy",
+      "status": "PASS",
+      "whatsappNavigations": 0
+    },
+    {
+      "name": "en desktop light: no report or recipient data reaches browser storage",
+      "status": "PASS",
+      "whatsappNavigations": 0
+    },
+    {
+      "name": "desktop: Generate & open WhatsApp hands part 1 to the reserved gesture",
+      "status": "PASS",
+      "whatsappNavigations": 1
+    },
+    {
+      "name": "desktop: the handoff note never claims the message was sent",
+      "status": "PASS",
+      "whatsappNavigations": 0
+    },
+    {
+      "name": "desktop: a four-part long report keeps every part and refuses the over-long URL",
+      "status": "FAIL",
+      "error": "AssertionError [ERR_ASSERTION]: "
+    },
+    {
+      "name": "desktop: explicit copy works and never claims delivery",
+      "status": "PASS",
+      "whatsappNavigations": 0
+    },
+    {
+      "name": "desktop: handing off one later part keeps the remaining text transient",
+      "status": "FAIL",
+      "error": "one more click-to-chat navigation\n\n1 !== 2\n"
+    },
+    {
+      "name": "desktop: discarding the text removes every remaining part at once",
+      "status": "FAIL",
+      "error": "no report text is left in the DOM after disposal"
+    },
+    {
+      "name": "desktop: a blocked popup is reported and opens nothing",
+      "status": "FAIL",
+      "error": "AssertionError [ERR_ASSERTION]: "
+    },
+    {
+      "name": "desktop: the visible manual fallback performs the reviewed handoff",
+      "status": "FAIL",
+      "error": "Waiting for selector `[data-testid=\"report-part-disposed-1\"]` failed"
+    },
+    {
+      "name": "mobile 390: the workspace stays inside the viewport",
+      "status": "PASS",
+      "whatsappNavigations": 0
+    },
+    {
+      "name": "mobile: a student without a registered number blocks the handoff with a visible reason",
+      "status": "PASS",
+      "whatsappNavigations": 0
+    },
+    {
+      "name": "mobile: changing the selected student discards the held text",
+      "status": "PASS",
+      "whatsappNavigations": 0
+    },
+    {
+      "name": "mobile: a contact changed after preparation holds nothing and opens nothing",
+      "status": "FAIL",
+      "error": "AssertionError [ERR_ASSERTION]: "
+    },
+    {
+      "name": "mobile: a slow response for a superseded student is discarded",
+      "status": "PASS",
+      "whatsappNavigations": 0
+    },
+    {
+      "name": "mobile: leaving the workspace and returning clears every remaining part",
+      "status": "FAIL",
+      "error": "The expression evaluated to a falsy value:\n\n  assert.ok(!(await page.evaluate(() => document.documentElement.innerHTML)).includes('FAYQ'))\n"
+    },
+    {
+      "name": "en mobile dark: keyboard focus reaches the handoff control visibly",
+      "status": "FAIL",
+      "error": "Expected \"actual\" to be strictly unequal to:\n\n'none'"
+    },
+    {
+      "name": "en mobile dark: every roster and report control has an accessible name",
+      "status": "FAIL",
+      "error": "Expected values to be strictly equal:\n\n1 !== 0\n"
+    },
+    {
+      "name": "en mobile dark: the tab strip keeps its role semantics",
+      "status": "PASS",
+      "whatsappNavigations": 0
+    }
+  ]
+}

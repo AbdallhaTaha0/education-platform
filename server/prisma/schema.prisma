@@ -69,6 +69,7 @@ model User {
   practiceRuns PracticeRun[]
   pythonRuns PythonRun[]
   studentProfile StudentProfile?
+  m10ViewSessions M10VideoViewSession[]
 
   @@index([role])
 }
@@ -378,6 +379,7 @@ model Lesson {
   assessments Assessment[]
   preservedUnlocks PreservedLessonUnlock[]
   resources   LessonResource[]
+  m10ViewSessions M10VideoViewSession[]
 
   @@unique([sectionId, position])
   @@index([sectionId, position])
@@ -952,4 +954,67 @@ model VodafoneCashSettings {
   instructionsEn String
   version Int @default(1)
   updatedAt DateTime @updatedAt
+}
+
+/// M10 platform-owned video-view tracking (agent 1).
+///
+/// One row per logical playback start/restart. A session counts ONCE when
+/// accumulated actual playing time reaches 30 seconds (countedAt becomes
+/// non-null exactly once). Continued playback never counts again for the same
+/// row. A page refresh, successful playback reconnect (new playback grant) or
+/// later new viewing session creates a NEW row with a fresh 30-second
+/// threshold. Failed reconnects create no row. Pause/resume and token renewal
+/// without a restart stay in the same row. Seeking/buffering never advance
+/// playedMilliseconds (enforced client-side; server only accumulates the
+/// reported monotonic total via GREATEST).
+///
+/// mediaAssetId is a snapshot of the platform MediaMapping.id at session
+/// start, with mediaExternalAssetId snapshotting the external asset identity.
+/// Neither is a foreign key: retired mappings are eventually deleted, and
+/// historical views must stay bound to the version actually watched so a
+/// replacement never misattributes old views. LessonProgress rows are never
+/// converted into views; coverage is recorded in M10ViewTrackingState.
+///
+/// playedMilliseconds is reported playback activity, not proof of human
+/// attention. No login/playback credential is stored here.
+model M10VideoViewSession {
+  id                   String   @id @default(uuid())
+  studentId            String
+  student              User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseId             String
+  lessonId             String
+  lesson               Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  /// Platform MediaMapping.id snapshot (version binding, no FK).
+  mediaAssetId         String
+  /// Platform MediaMapping.externalAssetId snapshot (version identity).
+  mediaExternalAssetId String
+  /// Owning playback grant; UNIQUE gives idempotent start per grant and
+  /// guarantees refresh/reconnect (new grant) start new rows.
+  playbackReferenceId  String   @unique
+  startedAt            DateTime @default(now())
+  /// Server time the 30-second threshold was first reached; null = uncounted.
+  countedAt            DateTime?
+  /// Monotonic total of actual playing time in ms; only moves forward.
+  playedMilliseconds   Int      @default(0)
+
+  @@index([studentId, courseId])
+  @@index([studentId, courseId, lessonId])
+  @@index([studentId, courseId, countedAt])
+  @@index([courseId, lessonId, countedAt])
+  @@index([lessonId, countedAt])
+  @@index([mediaAssetId, countedAt])
+  @@index([countedAt])
+  @@index([startedAt])
+  @@index([studentId, countedAt])
+  @@map("M10VideoViewSession")
+}
+
+/// Singleton tracking-coverage fence: id is always 'global'. startedAt is the
+/// server time tracking was activated; agent 2 treats periods before it as
+/// UNKNOWN/PARTIAL, never as reliable zero. No pre-activation backfill exists.
+model M10ViewTrackingState {
+  id        String   @id
+  startedAt DateTime @default(now())
+
+  @@map("M10ViewTrackingState")
 }

@@ -62,7 +62,7 @@ export function PlanEditor({
     setError(null);
     try {
       const body = {
-        currentPricePiastres: moneyInput(current),
+        currentPricePiastres: moneyInput(current, true),
         previousPricePiastres: previous === '' ? null : moneyInput(previous),
         accessMode: access.mode,
         durationDays: access.mode === 'DURATION' ? Number(access.duration) : null,
@@ -124,6 +124,11 @@ export function PlanEditor({
       </PaginatedCollection>
       <form onSubmit={(event) => void submit(event)} className="mt-6 space-y-4">
         <h3 className="font-bold">{editing ? t.actionEdit : t.actionAddPlan}</h3>
+        <label className="flex items-center gap-2 font-semibold">
+          <input type="checkbox" data-testid="plan-free" disabled={busy} checked={/^0(?:\.0{1,2})?$/.test(current)}
+            onChange={event => setCurrent(event.target.checked ? '0' : '')} />
+          {ar ? 'مجاني — بدون دفع' : 'Free — no payment'}
+        </label>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field id="plan-current" label={t.fieldCurrentPrice}>
             <input

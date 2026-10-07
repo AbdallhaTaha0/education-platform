@@ -1,0 +1,180 @@
+# M10 agent 1 real-browser probe stack (owned by agent 1 only).
+#
+# Real Chromium (reused fayq-seo-browser image, read-only) drives the owned
+# probe page (REAL compiled viewTracking + viewSessionManager modules) against
+# the REAL platform API (same-origin cookies + CSRF) with a genuinely playing
+# <video> (canvas-captured stream) and fixture-backed playback grants.
+# The DRM fixture serves an unusable-to-dash.js manifest path the probe never
+# loads; grants are used only as counting-session binders. Fixture evidence
+# proves platform integration only, never real DRM security.
+#
+# Disposable project `m10-agent-1-browser` + disposable volumes only:
+#
+#   docker compose -p m10-agent-1-browser -f docker/m10-agent-1/compose.browser.yml up -d --wait postgres redis
+#   docker compose -p m10-agent-1-browser -f docker/m10-agent-1/compose.browser.yml up migrate
+#   docker compose -p m10-agent-1-browser -f docker/m10-agent-1/compose.browser.yml run --rm seed > docker/m10-agent-1/browser-out/seed.json
+#   docker compose -p m10-agent-1-browser -f docker/m10-agent-1/compose.browser.yml up -d --wait fixture server nginx
+#   docker compose -p m10-agent-1-browser -f docker/m10-agent-1/compose.browser.yml run --rm browser
+#   docker compose -p m10-agent-1-browser -f docker/m10-agent-1/compose.browser.yml down -v
+#
+# Browser origin is http://127.0.0.1:18080 (localhost-only publish).
+# Never touches retained previews, sibling workers or development data.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: education_platform_browser
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - pgdata-browser:/var/lib/postgresql/data
+    ports:
+      - 127.0.0.1:5435:5432
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d education_platform_browser']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - 127.0.0.1:6383:6379
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  migrate:
+    build:
+      context: ../..
+      dockerfile: server/Dockerfile
+      target: migrate
+    image: edu-platform-m10a1-migrate:0.10.0
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_browser
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  # Labeled TEST-ONLY DRM contract fixture (its own Dockerfile builds a
+  # synthetic playable presentation the probe never loads; grants only).
+  fixture:
+    build:
+      context: ../..
+      dockerfile: docker/drm-fixture/Dockerfile
+    image: edu-platform-m10a1-drfixture:0.10.0
+    environment:
+      PORT: 8090
+      FIXTURE_CLIENT_ID: fixture-client
+      FIXTURE_CLIENT_SECRET: fixture-secret-that-is-long-enough-0123456789
+      FIXTURE_ASSERTION_ISSUER: https://platform.test.internal
+      FIXTURE_ASSERTION_AUDIENCE: edu-drm-fixture
+      FIXTURE_ASSERTION_SECRET: m10-browser-assertion-secret-0123456789abcdef
+    healthcheck:
+      test: ['CMD-SHELL', 'node -e "fetch(''http://127.0.0.1:8090/v1/media'',{method:''POST'',headers:{''Content-Type'':''application/json'',''X-Client-Id'':''x'',''X-Client-Secret'':''y''},body:''{}''}).then(()=>process.exit(0)).catch(()=>process.exit(1))"']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: 'no'
+
+  server:
+    build:
+      context: ../..
+      dockerfile: server/Dockerfile
+      target: runtime
+    image: edu-platform-m10a1-server:0.10.0
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      LOG_LEVEL: warn
+      SERVICE_VERSION: 0.10.0-m10a1-browser
+      READY_TIMEOUT_MS: 5000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_browser
+      REDIS_URL: redis://redis:6379
+      AUTH_JWT_SECRET: 9f3k7q2m4x8z1v6n7h2j5t9w3q6w8e1r5t9y2u4i6o0p
+      AUTH_ISSUER: edu-platform-test
+      AUTH_AUDIENCE: edu-platform-test-web
+      ALLOWED_ORIGINS: http://127.0.0.1:18080,http://nginx:8080
+      COOKIE_SECURE: 'false'
+      STUDENT_DATA_ENCRYPTION_KEY_B64: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
+      STUDENT_DATA_INDEX_KEY_B64: YmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmI=
+      DRM_BASE_URL: http://fixture:8090
+      DRM_CLIENT_ID: fixture-client
+      DRM_CLIENT_SECRET: fixture-secret-that-is-long-enough-0123456789
+      DRM_REQUEST_TIMEOUT_MS: 5000
+      DRM_MAX_RETRIES: 2
+      DRM_ASSERTION_MODE: fixture-hs256
+      DRM_ASSERTION_SECRET: m10-browser-assertion-secret-0123456789abcdef
+      DRM_ASSERTION_ISSUER: https://platform.test.internal
+      DRM_ASSERTION_AUDIENCE: edu-drm-fixture
+      DRM_PUBLIC_BASE_URL: http://127.0.0.1:18080
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      fixture:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'node -e "fetch(''http://127.0.0.1:3000/health/live'').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    restart: 'no'
+
+  seed:
+    image: edu-platform-m10a1-migrate:0.10.0
+    volumes:
+      - ./browser/seed.cjs:/drill/seed.cjs:ro
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_browser
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+    entrypoint: ['node', '/drill/seed.cjs']
+
+  nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./browser/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./browser/probe:/probe:ro
+    ports:
+      - 127.0.0.1:18080:8080
+    depends_on:
+      server:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:8080/']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  # Real Chromium driver. Reuses the existing test-only browser image
+  # read-only (no rebuild, no tag change); the owned driver script and
+  # evidence directory are mounted in.
+  browser:
+    image: fayq-seo-browser:20261006
+    volumes:
+      - ./browser/driver.mjs:/srv/browser/m10-driver.mjs:ro
+      - ./browser-out:/browser-out
+    environment:
+      BASE_URL: http://nginx:8080
+    depends_on:
+      nginx:
+        condition: service_healthy
+    restart: 'no'
+    entrypoint: ['node', '/srv/browser/m10-driver.mjs']
+
+volumes:
+  pgdata-browser:

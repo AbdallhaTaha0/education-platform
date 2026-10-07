@@ -21,6 +21,8 @@ import { classifyPlayRejection } from './playRejection';
 import { awaitsEncryptionInitData } from './errors';
 import { usePlayerFullscreen } from './fullscreen';
 import { PlayerControls } from './PlayerControls';
+import { useViewTracking } from './useViewTracking';
+import { finishAfterViewFlush } from './finalViewFlush';
 import type { PlaybackGrant, PlayerState } from '../types/models';
 
 type MediaPlayerClass = ReturnType<ReturnType<typeof dashjs.MediaPlayer>['create']>;
@@ -35,6 +37,13 @@ export interface PlayerProps {
   /** True when entitlement is known to have lapsed; forces the expired state. */
   entitlementLost?: boolean;
   autoPlay?: boolean;
+  /**
+   * M10 view-tracking binding. When both are present the player reports
+   * actual playing time for this grant; when absent tracking stays disabled
+   * and all existing resume/completion behavior is unchanged.
+   */
+  courseRef?: string | null;
+  lessonId?: string | null;
   onProgress?: (
     positionSeconds: number,
     durationSeconds: number | null,
@@ -56,6 +65,8 @@ export function DashLessonPlayer({
   labels,
   entitlementLost = false,
   autoPlay = false,
+  courseRef = null,
+  lessonId = null,
   onProgress,
   onEnded,
   onError,
@@ -67,6 +78,11 @@ export function DashLessonPlayer({
   const playerRef = useRef<MediaPlayerClass | null>(null);
   const lastFlush = useRef(0);
   const resumeApplied = useRef(false);
+  const endingGeneration = useRef(0);
+  useEffect(() => {
+    endingGeneration.current += 1;
+    return () => { endingGeneration.current += 1; };
+  }, [grant.referenceId]);
   const [state, setState] = useState<PlayerState>(INITIAL_PLAYER_STATE);
   const [canPlay, setCanPlay] = useState(false);
   const { fullscreen, expanded, toggle: toggleFullscreen } = usePlayerFullscreen(frameRef);
@@ -96,18 +112,35 @@ export function DashLessonPlayer({
   onExpireRef.current = onExpire;
   onEndedRef.current = onEnded;
   onProgressRef.current = onProgress;
-  const lastPosition = useRef<{ position: number; duration: number | null; completed: boolean } | null>(null);
+  const lastPosition = useRef<{
+    position: number;
+    duration: number | null;
+    completed: boolean;
+  } | null>(null);
   const captureProgress = useCallback((video: HTMLVideoElement, completed = false) => {
     if (!Number.isFinite(video.currentTime) || video.currentTime < 0) return;
     const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : null;
     if (video.currentTime === 0 && !completed && lastPosition.current === null) return;
-    lastPosition.current = { position: video.currentTime, duration, completed: completed || lastPosition.current?.completed === true };
+    lastPosition.current = {
+      position: video.currentTime,
+      duration,
+      completed: completed || lastPosition.current?.completed === true,
+    };
   }, []);
-  const reportProgress = useCallback((completed: boolean, keepalive = false) => {
-    if (videoRef.current) captureProgress(videoRef.current, completed);
-    const snapshot = lastPosition.current;
-    if (snapshot) onProgressRef.current?.(snapshot.position, snapshot.duration, snapshot.completed, keepalive);
-  }, [captureProgress]);
+  const reportProgress = useCallback(
+    (completed: boolean, keepalive = false) => {
+      if (videoRef.current) captureProgress(videoRef.current, completed);
+      const snapshot = lastPosition.current;
+      if (snapshot)
+        onProgressRef.current?.(
+          snapshot.position,
+          snapshot.duration,
+          snapshot.completed,
+          keepalive,
+        );
+    },
+    [captureProgress],
+  );
 
   // Keep the transient session in memory only, for the lifetime of the grant.
   // A renewal replaces the token on the SAME external session, so the resume
@@ -284,24 +317,71 @@ export function DashLessonPlayer({
       playerRef.current = null;
       clearSession();
     };
-  }, [grant.manifestUrl, grant.licenseUrl, grant.drmProvider, dispatch, captureProgress, reportProgress]);
+  }, [
+    grant.manifestUrl,
+    grant.licenseUrl,
+    grant.drmProvider,
+    dispatch,
+    captureProgress,
+    reportProgress,
+  ]);
+
+  // M10 view tracking: one in-memory session per successful grant. Disabled
+  // when the parent does not supply courseRef/lessonId; existing progress,
+  // DRM recovery, watermark, fullscreen and entitlement behavior unchanged.
+  // Token renewal keeps the same referenceId and therefore the same view row.
+  const waitingRef = useRef(false);
+  const tracking = useViewTracking(videoRef, grant, courseRef ?? null, lessonId ?? null);
+  const trackingRef = useRef(tracking);
+  trackingRef.current = tracking;
+
+  // Sample state transitions as well as timeupdates. Idle elements need not
+  // emit timeupdates, so a pause/buffer/seek event must close the clock itself.
+  const observePlayback = useCallback(() => {
+    const video = videoRef.current;
+    if (video) {
+      // Elapsed playing time only: the clock credits monotonic wall time while
+      // actually playing. Rate changes, seeks and buffering never inflate it;
+      // media position is never used as duration.
+      trackingRef.current.observe({
+        paused: video.paused,
+        seeking: video.seeking,
+        ended: video.ended,
+        waiting: waitingRef.current || video.readyState < 2,
+        nowMs: performance.now(),
+      });
+    }
+  }, []);
 
   // Throttled progress; a final flush happens on pause/end/unmount.
   const handleTimeUpdate = useCallback(() => {
-    if (videoRef.current) captureProgress(videoRef.current);
+    const video = videoRef.current;
+    if (video) captureProgress(video);
+    observePlayback();
     const now = Date.now();
     if (!shouldFlushProgress(lastFlush.current, now, PROGRESS_INTERVAL_MS)) return;
     lastFlush.current = now;
     reportProgress(false);
-  }, [reportProgress, captureProgress]);
+  }, [reportProgress, captureProgress, observePlayback]);
 
   const handlePause = useCallback(() => {
+    observePlayback();
     dispatch({ type: 'PAUSED' });
     reportProgress(false);
-  }, [dispatch, reportProgress]);
+    // Pause stays in the same session; flush the monotonic total best-effort.
+    void trackingRef.current.flush();
+  }, [dispatch, reportProgress, observePlayback]);
 
-  const handlePlay = useCallback(() => dispatch({ type: 'PLAYING' }), [dispatch]);
   const handleReady = useCallback(() => dispatch({ type: 'READY' }), [dispatch]);
+  const handleWaiting = useCallback(() => {
+    waitingRef.current = true;
+    observePlayback();
+  }, [observePlayback]);
+  const handlePlaying = useCallback(() => {
+    waitingRef.current = false;
+    observePlayback();
+    dispatch({ type: 'PLAYING' });
+  }, [dispatch, observePlayback]);
 
   // Resume exactly once, after the media element knows its own duration.
   const handleLoadedMetadata = useCallback(() => {
@@ -316,10 +396,21 @@ export function DashLessonPlayer({
   }, []);
 
   const handleEnded = useCallback(() => {
+    observePlayback();
     dispatch({ type: 'ENDED' });
     reportProgress(true);
-    onEndedRef.current?.();
-  }, [dispatch, reportProgress]);
+    // Prefer flush-before-end, with a bounded wait so tracking cannot block
+    // playback. A delayed keepalive flush remains eligible under the server's
+    // 120s fresh-ENDED grace. Superseded/unmounted grants never fire a late end.
+    const generation = endingGeneration.current;
+    const flush = trackingRef.current.flush;
+    const finish = onEndedRef.current;
+    void finishAfterViewFlush(
+      () => flush({ keepalive: true }),
+      () => finish?.(),
+      () => generation === endingGeneration.current,
+    );
+  }, [dispatch, reportProgress, observePlayback]);
 
   // Save on page exit as well as component teardown. Background tabs keep playback.
   useEffect(() => {
@@ -339,15 +430,14 @@ export function DashLessonPlayer({
     setNeedsGesture(false);
     setPlayFailure(null);
   }, [grant.referenceId]);
-  useEffect(
-    () => {
-      // React StrictMode replays setup/cleanup in development. A replayed
-      // setup must restore the flag so rejection handling remains active.
-      mountedRef.current = true;
-      return () => { mountedRef.current = false; };
-    },
-    [],
-  );
+  useEffect(() => {
+    // React StrictMode replays setup/cleanup in development. A replayed
+    // setup must restore the flag so rejection handling remains active.
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const play = useCallback(() => {
     const video = videoRef.current;
@@ -381,12 +471,14 @@ export function DashLessonPlayer({
   const toggle = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
-    if (video.paused) play(); else video.pause();
+    if (video.paused) play();
+    else video.pause();
   }, [play]);
 
   const autoPlayAttempt = useRef<string | null>(null);
   useEffect(() => {
-    if (!autoPlay || !canPlay || entitlementLost || autoPlayAttempt.current === grant.referenceId) return;
+    if (!autoPlay || !canPlay || entitlementLost || autoPlayAttempt.current === grant.referenceId)
+      return;
     autoPlayAttempt.current = grant.referenceId;
     play();
   }, [autoPlay, canPlay, entitlementLost, grant.referenceId, play]);
@@ -410,14 +502,16 @@ export function DashLessonPlayer({
           preload="metadata"
           aria-label={labels.playerLabel}
           onTimeUpdate={handleTimeUpdate}
-          onPlay={handlePlay}
           onPause={handlePause}
           onCanPlay={handleReady}
           onLoadedMetadata={handleLoadedMetadata}
+          onWaiting={handleWaiting}
+          onSeeking={observePlayback}
+          onSeeked={observePlayback}
+          onPlaying={handlePlaying}
           onEnded={handleEnded}
           onDoubleClick={() => void toggleFullscreen()}
-        >
-        </video>
+        ></video>
         <PlayerOverlay
           phase={state.phase}
           labels={labels}
@@ -447,7 +541,9 @@ export function DashLessonPlayer({
           </button>
         ) : null}
         <span aria-live="polite" className="text-sm text-muted">
-          {needsGesture && labels.needsGesture ? labels.needsGesture : phaseLabel(state.phase, labels)}
+          {needsGesture && labels.needsGesture
+            ? labels.needsGesture
+            : phaseLabel(state.phase, labels)}
         </span>
       </div>
     </div>

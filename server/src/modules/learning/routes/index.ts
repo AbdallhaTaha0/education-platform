@@ -27,10 +27,17 @@ import { detectCrossedSubscriptions } from '../expiry/reconciler.js';
 import { asyncRoute, ctxOf, studentOf, type LearningRouteContext } from './shared.js';
 import { createMaterialsRouter } from '../materials/routes.js';
 import { listOwnSessions } from '../sessions/service.js';
+import {
+  recordHeartbeat,
+  startViewSession,
+  toViewPayload,
+} from '../tracking/service.js';
 
 const PLAYBACK_LIMIT: RateLimit = { windowSec: 60, max: 30 };
 const PROGRESS_LIMIT: RateLimit = { windowSec: 60, max: 600 };
 const RENEW_LIMIT: RateLimit = { windowSec: 60, max: 30 };
+const VIEW_START_LIMIT: RateLimit = { windowSec: 60, max: 30 };
+const VIEW_HEARTBEAT_LIMIT: RateLimit = { windowSec: 60, max: 120 };
 
 /** Student write guards: origin, session, CSRF, role, rate limit. */
 const studentWriteGuard = [requireOrigin, requireAuth, requireSessionCsrf];
@@ -246,6 +253,77 @@ export function createLearningRouter(ctx: LearningRouteContext): Router {
       const c = ctxOf(req);
       const student = studentOf(req);
       res.status(200).json(ok({ sessions: await listOwnSessions(c.prisma, student.userId) }));
+    }),
+  );
+
+  // POST /learning/courses/:courseRef/lessons/:lessonId/views/start (M10).
+  // Starts (or idempotently re-attaches to) the view session for one playback
+  // grant. Refresh and successful reconnect mint a new grant and therefore a
+  // new row; failed reconnects mint no grant and therefore no row. Pause,
+  // resume and token renewal reuse the same grant and the same row.
+  router.post(
+    '/courses/:courseRef/lessons/:lessonId/views/start',
+    ...studentWriteGuard,
+    limit('learning-view-start', VIEW_START_LIMIT),
+    asyncRoute(async (req, res) => {
+      const c = ctxOf(req);
+      const student = studentOf(req);
+      const nowMs = c.now();
+      const course = await resolveCourse({
+        prisma: c.prisma,
+        studentId: student.userId,
+        courseRef: req.params['courseRef'] as string,
+        nowMs,
+      });
+      const lesson = await resolveLesson(
+        c.prisma,
+        course,
+        req.params['lessonId'] as string,
+        student.userId,
+      );
+      const body = (req.body ?? {}) as { playbackReferenceId?: unknown };
+      if (typeof body.playbackReferenceId !== 'string' || body.playbackReferenceId.length === 0) {
+        throw new LearningError('VALIDATION_ERROR', 'playbackReferenceId is required.');
+      }
+      if (body.playbackReferenceId.length > 128) {
+        throw new LearningError('VALIDATION_ERROR');
+      }
+      const outcome = await startViewSession(c.prisma, {
+        binding: lesson,
+        playbackReferenceId: body.playbackReferenceId,
+        nowMs,
+      });
+      res
+        .status(outcome.created ? 201 : 200)
+        .json(ok({ view: toViewPayload(outcome.view, outcome.trackingStartedAt) }));
+    }),
+  );
+
+  // POST /learning/views/:viewSessionId/heartbeat (M10).
+  // Records accumulated actual playing time for one session. The total only
+  // moves forward and the 30-second transition happens at most once per row
+  // in the same row-locked transaction, so duplicates, retries and concurrent
+  // writes count once and 60/90s of continuous playback add nothing.
+  router.post(
+    '/views/:viewSessionId/heartbeat',
+    ...studentWriteGuard,
+    limit('learning-view-heartbeat', VIEW_HEARTBEAT_LIMIT),
+    asyncRoute(async (req, res) => {
+      const c = ctxOf(req);
+      const student = studentOf(req);
+      const body = (req.body ?? {}) as { playedMilliseconds?: unknown };
+      const outcome = await recordHeartbeat(c.prisma, {
+        viewSessionId: req.params['viewSessionId'] as string,
+        studentId: student.userId,
+        playedMilliseconds: body.playedMilliseconds as number,
+        nowMs: c.now(),
+      });
+      res.status(200).json(
+        ok({
+          view: toViewPayload(outcome.view, outcome.trackingStartedAt),
+          newlyCounted: outcome.newlyCounted,
+        }),
+      );
     }),
   );
 

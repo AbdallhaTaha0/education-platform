@@ -1,0 +1,99 @@
+# M10 agent 1 disposable test stack (owned by agent 1 only).
+#
+# Distinct project name is mandatory: always run with `-p m10-agent-1-test`
+# so containers/networks/volumes never touch retained previews, sibling
+# workers or development data. Unique image tags avoid shared mutable tags.
+#
+#   docker compose -p m10-agent-1-test -f docker/m10-agent-1/compose.yml build
+#   docker compose -p m10-agent-1-test -f docker/m10-agent-1/compose.yml up -d --wait migrate
+#   docker compose -p m10-agent-1-test -f docker/m10-agent-1/compose.yml run --rm test npm run test:ci --silent
+#   docker compose -p m10-agent-1-test -f docker/m10-agent-1/compose.yml down -v
+#
+# No ports are published. Evidence stays under docker/m10-agent-1/evidence/.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: education_platform_m10a1
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - pgdata-m10a1:/var/lib/postgresql/data
+    # Localhost-only publish for the agent-1 test runner on this machine.
+    # Unique ports (5433/6380) avoid the retained preview and sibling workers.
+    ports:
+      - 127.0.0.1:5433:5432
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d education_platform_m10a1']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - 127.0.0.1:6380:6379
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  migrate:
+    build:
+      context: ../..
+      dockerfile: server/Dockerfile
+      target: migrate
+    image: edu-platform-m10a1-migrate:0.10.0
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_m10a1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  test:
+    build:
+      context: ../..
+      dockerfile: server/Dockerfile
+      target: test
+    image: edu-platform-m10a1-test:0.10.0
+    environment:
+      NODE_ENV: test
+      LOG_LEVEL: warn
+      SERVICE_VERSION: 0.10.0-m10a1-test
+      READY_TIMEOUT_MS: 2000
+      DRM_REQUEST_TIMEOUT_MS: 1000
+      DRM_MAX_RETRIES: 2
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_m10a1
+      REDIS_URL: redis://redis:6379
+      AUTH_JWT_SECRET: 9f3k7q2m4x8z1v6n7h2j5t9w3q6w8e1r5t9y2u4i6o0p
+      AUTH_ISSUER: edu-platform-test
+      STUDENT_DATA_ENCRYPTION_KEY_B64: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
+      STUDENT_DATA_INDEX_KEY_B64: YmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmI=
+      AUTH_AUDIENCE: edu-platform-test-web
+      ALLOWED_ORIGINS: http://localhost:8080
+      ARGON2_MEMORY_KB: 8192
+      ARGON2_TIME_COST: 2
+      ARGON2_PARALLELISM: 1
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: 'no'
+
+  client-test:
+    build:
+      context: ../..
+      dockerfile: client/Dockerfile
+      target: test
+    image: edu-platform-m10a1-client-test:0.10.0
+    restart: 'no'
+
+volumes:
+  pgdata-m10a1:

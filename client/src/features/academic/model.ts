@@ -41,11 +41,11 @@ export function cairoDeadlineInput(wall: string): string {
   if (matches.length !== 1) throw new Error('Invalid or ambiguous Cairo time');
   return matches[0];
 }
-export function moneyInput(value: string): number {
+export function moneyInput(value: string, allowFree = false): number {
   if (!/^\d{1,8}(\.\d{1,2})?$/.test(value)) throw new Error('Invalid price');
   const [whole, fraction = ''] = value.split('.');
   const amount = Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
-  if (amount < 1 || amount > 2000000000) throw new Error('Invalid price');
+  if (amount < (allowFree ? 0 : 1) || amount > 2000000000) throw new Error('Invalid price');
   return amount;
 }
 export function displayDeadline(iso: string, lang: string): string {

@@ -1,0 +1,94 @@
+# M10 agent 1 populated upgrade drill (owned by agent 1 only).
+#
+# Proves the additive M10 migration preserves representative pre-M10 data.
+# Two-phase, all runners Docker-contained, disposable project/project volumes:
+#
+#   1. docker compose -p m10-agent-1-drill -f docker/m10-agent-1/compose.drill.yml up -d --wait postgres
+#   2. docker compose -p m10-agent-1-drill -f docker/m10-agent-1/compose.drill.yml run --rm pre-migrate
+#        (applies migrations 01..24 only; drill/prisma/ is a host-prepared copy
+#         of server/prisma WITHOUT the M10 folder — labeled drill fixture)
+#   3. docker compose -p m10-agent-1-drill -f docker/m10-agent-1/compose.drill.yml run --rm seed
+#        (inserts representative users/wallet/ledger/recharge/purchase/
+#         subscription/course/media/progress/playback/audit rows; records
+#         counts to drill-out/counts.json)
+#   4. docker compose -p m10-agent-1-drill -f docker/m10-agent-1/compose.drill.yml run --rm migrate
+#        (real image + real prisma dir: applies ONLY 20261007100000_m10_view_tracking)
+#   5. docker compose -p m10-agent-1-drill -f docker/m10-agent-1/compose.drill.yml run --rm verify
+#        (recounts every seeded table, spot-checks values, asserts M10 tables +
+#         singleton exist and no migration failed)
+#   6. docker compose -p m10-agent-1-drill -f docker/m10-agent-1/compose.drill.yml down -v
+#
+# No ports published except localhost-only postgres for debugging (5434).
+# Never touches retained previews, sibling workers or development data.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: education_platform_drill
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - pgdata-drill:/var/lib/postgresql/data
+    ports:
+      - 127.0.0.1:5434:5432
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d education_platform_drill']
+      interval: 2s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  # Phase 1: pre-M10 schema only (M10 folder absent from the mounted copy).
+  pre-migrate:
+    image: edu-platform-m10a1-migrate:0.10.0
+    volumes:
+      - ./drill/prisma:/srv/server/prisma:ro
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_drill
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  # Phase 2: representative pre-M10 rows.
+  seed:
+    image: edu-platform-m10a1-migrate:0.10.0
+    volumes:
+      - ./drill/seed.cjs:/drill/seed.cjs:ro
+      - ./drill-out:/drill-out
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_drill
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+    entrypoint: ['node', '/drill/seed.cjs']
+
+  # Phase 3: the real additive M10 migration only.
+  migrate:
+    image: edu-platform-m10a1-migrate:0.10.0
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_drill
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  # Phase 4: preservation evidence.
+  verify:
+    image: edu-platform-m10a1-migrate:0.10.0
+    volumes:
+      - ./drill/verify.cjs:/drill/verify.cjs:ro
+      - ./drill-out:/drill-out:ro
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_drill
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+    entrypoint: ['node', '/drill/verify.cjs']
+
+volumes:
+  pgdata-drill:

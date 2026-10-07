@@ -80,17 +80,17 @@ export function validateDurationDays(value: unknown): number {
   return value;
 }
 
-export function validatePrice(value: unknown, field: string): number {
+export function validatePrice(value: unknown, field: string, minimum = PRICE_MIN_PIASTRES): number {
   if (
     typeof value !== 'number' ||
     !Number.isInteger(value) ||
-    value < PRICE_MIN_PIASTRES ||
+    value < minimum ||
     value > PRICE_MAX_PIASTRES
   ) {
     throw new ApiError(
       400,
       'VALIDATION_ERROR',
-      `${field} must be ${PRICE_MIN_PIASTRES}–${PRICE_MAX_PIASTRES} piastres.`,
+      `${field} must be ${minimum}–${PRICE_MAX_PIASTRES} piastres.`,
       {
         field,
       },
@@ -103,7 +103,7 @@ export function validatePricePair(
   current: unknown,
   previous: unknown,
 ): { current: number; previous: number | null } {
-  const cur = validatePrice(current, 'currentPricePiastres');
+  const cur = validatePrice(current, 'currentPricePiastres', 0);
   if (previous === undefined || previous === null) return { current: cur, previous: null };
   const prev = validatePrice(previous, 'previousPricePiastres');
   if (!(prev > cur)) {
