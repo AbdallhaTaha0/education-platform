@@ -2,6 +2,9 @@
 
 ## Deployment preparation — 2026-10-07
 
+- [Railway sandbox compatibility test](deployment/railway-sandbox-compatibility-20261007.md): JavaScript/Python/Docker passed; sandbox destroyed; production grading security remains unqualified.
+- [Actual grading-image probe](deployment/railway-grading-image-probe-20261007.md): successful retry; 18 browser groups and 18 Python checks passed; sandbox destroyed; hardened production runtime remains a gate.
+- [Railway runsc prerequisite](deployment/railway-runsc-probe-20261007.md): installation succeeds; restricted workload fails during runtime startup; all test sandboxes destroyed; production safeguard retained.
 - [Railway/Vercel setup and release runbook](deployment/railway-vercel-20261007.md).
 - [Local deployment artifact verification](deployment/railway-vercel-preparation-report-20261007.md): prepared on `dev`; cloud release and external qualification gates remain.
 
