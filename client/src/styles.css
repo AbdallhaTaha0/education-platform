@@ -521,6 +521,10 @@ html[data-theme='light'] .hero-grid::before {
   gap: 6px;
 }
 .header-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   min-width: 44px;
   min-height: 44px;
   border: 1px solid var(--color-border);
