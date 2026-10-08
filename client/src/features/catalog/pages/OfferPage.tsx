@@ -12,6 +12,7 @@ import type { PublicCourse } from '../types/models';
 import { CoursePlan } from '../../learning/components/CoursePlan';
 import { useOutline } from '../../learning/hooks/useLearning';
 import { ErrorBlock } from '../../learning/components/Learning';
+import { CourseCover } from '../components/CourseCover';
 
 export function OfferPage({ slug }: { slug: string; onBack: () => void }): JSX.Element {
   const { t, lang } = useLang();
@@ -61,6 +62,7 @@ export function OfferPage({ slug }: { slug: string; onBack: () => void }): JSX.E
           {error !== null ? <Notice kind="error">{localizeCode(t, error)}</Notice> : null}
           {course !== null ? (
             <Card className="mx-auto mt-4 max-w-[800px]">
+              <CourseCover path={course.coverUrl} title={lang === 'ar' ? course.titleAr : course.titleEn} />
               <h1 className="text-3xl font-bold">
                 {lang === 'ar' ? course.titleAr : course.titleEn}
               </h1>

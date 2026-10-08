@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { BrandMark } from './BrandMark';
-import { ErrorFeedback } from './ErrorFeedback';
+import { ErrorFeedback, SuccessFeedback } from './ErrorFeedback';
 
 type Kind = 'error' | 'success' | 'info' | 'pending';
 
@@ -14,12 +14,15 @@ const CLASSES: Record<Kind, string> = {
 export function Notice({
   kind,
   children,
+  inline = false,
 }: {
   kind: Kind;
   children: ReactNode;
+  inline?: boolean;
 }): JSX.Element | null {
   if (children === null || children === undefined || children === '') return null;
   if (kind === 'error') return <ErrorFeedback>{children}</ErrorFeedback>;
+  if (kind === 'success' && !inline) return <SuccessFeedback>{children}</SuccessFeedback>;
   return (
     <div
       className={`mb-4 flex items-start gap-3 rounded-control border px-4 py-3 font-semibold [&:empty]:hidden ${CLASSES[kind]}`}

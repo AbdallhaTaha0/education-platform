@@ -1,5 +1,21 @@
 # Education Platform — Design v1
 
+## Tailwind styling clarification (2026-10-08)
+
+Owner requested Tailwind throughout this UI work. Landing, footer, catalog cover/filter additions, photo previews and shared success/error popups now use Tailwind utilities with existing semantic theme tokens. The additional compact player time/volume behavior uses Tailwind container variants. Remove superseded custom selectors; keep behavior, Arabic/English direction, accessibility and dark/light themes. Existing unrelated legacy styles remain outside this conversion.
+
+## Success action popups (2026-10-08)
+
+Owner requested system success popups matching errors. Existing success notices now share the fixed, dismissible feedback stack with errors, using semantic success colors and a checkmark. Success is announced politely; errors retain alert semantics. Arabic/English dismiss labels and RTL/LTR positioning match existing feedback. Completed course creation and course/photo saves explicitly confirm success after the request succeeds, including when the form closes. Persistent published-course status remains inline. See [verification](platform-updates/success-popups-20261008.md).
+
+## Course photos and player seeking (2026-10-08)
+
+Owner requested course imagery on the landing page, then clarified that creating a course should include uploading a photo. The course editor includes a file picker and preview, with a photo required for new courses through this UI. JPEG, PNG and WebP sources are optimized into a bounded JPEG cover. Published course cards on home/catalog and course offer pages show the saved cover; existing courses without a cover retain a fallback. Draft covers remain admin-only. The owner also requested the pictured 10-second rewind/forward controls; both sit beside Play with Arabic/English accessible labels, fixed chronological directions in RTL, and start/end clamping.
+
+## Course-first landing refinement (2026-10-08)
+
+Owner said the landing page's imagery, wording and layout did not feel real and instructed continuation. The current landing now leads with the secondary-school offer and a working first/second secondary selector that filters the API-backed published catalog. Use a concise bilingual hero, clear course metadata, recorded-learning/access benefits, accurate free/paid enrollment guidance, useful FAQ/support links and the compact FAYQ footer. The generated learner image, decorative floating note and illustrative project-window section are replaced in this page. Dark remains default; the owner's saved light preference remains respected. Preserve honest demo labels in local records and never fabricate real courses, instructors, testimonials, statistics or protected lesson previews. [Implementation and verification](platform-updates/course-first-landing-20261008.md).
+
 ## IDE direction and controls follow-up (2026-10-04)
 
 Owner clarification: keep the desktop code editor physically on the left and console on the right in both Arabic and English. Arabic labels retain RTL; code and console output remain LTR. Narrow layouts stack code above output. The shared IDE shows a yellow JavaScript/JS badge and an accessible green Run control with a play icon, with scoped colors easy to revise. [Local implementation and visual verification](ide-and-assessments/ide-polish-20261004/report.md).

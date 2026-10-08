@@ -8,6 +8,7 @@ export interface PublicPlan {
 }
 
 export interface PublicCourse {
+  coverUrl?: string | null;
   id: string;
   slug: string;
   titleAr: string;
@@ -20,6 +21,7 @@ export interface PublicCourse {
 }
 
 export interface AdminCourseSummary {
+  coverId?: string | null;
   revisionOwnerId?: string | null;
   workingCopyId?: string | null;
   id: string;

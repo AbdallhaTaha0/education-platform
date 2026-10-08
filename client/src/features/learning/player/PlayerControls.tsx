@@ -87,6 +87,13 @@ export function PlayerControls({
       ? 'كتم الصوت'
       : 'Mute';
   const fullscreenLabel = fullscreen ? labels.exitFullscreen : labels.fullscreen;
+  const skip = (seconds: number) => {
+    const video = videoRef.current;
+    if (disabled || !video || !Number.isFinite(video.duration) || video.duration <= 0) return;
+    const time = Math.min(video.duration, Math.max(0, video.currentTime + seconds));
+    video.currentTime = time;
+    setMedia(current => ({ ...current, time }));
+  };
   return (
     <div className="learning-player-controls" dir="ltr" data-testid="player-controls">
       <div className="learning-player-controls__row">
@@ -102,7 +109,22 @@ export function PlayerControls({
             {media.paused ? <path d="m7 4 14 8-14 8z" /> : <path d="M6 4h4v16H6zm8 0h4v16h-4z" />}
           </svg>
         </button>
-        <span className="learning-player-controls__time">
+        {([-10, 10] as const).map(seconds => {
+          const label = seconds < 0
+            ? (lang === 'ar' ? 'رجوع 10 ثوانٍ' : 'Rewind 10 seconds')
+            : (lang === 'ar' ? 'تقديم 10 ثوانٍ' : 'Forward 10 seconds');
+          return <button key={seconds} type="button" data-testid={seconds < 0 ? 'player-rewind' : 'player-forward'}
+            aria-label={label} title={label} disabled={disabled || media.duration <= 0}
+            onClick={() => skip(seconds)}>
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <g transform={seconds > 0 ? 'translate(24 0) scale(-1 1)' : undefined}>
+                <path d="M4 3v5h5M4.5 7.5A8 8 0 0 1 20 10" />
+              </g>
+              <text x="12" y="21" textAnchor="middle" fill="currentColor" stroke="none" fontSize="11" fontFamily="Arial, sans-serif">10</text>
+            </svg>
+          </button>;
+        })}
+        <span className="learning-player-controls__time [@container(max-width:560px)]:order-1 [@container(max-width:560px)]:basis-full [@container(max-width:560px)]:text-center">
           {clock(media.time)} / {clock(media.duration)}
         </span>
         <div className="learning-player-controls__spacer" />
@@ -165,7 +187,7 @@ export function PlayerControls({
             />
           </svg>
         </button>
-        <label className="learning-player-controls__volume">
+        <label className="learning-player-controls__volume [@container(max-width:560px)]:hidden">
           <span className="sr-only">{lang === 'ar' ? 'مستوى الصوت' : 'Volume'}</span>
           <input type="range" data-testid="player-volume" min="0" max="1" step="0.05" value={media.muted ? 0 : media.volume}
             aria-valuetext={`${Math.round((media.muted ? 0 : media.volume) * 100)}%`} disabled={disabled}

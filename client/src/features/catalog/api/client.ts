@@ -35,6 +35,7 @@ export async function fetchAdminCourses(): Promise<AdminCourseSummary[]> {
 }
 
 export async function createAdminCourse(input: {
+  coverImage?: { filename: string; mime: string; base64: string };
   slug: string;
   titleAr: string;
   titleEn: string;
@@ -58,6 +59,7 @@ export async function fetchAdminCourse(courseId: string): Promise<AdminCourseDet
 export async function patchAdminCourse(
   courseId: string,
   input: {
+    coverImage?: { filename: string; mime: string; base64: string };
     slug: string;
     titleAr: string;
     titleEn: string;

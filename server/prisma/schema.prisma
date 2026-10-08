@@ -164,6 +164,8 @@ model Course {
   titleEn             String
   descriptionAr       String
   descriptionEn       String
+  coverId             String?
+  cover               CourseCover? @relation(fields: [coverId], references: [id], onDelete: SetNull)
   status              CourseStatus @default(DRAFT)
   priorStatus         CourseStatus?
   publishedAt         DateTime?
@@ -188,6 +190,14 @@ model Course {
 }
 
 // M9: platform-owned assessments, never external DRM records.
+model CourseCover {
+  id        String @id @default(uuid())
+  bytes     Bytes
+  mime      String
+  courses   Course[]
+  createdAt DateTime @default(now())
+}
+
 model Assessment {
   originId String?
   id String @id @default(uuid())

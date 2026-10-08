@@ -1,0 +1,7 @@
+# Course-cover/player presentation fixture
+
+Test-only real React components, synthetic catalog transport and a synthetic 35-second media clock. `entry.tsx` renders the actual course form, compact public catalog and player controls. `build.cjs` bundles them using the Docker client build image and its dependencies. `check.mjs` runs Chromium through the Docker browser image and records screenshots/results in ignored evidence.
+
+Mount current client source read-only at `/srv/client/src`, this directory read-only at `/fixture`, and a task-specific ignored evidence directory at `/evidence` when building. Evidence must contain the current production client output at `/evidence/dist`; `build.cjs` creates `review.html`/`review.js` there. Serve that directory read-only through a task-labeled Nginx container named `fayq-cover-review-web` on an isolated network. Mount this directory as `/review` and evidence as `/evidence` in the browser runner, then run `node /review/check.mjs`. The runner generates its own synthetic photo; do not use the 13-byte receipt fixture as a decodable image.
+
+Use a separate disposable Docker PostgreSQL/Redis project for `server/tests/integration/catalog-covers.test.ts`; never run those tests against retained preview data. On success, failure or stop, verify task labels, mounts and volume/network ownership, then remove only the task's containers/networks/volumes. Preserve unrelated previews, retained data, build images and saved evidence. Never use global Docker prune.

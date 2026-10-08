@@ -11,12 +11,17 @@ import { Card, Container } from '../../../components/ui/Card';
 import { EmptyState, Loading, Notice } from '../../../components/ui/Notice';
 import { usePublicCourses } from '../hooks/usePublicCourses';
 import { PriceDisplay } from '../components/PriceDisplay';
+import { CourseCover } from '../components/CourseCover';
 
 export function PublicCatalogSections({
   compact = false,
+  compactGrade = '',
+  onCompactGradeChange,
 }: {
   onSelect: (slug: string) => void;
   compact?: boolean;
+  compactGrade?: string;
+  onCompactGradeChange?: (grade: string) => void;
 }): JSX.Element {
   const { t, lang } = useLang();
   const { loading, courses, error, reload } = usePublicCourses();
@@ -26,7 +31,7 @@ export function PublicCatalogSections({
   const [kind, setKind] = useState('');
   const [query, setQuery] = useState('');
   const filtered = compact
-    ? courses
+    ? courses.filter((course) => !compactGrade || course.academic?.grade === compactGrade)
     : courses.filter(
         (c) =>
           (!grade || c.academic?.grade === grade) &&
@@ -131,21 +136,21 @@ export function PublicCatalogSections({
         </section>
       ) : null}
       <section
-        className={compact ? 'py-14' : 'py-10'}
+        className={compact ? 'py-12 max-sm:py-8' : 'py-10'}
         aria-labelledby="catalog-title"
         aria-live="polite"
       >
         <Container>
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-sm font-bold uppercase tracking-[.14em] text-primary-strong">
-                {lang === 'ar' ? 'تعلّم بطريقتك' : 'Learn your way'}
+              <p className="text-sm font-bold text-primary-strong">
+                {compact ? (lang === 'ar' ? 'اختار محتواك' : 'Find your content') : (lang === 'ar' ? 'تعلّم بطريقتك' : 'Learn your way')}
               </p>
-              <h2 id="catalog-title" className="section-title mt-1">
+              <h2 id="catalog-title" className="mt-1 scroll-mt-[100px] text-[clamp(24px,2.5vw,34px)] font-extrabold" tabIndex={compact ? -1 : undefined}>
                 {compact
                   ? lang === 'ar'
-                    ? 'ابدأ بدورة تناسبك'
-                    : 'Start with the right course'
+                    ? 'الدورات المتاحة'
+                    : 'Available courses'
                   : t.navCourses}
               </h2>
             </div>
@@ -158,6 +163,7 @@ export function PublicCatalogSections({
               </a>
             ) : null}
           </div>
+          {compact && onCompactGradeChange ? <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label={lang === 'ar' ? 'تصفية الدورات حسب الصف' : 'Filter courses by grade'}>{['', 'FIRST_SECONDARY', 'SECOND_SECONDARY'].map(value => <button key={value} className="min-h-[44px] rounded-[10px] border border-border-strong bg-surface px-4 py-2 text-sm font-bold hover:shadow-[inset_0_0_0_1px_var(--color-border-strong)] aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-ink" type="button" aria-pressed={compactGrade === value} onClick={() => onCompactGradeChange(value)}>{value ? gradeLabel(value, lang) : (lang === 'ar' ? 'كل الدورات' : 'All courses')}</button>)}</div> : null}
           {loading ? <Loading text={t.catalogLoading} /> : null}
           {!compact && !loading ? <div className="my-4 flex flex-wrap items-center gap-3"><p role="status">{lang==='ar'?`${filtered.length} من ${courses.length} كورس`:`${filtered.length} of ${courses.length} courses`}</p><Button variant="secondary" onClick={()=>{setQuery('');setGrade('');setTerm('');setYear('');setKind('');}}>{lang==='ar'?'مسح البحث والتصفية':'Clear search and filters'}</Button></div>:null}
           {error !== null ? (
@@ -169,20 +175,14 @@ export function PublicCatalogSections({
             </div>
           ) : null}
           {!loading && error === null && filtered.length === 0 ? (
-            <EmptyState text={compact?t.catalogEmpty:lang==='ar'?'لا توجد كورسات مطابقة. غيّر البحث أو امسح التصفية.':'No matching courses. Change your search or clear the filters.'} />
+            <EmptyState text={compact && compactGrade ? (lang === 'ar' ? 'لا توجد دورات متاحة لهذا الصف حاليًا. يمكنك عرض كل الدورات.' : 'No courses are available for this grade yet. You can view all courses.') : compact?t.catalogEmpty:lang==='ar'?'لا توجد كورسات مطابقة. غيّر البحث أو امسح التصفية.':'No matching courses. Change your search or clear the filters.'} />
           ) : null}
-          <PaginatedCollection id="public-courses" resetKey={JSON.stringify([query,grade,term,year])} className="mt-6 grid grid-cols-3 gap-6 max-lg:grid-cols-2 max-sm:grid-cols-1">
-            {filtered.slice(0, compact ? 3 : filtered.length).map((c, index) => (
+          <PaginatedCollection id="public-courses" resetKey={JSON.stringify([query,grade,term,year,compactGrade])} className="mt-6 grid grid-cols-3 gap-6 max-lg:grid-cols-2 max-sm:grid-cols-1">
+            {filtered.slice(0, compact ? 3 : filtered.length).map((c) => (
               <article key={c.id}>
-                <Card className="group relative flex h-full flex-col gap-3 overflow-hidden border-border-strong transition-[border-color,transform,box-shadow] hover:-translate-y-1 hover:border-primary hover:shadow-lift">
-                  <div className={`catalog-art catalog-art--${index % 3}`} aria-hidden="true">
-                    <span>
-                      {['{ }', '&lt;/&gt;', '( )'][index % 3]
-                        .replace('&lt;', '<')
-                        .replace('&gt;', '>')}
-                    </span>
-                    <b>FAYQ</b>
-                  </div>
+                <Card className={`group relative flex h-full flex-col gap-3 overflow-hidden border-border-strong transition-[border-color,transform,box-shadow] hover:border-primary ${compact ? '!p-5 !shadow-none' : 'hover:-translate-y-1 hover:shadow-lift'}`}>
+                  <CourseCover path={c.coverUrl} title={lang === 'ar' ? c.titleAr : c.titleEn} />
+                  {compact ? <div className="flex flex-wrap justify-between gap-2 rounded-control bg-selected px-3.5 py-2.5 text-sm font-bold text-ink"><span>{gradeLabel(c.academic?.grade, lang)}</span>{c.academic?.term ? <span>{lang === 'ar' ? 'الترم' : 'Term'} {c.academic.term}</span> : null}</div> : null}
                   <h3 className="m-0 text-xl font-bold">{lang === 'ar' ? c.titleAr : c.titleEn}</h3>
                   {c.academic?.grade ? (
                     <p className="text-sm font-bold text-primary-strong">
@@ -208,7 +208,7 @@ export function PublicCatalogSections({
                     />
                   ) : null}
                   <a href={publicHref(`#/courses/${encodeURIComponent(c.slug)}`, lang)} aria-label={(lang === "ar" ? "عرض العرض: " : "View offer: ") + (lang === "ar" ? c.titleAr : c.titleEn)} className="mt-auto inline-flex min-h-[44px] w-full items-center justify-center rounded-control bg-primary px-6 py-2 font-bold text-primary-ink hover:bg-primary-hover">
-                    {lang === 'ar' ? 'عرض العرض' : 'View offer'}
+                    {compact ? (lang === 'ar' ? 'تفاصيل الدورة' : 'Course details') : (lang === 'ar' ? 'عرض العرض' : 'View offer')}
                   </a>
                 </Card>
               </article>

@@ -1074,41 +1074,6 @@ html[data-virtual-keyboard='open'] .mobile-dock {
 :root { --ide-keyword: #c4b5fd; --ide-string: #86efac; --ide-number: #fdba74; --ide-comment: #a7b7a8; --ide-function: #7dd3fc; --ide-operator: #cbd5e1; }
 html[data-theme="light"] { --ide-keyword: #6d28d9; --ide-string: #166534; --ide-number: #9a3412; --ide-comment: #526155; --ide-function: #075985; --ide-operator: #334155; }
 
-.error-feedback-stack {
-  position: fixed;
-  z-index: 60;
-  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
-  inset-inline-end: 1rem;
-  width: min(28rem, calc(100vw - 2rem));
-  max-height: min(45vh, 24rem);
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  pointer-events: none;
-}
-.error-feedback-message {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  border: 1px solid var(--color-error-fg);
-  border-radius: 8px;
-  background: var(--color-error-bg);
-  color: var(--color-error-fg);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 20%);
-  pointer-events: auto;
-}
-.error-feedback-close {
-  flex: 0 0 auto;
-  min-width: 44px;
-  min-height: 44px;
-  border-radius: 8px;
-  font-size: 1.5rem;
-}
-@media (max-width: 1023px) {
-  .error-feedback-stack { bottom: calc(7rem + env(safe-area-inset-bottom, 0px)); }
-}
 /* Centred standalone form/page action groups (dashboard-navigation 2026-10-02).
  * Centres the group relative to its containing form/panel at every width and
  * in both directions, including when buttons wrap. Applied via .form-actions
