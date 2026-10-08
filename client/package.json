@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "test": "node --test scripts/patch-braces.test.mjs && node --test scripts/patch-dashjs.test.mjs && vitest run",
-    "postinstall": "node scripts/patch-dashjs.mjs && node scripts/patch-braces.mjs"
+    "postinstall": "node scripts/patch-dashjs.mjs && node scripts/patch-braces.mjs",
+    "build:vercel": "npm run build && node scripts/vercel-output.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "6.11.1",

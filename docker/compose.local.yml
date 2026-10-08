@@ -25,12 +25,14 @@ services:
   client:
     image: fayq-platform-client:0.9.0-m9
   grading:
+    profiles: ['coding-ide']
     build:
       context: ..
       dockerfile: docker/ide/controller.Dockerfile
     image: fayq-assessment-controller:0.9.0
     environment:
       NODE_ENV: development
+      CODING_IDE_ENABLED: 'true'
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-education_platform}
       REDIS_URL: redis://redis:6379
       GRADING_IMAGE: fayq-assessment-execution:0.9.0

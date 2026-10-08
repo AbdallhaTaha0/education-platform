@@ -3,6 +3,7 @@ import { useAuth } from '../../../auth';
 import { useLang } from '../../../i18n';
 import type { Route } from '../../../routes';
 import { AdminWorkspace } from './AdminWorkspace';
+import { useCodingIde } from '../../../features';
 
 interface WorkspaceLink {
   href: string;
@@ -42,6 +43,7 @@ export function AccountWorkspace({
 }): JSX.Element {
   const { status, user } = useAuth();
   const { lang } = useLang();
+  const codingEnabled = useCodingIde();
   const ar = lang === 'ar';
 
   if (status !== 'authenticated' || !user) {
@@ -50,7 +52,7 @@ export function AccountWorkspace({
 
   if (user.role === 'ADMIN') return <AdminWorkspace route={route}>{children}</AdminWorkspace>;
 
-  const links = StudentLinks(route);
+  const links = StudentLinks(route).filter((l) => codingEnabled || l.href !== '#/practice');
   const current = links.find((l) => l.active);
   const menuLabel = ar ? 'أقسام الحساب' : 'Account sections';
   const currentLabel = current ? (ar ? current.ar : current.en) : menuLabel;

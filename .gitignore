@@ -8,6 +8,8 @@ client/dist/
 server/dist/
 server/.prisma-fallback/
 *.tsbuildinfo
+client/dist-ssr/
+client/.vercel/
 
 # Env with real values (example file is committed instead)
 .env
@@ -22,6 +24,7 @@ Thumbs.db
 # Docker / volumes (never commit local database data)
 docker/volumes/
 docker/browser/evidence/
+.railway/probe-evidence/
 
 # Disposable M10 probe output; retain locally, regenerate from current source.
 docker/m10-agent-1/browser-out/

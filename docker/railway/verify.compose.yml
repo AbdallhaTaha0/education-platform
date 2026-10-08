@@ -1,0 +1,70 @@
+# Disposable production-mode rehearsal. Never reads owner .env or publishes ports.
+# Credentials are synthetic and generated into an ignored verification env file.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: verifier
+      POSTGRES_PASSWORD: verification-only
+      POSTGRES_DB: deployment_verification
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U verifier -d deployment_verification]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    # No declared volume: image-created anonymous data is disposable, down -v removes it.
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  drm-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: verifier
+      POSTGRES_PASSWORD: verification-only
+      POSTGRES_DB: drm_verification
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U verifier -d drm_verification]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  drm-migrate:
+    image: fayq-deployment-drm-api:local
+    command: [node, packages/database/dist/generate.js]
+    environment:
+      DATABASE_URL: postgresql://verifier:verification-only@drm-postgres:5432/drm_verification
+    depends_on:
+      drm-postgres: { condition: service_healthy }
+  migrate:
+    image: fayq-deployment-platform-migrate:local
+    environment:
+      DATABASE_URL: postgresql://verifier:verification-only@postgres:5432/deployment_verification
+    depends_on:
+      postgres: { condition: service_healthy }
+  backend:
+    image: fayq-deployment-platform-runtime:local
+    env_file: ${VERIFY_ENV_FILE:?Generate synthetic verification environment}
+    environment:
+      DATABASE_URL: postgresql://verifier:verification-only@postgres:5432/deployment_verification
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  gateway:
+    image: fayq-deployment-platform-gateway:local
+    environment:
+      PORT: 8080
+      BACKEND_HOST: backend
+      BACKEND_PORT: 3000
+    depends_on:
+      backend: { condition: service_healthy }
+      # Rehearsal completion gate only; platform code never uses DRM persistence.
+      drm-migrate: { condition: service_completed_successfully }

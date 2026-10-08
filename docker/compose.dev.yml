@@ -24,6 +24,7 @@ x-common-env: &common-env
   NODE_ENV: ${NODE_ENV:-development}
   LOG_LEVEL: ${LOG_LEVEL:-info}
   SERVICE_VERSION: ${SERVICE_VERSION:-0.4.0-m4}
+  CODING_IDE_ENABLED: ${CODING_IDE_ENABLED:-false}
   READY_TIMEOUT_MS: ${READY_TIMEOUT_MS:-2000}
 
 name: education-platform

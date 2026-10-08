@@ -1,3 +1,4 @@
+import { useCodingIde } from '../../features';
 import { usePublicData } from '../../seo/publicData';
 import { publicHref } from '../../seo/paths';
 import { useState } from 'react';
@@ -61,13 +62,14 @@ export function Header({
   }
   const signedIn = status === 'authenticated';
   const admin = signedIn && user?.role === 'ADMIN';
+  const codingEnabled = useCodingIde();
   const label = (ar: string, en: string): string => (lang === 'ar' ? ar : en);
   // Desktop keeps the full top navbar (including practice + wallet shortcuts).
   // Mobile uses exactly four dock destinations per the owner reference; practice
   // lives in the account workspace while preserving its entitlement behavior.
   const desktopEntries: { href: string; label: string; icon: Icon; active: boolean }[] = admin
     ? [
-        { href: '#/admin/practice', label: label('التدريب', 'Practice'), icon: 'learning', active: route === 'admin-practice' },
+        ...(codingEnabled ? [{ href: '#/admin/practice', label: label('التدريب', 'Practice'), icon: 'learning' as const, active: route === 'admin-practice' }] : []),
         {
           href: '#/admin/summary',
           label: label('الإدارة', 'Overview'),
@@ -95,7 +97,7 @@ export function Header({
         },
       ]
     : [
-        ...(signedIn ? [{ href: '#/practice', label: label('IDE', 'IDE'), icon: 'learning' as const, active: route === 'practice' }] : []),
+        ...(signedIn && codingEnabled ? [{ href: '#/practice', label: label('IDE', 'IDE'), icon: 'learning' as const, active: route === 'practice' }] : []),
         { href: '#/', label: t.navHome, icon: 'home', active: route === 'home' },
         {
           href: '#/courses',

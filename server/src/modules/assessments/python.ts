@@ -3,10 +3,12 @@ import { createHash, randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import type { Question, Answer } from './contracts.js';
 import type { ProgramSpec } from './program-contracts.js';
+import { requireCodingIde } from './availability.js';
 
 export interface PythonOutput { output: string; error: string | null }
 /** The trusted controller compares results. Each case sees only its own code/input. */
 export async function runPython(source: string, input: string): Promise<PythonOutput> {
+  requireCodingIde();
   const image = process.env.PYTHON_GRADING_IMAGE ?? 'fayq-python-execution:0.10.0';
   if (!/^fayq-python-execution:[\w.-]+(@sha256:[a-f0-9]{64})?$/.test(image)) throw new Error('GRADING_IMAGE_INVALID');
   const runtime = process.env.GRADING_RUNTIME ?? '';

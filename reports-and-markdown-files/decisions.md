@@ -1,5 +1,16 @@
 # Decision register
 
+## Temporary IDE suspension — 2026-10-07
+
+Owner requested disabling the IDE across the current version and explicitly
+confirmed keeping multiple-choice quizzes. Disable standalone practice and all
+coding/mixed assessments, admin IDE controls and execution workers; preserve
+existing code, drafts, submissions, quota settings and passes. Exempt disabled
+coding requirements from lesson progression while continuing to require choice
+quizzes. Mark choices privately inside the modular backend without an execution
+host. No DRM change, schema deletion, deployment or new capacity acceptance.
+[Implementation, verification and reactivation](deployment/ide-disabled-release-20261007.md).
+
 ## Bounded DRM security repair — 2026-10-06
 
 Owner instructed "fix the drm" after the security audit: repair F01 key-bearing worker errors and F03 webhook destination validation/pinned transport. Owner separately approved the TypeScript ESLint v8 tooling upgrade; qualified8.71.0 removes the vulnerable development chain without relaxing package-age policy. [105 passing Docker tests and outcome](drm/drm-security-repair-20261006.md). No architecture/persistence change, production release, historical-data deletion or commit/push is authorized.

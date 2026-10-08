@@ -1,0 +1,28 @@
+# Synthetic, disposable project only. No owner .env, ports or external volumes.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: education_platform_test
+      POSTGRES_USER: verification
+      POSTGRES_PASSWORD: synthetic-migration-only
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U verification -d education_platform_test']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  migrate:
+    image: fayq-railway-migrate:github-20261007
+    build:
+      context: ../..
+      dockerfile: docker/railway/platform-migrate.Dockerfile
+    environment:
+      DATABASE_URL: postgresql://verification:synthetic-migration-only@postgres:5432/education_platform_test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+volumes:
+  pgdata: {}

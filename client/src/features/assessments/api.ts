@@ -5,6 +5,7 @@ export async function assessmentApi<T>(path: string, method = 'GET', body?: Reco
 export function errorLabel(error: unknown, ar: boolean): string {
   const code = error instanceof ApiError ? error.code : '';
   const messages: Record<string, [string, string]> = {
+    IDE_DISABLED: ['المحرر وتقييمات البرمجة متوقفة مؤقتًا في هذا الإصدار. أعمالك محفوظة.', 'The IDE and coding assessments are temporarily disabled in this version. Your work is preserved.'],
     SUBSCRIPTION_REQUIRED: ['يلزم اشتراك نشط في كورس واحد على الأقل.', 'An active course subscription is required.'],
     PRACTICE_LIMIT_REACHED: ['انتهى رصيد التشغيل. انتظر موعد التجديد أو تواصل مع الإدارة.', 'Run allowance exhausted. Wait for reset or contact ADMIN.'],
     DRAFT_CONFLICT: ['توجد نسخة أحدث من عملك. أعد تحميل الصفحة قبل الحفظ.', 'A newer draft exists. Reload before saving.'],
