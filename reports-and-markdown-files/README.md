@@ -1,5 +1,11 @@
 # Education platform documentation
 
+- [UX, upload and journey delivery](delivery-and-reviews/ux-upload-and-journey-delivery-20261009.md): owner-requested platform and bounded DRM commit/push, verification and continuation scope.
+
+- [Website journey verification milestone](milestones/website-journeys/README.md): owner-assigned full student/admin desktop/mobile workflow audit and repair ledger.
+
+- [Local silent-video transcoding repair](drm/silent-video-transcode-repair-20261009.md): owner-approved worker repair, native audio/video regressions and real encrypted playback verification.
+
 ## Deployment preparation — 2026-10-07
 
 - [Railway migration from GitHub](deployment/railway-github-migration-20261007.md): owner-approved trial-compatible build path, dedicated migration image and isolated PostgreSQL verification.

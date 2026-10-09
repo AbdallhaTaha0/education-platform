@@ -24,6 +24,7 @@ import { TypedValueEditor } from "./TypedValueEditor";
 import { AdminSubmissionReview } from "./AdminSubmissionReview";
 import { useUnsavedChanges } from "../../components/ui/UnsavedChanges";
 import { useFocusedWorkspace } from "../../components/ui/useFocusedWorkspace";
+import { useSuccessFeedback } from "../../components/ui/ErrorFeedback";
 import {
   EditorFieldErrors,
   focusIssue,
@@ -120,6 +121,10 @@ export function AdminAssessmentPanel({
   const [required, setRequired] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [transitionFeedback, setTransitionFeedback] = useState<{ id: string; message: string; kind: 'success' | 'error' } | null>(null);
+  const [publishedSnapshots, setPublishedSnapshots] = useState<Record<string, string>>({});
+  const success = useSuccessFeedback();
+  const revisionSnapshot = (entry: Entry): string => JSON.stringify({ content: entry.content, required: entry.draftRequired ?? entry.required, kind: entry.kind });
   const [review, setReview] = useState<Entry | null>(null);
   const [errorOccurrence, setErrorOccurrence] = useState(0);
   const editor = useRef<HTMLDivElement>(null);
@@ -289,11 +294,24 @@ export function AdminAssessmentPanel({
     if (busy) return;
     setBusy(true);
     setError("");
+    setSaved(false);
+    setTransitionFeedback(null);
     try {
-      await assessmentApi(`/admin/assessments/${id}/${action}`, "POST", {});
-      await reload();
+      const result = await assessmentApi<Entry>(`/admin/assessments/${id}/${action}`, "POST", {});
+      const message = action === 'publish'
+        ? label(`تم نشر النسخة ${result.version} بنجاح.`, `Revision ${result.version} published successfully.`)
+        : label('تمت أرشفة التقييم.', 'Assessment archived.');
+      // The mutation response is authoritative even if the subsequent list fetch fails.
+      setList(current => current.map(entry => entry.id === id ? result : entry));
+      if (action === 'publish') setPublishedSnapshots(current => ({ ...current, [id]: revisionSnapshot(result) }));
+      setTransitionFeedback({ id, message, kind: 'success' });
+      success(message);
+      await reload().catch(() => setTransitionFeedback({ id, kind: 'success', message: `${message} ${label('تعذر تحديث القائمة؛ أعد فتحها لتحديثها.', 'The list could not refresh; reopen it to refresh.')} ` }));
     } catch (e) {
-      setError(errorLabel(e, ar));
+      const message = errorLabel(e, ar);
+      setErrorOccurrence(n => n + 1);
+      setError(message);
+      setTransitionFeedback({ id, message, kind: 'error' });
     } finally {
       setBusy(false);
     }
@@ -408,10 +426,13 @@ export function AdminAssessmentPanel({
                   </Button>
                   {!a.content.questions.some((q) => q.type === "PROGRAM") ? (
                     <Button
-                      disabled={busy}
+                      data-testid={`assessment-publish-${a.id}`}
+                      disabled={busy || (a.status === 'PUBLISHED' && publishedSnapshots[a.id] === revisionSnapshot(a))}
+                      disabledReason={busy ? undefined : label('هذه التعديلات منشورة بالفعل. احفظ تعديلات جديدة قبل نشرها.', 'These changes are already published. Save new changes before publishing again.')}
                       onClick={() => void transition(a.id, "publish")}
                     >
-                      {label("نشر النسخة", "Publish revision")}
+                      {a.status === 'PUBLISHED' && publishedSnapshots[a.id] === revisionSnapshot(a)
+                        ? label('تم النشر', 'Published') : label("نشر النسخة", "Publish revision")}
                     </Button>
                   ) : null}
                   <Button
@@ -436,6 +457,9 @@ export function AdminAssessmentPanel({
                       onPublish={() => void transition(a.id, "publish")}
                     />
                   ) : null}
+                  {transitionFeedback?.id === a.id ? <p role={transitionFeedback.kind === 'error' ? 'alert' : 'status'} className={`w-full text-sm font-semibold ${transitionFeedback.kind === 'error' ? 'text-error-fg' : 'text-success-fg'}`}>
+                    {transitionFeedback.message}
+                  </p> : null}
                 </div>
               ))}
           </PaginatedCollection>

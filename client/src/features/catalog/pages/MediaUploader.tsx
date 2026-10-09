@@ -38,9 +38,13 @@ export function MediaUploader({
   const [progress, setProgress] = useState<number | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const syncInFlight = useRef(false);
+  const changed = useRef(onChanged);
+  useEffect(() => { changed.current = onChanged; }, [onChanged]);
   const [confirmRemove, setConfirmRemove] = useState(false);
   async function remove(): Promise<void> {
-    if (busy || !canReplace) return;
+    if (busy || syncInFlight.current || !canReplace) return;
     setBusy(true); setError(null);
     try { await removeLessonVideo(lessonId); setPhase(null); setConfirmRemove(false); if (fileRef.current) fileRef.current.value = ''; await onChanged(); }
     catch (e) { setError(e instanceof ApiError ? e.code : 'SERVICE_ERROR'); }
@@ -57,6 +61,44 @@ export function MediaUploader({
     if (mediaStatus === 'READY') setPhase('ready');
     else if (mediaStatus === 'FAILED' || mediaStatus === 'DELETION_FAILED') setPhase('failed');
   }, [mediaStatus, phase]);
+
+  useEffect(() => {
+    if (busy || phase === 'ready' || phase === 'failed' ||
+      (phase !== 'syncing' && mediaStatus !== 'PROCESSING' && mediaStatus !== 'UPLOADED')) return;
+    let live = true;
+    let timer: ReturnType<typeof setTimeout>;
+    let failures = 0;
+    const schedule = (delay: number) => { if (live) timer = setTimeout(() => void poll(), delay); };
+    async function poll(): Promise<void> {
+      if (!live) return;
+      if (document.hidden || syncInFlight.current) { schedule(3000); return; }
+      syncInFlight.current = true;
+      setChecking(true);
+      try {
+        const status = await syncLessonMedia(lessonId);
+        if (!live) return;
+        failures = 0;
+        setError(null);
+        if (status === 'READY' || status === 'FAILED' || status === 'DELETION_FAILED') {
+          setPhase(status === 'READY' ? 'ready' : 'failed');
+          await changed.current();
+          return;
+        }
+        setPhase('syncing');
+      } catch (err) {
+        if (!live) return;
+        failures += 1;
+        setError(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
+        if (err instanceof ApiError && [401, 403, 404].includes(err.status)) return;
+      } finally {
+        syncInFlight.current = false;
+        if (live) setChecking(false);
+      }
+      schedule(failures ? Math.min(3000 * 2 ** failures, 30000) : 3000);
+    }
+    schedule(0);
+    return () => { live = false; clearTimeout(timer); setChecking(false); };
+  }, [lessonId, mediaStatus, phase, busy]);
 
   function selectedFile(): File | null {
     return fileRef.current?.files?.[0] ?? null;
@@ -95,15 +137,6 @@ export function MediaUploader({
       await completeMedia(lessonId);
       if (controller.signal.aborted) return;
       setPhase('syncing');
-      for (let poll = 0; poll < 10; poll += 1) {
-        if (controller.signal.aborted) return;
-        const status = await syncLessonMedia(lessonId);
-        if (controller.signal.aborted) return;
-        if (status === 'FAILED' || status === 'DELETION_FAILED') throw new Error('PROCESSING_FAILED');
-        if (status === 'READY') { setPhase('ready'); break; }
-        await new Promise((r) => setTimeout(r, 1500));
-      }
-      if (controller.signal.aborted) return;
       // 100% bytes transferred does not mean DRM processing has finished.
       await onChanged();
     } catch (err) {
@@ -116,7 +149,8 @@ export function MediaUploader({
   }
 
   async function sync(): Promise<void> {
-    if (busy) return;
+    if (busy || syncInFlight.current) return;
+    syncInFlight.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -128,12 +162,13 @@ export function MediaUploader({
     } catch (err) {
       setError(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
     } finally {
+      syncInFlight.current = false;
       setBusy(false);
     }
   }
 
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-2" data-testid={`uploader-${lessonId}`}>
+    <div className="mt-2 flex flex-wrap items-center gap-2 [&>div]:min-w-0 [&>div]:max-w-full" data-testid={`uploader-${lessonId}`}>
       <Field id={`file-${lessonId}`} label={t.fieldVideoFile}>
         <input
           ref={fileRef}
@@ -141,20 +176,20 @@ export function MediaUploader({
           type="file"
           disabled={busy || !!blockedReason || (mediaStatus !== null && mediaStatus !== 'UPLOAD_PENDING')}
           accept="video/mp4,video/webm,video/quicktime,.mov"
-          className="min-h-[44px]"
+          className="min-h-[44px] max-w-full"
         />
       </Field>
       <Button variant="secondary" disabled={busy || !!blockedReason || (mediaStatus !== null && mediaStatus !== 'UPLOAD_PENDING')} disabledReason={blockedReason} onClick={() => void run()}>
         {t.actionRegister}
       </Button>
-      {mediaStatus && canReplace ? <Button variant="secondary" disabled={busy} data-testid="remove-draft-video" onClick={() => setConfirmRemove(true)}>{lang === 'ar' ? 'إزالة / استبدال الفيديو' : 'Remove / replace video'}</Button> : null}
+      {mediaStatus && canReplace ? <Button variant="secondary" disabled={busy || checking} data-testid="remove-draft-video" onClick={() => setConfirmRemove(true)}>{lang === 'ar' ? 'إزالة / استبدال الفيديو' : 'Remove / replace video'}</Button> : null}
       <ConfirmDialog open={confirmRemove} title={lang === 'ar' ? 'إزالة فيديو المسودة' : 'Remove draft video'} body={lang === 'ar' ? 'يبقى فيديو الإصدار المنشور متاحًا. يجب رفع بديل جاهز قبل نشر المسودة. ستُحذف الفيديوهات القديمة غير المستخدمة بأمان.' : 'The published video stays available. Upload a ready replacement before publishing this draft. Unused old videos will be cleaned up safely.'} confirmLabel={lang === 'ar' ? 'إزالة من المسودة' : 'Remove from draft'} cancelLabel={t.actionCancel} onConfirm={() => void remove()} onCancel={() => { if (!busy) setConfirmRemove(false); }} />
-      <Button variant="secondary" disabled={busy} onClick={() => void sync()}>
+      <Button variant="secondary" disabled={busy || checking} onClick={() => void sync()}>
         {t.actionSync}
       </Button>
       {phase !== null ? (
         <span role="status" aria-live="polite" className="text-sm text-muted">
-          {({registering:lang==='ar'?'تسجيل الفيديو':'Registering video',uploading:lang==='ar'?'رفع الفيديو':'Uploading video',completing:lang==='ar'?'تأكيد الرفع':'Confirming upload',syncing:lang==='ar'?'اكتمل الرفع؛ الفيديو قيد التجهيز. حدّث الحالة للتحقق.':'Upload complete; video processing. Refresh status to check.',ready:lang==='ar'?'الفيديو جاهز':'Video ready',failed:lang==='ar'?'فشل الرفع أو التجهيز':'Upload or processing failed'} as Record<string,string>)[phase] ?? (lang==='ar'?'تحديث الفيديو':'Updating video')}
+          {({registering:lang==='ar'?'تسجيل الفيديو':'Registering video',uploading:lang==='ar'?'رفع الفيديو':'Uploading video',completing:lang==='ar'?'تأكيد الرفع':'Confirming upload',syncing:lang==='ar'?'اكتمل الرفع؛ الفيديو قيد التجهيز. نتابع الحالة تلقائيًا.':'Upload complete; video processing. Status updates automatically.',ready:lang==='ar'?'الفيديو جاهز':'Video ready',failed:lang==='ar'?'فشل الرفع أو التجهيز':'Upload or processing failed'} as Record<string,string>)[phase] ?? (lang==='ar'?'تحديث الفيديو':'Updating video')}
           {phase === 'uploading' && progress !== undefined ? ` ${progress}%` : ''}
           {mediaStatus !== null ? ` (${businessState(mediaStatus,lang==='ar')})` : ''}
         </span>

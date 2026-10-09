@@ -1,5 +1,12 @@
 # Education Platform — Design v1
 
+## Manual assessment completion (2026-10-09)
+
+Owner explicitly replaced the earlier three-second success redirect: show the
+successful result persistently, focus it, and return to the lesson only when the
+student chooses Continue. Preserve result checks and the existing lesson/resume
+destination. No automatic navigation or countdown after successful grading.
+
 ## Tailwind styling clarification (2026-10-08)
 
 Owner requested Tailwind throughout this UI work. Landing, footer, catalog cover/filter additions, photo previews and shared success/error popups now use Tailwind utilities with existing semantic theme tokens. The additional compact player time/volume behavior uses Tailwind container variants. Remove superseded custom selectors; keep behavior, Arabic/English direction, accessibility and dark/light themes. Existing unrelated legacy styles remain outside this conversion.

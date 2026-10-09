@@ -8,6 +8,7 @@ import { Notice } from '../../../components/ui/Notice';
 import { fetchDeletion, requestDeletion, retryDeletion } from '../api/client';
 import type { DeletionOperation } from '../types/models';
 import { businessState } from '../../../components/ui/AdminNavigation';
+import { Dialog } from '../../../components/ui/Dialog';
 
 interface DeletionPanelProps {
   kind: 'courses' | 'sections' | 'lessons';
@@ -29,6 +30,7 @@ export function DeletionPanel({
   const [operation, setOperation] = useState<DeletionOperation | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmLesson, setConfirmLesson] = useState(false);
 
   useEffect(() => {
     if (operation === null || operation.status === 'COMPLETED') return;
@@ -44,13 +46,14 @@ export function DeletionPanel({
     return () => clearTimeout(timer);
   }, [operation]);
 
-  async function request(): Promise<void> {
+  async function request(value = confirmation): Promise<void> {
     if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      const op = await requestDeletion(kind, targetId, confirmation);
+      const op = await requestDeletion(kind, targetId, value);
       setOperation(op);
+      setConfirmLesson(false);
       await onChanged();
     } catch (err) {
       setError(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
@@ -72,6 +75,23 @@ export function DeletionPanel({
       setBusy(false);
     }
   }
+
+  if (kind === 'lessons') return <div className="mt-4" data-testid={`deletion-${targetId}`}>
+    {error !== null ? <Notice kind="error">{localizeCode(t, error)}</Notice> : null}
+    <Button variant="danger" disabled={busy || operation !== null} onClick={() => { setError(null); setConfirmLesson(true); }} data-testid="lesson-delete-open">
+      {ar ? 'حذف الدرس' : 'Delete lesson'}
+    </Button>
+    <Dialog open={confirmLesson} title={`${ar ? 'حذف الدرس' : 'Delete lesson'}: ${entityName ?? targetId}`} onClose={() => { if (!busy) setConfirmLesson(false); }}>
+      <p className="my-4 text-muted">{ar ? 'سيُحذف هذا الدرس وفيديوه نهائيًا. لا يمكن التراجع عن الحذف.' : 'This lesson and its video will be permanently deleted. This cannot be undone.'}</p>
+      {error !== null ? <p role="alert" className="text-error-fg">{localizeCode(t, error)}</p> : null}
+      <FormActions>
+        <Button variant="secondary" disabled={busy} onClick={() => setConfirmLesson(false)}>{t.actionCancel}</Button>
+        <Button variant="danger" disabled={busy} onClick={() => void request(expectedConfirmation)} data-testid="deletion-submit">{ar ? 'حذف نهائي' : 'Delete permanently'}</Button>
+      </FormActions>
+    </Dialog>
+    {operation !== null ? <p role="status" className="mt-3 text-sm">{operation.status === 'COMPLETED' ? t.deleteCompleted : operation.status === 'FAILED' ? t.deleteFailed : t.deleteProgress}</p> : null}
+    {operation?.status === 'FAILED' ? <Button variant="secondary" disabled={busy} onClick={() => void retry()}>{t.actionRetry}</Button> : null}
+  </div>;
 
   return (
     <details className="mt-4 rounded-control border border-border p-3" data-testid={`deletion-${targetId}`}>

@@ -183,12 +183,13 @@ export async function reorderSections(courseId: string, orderedIds: string[]): P
 export async function createLesson(
   sectionId: string,
   input: { titleAr: string; titleEn: string },
-): Promise<void> {
-  await apiFetch(`/admin/catalog/sections/${sectionId}/lessons`, {
+): Promise<{ id: string }> {
+  const result = await apiFetch<{ data: { lesson: { id: string } } }>(`/admin/catalog/sections/${sectionId}/lessons`, {
     method: 'POST',
     retryOnAuth: false,
     body: input,
   });
+  return result.data.lesson;
 }
 
 export async function patchLesson(

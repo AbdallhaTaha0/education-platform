@@ -34,6 +34,10 @@ export function CourseForm({
   const { t, lang } = useLang();
   const showSuccess = useSuccessFeedback();
   const [slug, setSlug] = useState(initial?.slug ?? '');
+  const [slugError, setSlugError] = useState(false);
+  const slugHint = lang === 'ar'
+    ? 'استخدم من 3 إلى 120 حرفًا إنجليزيًا أو رقمًا، مع شرطات بين الكلمات؛ مثل aim أو a-i-m. النقاط والمسافات غير مسموحة.'
+    : 'Use 3-120 English letters or digits, with hyphens between words, e.g. aim or a-i-m. Dots and spaces are not allowed.';
   const [titleAr, setTitleAr] = useState(initial?.titleAr ?? '');
   const [titleEn, setTitleEn] = useState(initial?.titleEn ?? '');
   const [descAr, setDescAr] = useState(initial?.descriptionAr ?? '');
@@ -54,6 +58,15 @@ export function CourseForm({
   async function submit(e: FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
     if (busy || photoBusy || photoError) return;
+    const normalizedSlug = slug.trim().toLowerCase();
+    if (normalizedSlug.length < 3 || normalizedSlug.length > 120 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(normalizedSlug)) {
+      setSlugError(true);
+      const field = e.currentTarget.querySelector<HTMLInputElement>('#cf-slug');
+      field?.focus();
+      field?.scrollIntoView({ block: 'center' });
+      return;
+    }
+    setSlugError(false);
     if (initial === undefined && !coverImage) { setPhotoError(true); return; }
     if (!e.currentTarget.reportValidity()) return;
     const result = await onSubmit(values);
@@ -101,14 +114,16 @@ export function CourseForm({
             if (photoInput.current) photoInput.current.value = '';
           }}>{lang === 'ar' ? 'إلغاء اختيار الصورة' : 'Cancel photo selection'}</Button> : null}
         </Field>
-        <Field id="cf-slug" label={t.fieldSlug} dir="ltr">
+        <Field id="cf-slug" label={t.fieldSlug} dir="ltr" hint={slugHint} error={slugError ? (lang === 'ar' ? 'المعرّف غير صحيح. ' : 'Invalid slug. ') + slugHint : undefined}>
           <input
             id="cf-slug"
             dir="ltr"
             required
-            className={textInputClassName(false)}
+            aria-invalid={slugError}
+            aria-describedby={`cf-slug-hint${slugError ? ' cf-slug-error' : ''}`}
+            className={textInputClassName(slugError)}
             value={slug}
-            onChange={(e) => setSlug(e.target.value)}
+            onChange={(e) => { setSlug(e.target.value); setSlugError(false); }}
           />
         </Field>
         <Field id="cf-ta" label={t.fieldTitleAr}>

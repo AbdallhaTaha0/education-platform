@@ -4,6 +4,8 @@ import { useLang } from '../../../i18n';
 import type { Route } from '../../../routes';
 import { AdminWorkspace } from './AdminWorkspace';
 import { useCodingIde } from '../../../features';
+import { Container } from '../../../components/ui/Card';
+import { Loading, Notice } from '../../../components/ui/Notice';
 
 interface WorkspaceLink {
   href: string;
@@ -42,9 +44,20 @@ export function AccountWorkspace({
   children: ReactNode;
 }): JSX.Element {
   const { status, user } = useAuth();
-  const { lang } = useLang();
+  const { lang, t } = useLang();
   const codingEnabled = useCodingIde();
   const ar = lang === 'ar';
+
+  if (route.startsWith('admin') && status !== 'authenticated') {
+    return <main id="main"><section className="py-8"><Container>
+      {status === 'loading' ? <Loading text={t.loading} /> : <>
+        <Notice kind="info">{t.needLogin}</Notice>
+        <a href="#/login" className="mt-4 inline-flex min-h-[48px] items-center rounded-control bg-primary px-5 py-3 font-bold text-primary-ink">
+          {ar ? 'تسجيل الدخول' : 'Log in'}
+        </a>
+      </>}
+    </Container></section></main>;
+  }
 
   if (status !== 'authenticated' || !user) {
     return <>{children}</>;

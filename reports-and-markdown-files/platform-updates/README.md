@@ -22,3 +22,5 @@
 - [report.md](ux-review-20261002/report.md)
 - [Charcoal theme and player implementation](dark-mode-and-player-implementation-20261007.md)
 - [Player settings refinement](player-settings-refinement-20261007.md)
+- [Assessment success pause](assessment-success-pause-20261009.md)
+- [A.I.M practice questions](aim-practice-questions-20261009.md)

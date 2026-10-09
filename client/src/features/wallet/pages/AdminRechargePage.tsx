@@ -104,8 +104,11 @@ export function AdminRechargePage(): JSX.Element {
           <SectionPanel tab={paymentTabs[2]} prefix="admin-payments" active={paymentTab === 'vodafone'}><InstaPaySettings method="vodafone-cash" expanded /></SectionPanel>
           <SectionPanel tab={paymentTabs[0]} prefix="admin-payments" active={paymentTab === 'review'}>
           <p className="mt-2 text-muted">{t.adminRechargeBody}</p>
-          <div className="my-4 grid gap-3 sm:grid-cols-2"><label>{lang==='ar'?'البحث في جميع الطلبات بالاسم أو المرجع':'Search all requests by name/reference'}<input id="recharge-request-search" maxLength={100} className="w-full rounded-control border border-border bg-surface p-3" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/></label><label>{lang==='ar'?'تاريخ التحويل':'Transfer date'}<input type="date" className="w-full rounded-control border border-border bg-surface p-3" value={date} onChange={e=>{setDate(e.target.value);setPage(1);}}/></label></div><Button variant="secondary" onClick={()=>{setSearch('');setDate('');setPage(1);}}>{lang==='ar'?'مسح التصفية':'Clear filters'}</Button>
-          <Button className="my-4" variant="secondary" disabled={loading || busy} onClick={()=>void reload()}>{lang==='ar'?'تحديث الطلبات':'Refresh requests'}</Button>
+          <div className="my-4 grid gap-3 sm:grid-cols-2"><label>{lang==='ar'?'البحث في جميع الطلبات بالاسم أو المرجع':'Search all requests by name/reference'}<input id="recharge-request-search" maxLength={100} className="w-full rounded-control border border-border bg-surface p-3" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/></label><label>{lang==='ar'?'تاريخ التحويل':'Transfer date'}<input type="date" className="w-full rounded-control border border-border bg-surface p-3" value={date} onChange={e=>{setDate(e.target.value);setPage(1);}}/></label></div>
+          <div className="my-4 flex flex-wrap items-center gap-3">
+            <Button variant="secondary" onClick={()=>{setSearch('');setDate('');setPage(1);}}>{lang==='ar'?'مسح التصفية':'Clear filters'}</Button>
+            <Button variant="secondary" disabled={loading || busy} onClick={()=>void reload()}>{lang==='ar'?'تحديث الطلبات':'Refresh requests'}</Button>
+          </div>
           <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label={t.filterStatus}>
             {(['PENDING', 'APPROVED', 'REJECTED', ''] as Filter[]).map((value) => (
               <Button
@@ -165,12 +168,12 @@ export function AdminRechargePage(): JSX.Element {
                 <p>
                   <Money piastres={selected.amountPiastres} /> · {selected.senderName}
                 </p>
-                <p className="mt-1 text-sm text-muted" dir="ltr">
+                <p className="mt-1 break-all text-sm text-muted" dir="ltr">
                   {selected.referenceNorm}
                 </p>
                 <dl className="my-4 grid gap-2 text-sm"><div><dt>{lang==='ar'?'تاريخ التحويل':'Transfer date'}</dt><dd>{new Date(selected.transferDate).toLocaleString(lang==='ar'?'ar-EG':'en-GB',{timeZone:'Africa/Cairo'})}</dd></div><div><dt>{lang==='ar'?'رقم الطلب':'Request reference'}</dt><dd dir="ltr" className="break-all">{selected.id}</dd></div><div><dt>{lang==='ar'?'حجم الإثبات':'Proof size'}</dt><dd>{Math.ceil(selected.proofSize/1024)} KB</dd></div></dl>
                 <a
-                  className="mt-2 inline-block underline"
+                  className="mt-2 inline-block max-w-full break-all underline"
                   href={proofUrl(selected.id)}
                   target="_blank"
                   rel="noreferrer"

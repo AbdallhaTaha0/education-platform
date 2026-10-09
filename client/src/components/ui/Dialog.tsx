@@ -67,21 +67,26 @@ export function Dialog({ open, title, onClose, children }: DialogProps): JSX.Ele
   }, [open]);
   useEffect(() => {
     if (!open) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     const onKey = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKey);
+    };
   }, [open, onClose]);
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-scrim p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4"
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
-      <div className="w-full max-w-lg rounded-card border border-border-strong bg-elevated p-6 shadow-lift">
+      <div className="max-h-[calc(100dvh-2rem)] min-w-0 w-full max-w-lg overflow-y-auto overscroll-contain rounded-card border border-border-strong bg-elevated p-4 shadow-lift sm:p-6">
         <h2 ref={titleRef} tabIndex={-1} className="mb-2 text-xl font-bold">
           {title}
         </h2>

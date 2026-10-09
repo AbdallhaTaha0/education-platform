@@ -14,8 +14,9 @@ describe('video upload session recovery', () => {
     if (phase === 'register') await registerMedia('lesson', { contentType: 'video/mp4', securityTier: 'STANDARD', title: 'Fixture' });
     else if (phase === 'complete') await completeMedia('lesson');
     else expect(await syncLessonMedia('lesson')).toBe('READY');
-    expect(calls).toHaveLength(3); expect(calls[0].path).toBe(calls[2].path);
-    expect(calls[0].csrf).toBe('old'); expect(calls[2].csrf).toBe('new');
+    expect(calls).toHaveLength(4); expect(calls[0].path).toBe(calls[3].path);
+    expect(calls[1].path).toBe('/api/auth/me');
+    expect(calls[0].csrf).toBe('old'); expect(calls[3].csrf).toBe('new');
     expect(calls.every(call => call.path.startsWith('/api/'))).toBe(true);
   });
 });

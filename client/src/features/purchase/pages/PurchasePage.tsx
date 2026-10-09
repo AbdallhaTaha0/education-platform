@@ -190,6 +190,7 @@ export function PurchasePage({
   }
 
   const short = balance !== null && balance < price;
+  const needsRecharge = short || errorCode === 'INSUFFICIENT_FUNDS';
 
   return (
     <main id="main">
@@ -234,12 +235,15 @@ export function PurchasePage({
                 </div>
               ) : null}
             </dl>
-            {errorCode === 'INSUFFICIENT_FUNDS' ? (
+            {needsRecharge ? (
               <div className="mt-4">
-                <Notice kind="error">{localizeCode(t, 'INSUFFICIENT_FUNDS')}</Notice>
+                <Notice kind="info">{localizeCode(t, 'INSUFFICIENT_FUNDS')}</Notice>
                 <FormActions className="mt-3">
-                  <Button variant="secondary" onClick={() => go('#/wallet/recharge')}>
+                  <Button onClick={() => go('#/wallet')}>
                     {t.goRecharge}
+                  </Button>
+                  <Button variant="secondary" onClick={() => go('#/courses')}>
+                    {t.cancel}
                   </Button>
                 </FormActions>
               </div>
@@ -249,7 +253,7 @@ export function PurchasePage({
                 <Notice kind="error">{localizeCode(t, errorCode)}</Notice>
               </div>
             ) : null}
-            {!short ? (
+            {!needsRecharge ? (
               <FormActions>
                 <Button onClick={() => void confirm()} disabled={phase === 'confirming'}>
                   {phase === 'confirming' ? <Loading text={t.confirming} /> : price === 0 ? (lang === 'ar' ? 'اشترك مجانًا' : 'Enroll for free') : t.confirmPurchase}
