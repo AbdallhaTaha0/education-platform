@@ -1,5 +1,23 @@
 # Website Journey Progress
 
+## Persisted-pass continuation — current delivery
+
+Verified honest persisted-pass feedback and manual Continue from dev 13303d6.
+Actual Brave required/optional fresh and restored passes, saved answers, focus,
+manual destinations and history passed in Arabic/English at measured 1280x900,
+1920x1080, 390x844 and 360x800. Authoring, revision retention, synthetic paid/free/
+package enrollment, ledger reconciliation, expiry/session recovery and role checks
+have bounded actual-control evidence. Automated checks: 357 client, TypeScript,
+109 backend and 48 mocked UI cases; current Docker builds passed.
+
+Owner data and nested DRM differences preserved. Isolated environments cleaned;
+final synthetic backup retained locally. Two Brave tabs shared profile cookies,
+so Admin/Student roles were sequential. Remaining UX findings and untested uploads,
+real playback, receipt approval, creation and messaging flows are explicitly listed
+in [the final evidence report](persisted-pass-continuation-20261009.md).
+This supersedes the earlier connection block and supplements historical rows below;
+it does not mark all website journeys complete or accept a milestone.
+
 ## J01: Manual assessment handoff
 
 2026-10-09 owner clarification supersedes the three-second automatic redirect.

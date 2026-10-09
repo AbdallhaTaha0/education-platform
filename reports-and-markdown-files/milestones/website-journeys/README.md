@@ -1,5 +1,8 @@
 # Website Journey Verification Milestone
 
+Latest checkpoint: [persisted-pass repair and verification continuation](persisted-pass-continuation-20261009.md).
+Bounded actual Brave verification is complete; the final report separates browser passes, automated checks, fixture preparation and remaining untested features.
+
 Owner assignment: 2026-10-09. Test every available student and admin workflow,
 including uploads, moves and edits, on desktop and mobile. Repair evidenced
 platform defects, verify real effects, and keep an explicit coverage ledger.

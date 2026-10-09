@@ -46,7 +46,8 @@ async function continueWhenStable(page) {
         { width: 390, height: 844 },
         { width: 360, height: 800 },
       ])
-        for (const scenario of ["manual", "continue", "incorrect", "leave"]) {
+        for (const scenario of ["manual", "continue", "incorrect", "leave", "persisted-required", "persisted-optional"]) {
+          const persisted = scenario.startsWith("persisted-");
           console.log(
             JSON.stringify({ lang, viewport, scenario, result: "START" }),
           );
@@ -102,9 +103,9 @@ async function continueWhenStable(page) {
                     version: 1,
                     lessonId: "fixture-lesson",
                     courseId: "fixture-course",
-                    required: true,
-                    passed: false,
-                    draft: null,
+                    required: scenario !== "persisted-optional",
+                    passed: persisted,
+                    draft: persisted ? { revision: 2, content: [{ questionId: "q1", choiceId: "a" }] } : null,
                     content: {
                       titleAr: "اختبار الدرس",
                       titleEn: "Lesson quiz",
@@ -128,8 +129,11 @@ async function continueWhenStable(page) {
               if (p.endsWith("/history"))
                 return reply({
                   data: {
-                    submissions: [],
-                    pagination: { page: 1, pageSize: 10, total: 0 },
+                    submissions: persisted ? [
+                      { id: "previous-correct", state: "CORRECT", createdAt: "2026-10-09T10:00:00Z" },
+                      { id: "previous-wrong", state: "INCORRECT", createdAt: "2026-10-09T09:00:00Z" },
+                    ] : [],
+                    pagination: { page: 1, pageSize: 10, total: persisted ? 2 : 0 },
                   },
                 });
               if (p.endsWith("/draft")) return reply({ data: { revision: 1 } });
@@ -163,6 +167,47 @@ async function continueWhenStable(page) {
               { waitUntil: "domcontentloaded" },
             );
             await page.waitForSelector("input[value=a]");
+            assert.deepEqual(await page.evaluate(() => ({ width: innerWidth, height: innerHeight })), viewport);
+            if (persisted) {
+              const verifySavedPass = async (currentLang) => {
+                await page.waitForSelector("[data-testid=assessment-continue]");
+                assert.equal(await page.$eval("input[value=a]", e => e.checked), true);
+                const text = await page.$eval("[data-testid=assessment-result]", e => e.innerText);
+                assert(text.includes(currentLang === "ar" ? "اجتزت هذا التقييم سابقًا" : "previously passed"));
+                assert(!text.includes("1/1"));
+                assert(!text.includes(currentLang === "ar" ? "أحسنت!" : "Well done!"));
+                assert.equal(await page.evaluate(() => document.activeElement.dataset.testid), "assessment-result");
+                assert.equal(await page.$eval("[data-testid=assessment-submit]", e => e.disabled), false);
+                assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+                assert.equal(submits, 0);
+              };
+              await verifySavedPass(lang);
+              await page.reload({ waitUntil: "domcontentloaded" });
+              await verifySavedPass(lang);
+              // Use the actual header language control; the fixtures only provide API data.
+              const nextLang = lang === "ar" ? "en" : "ar";
+              const switcher = await page.$('.language-tool[lang="' + nextLang + '"]');
+              assert(switcher, "Header language switch must exist");
+              // Result focus uses smooth scrolling; keyboard activation cannot hit a moving dock.
+              await switcher.focus();
+              await page.keyboard.press("Enter");
+              await page.waitForFunction(expected => location.pathname === "/" + expected, {}, nextLang);
+              await verifySavedPass(nextLang);
+              const historyToggle = await page.$("details summary");
+              await historyToggle.focus();
+              await page.keyboard.press("Enter");
+              await page.waitForFunction(() => document.querySelector("details").open);
+              assert.equal(await page.$$eval("details li", items => items.length), 2);
+              const continueButton = await page.$("[data-testid=assessment-continue]");
+              await continueButton.focus();
+              await page.screenshot({ path: `/evidence/assessment-${scenario}-${lang}-${viewport.width}.png` });
+              await page.keyboard.press("Enter");
+              await page.waitForFunction(() => location.hash.startsWith("#/learn/"));
+              assert(page.url().endsWith("#/learn/fixture-course?lesson=fixture-lesson&resume=1"));
+              assert.equal(submits, 0);
+              console.log(JSON.stringify({ lang, viewport, scenario, result: "PASS", evidence: "mocked UI only" }));
+              continue;
+            }
             await page.click("input[value=a]");
             await page.click("[data-testid=assessment-submit]");
             await page.waitForSelector("[data-testid=assessment-result]");

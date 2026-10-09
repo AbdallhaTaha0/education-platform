@@ -1,5 +1,38 @@
 # Journey Regression Runbook
 
+## Persisted-pass continuation
+
+The extended manual-handoff harness includes saved passes for both required and
+optional quizzes. Its API interception remains mocked UI evidence. For current
+source on a machine without the handoff images, build uniquely tagged platform
+images and use a local image-only override for the disposable journey Compose:
+
+```powershell
+docker build --target runtime -f client/Dockerfile -t fayq-journey-client:20261009 .
+docker build --target runtime -f server/Dockerfile -t fayq-journey-server:20261009 .
+docker build --target migrate -f server/Dockerfile -t fayq-journey-migrate:20261009 .
+```
+
+Override migrate with the new migrate image, seed/server with the new server
+image and client with the new client image. Keep the exact isolated DB, network
+and loopback port in journey.compose.yml. Do not retag or recreate owner-preview
+services. If the ignored synthetic dump is absent, run the documented seed;
+recreate quizzes through Admin controls, rather than claiming prior dump state.
+The seed now initializes a zero student wallet through the platform ledger helper
+and preserves an existing balance. READY media fixtures are not playback evidence.
+
+When running automated UI regressions, resolve PREVIEW_HOST_IP from the isolated
+journey nginx container and attach only to that project's network. Mount the
+evidence directory and harness, and label the --rm runner. Never use a regression
+runner to bypass a browser access block. Actual journeys must use the currently
+authorized connected browser. For simultaneous Admin/Student testing, use
+separate browser authentication contexts; two ordinary tabs share cookies.
+
+Before stopping, save any required synthetic dump to a local ignored artifact,
+inspect all project labels/mounts, clean only owned resources with the exact
+Compose files, and verify both named and recorded anonymous volumes are absent.
+See [continuation evidence and limits](persisted-pass-continuation-20261009.md).
+
 Run from the platform root in PowerShell with the existing local Docker preview
 and reusable browser image. These initial tests create temporary browser contexts
 only. Manual-handoff responses are synthetic; the public smoke uses the actual
@@ -48,3 +81,18 @@ playback and reversible notification controls can be checked there. Do not delet
 owner content, submit purchases/recharges, change credentials or reclassify users
 as part of that batch. Record any incidental answer draft or progress change.
 Use the currently signed-in role; ask the owner to sign in as admin when needed.
+
+## Final 2026-10-09 continuation
+
+Brave connected and the bounded synthetic checks completed. Use the final
+[persisted-pass report](persisted-pass-continuation-20261009.md) as the current
+coverage ledger; preceding blocked checkpoints are historical. The final dump is
+verified-synthetic-final.dump under ignored persisted-pass-20261009 evidence,
+155943 bytes, SHA256 97B149C82C0C8D39F6B5FB9DA2CA797BFE75E18DD6EA5C606B0B94AC409EB262.
+Restore only into an inspected disposable journey_test database with the matching
+20261009 images; never the owner preview database. The final dump has manually
+authored quizzes and real synthetic journey history. Forced course expiry was
+restored. Synthetic credentials remain unchanged; expired/logged-out sessions
+require normal sign-in. No fixture placeholder qualifies playback or bank evidence.
+All owned test stacks were removed after mount/label inspection. Owner preview
+remains healthy. Temporary viewport overrides reset and the two test tabs closed.

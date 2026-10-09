@@ -6,7 +6,11 @@ const prisma = new PrismaClient();
   if (new URL(process.env.DATABASE_URL).hostname !== 'postgres' || !process.env.DATABASE_URL.endsWith('/journey_test')) throw Error('Disposable journey database required');
   const passwordHash = await argon2.hash('synthetic journey password 20261009', {memoryCost:8192,timeCost:2,parallelism:1});
   for (const [role,email,phone] of [['ADMIN','journey-admin@example.test','+201000000091'],['STUDENT','journey-student@example.test','+201000000092']]) {
-    await prisma.user.upsert({where:{email},update:{},create:{role,email,phone,displayName:`Journey ${role}`,passwordHash}});
+    const user = await prisma.user.upsert({where:{email},update:{},create:{role,email,phone,displayName:`Journey ${role}`,passwordHash}});
+    if (role === 'STUDENT') {
+      const { getOrCreateWallet } = await import('./dist/modules/wallet/ledger.js');
+      await prisma.$transaction(tx => getOrCreateWallet(tx, user.id));
+    }
   }
   const slug = 'journey-synthetic-20261009';
   if (!await prisma.course.findUnique({where:{slug}})) {

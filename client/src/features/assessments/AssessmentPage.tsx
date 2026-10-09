@@ -95,11 +95,13 @@ export function AssessmentPage({ id }: { id: string }): JSX.Element {
   const [historyPaging, setHistoryPaging] = useState<PageInfo>({ page: 1, pageSize: 10, total: 0 });
   const [historyError, setHistoryError] = useState(false),
     [historyLoading, setHistoryLoading] = useState(false);
+  // A saved pass is progression evidence, not a reconstructed grading result.
+  const persistedPass = assessment?.passed === true && !result && !checking;
   useEffect(() => {
-    if (result?.state !== 'CORRECT' || !assessment) return;
+    if ((!persistedPass && result?.state !== 'CORRECT') || !assessment) return;
     resultRef.current?.focus({ preventScroll: true });
     resultRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }, [result?.id, result?.state, assessment?.courseId, assessment?.lessonId]);
+  }, [persistedPass, result?.id, result?.state, assessment?.courseId, assessment?.lessonId, lang]);
   useEffect(() => {
     let live = true;
     setHistoryLoading(true);
@@ -408,7 +410,7 @@ export function AssessmentPage({ id }: { id: string }): JSX.Element {
                   : label('إرسال الحل', 'Submit answer')}
               </Button>
             </FormActions>
-            {result ? (
+            {result || persistedPass ? (
               <div
                 ref={resultRef}
                 tabIndex={-1}
@@ -419,19 +421,24 @@ export function AssessmentPage({ id }: { id: string }): JSX.Element {
                 <Notice
                   inline
                   kind={
-                    result.state === 'CORRECT'
+                    persistedPass || result?.state === 'CORRECT'
                       ? 'success'
-                      : result.state === 'ERROR'
+                      : result?.state === 'ERROR'
                         ? 'error'
                         : 'info'
                   }
                 >
-                  {result.state === 'CORRECT'
+                  {persistedPass
+                    ? label(
+                        'لقد اجتزت هذا التقييم سابقًا. يمكنك المتابعة إلى الدرس، أو إرسال محاولة أخرى للتدريب.',
+                        'You previously passed this assessment. You can continue to the lesson, or submit another attempt for practice.',
+                      )
+                    : result?.state === 'CORRECT'
                     ? label(
                         'أحسنت! اجتزت التقييم بنجاح.',
                         'Well done! You passed.',
                       )
-                    : result.state === 'ERROR'
+                    : result?.state === 'ERROR'
                       ? label(
                           'تعذر التقييم. يمكنك المحاولة مجددًا.',
                           'Checking failed. You can retry.',
@@ -441,7 +448,7 @@ export function AssessmentPage({ id }: { id: string }): JSX.Element {
                           'Not correct yet. Edit your answer and retry.',
                         )}
                 </Notice>
-                {result.result?.questions?.map((q) => (
+                {result?.result?.questions?.map((q) => (
                   <p key={q.questionId} className="mt-2 text-sm">
                     {ar
                       ? assessment.content.questions.find((x) => x.id === q.questionId)?.titleAr
@@ -449,7 +456,7 @@ export function AssessmentPage({ id }: { id: string }): JSX.Element {
                     : {q.checksPassed}/{q.checksTotal} {label('اختبارات ناجحة', 'checks passed')}
                   </p>
                 ))}
-                {result.state === 'CORRECT' ? (
+                {persistedPass || result?.state === 'CORRECT' ? (
                   <FormActions>
                     <Button
                       data-testid="assessment-continue"

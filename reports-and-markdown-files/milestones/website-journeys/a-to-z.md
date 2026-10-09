@@ -81,6 +81,7 @@ not PASS; actual-control checks and their limits are recorded in progress.md.
 | S03 | Language-switch destination preserves active public course/package | Four URL-helper regressions; actual hash A.I.M course link preserved on English-to-Arabic switch |
 | S12 | Selected playable lesson reflected in the URL without restarting the player | Five URL-helper regressions; actual previous/next, refresh of both lessons and language switch preserve selection |
 | S13 | Unanswered choice preflight, named error, focused question and inline accessible feedback | Six helper regressions; actual empty and partial validation, eight exact bilingual responsive cases; zero submissions before synthetic graded attempts |
+| S14/S15 | Saved-pass feedback and manual Continue recover without reconstructing grading results; practice retries retained | Implemented in source; Docker checks recorded in persisted-pass-continuation-20261009.md; actual Brave refresh/language/focus/history journey remains pending |
 | Student/admin page rendering | Page error boundary keeps header/footer and provides manual reload with unsaved-change warning | Three rendering/unit checks; actual bounded wallet-module failure and manual recovery passed in both languages, with eight responsive checks |
 | A09 | READY video registration explains replacement/draft requirements | Actual Arabic/English existing-video state inspected; no upload or replacement performed |
 | A15 | Completed recharge reviews show the immutable decision without approve/reject controls | Eight Arabic/English responsive read-only review checks; no financial decision submitted |
@@ -92,3 +93,12 @@ again. TypeScript and matching client/server SSR image builds passed. Repairs
 remain uncommitted/unpushed and are now applied to the retained local preview.
 See progress.md for actual browser checks; these results do not mark complete
 end-to-end steps PASS.
+
+## Final bounded continuation
+
+See [persisted-pass final evidence](persisted-pass-continuation-20261009.md) for
+actual Brave coverage, automated passes and remaining controls. Two roles were
+sequential in the connected profile; viewport matrices are scenario-specific.
+Synthetic authoring/purchases/expiry checks do not qualify real playback,
+uploads, bank receipt approval or external delivery. The broader sequence above
+remains an inventory, not a blanket pass claim.
