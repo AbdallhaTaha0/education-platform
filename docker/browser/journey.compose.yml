@@ -1,4 +1,4 @@
-# Disposable authoring verification only. No public ports or shared owner volumes.
+# Disposable authoring verification only. Loopback port, no shared owner volumes.
 services:
   postgres:
     image: postgres:16-alpine
@@ -14,13 +14,13 @@ services:
     environment: {DATABASE_URL: 'postgresql://postgres:synthetic_journey_only@postgres:5432/journey_test'}
     depends_on: {postgres: {condition: service_healthy}}
   seed:
-    image: fayq-m10-server:20261007
+    image: fayq-player-controls-server:20261006
     entrypoint: [node, /srv/server/journey-seed.cjs]
     volumes: [./journey-seed.cjs:/srv/server/journey-seed.cjs:ro]
     environment: {DATABASE_URL: 'postgresql://postgres:synthetic_journey_only@postgres:5432/journey_test'}
     depends_on: {migrate: {condition: service_completed_successfully}}
   server:
-    image: fayq-m10-server:20261007
+    image: fayq-player-controls-server:20261006
     environment:
       NODE_ENV: test
       LOG_LEVEL: error
@@ -41,7 +41,7 @@ services:
     depends_on: {seed: {condition: service_completed_successfully}, redis: {condition: service_healthy}}
     healthcheck: {test: [CMD, node, -e, 'fetch("http://localhost:3000/health/live").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'], interval: 2s, timeout: 3s, retries: 30}
   client:
-    image: fayq-m10-client:20261007
+    image: fayq-player-controls-client:20261006
   nginx:
     image: fayq-player-controls-nginx:20261006
     ports: ['127.0.0.1:8082:8080']

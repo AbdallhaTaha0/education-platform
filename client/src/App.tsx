@@ -11,6 +11,7 @@ import { UnsavedChangesProvider, useConfirmNavigation } from './components/ui/Un
 import { useLang } from './i18n';
 import { ThemeProvider } from './theme';
 import { Header } from './components/layout/Header';
+import { PageErrorBoundary } from './components/ui/PageErrorBoundary';
 import {
   adminCourseIdFromHash,
   learnSlugFromHash,
@@ -113,6 +114,9 @@ function Shell(): JSX.Element {
         {t.skipToContent}
       </a>
       <Header onSwitch={setLang} route={route} />
+      <PageErrorBoundary key={`${route}:${lang}`} lang={lang} onReload={() => {
+        if (confirmNavigation()) window.location.reload();
+      }}>
       <Suspense fallback={<main id="main"><Container><Loading text={t.loading} /></Container></main>}>
       {route==='admin-students'?<AccountWorkspace route={route}><StudentDirectoryPage/></AccountWorkspace>:null}
       {route==='support'?<SupportPage/>:null}
@@ -211,6 +215,7 @@ function Shell(): JSX.Element {
         </Suspense>
       ) : null}
       </Suspense>
+      </PageErrorBoundary>
       <Footer />
     </div>
   );

@@ -167,6 +167,15 @@ export function MediaUploader({
     }
   }
 
+  const registrationBlocked = mediaStatus !== null && mediaStatus !== 'UPLOAD_PENDING';
+  const registrationReason = blockedReason || (busy
+    ? (lang === 'ar' ? 'انتظر انتهاء الطلب الحالي، ثم حاول مجددًا.' : 'Wait for the current request to finish, then try again.')
+    : registrationBlocked
+      ? (canReplace
+        ? (lang === 'ar' ? 'يوجد فيديو لهذا الدرس. استخدم إزالة / استبدال الفيديو أولًا.' : 'This lesson already has a video. Use Remove / replace video first.')
+        : (lang === 'ar' ? 'يوجد فيديو لهذا الدرس. افتح مسودة تعديل الكورس لاستبداله.' : 'This lesson already has a video. Open a course editing draft to replace it.'))
+      : undefined);
+
   return (
     <div className="mt-2 flex flex-wrap items-center gap-2 [&>div]:min-w-0 [&>div]:max-w-full" data-testid={`uploader-${lessonId}`}>
       <Field id={`file-${lessonId}`} label={t.fieldVideoFile}>
@@ -174,14 +183,16 @@ export function MediaUploader({
           ref={fileRef}
           id={`file-${lessonId}`}
           type="file"
-          disabled={busy || !!blockedReason || (mediaStatus !== null && mediaStatus !== 'UPLOAD_PENDING')}
+          disabled={busy || !!blockedReason || registrationBlocked}
+          aria-describedby={registrationReason ? `video-registration-reason-${lessonId}` : undefined}
           accept="video/mp4,video/webm,video/quicktime,.mov"
           className="min-h-[44px] max-w-full"
         />
       </Field>
-      <Button variant="secondary" disabled={busy || !!blockedReason || (mediaStatus !== null && mediaStatus !== 'UPLOAD_PENDING')} disabledReason={blockedReason} onClick={() => void run()}>
+      <Button variant="secondary" disabled={busy || !!blockedReason || registrationBlocked} disabledReason={registrationReason} onClick={() => void run()}>
         {t.actionRegister}
       </Button>
+      {registrationReason ? <span id={`video-registration-reason-${lessonId}`} className="sr-only">{registrationReason}</span> : null}
       {mediaStatus && canReplace ? <Button variant="secondary" disabled={busy || checking} data-testid="remove-draft-video" onClick={() => setConfirmRemove(true)}>{lang === 'ar' ? 'إزالة / استبدال الفيديو' : 'Remove / replace video'}</Button> : null}
       <ConfirmDialog open={confirmRemove} title={lang === 'ar' ? 'إزالة فيديو المسودة' : 'Remove draft video'} body={lang === 'ar' ? 'يبقى فيديو الإصدار المنشور متاحًا. يجب رفع بديل جاهز قبل نشر المسودة. ستُحذف الفيديوهات القديمة غير المستخدمة بأمان.' : 'The published video stays available. Upload a ready replacement before publishing this draft. Unused old videos will be cleaned up safely.'} confirmLabel={lang === 'ar' ? 'إزالة من المسودة' : 'Remove from draft'} cancelLabel={t.actionCancel} onConfirm={() => void remove()} onCancel={() => { if (!busy) setConfirmRemove(false); }} />
       <Button variant="secondary" disabled={busy || checking} onClick={() => void sync()}>

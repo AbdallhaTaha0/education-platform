@@ -12,6 +12,7 @@ import { ResourcesPanel } from '../materials/LessonMaterials';
 import { useLessonMaterials } from '../materials/useLessonMaterials';
 import { OwnSessionRecovery } from '../sessions/OwnSessionRecovery';
 import { Button } from '../../../components/ui/Button';
+import { selectedLessonHash } from '../lessonLocation';
 
 export interface CourseLearningPageProps {
   courseSlug: string;
@@ -73,6 +74,15 @@ export function CourseLearningPage({
         : (firstPlayable?.lessonId ?? null),
     );
   }, [sections]);
+
+  useEffect(() => {
+    if (!selectedLessonId || !sections?.some((section) => section.lessons.some((lesson) => lesson.lessonId === selectedLessonId && lesson.playable))) return;
+    const next = selectedLessonHash(window.location.hash, selectedLessonId);
+    if (next && next !== window.location.hash) {
+      // Updating the address must not remount or restart the current player.
+      window.history.replaceState(window.history.state, '', next);
+    }
+  }, [selectedLessonId, sections]);
 
   useEffect(() => {
     if (!autoResume || resumeRequested.current || !initialLessonId || loading || !sections) return;

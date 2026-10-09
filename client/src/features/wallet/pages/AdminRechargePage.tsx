@@ -72,7 +72,7 @@ export function AdminRechargePage(): JSX.Element {
   }
 
   async function submitReview(): Promise<void> {
-    if (selected === null || busy) return;
+    if (selected === null || selected.status !== 'PENDING' || busy || dialogDone !== null) return;
     if (decision === 'REJECT' && reason.trim().length === 0) {
       setDialogError('VALIDATION_ERROR');
       return;
@@ -193,6 +193,13 @@ export function AdminRechargePage(): JSX.Element {
                     <Notice kind="error">{localizeCode(t, dialogError)}</Notice>
                   </div>
                 ) : null}
+                {selected.status !== 'PENDING' ? <div className="mt-4 space-y-2">
+                  <RequestStatus status={selected.status} />
+                  <p className="text-sm text-muted">{lang === 'ar'
+                    ? 'تمت مراجعة هذا الطلب بالفعل. القرار محفوظ ولا يمكن تغييره.'
+                    : 'This request has already been reviewed. Its decision is saved and cannot be changed.'}</p>
+                </div> : null}
+                {selected.status === 'PENDING' && dialogDone === null ? <>
                 <div className="mt-4 flex gap-4" role="radiogroup" aria-label={t.reviewDecision}>
                   <label className="inline-flex min-h-[44px] items-center gap-2">
                     <input
@@ -238,13 +245,15 @@ export function AdminRechargePage(): JSX.Element {
                 <p className="mt-1 text-sm text-muted">
                   {decision === 'APPROVE' ? t.approveEffect : t.rejectEffect}
                 </p>
+                </> : null}
                 <FormActions className="mt-4">
+                  {selected.status === 'PENDING' && dialogDone === null ?
                   <Button
                     onClick={() => void submitReview()}
                     disabled={busy || dialogDone !== null || (decision==='APPROVE' && !verified)} disabledReason={busy ? undefined : dialogDone !== null ? { ar: "تمت معالجة هذا الطلب. أغلق النافذة للاطلاع على النتيجة.", en: "This request has been processed. Close this dialog to view the result." } : { ar: "تحقق من استلام التحويل وحدد مربع التأكيد قبل الموافقة.", en: "Verify the transfer was received and check the confirmation box before approving." }}
                   >
                     {t.confirmReview}
-                  </Button>
+                  </Button> : null}
                   <Button variant="secondary" onClick={() => setSelected(null)}>
                     {t.close}
                   </Button>

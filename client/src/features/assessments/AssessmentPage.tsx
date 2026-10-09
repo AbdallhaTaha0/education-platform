@@ -8,6 +8,7 @@ import { Notice, Loading } from '../../components/ui/Notice';
 import { assessmentApi, errorLabel } from './api';
 import { modeName, type IDEMode, type SourceFiles } from '../ide/types';
 import { useDraftSave } from './useDraftSave';
+import { unansweredChoices } from './choiceValidation';
 const WebIDE = lazy(() => import('../ide/WebIDE').then((m) => ({ default: m.WebIDE })));
 interface Question {
   id: string;
@@ -67,6 +68,8 @@ export function AssessmentPage({ id }: { id: string }): JSX.Element {
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [error, setError] = useState('');
+  const [unanswered, setUnanswered] = useState<string[]>([]);
+  const questionRefs = useRef(new Map<string, HTMLElement>());
   const [dirty, setDirty] = useState(false);
   const revision = useRef(0);
   const saveStatus = useDraftSave({
@@ -133,6 +136,7 @@ export function AssessmentPage({ id }: { id: string }): JSX.Element {
     setResult(null);
     setChecking(null);
     setError('');
+    setUnanswered([]);
     void assessmentApi<Assessment>(`/assessments/${id}`)
       .then((data) => {
         if (!active) return;
@@ -201,10 +205,21 @@ export function AssessmentPage({ id }: { id: string }): JSX.Element {
   }, [checking, ar]);
   function change(id: string, patch: Partial<Answer>): void {
     setAnswers((old) => old.map((a) => (a.questionId === id ? { ...a, ...patch } : a)));
+    if (patch.choiceId) setUnanswered((old) => old.filter((questionId) => questionId !== id));
     setDirty(true);
   }
   async function submit(): Promise<void> {
     if (!assessment || busy || checking || result?.state === 'CORRECT') return;
+    const missing = unansweredChoices(assessment.content.questions, answers);
+    setUnanswered(missing);
+    if (missing.length) {
+      const index = assessment.content.questions.findIndex((question) => question.id === missing[0]);
+      setError(label(`اختر إجابة للسؤال ${index + 1} قبل إرسال الحل.`, `Choose an answer for question ${index + 1} before submitting.`));
+      const first = questionRefs.current.get(missing[0]);
+      first?.focus({ preventScroll: true });
+      first?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      return;
+    }
     setBusy(true);
     setError('');
     try {
@@ -268,7 +283,8 @@ export function AssessmentPage({ id }: { id: string }): JSX.Element {
             {assessment.content.questions.map((q) => {
               const answer = answers.find((a) => a.questionId === q.id);
               return (
-                <section key={q.id} className="mb-6">
+                <section key={q.id} className="mb-6" tabIndex={-1}
+                  ref={(element) => { if (element) questionRefs.current.set(q.id, element); else questionRefs.current.delete(q.id); }}>
                   <h2 className="mb-3 text-xl font-semibold">{ar ? q.titleAr : q.titleEn}</h2>
                   {q.type === 'PROGRAM' && q.program ? (
                     <div className="mb-4 space-y-3" data-testid="program-instructions">
@@ -342,8 +358,12 @@ export function AssessmentPage({ id }: { id: string }): JSX.Element {
                       />
                     </Suspense>
                   ) : (
-                    <fieldset className="space-y-2">
+                    <fieldset className="space-y-2" aria-invalid={unanswered.includes(q.id) || undefined}
+                      aria-describedby={unanswered.includes(q.id) ? `question-error-${q.id}` : undefined}>
                       <legend className="sr-only">{ar ? q.titleAr : q.titleEn}</legend>
+                      {unanswered.includes(q.id) ? <p id={`question-error-${q.id}`} role="alert" className="text-sm text-error-fg">
+                        {label('اختر إجابة لهذا السؤال.', 'Choose an answer for this question.')}
+                      </p> : null}
                       {q.choices?.map((c) => (
                         <label
                           key={c.id}

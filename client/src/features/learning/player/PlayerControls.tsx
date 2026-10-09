@@ -32,7 +32,7 @@ export function PlayerControls({
 }) {
   const { lang } = useLang();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [settingsPage, setSettingsPage] = useState<'main' | 'speed' | 'quality'>('main');
+  const [settingsPage, setSettingsPage] = useState<'main' | 'speed' | 'quality' | 'volume'>('main');
   const settingsRef = useRef<HTMLDivElement>(null);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   useEffect(() => { if (disabled) setSettingsOpen(false); }, [disabled]);
@@ -145,17 +145,26 @@ export function PlayerControls({
           <button type="button" className="learning-player-settings__row" data-testid="player-quality" disabled={qualities.length === 0} onClick={() => setSettingsPage('quality')}>
             <span>{lang === 'ar' ? 'الجودة' : 'Quality'}</span><span className="learning-player-settings__value">{quality === 'auto' ? (lang === 'ar' ? 'تلقائي' : 'Auto') : qualities.find(option => `representation:${option.id}` === quality)?.label}<span aria-hidden="true"> ›</span></span>
           </button>
+          <button type="button" className="learning-player-settings__row" data-testid="player-volume-settings" onClick={() => setSettingsPage('volume')}>
+            <span>{lang === 'ar' ? 'مستوى الصوت' : 'Volume'}</span><span className="learning-player-settings__value" dir="ltr">{Math.round((media.muted ? 0 : media.volume) * 100)}% <span aria-hidden="true">›</span></span>
+          </button>
         </> : <>
           <button type="button" className="learning-player-settings__back" data-testid="player-settings-back" onClick={() => setSettingsPage('main')}>
             <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m14 6-6 6 6 6" /></svg>
-            {settingsPage === 'speed' ? (lang === 'ar' ? 'السرعة' : 'Speed') : (lang === 'ar' ? 'الجودة' : 'Quality')}
+            {settingsPage === 'speed' ? (lang === 'ar' ? 'السرعة' : 'Speed') : settingsPage === 'quality' ? (lang === 'ar' ? 'الجودة' : 'Quality') : (lang === 'ar' ? 'مستوى الصوت' : 'Volume')}
           </button>
           <div className={`learning-player-settings__options learning-player-settings__options--${settingsPage}`}>
             {settingsPage === 'speed' ? PLAYBACK_SPEEDS.map(rate => <button key={rate} type="button" data-testid={`player-speed-${rate}`} aria-pressed={media.rate === rate}
               onClick={() => { const video = videoRef.current; if (video) video.playbackRate = rate; setSettingsPage('main'); }}><span dir="ltr">{rate}x</span></button>) :
-              [{ id: 'auto', label: lang === 'ar' ? 'تلقائي' : 'Auto' }, ...qualities.map(option => ({ id: `representation:${option.id}`, label: option.label }))].map(option =>
+              settingsPage === 'quality' ? [{ id: 'auto', label: lang === 'ar' ? 'تلقائي' : 'Auto' }, ...qualities.map(option => ({ id: `representation:${option.id}`, label: option.label }))].map(option =>
                 <button key={option.id} type="button" data-testid={`player-quality-${option.id}`} aria-pressed={quality === option.id}
-                  onClick={() => { onQualityChange(option.id); setSettingsPage('main'); }}>{option.label}</button>)}
+                  onClick={() => { onQualityChange(option.id); setSettingsPage('main'); }}>{option.label}</button>) :
+              <label>
+                <span>{lang === 'ar' ? 'مستوى الصوت' : 'Volume'}: {Math.round((media.muted ? 0 : media.volume) * 100)}%</span>
+                <input type="range" className="w-full min-h-11" dir="ltr" data-testid="player-settings-volume" min="0" max="1" step="0.05" value={media.muted ? 0 : media.volume}
+                  aria-valuetext={`${Math.round((media.muted ? 0 : media.volume) * 100)}%`} disabled={disabled}
+                  onChange={event => { const video = videoRef.current; if (!video) return; video.volume = Number(event.currentTarget.value); video.muted = video.volume === 0; }} />
+              </label>}
           </div>
         </>}
         </div>}

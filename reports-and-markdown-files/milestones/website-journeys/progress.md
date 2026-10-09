@@ -172,3 +172,150 @@ generic unanswered-question validation; hash course-detail language switch loses
 context. Lesson-next changed displayed lesson while the observed URL still carried
 the first lesson ID; refresh/deep-link consistency needs a focused follow-up.
 Admin edit/move/publish and remaining journey stages are still pending, not passed.
+
+## Source-Only Continuation While Browser Access Is Blocked
+
+The owner requested Chrome and continuation. Connected-browser inventory showed
+Brave and the in-app browser, but no Chrome. Earlier attempts were explicitly
+blocked by a saved localhost permission. No alternate browser, raw automation,
+HTTP access to the site or permission modification was used to bypass that block.
+
+Fixed the evidenced public hash-route language loss in source: the header now
+derives the translated public URL from the active public fragment instead of the
+initial SSR catalog path. Private routes retain the existing language handler.
+Added four regressions for reciprocal course links, package/home links, SSR and
+anchor-only paths, and private-route boundaries.
+
+Verification used fayq-session-client-test:20261009 with current client/src mounted
+read-only at /srv/client/src, --network none and --rm. Full client suite passed:
+298 Vitest checks in 37 files plus 10 Node patch checks (308 total). TypeScript
+typecheck passed. Both language-20261009-labelled test containers were absent at
+the final check. No networks or data volumes were created and no owner records
+were mounted. This is source-level evidence, not browser retest or preview update.
+The repair is uncommitted and not deployed/pushed at this checkpoint. The broader
+admin/mobile journey, validation guidance and stale-chunk recovery remain pending.
+
+## A-to-Z Restart and Validation Repair
+
+Owner requested English, complete student/admin journeys and running the website.
+The five existing preview services had stopped; restarted the same PostgreSQL,
+Redis, server, client and Nginx containers without migrations, reseeding, changed
+credentials or volume deletion. All five report healthy. Nginx retains only
+127.0.0.1:8080. This checks service health, not application workflows or DRM health.
+
+Browser inventory still contains no Chrome. A single permission check again
+reported the saved localhost block. Broad conversational consent did not remove
+that setting. No alternative browser, network request or automation was used to
+access the blocked website. Hands-on A-to-Z execution remains BLOCKED.
+
+Added a-to-z.md with 17 student and 20 admin steps, including invalid/cancel/retry,
+persisted-effect, role and responsive requirements. Earlier upload deferral and
+owner-data safety remain; financial/destructive tests require isolated synthetic
+fixtures. The sequence is a plan, not 37 completed checks.
+
+Repaired unanswered-choice UX in source: preflight verifies a selection belongs
+to each choice question, blocks incomplete submission, names the first question,
+focuses/scrolls to it and marks every unanswered fieldset with inline accessible
+feedback. Selecting a choice clears that question's inline error. Coding/program
+submission rules, backend authority, grading keys and manual Continue are intact.
+Six new helper regressions cover empty, partial, valid and stale/cross-question
+answers and unaffected coding/program questions.
+
+Network-isolated Docker unit verification passed 304 Vitest checks in 38 files
+plus 10 Node checks (314 total). Full TypeScript/client/SSR build passed; existing
+large-chunk and duplicate static/dynamic import warnings remain. Source-only
+mount was read-only; no owner volumes or website/network access. Both ephemeral
+validation-20261009-labelled test/build containers were absent after completion;
+no test networks or volumes created. The owner's running preview is preserved.
+
+Source changes remain uncommitted, unpushed and not applied to the running preview.
+Browser focus/visual/persistence retests, admin journey and stale-chunk recovery
+remain pending. Existing preview runs its previously delivered images.
+
+## A-to-Z Source Review: Recovery and Lesson Address
+
+Continued without accessing the blocked website. Source review confirmed there
+was no page error boundary around lazy-loaded destinations and lesson selection
+updated only component state, leaving the old lesson URL.
+
+Added PageErrorBoundary around page content, outside the retained header/footer,
+with bilingual focused heading, accessible error and manual Reload page. It warns
+about unsaved changes and uses existing navigation confirmation. No automatic
+reload loop or raw technical error exposure. Route/language changes reset the
+boundary. Actual lazy-load failure and keyboard-focus browser retests remain
+pending. Three unit/rendering checks cover healthy content and both translations
+without auto reload. The initial .test.tsx file was not discovered by the existing
+Vitest include pattern; renamed to .test.ts, then actually executed and passed.
+
+Added selectedLessonHash and synchronized only trusted playable selections using
+history.replaceState, preserving course identity and resume intent. URL sync emits
+no hashchange, remount or extra playback request. Five helper regressions cover
+selection, bare route, encoded identity/parameters, invalid route and idempotence.
+Mounted player/deep-link persistence retest remains pending.
+
+Added 35 student/admin route mapping checks for protected/public paths, course
+identity, selected lesson, resume and not-found. These are routing contract
+checks, not role authorization tests or actual admin operations.
+
+Final offline Docker suite: 347 Vitest checks in 41 files plus 10 Node checks,
+357 total, passed. Client/SSR compilation and final TypeScript check passed;
+existing large-chunk/static-dynamic-import warnings remain. Used
+fayq-session-client-test:20261009, current source read-only, --network none and
+--rm. No website access, owner data mount, new network or volume. All owned
+recovery-20261009-labelled containers absent after verification. Retained preview
+and data preserved. Repairs are uncommitted/unpushed/not applied to preview.
+Complete A-to-Z and responsive/permission/persistence matrix remain blocked.
+
+## Actual Browser Continuation — 2026-10-09
+
+Brave access succeeded through the existing localhost tab; no saved permission
+block bypass. Owner signed into ADMIN and then STUDENT. Earlier browser-blocked
+entries are historical. Matching Docker preview builds now include pending route,
+validation, error-recovery and lesson-address repairs, plus truthful READY media
+registration, immutable completed recharge review, and compact-player volume.
+
+Actual checks include 56 admin editor navigation/layout cases, 48 public catalog
+filter cases, eight each for recharge read-only review, lesson search/boundaries,
+wallet cancellation, error recovery and decoded Play/Pause, plus four compact
+volume cases. Both languages and measured desktop/mobile sizes covered. These
+counts are individual cases, not completed full journeys. Language-switch course
+identity, lesson reload and real lazy-module failure/manual recovery passed.
+
+Final source verification: Docker 357 checks, typecheck, client/SSR/server builds
+passed. All changes remain uncommitted/unpushed. Retained database/cache containers
+and data preserved; existing stopped external DRM services started without source
+edits or recreation to restore actual playback.
+
+Detailed results, evidence paths, incidental effects and untested boundaries:
+[browser-continuation-20261009.md](browser-continuation-20261009.md).
+Full A-to-Z remains IN PROGRESS: saved answered quizzes were not resubmitted,
+owner CRUD/lifecycle/payment changes were not performed, and synthetic financial,
+grading, expiry/session/concurrency coverage remains pending. Uploads deferred.
+
+## Isolated Write Checks and Owner Stop
+
+Owner approved isolated Docker fixtures and separately approved normal browser
+interaction at 127.0.0.1:8082. Existing owner preview/data stayed intact. Isolated
+Admin controls verified creation validation (cover required; upload deferred),
+lesson rename, ordering persisted after reload, two-question required quiz draft
+save/publication and Draft/Processing/Ready/Published lifecycle. Synthetic READY
+media placeholders are not video playback evidence.
+
+Actual unanswered/partial quiz validation passed eight measured language/size
+cases. Database observation confirmed zero graded submissions before attempts.
+Wrong then correct submissions produced real feedback; final disposable state:
+two submissions, one pass, one draft. Arabic manual success/Continue stayed on
+quiz across four sizes. English switch exposed a new unfinished issue: Passed
+and answers persist, but success/Continue disappears and Submit is enabled again.
+No repair for this new issue was made before the owner requested stop and push.
+
+Saved synthetic DB to ignored local journey-handoff.dump, then removed only the
+verified disposable project, named PostgreSQL and anonymous Redis volumes/network.
+All project resources were absent. Browser auto-review rejected final
+evidence/cleanup after the stop instruction; no retry or bypass. The final browser
+tab/viewport cleanup could not be confirmed. Owner preview retained.
+
+Exact continuation instructions: [friend-handoff-20261009.md](friend-handoff-20261009.md).
+Current stop request authorizes commit/push of verified platform repairs and this
+handoff. Full journeys remain incomplete; fresh English success, persisted-pass
+recovery, remaining write/payment/session/role coverage must not be called PASS.

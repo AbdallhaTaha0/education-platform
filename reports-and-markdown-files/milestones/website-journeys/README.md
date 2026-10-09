@@ -78,6 +78,8 @@ is an owner question, not permission to invent it. No commit/push implied.
 
 ## Evidence ledger
 
+Follow [the student/admin A-to-Z sequence](a-to-z.md) for the role-based run.
+
 See [current progress](progress.md). Add reproducible browser regressions for
 confirmed fixes. [Rerun the initial checks](runbook.md) with the existing Docker
 tooling. Save screenshot/API assertions and failure logs without secrets.
