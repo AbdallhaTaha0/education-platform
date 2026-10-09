@@ -1,0 +1,50 @@
+# Disposable authoring verification only. No public ports or shared owner volumes.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment: {POSTGRES_USER: postgres, POSTGRES_PASSWORD: synthetic_journey_only, POSTGRES_DB: journey_test}
+    volumes: [journey-pg:/var/lib/postgresql/data]
+    healthcheck: {test: [CMD-SHELL, 'pg_isready -U postgres -d journey_test'], interval: 2s, timeout: 3s, retries: 30}
+  redis:
+    image: redis:7-alpine
+    healthcheck: {test: [CMD, redis-cli, ping], interval: 2s, timeout: 3s, retries: 30}
+  migrate:
+    image: fayq-m10-migrate:20261007
+    volumes: [../../server/prisma:/srv/server/prisma:ro]
+    environment: {DATABASE_URL: 'postgresql://postgres:synthetic_journey_only@postgres:5432/journey_test'}
+    depends_on: {postgres: {condition: service_healthy}}
+  seed:
+    image: fayq-m10-server:20261007
+    entrypoint: [node, /srv/server/journey-seed.cjs]
+    volumes: [./journey-seed.cjs:/srv/server/journey-seed.cjs:ro]
+    environment: {DATABASE_URL: 'postgresql://postgres:synthetic_journey_only@postgres:5432/journey_test'}
+    depends_on: {migrate: {condition: service_completed_successfully}}
+  server:
+    image: fayq-m10-server:20261007
+    environment:
+      NODE_ENV: test
+      LOG_LEVEL: error
+      PORT: 3000
+      CODING_IDE_ENABLED: 'false'
+      DATABASE_URL: postgresql://postgres:synthetic_journey_only@postgres:5432/journey_test
+      REDIS_URL: redis://redis:6379
+      AUTH_JWT_SECRET: synthetic-journey-jwt-only-20261009-0123456789
+      AUTH_ISSUER: journey-test
+      AUTH_AUDIENCE: journey-browser
+      STUDENT_DATA_ENCRYPTION_KEY_B64: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
+      STUDENT_DATA_INDEX_KEY_B64: YmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmI=
+      ALLOWED_ORIGINS: http://127.0.0.1:8082
+      COOKIE_SECURE: 'false'
+      ARGON2_MEMORY_KB: 8192
+      ARGON2_TIME_COST: 2
+      ARGON2_PARALLELISM: 1
+    depends_on: {seed: {condition: service_completed_successfully}, redis: {condition: service_healthy}}
+    healthcheck: {test: [CMD, node, -e, 'fetch("http://localhost:3000/health/live").then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))'], interval: 2s, timeout: 3s, retries: 30}
+  client:
+    image: fayq-m10-client:20261007
+  nginx:
+    image: fayq-player-controls-nginx:20261006
+    ports: ['127.0.0.1:8082:8080']
+    depends_on: {server: {condition: service_healthy}, client: {condition: service_started}}
+volumes:
+  journey-pg: {}

@@ -19,3 +19,24 @@ The final check must show no owned test containers. Evidence is intentionally
 retained in the ignored evidence directory. No test volumes or networks are
 created by these commands; do not remove the shared preview network. Save new
 stage evidence separately and preserve credentials and owner records.
+
+## Hands-On Brave Batch
+
+The owner explicitly requires actual mouse/form operation in Brave for subsequent
+journeys. Automated regressions supplement but do not replace that verification.
+Use the disposable configuration, never the retained owner database:
+
+```powershell
+docker compose -p fayq-journey-authoring-20261009 -f docker/browser/journey.compose.yml up -d --wait
+```
+
+Open http://127.0.0.1:8082/ar#/login in Brave. The compose/seed contain plainly
+labelled synthetic test credentials only. Use the fixture admin/student accounts,
+not owner accounts. Local file chooser automation requires the owner's explicit
+extension permission. DRM is deliberately unconfigured in this initial stack;
+real video processing remains a later API-boundary verification stage.
+
+Before teardown, inspect project-labelled containers and resolved mounts/volume
+ownership. Remove only this exact disposable project with compose down -v; verify
+project-labelled containers, networks and volumes and every recorded mounted
+volume are gone. Never remove the owner preview or globally prune Docker.
