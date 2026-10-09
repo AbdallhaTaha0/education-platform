@@ -24,7 +24,8 @@ stage evidence separately and preserve credentials and owner records.
 
 The owner explicitly requires actual mouse/form operation in Brave for subsequent
 journeys. Automated regressions supplement but do not replace that verification.
-Use the disposable configuration, never the retained owner database:
+Use the disposable configuration for destructive, financial and synthetic-write
+verification:
 
 ```powershell
 docker compose -p fayq-journey-authoring-20261009 -f docker/browser/journey.compose.yml up -d --wait
@@ -40,3 +41,10 @@ Before teardown, inspect project-labelled containers and resolved mounts/volume
 ownership. Remove only this exact disposable project with compose down -v; verify
 project-labelled containers, networks and volumes and every recorded mounted
 volume are gone. Never remove the owner preview or globally prune Docker.
+
+Later owner clarification on 2026-10-09: defer uploads and exercise the data
+already present in the retained local website through Brave. Read-only navigation,
+playback and reversible notification controls can be checked there. Do not delete
+owner content, submit purchases/recharges, change credentials or reclassify users
+as part of that batch. Record any incidental answer draft or progress change.
+Use the currently signed-in role; ask the owner to sign in as admin when needed.

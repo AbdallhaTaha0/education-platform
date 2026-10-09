@@ -124,3 +124,51 @@ Verified zero remaining project containers/networks, absence of its PostgreSQL
 volume and recorded anonymous Redis volume, and all five retained owner-preview
 services still healthy. Recreate the saved compose/seed once permission is
 available. No owner data or production deployment was changed.
+
+## Existing-Data Brave Batch
+
+The owner subsequently deferred uploads and requested testing the existing local
+data. The retained localhost:8080 tab was signed in as STUDENT, not ADMIN.
+No upload, purchase, recharge submission, content deletion or credential change
+was performed. The owner was asked to sign in as admin for the next admin batch.
+
+| ID | Actual UI operation | Observed result |
+|---|---|---|
+| J13-L01 | Start existing A.I.M lesson 01 | Previously displayed start error cleared; real video rendered and played |
+| J13-L02 | Pause | Time stopped at about five seconds; control changed to Play |
+| J13-L03 | Speed menu: 1.5x then 1x | Selected labels updated; restored original speed |
+| J13-L04 | Quality menu: 720p | Label updated; actual rendition switch during moving playback not independently qualified |
+| J13-L05 | Search 02 then Clear | One lesson result, then both lessons restored |
+| J13-L06 | Next lesson | Lesson 02 and its existing video loaded at retained resume position; Next disabled at last lesson |
+| J01-L01 | Open required assessment | Existing question and four choices displayed |
+| J01-L02 | Submit unanswered | Blocked with generic field-validation toast; needs question-specific guidance |
+| J01-L03 | Expand attempt history | Zero attempts displayed; no graded submission made |
+| J11-L01 | Open wallet | Initially blank because an old dynamically imported WalletPage bundle failed to load; one full refresh recovered |
+| J11-L02 | Wallet data | Current balance, two approved requests and payment instructions visible |
+| J11-L03 | New recharge then Cancel | Real form opened; Cancel returned to wallet without submission |
+| J12-L01 | Purchase history | Existing A.I.M receipt and learning link visible |
+| J14-L01 | Unread filter then All | Empty unread view then all three existing notifications restored |
+| J14-L02 | Mark course notification unread then Mark all read | Header/page count changed 0 -> 1 -> 0; original read state restored |
+| J14-L03 | Notification View course | Opened A.I.M course with current progress |
+| J02-L01 | Language switch from hash course detail | English catalog opened instead of preserving course detail; route-loss finding |
+| J02-L02 | English catalog search A.I.M then Clear | One of six courses then six of six restored |
+| J02-L03 | Mobile-size catalog | Header/bottom navigation and filters rendered without observed horizontal overflow |
+| J10-L01 | Mobile My learning and account-section menu | Dashboard rendered; menu opened and Wallet destination worked |
+| J11-L04 | Mobile English wallet | Balance/actions/payment sections rendered; no payment executed |
+| J10-L02 | Return to desktop and Arabic from wallet | Viewport override reset; wallet route preserved |
+
+The requested mobile override was 390x844, but the Brave DOM reported innerWidth
+434 and documentWidth 417. Treat this as a narrow-window smoke check, not exact
+390px breakpoint certification. Desktop screenshots also inspected real video
+pixels and wallet recovery. No persistent screenshot file was saved for this batch.
+
+Incidental effects: playback may persist a resume position; selecting the first
+answer while inspecting the required assessment autosaved a draft (Saved shown),
+but attempt history remained zero. Notification read state was restored. Video
+quality was selected at 720p. No owner course content or wallet balance changed.
+
+Findings remain open: stale-bundle blank page with no visible recovery control;
+generic unanswered-question validation; hash course-detail language switch loses
+context. Lesson-next changed displayed lesson while the observed URL still carried
+the first lesson ID; refresh/deep-link consistency needs a focused follow-up.
+Admin edit/move/publish and remaining journey stages are still pending, not passed.
