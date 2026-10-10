@@ -37,6 +37,8 @@ export function AdminRechargePage(): JSX.Element {
   const [decision, setDecision] = useState<'APPROVE' | 'REJECT'>('APPROVE');
   const [verified, setVerified] = useState(false);
   const [reason, setReason] = useState('');
+  const [reasonMissing, setReasonMissing] = useState(false);
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
   const [busy, setBusy] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [dialogDone, setDialogDone] = useState<string | null>(null);
@@ -67,6 +69,7 @@ export function AdminRechargePage(): JSX.Element {
     setDecision('APPROVE');
     setVerified(false);
     setReason('');
+    setReasonMissing(false);
     setDialogError(null);
     setDialogDone(null);
   }
@@ -74,7 +77,8 @@ export function AdminRechargePage(): JSX.Element {
   async function submitReview(): Promise<void> {
     if (selected === null || selected.status !== 'PENDING' || busy || dialogDone !== null) return;
     if (decision === 'REJECT' && reason.trim().length === 0) {
-      setDialogError('VALIDATION_ERROR');
+      setReasonMissing(true);
+      reasonRef.current?.focus();
       return;
     }
     setBusy(true);
@@ -206,7 +210,7 @@ export function AdminRechargePage(): JSX.Element {
                       type="radio"
                       name="decision"
                       checked={decision === 'APPROVE'}
-                      onChange={() => setDecision('APPROVE')}
+                      onChange={() => { setDecision('APPROVE'); setReasonMissing(false); }}
                     />
                     {t.approveAction}
                   </label>
@@ -224,11 +228,17 @@ export function AdminRechargePage(): JSX.Element {
                   <Field id="review-reason" label={t.rejectReason}>
                     <textarea
                       id="review-reason"
+                      ref={reasonRef}
+                      aria-invalid={reasonMissing || undefined}
+                      aria-describedby={reasonMissing ? 'review-reason-error' : undefined}
                       rows={3}
                       value={reason}
-                      onChange={(e) => setReason(e.target.value)}
+                      onChange={(e) => { setReason(e.target.value); if (e.target.value.trim()) setReasonMissing(false); }}
                       className="w-full rounded-control border border-border bg-surface px-3 py-2"
                     />
+                    {reasonMissing ? <p id="review-reason-error" role="alert" className="mt-2 text-sm text-error-fg">
+                      {lang === 'ar' ? 'اكتب سبب الرفض قبل تأكيد القرار.' : 'Enter a rejection reason before confirming the decision.'}
+                    </p> : null}
                   </Field>
                 ) : null}
                 {decision === 'APPROVE' ? (

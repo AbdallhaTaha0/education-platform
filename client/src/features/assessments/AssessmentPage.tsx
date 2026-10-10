@@ -9,6 +9,7 @@ import { assessmentApi, errorLabel } from './api';
 import { modeName, type IDEMode, type SourceFiles } from '../ide/types';
 import { useDraftSave } from './useDraftSave';
 import { unansweredChoices } from './choiceValidation';
+import { ApiError } from '../../auth';
 const WebIDE = lazy(() => import('../ide/WebIDE').then((m) => ({ default: m.WebIDE })));
 interface Question {
   id: string;
@@ -68,6 +69,7 @@ export function AssessmentPage({ id }: { id: string }): JSX.Element {
   const [assessment, setAssessment] = useState<Assessment | null>(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [error, setError] = useState('');
+  const [loadAccessCode, setLoadAccessCode] = useState<string | null>(null);
   const [unanswered, setUnanswered] = useState<string[]>([]);
   const questionRefs = useRef(new Map<string, HTMLElement>());
   const [dirty, setDirty] = useState(false);
@@ -139,6 +141,7 @@ export function AssessmentPage({ id }: { id: string }): JSX.Element {
     setChecking(null);
     setError('');
     setUnanswered([]);
+    setLoadAccessCode(null);
     void assessmentApi<Assessment>(`/assessments/${id}`)
       .then((data) => {
         if (!active) return;
@@ -154,7 +157,10 @@ export function AssessmentPage({ id }: { id: string }): JSX.Element {
         );
       })
       .catch((e) => {
-        if (active) setError(errorLabel(e, ar));
+        if (active) {
+          setError(errorLabel(e, ar));
+          setLoadAccessCode(e instanceof ApiError ? e.code : null);
+        }
       });
     return () => {
       active = false;
@@ -242,6 +248,9 @@ export function AssessmentPage({ id }: { id: string }): JSX.Element {
     <Container id="main">
       <main className="py-8">
         {error ? <Notice kind="error">{error}</Notice> : null}
+        {!assessment && (loadAccessCode === 'SUBSCRIPTION_EXPIRED' || loadAccessCode === 'SUBSCRIPTION_REQUIRED') ? <a href="#/dashboard" className="mb-4 inline-flex min-h-[44px] items-center rounded-control bg-primary px-4 py-2 font-bold text-canvas">
+          {label('افتح تعلّمي لتجديد الوصول', 'Open My learning to renew access')}
+        </a> : null}
         {!assessment ? (
           !error ? (
             <Loading text={label('جارٍ التحميل…', 'Loading…')} />

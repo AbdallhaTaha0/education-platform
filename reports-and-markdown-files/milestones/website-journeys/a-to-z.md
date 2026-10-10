@@ -1,3 +1,5 @@
+Latest delivery authority: [owner-requested commit/push](delivery-20261010.md). Earlier uncommitted/no-push statements below describe their historical checkpoints. Remaining verification and credential handoff are unchanged.
+
 # Student and Admin A-to-Z Journeys
 
 Owner request: 2026-10-09. English communication; run the local website and
@@ -102,3 +104,24 @@ sequential in the connected profile; viewport matrices are scenario-specific.
 Synthetic authoring/purchases/expiry checks do not qualify real playback,
 uploads, bank receipt approval or external delivery. The broader sequence above
 remains an inventory, not a blanket pass claim.
+
+## Current continuation — 2026-10-10
+
+Use [the latest UX continuation](ux-continuation-20261010.md) before resuming.
+A06 section creation focus and selected A15 rejection validation have actual
+eight-case matrices; Admin panel navigation has 56 layout/control cases.
+A13 duration-offer creation is partially verified; package authoring and other
+offer modes remain. A19 support controls are partial. S04 registration and S17
+actual retests of the new expiry/login guidance are still pending. This does not
+replace the earlier delivered coverage or qualify other controls in these groups.
+
+Reconnect the same authorized Brave browser after its dialog/connection stall;
+no permission bypass or fallback browser. The disposable Docker stack was cleaned
+and a local ignored synthetic dump saved. Recreate/restore only inspected isolated
+resources, preserving owner preview. Browser viewport/tab cleanup was not confirmed.
+New repairs are uncommitted/unpushed and require explicit delivery authorization.
+
+
+## Resumed browser checkpoint — 2026-10-10
+
+[Latest resumed evidence and handoff](resumed-browser-20261010.md) supersedes the preceding current interruption/pending statements. Expiry/session guidance, draft package authoring and four offer modes now have bounded actual evidence. Final Docker client total is 391 plus TypeScript and matching runtime builds. Registration awaits owner credential-entry handoff; other controls remain partial. Owned test stack remains running for that handoff, owner preview preserved. New work uncommitted/unpushed; no full-site completion or acceptance.

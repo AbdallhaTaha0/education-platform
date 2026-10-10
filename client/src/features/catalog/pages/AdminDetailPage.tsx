@@ -174,6 +174,7 @@ export function AdminDetailPage({ courseId }: { courseId: string }): JSX.Element
           ) : null}
 
           <SectionTabs
+            compactMobile
             tabs={courseTabs}
             value={workspace}
             prefix="course-workspace"

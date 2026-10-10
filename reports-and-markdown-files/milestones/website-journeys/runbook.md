@@ -1,3 +1,5 @@
+Latest delivery authority: [owner-requested commit/push](delivery-20261010.md). Earlier uncommitted/no-push statements below describe their historical checkpoints. Remaining verification and credential handoff are unchanged.
+
 # Journey Regression Runbook
 
 ## Persisted-pass continuation
@@ -96,3 +98,56 @@ restored. Synthetic credentials remain unchanged; expired/logged-out sessions
 require normal sign-in. No fixture placeholder qualifies playback or bank evidence.
 All owned test stacks were removed after mount/label inspection. Owner preview
 remains healthy. Temporary viewport overrides reset and the two test tabs closed.
+
+## UX continuation — 2026-10-10
+
+Read [the current evidence and limits](ux-continuation-20261010.md). The preceding
+final dump is absent on this checkout; an older dump was actually restored and a
+new `docker/browser/evidence/journey-ux-20261010/ux-continuation.dump` saved locally.
+Verify the exact report hash and availability before restoration. Pulling Git
+does not provide ignored dumps, prior screenshots or reusable local Docker images.
+
+Current image override: `docker/browser/journey-ux.override.yml`. Build the client
+and server runtime images with tags `fayq-journey-client:20261010` and
+`fayq-journey-server:20261010` using the existing Dockerfiles. Start only:
+
+```powershell
+docker compose -p fayq-journey-ux-20261010 -f docker/browser/journey.compose.yml -f docker/browser/journey-ux.override.yml up -d --wait
+```
+
+Inspect project labels, mounts and `current_database()` before copying/restoring
+a dump. Stop only this project's server during restore. Use `pg_restore` inside
+its PostgreSQL container; never redirect binary dump output through text handling
+or restore into an owner DB. Restart the isolated server and run its seed, which
+preserves existing credentials/balances. If no retained dump exists, seed and
+author quiz fixtures through Admin UI; do not claim historic pass restoration.
+
+`journey-ux-fixture.cjs` is synthetic preparation, not browser evidence. It guards
+the database host/name, prepares a pending no-transfer placeholder plus three
+classified monthly DRAFT courses, and has explicit expiry/restore/session modes.
+Copy into this project's server `/tmp`; run Node with
+`NODE_PATH=/srv/server/node_modules`. Never approve the placeholder. Expiry mode
+saves original dates to `/tmp/journey-ux-subscription.json`; restore them before
+recreating the server or cleanup. These modes were not used in this continuation.
+
+Resume actual Brave at the existing authorized loopback origin only after browser
+control is available. First clear the native unsaved-support dialog if necessary,
+reset/reapply viewport measurements, and use normal synthetic login. No browser
+fallback to get around a permission block. Credential changes, binding agreements,
+uploads, real payments, external delivery and owner publication require their
+respective new authorization/handoff. IDE and DRM remain unconfigured/disabled.
+
+Offline checks used `fayq-session-client-test:20261009` with current source mounted
+read-only at `/srv/client/src`, `--network none`, `--rm`, label
+`website-journey-test=20261010`, running `npm test` then `npm run typecheck`.
+Mocked-hook render tests are not actual browser evidence. Save a fresh dump before
+cleanup, inspect every mount including anonymous Redis, and remove only this
+exact project with both Compose files and `down -v`. Verify all recorded volumes,
+network and containers absent and owner preview intact. No global prune.
+
+
+## Resumed browser checkpoint — 2026-10-10
+
+[Latest resumed evidence and handoff](resumed-browser-20261010.md) supersedes the preceding current interruption/pending statements. Expiry/session guidance, draft package authoring and four offer modes now have bounded actual evidence. Final Docker client total is 391 plus TypeScript and matching runtime builds. Registration awaits owner credential-entry handoff; other controls remain partial. Owned test stack remains running for that handoff, owner preview preserved. New work uncommitted/unpushed; no full-site completion or acceptance.
+
+Rebuild BOTH client and server runtime images after any client change: server SSR must reference the matching client chunks. Restore original synthetic expiry dates before recreating server. Native datetime controls required supported fresh AX setValue followed by actual save/reload; do not infer persisted React state from a displayed DOM value alone. Cleanup after handoff must inspect current anonymous Redis mount, not reuse the earlier removed volume name.

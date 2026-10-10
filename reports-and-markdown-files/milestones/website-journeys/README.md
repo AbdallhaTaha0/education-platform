@@ -1,7 +1,12 @@
+Latest delivery authority: [owner-requested commit/push](delivery-20261010.md). Earlier uncommitted/no-push statements below describe their historical checkpoints. Remaining verification and credential handoff are unchanged.
+
 # Website Journey Verification Milestone
 
-Latest checkpoint: [persisted-pass repair and verification continuation](persisted-pass-continuation-20261009.md).
-Bounded actual Brave verification is complete; the final report separates browser passes, automated checks, fixture preparation and remaining untested features.
+Latest checkpoint: [UX continuation and browser interruption, 2026-10-10](ux-continuation-20261010.md).
+The [2026-10-09 persisted-pass report](persisted-pass-continuation-20261009.md)
+remains the preceding delivered coverage. Current work is in progress and
+uncommitted; actual passes, automated checks, fixtures and untested controls are
+recorded separately.
 
 Owner assignment: 2026-10-09. Test every available student and admin workflow,
 including uploads, moves and edits, on desktop and mobile. Repair evidenced
@@ -89,3 +94,8 @@ tooling. Save screenshot/API assertions and failure logs without secrets.
 Do not close this milestone until the individual-control inventory is complete,
 every applicable matrix row is verified, all functional defects are retested,
 and remaining external/disabled limits are clearly acknowledged by the owner.
+
+
+## Resumed browser checkpoint — 2026-10-10
+
+[Latest resumed evidence and handoff](resumed-browser-20261010.md) supersedes the preceding current interruption/pending statements. Expiry/session guidance, draft package authoring and four offer modes now have bounded actual evidence. Final Docker client total is 391 plus TypeScript and matching runtime builds. Registration awaits owner credential-entry handoff; other controls remain partial. Owned test stack remains running for that handoff, owner preview preserved. New work uncommitted/unpushed; no full-site completion or acceptance.

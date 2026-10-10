@@ -153,12 +153,13 @@ export async function removePlan(planId: string): Promise<void> {
 export async function createSection(
   courseId: string,
   input: { titleAr: string; titleEn: string },
-): Promise<void> {
-  await apiFetch(`/admin/catalog/courses/${courseId}/sections`, {
+): Promise<{ id: string }> {
+  const result = await apiFetch<{ data: { section: { id: string } } }>(`/admin/catalog/courses/${courseId}/sections`, {
     method: 'POST',
     retryOnAuth: false,
     body: input,
   });
+  return result.data.section;
 }
 
 export async function patchSection(

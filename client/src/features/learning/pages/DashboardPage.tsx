@@ -4,7 +4,7 @@ import { Container } from '../../../components/ui/Card';
 import { FormActions } from '../../../components/ui/FormActions';
 import { PaginatedCollection } from '../../../components/ui/Pagination';
 import { useDashboard } from '../hooks/useLearning';
-import { ErrorBlock, LoadingBlock, SectionHeading, SubscriptionCard } from '../components/Learning';
+import { ErrorBlock, LoadingBlock, SectionHeading, SignInRequired, SubscriptionCard } from '../components/Learning';
 import { useLang, useTranslate } from '../../../i18n';
 import type { LearningLabels } from '../components/Learning';
 
@@ -40,6 +40,7 @@ export function DashboardPage({ onContinue, onRenew, onBrowse }: DashboardPagePr
   );
 
   const errorMessage = errorCode === null ? '' : t('learningLoadError');
+  const signInLost = ['TOKEN_MISSING', 'TOKEN_INVALID', 'SESSION_EXPIRED', 'SESSION_REVOKED'].includes(errorCode ?? '');
 
   return (
     <Container id="main">
@@ -49,10 +50,10 @@ export function DashboardPage({ onContinue, onRenew, onBrowse }: DashboardPagePr
 
         {loading ? <LoadingBlock label={t('learningLoading')} /> : null}
         {!loading && errorCode !== null ? (
-          <ErrorBlock message={errorMessage} retryLabel={t('retry')} onRetry={reload} />
+          signInLost ? <SignInRequired lang={lang} /> : <ErrorBlock message={errorMessage} retryLabel={t('retry')} onRetry={reload} />
         ) : null}
 
-        {!loading && data !== null ? (
+        {!loading && errorCode === null && data !== null ? (
           <div className="space-y-8">
             <section aria-labelledby="active-heading">
               <SectionHeading>

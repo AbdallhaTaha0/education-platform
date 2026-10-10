@@ -1,3 +1,5 @@
+Latest delivery authority: [owner-requested commit/push](delivery-20261010.md). Earlier uncommitted/no-push statements below describe their historical checkpoints. Remaining verification and credential handoff are unchanged.
+
 # Website Journey Progress
 
 ## Persisted-pass continuation — current delivery
@@ -337,3 +339,35 @@ Exact continuation instructions: [friend-handoff-20261009.md](friend-handoff-202
 Current stop request authorizes commit/push of verified platform repairs and this
 handoff. Full journeys remain incomplete; fresh English success, persisted-pass
 recovery, remaining write/payment/session/role coverage must not be called PASS.
+
+## UX continuation — 2026-10-10
+
+Latest details: [UX repairs, actual evidence and interruption](ux-continuation-20261010.md).
+Base `dev` remains 47274ac; current changes are uncommitted/unpushed. Previous
+persisted-pass continuation supersedes the earlier historical stop above.
+
+Implemented all five assigned UX changes. Actual Brave passed eight section
+selection/focus cases, eight blank rejection-reason focus/error cases, and 56
+course-panel navigation/layout cases, Arabic/English at measured 1280×900,
+1920×1080, 390×844 and 360×800. Duration-offer creation/reload and selected
+support save/reload/validation controls also have bounded actual evidence.
+Expired quiz/session fixes have automated evidence only; actual retests pending.
+
+Final offline Docker 381 client checks and TypeScript pass; client/SSR build
+passes. No new backend integration, mocked-browser or browser-race passes.
+Registration, package authoring, full support/settings and remaining offer modes
+remain pending. Browser control stopped responding on an unsaved-support dialog;
+same Brave connection retry after owner instruction failed. No permission bypass.
+Browser logout/tab/viewport cleanup and retained screenshots could not be confirmed.
+
+Latest synthetic dump was unavailable. Restored the actually available older
+checkpoint into an isolated database, then saved a new local ignored dump; do
+not claim the later 70 EGP balance was restored. No real transfer/upload/receipt
+approval, owner data change or nested DRM edit. All owned disposable resources
+removed after mount inspection, owner preview healthy. Suspended IDE untouched.
+No full-site completion, milestone acceptance, commit or push authorization.
+
+
+## Resumed browser checkpoint — 2026-10-10
+
+[Latest resumed evidence and handoff](resumed-browser-20261010.md) supersedes the preceding current interruption/pending statements. Expiry/session guidance, draft package authoring and four offer modes now have bounded actual evidence. Final Docker client total is 391 plus TypeScript and matching runtime builds. Registration awaits owner credential-entry handoff; other controls remain partial. Owned test stack remains running for that handoff, owner preview preserved. New work uncommitted/unpushed; no full-site completion or acceptance.

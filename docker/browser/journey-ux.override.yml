@@ -1,0 +1,8 @@
+# Only for the disposable journey stack; never apply to the owner preview.
+services:
+  seed:
+    image: fayq-journey-server:20261010
+  server:
+    image: fayq-journey-server:20261010
+  client:
+    image: fayq-journey-client:20261010

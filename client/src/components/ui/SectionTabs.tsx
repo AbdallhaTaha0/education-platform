@@ -4,12 +4,20 @@ import type { ReactNode } from 'react';
 export interface SectionTab { id: string; ar: string; en: string; descriptionAr: string; descriptionEn: string }
 
 /** Local panels use true tabs; route navigation remains ordinary links. */
-export function SectionTabs({ tabs, value, onChange, prefix, label, disabled = false }: {
+export function SectionTabs({ tabs, value, onChange, prefix, label, disabled = false, compactMobile = false }: {
   tabs: SectionTab[]; value: string; onChange: (id: string) => boolean | void;
-  prefix: string; label: string; disabled?: boolean;
+  prefix: string; label: string; disabled?: boolean; compactMobile?: boolean;
 }): JSX.Element {
   const { lang } = useLang(); const ar = lang === 'ar';
-  return <div role="tablist" aria-label={label} className="my-5 flex flex-wrap gap-2" data-testid={`${prefix}-tabs`}>
+  return <>
+    {compactMobile ? <label className="my-4 block text-sm font-semibold sm:hidden" htmlFor={`${prefix}-mobile`}>
+      {label}
+      <select id={`${prefix}-mobile`} value={value} disabled={disabled} onChange={event => onChange(event.target.value)}
+        className="mt-2 min-h-[48px] w-full rounded-control border border-border-strong bg-field px-3 text-base text-ink">
+        {tabs.map(tab => <option key={tab.id} value={tab.id}>{ar ? tab.ar : tab.en}</option>)}
+      </select>
+    </label> : null}
+    <div role="tablist" aria-label={label} className={`my-5 flex-wrap gap-2 ${compactMobile ? 'hidden sm:flex' : 'flex'}`} data-testid={`${prefix}-tabs`}>
     {tabs.map((tab, index) => <button key={tab.id} type="button" role="tab"
       id={`${prefix}-tab-${tab.id}`} aria-controls={`${prefix}-panel-${tab.id}`}
       aria-selected={value === tab.id} tabIndex={value === tab.id ? 0 : -1} disabled={disabled}
@@ -22,7 +30,7 @@ export function SectionTabs({ tabs, value, onChange, prefix, label, disabled = f
         event.preventDefault();
         if (onChange(tabs[next].id) !== false) document.getElementById(`${prefix}-tab-${tabs[next].id}`)?.focus();
       }}>{ar ? tab.ar : tab.en}</button>)}
-  </div>;
+  </div></>;
 }
 
 export function SectionPanel({ tab, prefix, active, children }: {
