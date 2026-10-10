@@ -7,6 +7,29 @@ import { lessonMaterialsApi } from "./api";
 import { formatByteSize, resourceLabel, type MaterialResource } from "./types";
 import { safeDownloadName } from "./downloads";
 
+function downloadErrorMessage(code: string, lang: "ar" | "en"): string {
+  if (code === "MATERIAL_NOT_FOUND")
+    return lang === "ar"
+      ? "لم يعد هذا الملف متاحًا. جارٍ تحديث قائمة ملفات الدرس."
+      : "This file is no longer available. Refreshing the lesson file list.";
+  if (
+    [
+      "SUBSCRIPTION_EXPIRED",
+      "SUBSCRIPTION_REQUIRED",
+      "LESSON_NOT_FOUND",
+      "ASSESSMENTS_REQUIRED",
+      "FORBIDDEN",
+      "UNAUTHENTICATED",
+    ].includes(code)
+  )
+    return lang === "ar"
+      ? "تعذّر تحميل الملف بسبب مشكلة في الوصول. تحقق من صلاحية الاشتراك أو أعد تسجيل الدخول."
+      : "You can’t access this file. Check your subscription or sign in again.";
+  return lang === "ar"
+    ? "تعذّر تحميل الملف. حاول مرة أخرى."
+    : "Could not download the file. Please retry.";
+}
+
 export function ResourcesPanel({
   lang,
   loading,
@@ -67,6 +90,7 @@ export function ResourcesPanel({
       if (current !== generation.current) return;
       const code = err instanceof LearningApiError ? err.code : "UNKNOWN";
       setDownloadError(code);
+      if (code === "MATERIAL_NOT_FOUND") onRetry();
       if (
         [
           "SUBSCRIPTION_EXPIRED",
@@ -168,9 +192,7 @@ export function ResourcesPanel({
           data-testid="resource-download-error"
           className="mt-2 text-sm font-semibold text-error-fg"
         >
-          {lang === "ar"
-            ? "تعذّر تحميل الملف. تحقق من الاشتراك وحاول مرة أخرى."
-            : "Could not download the file. Check your subscription and retry."}
+          {downloadErrorMessage(downloadError, lang)}
         </p>
       ) : null}
     </section>
