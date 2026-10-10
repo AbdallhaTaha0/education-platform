@@ -24,6 +24,7 @@ import {
   type Route,
 } from './routes';
 import { PackagePage } from './features/academic/PackagePage';
+import { purchaseAfterLogin } from './features/purchase/loginRedirect';
 const AdminPackagesPage = lazy(() => import('./features/academic/AdminPackagesPage').then(module => ({ default: module.AdminPackagesPage })));
 const AdminSummaryPage = lazy(() => import('./features/academic/AdminSummaryPage').then(module => ({ default: module.AdminSummaryPage })));
 import { AdminScreen, LoginScreen, RegisterScreen } from './screens';
@@ -150,7 +151,7 @@ function Shell(): JSX.Element {
       {route === 'login' ? (
         <main id="main">
           <section className="py-8">
-            <LoginScreen onDone={() => go('#/account')} />
+            <LoginScreen onDone={() => go(purchaseAfterLogin(window.location.hash))} />
           </section>
         </main>
       ) : null}

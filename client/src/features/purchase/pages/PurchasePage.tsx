@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ApiError } from '../../../auth';
+import { ApiError, useAuth } from '../../../auth';
+import { purchaseLoginHash } from '../loginRedirect';
 import { localizeCode, useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
 import { FormActions } from '../../../components/ui/FormActions';
@@ -22,6 +23,7 @@ export function PurchasePage({
   go: (hash: string) => void;
 }): JSX.Element {
   const { t, lang } = useLang();
+  const { status } = useAuth();
   const [phase, setPhase] = useState<Phase>('loading');
   const [price, setPrice] = useState<number | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
@@ -35,6 +37,11 @@ export function PurchasePage({
   const key = useMemo(() => newIdempotencyKey(), []);
 
   useEffect(() => {
+    if (status === 'loading') return;
+    if (status === 'anonymous') {
+      go(purchaseLoginHash(planId));
+      return;
+    }
     let live = true;
     (async () => {
       try {
@@ -59,6 +66,10 @@ export function PurchasePage({
         setPhase('review');
       } catch (err) {
         if (live) {
+          if (err instanceof ApiError && err.status === 401) {
+            go(purchaseLoginHash(planId));
+            return;
+          }
           setErrorCode(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
           setPhase('failed');
         }
@@ -67,7 +78,7 @@ export function PurchasePage({
     return () => {
       live = false;
     };
-  }, [planId, lang]);
+  }, [planId, lang, status, go]);
 
   async function confirm(): Promise<void> {
     if (phase === 'confirming' || phase === 'receipt') return;
@@ -80,12 +91,16 @@ export function PurchasePage({
       const wallet = await fetchWallet().catch(() => null);
       if (wallet) setBalance(wallet.balancePiastres);
     } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        go(purchaseLoginHash(planId));
+        return;
+      }
       setErrorCode(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
       setPhase(err instanceof ApiError && err.code === 'INSUFFICIENT_FUNDS' ? 'review' : 'failed');
     }
   }
 
-  if (phase === 'loading') {
+  if (status !== 'authenticated' || phase === 'loading') {
     return (
       <main id="main">
         <section className="py-8">

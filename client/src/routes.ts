@@ -39,7 +39,7 @@ export function routeFromHash(): Route {
   if (hash === '#/admin/practice') return 'admin-practice';
   if (hash.startsWith('#/assessment/')) return 'assessment';
   if (hash === '#/register') return 'register';
-  if (hash === '#/login') return 'login';
+  if (hash === '#/login' || hash.startsWith('#/login?')) return 'login';
   if (hash === '#/account/profile') return 'account-profile';
   if (hash === '#/account') return 'account';
   if (hash === '#/admin') return 'admin';
