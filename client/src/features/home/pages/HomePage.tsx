@@ -5,6 +5,13 @@ import { PublicCatalogSections } from '../../catalog/pages/PublicCatalogPage';
 import { useLang } from '../../../i18n';
 import { useAuth } from '../../../auth';
 import { gradeLabel } from '../../academic/model';
+import foundersHero640 from '../../../assets/fayq-founders-640.webp';
+import foundersHero1280 from '../../../assets/fayq-founders-1280.webp';
+import foundersHero1920 from '../../../assets/fayq-founders-1920.webp';
+import aliTahaBanner640 from '../../../assets/fayq-ali-taha-640.webp';
+import aliTahaBanner1280 from '../../../assets/fayq-ali-taha-1280.webp';
+import saifBanner640 from '../../../assets/fayq-saif-640.webp';
+import saifBanner1280 from '../../../assets/fayq-saif-1280.webp';
 
 export function HomePage({ onSelectCourse }: { onSelectCourse: (slug: string) => void }): JSX.Element {
   const { t, lang } = useLang();
@@ -32,10 +39,43 @@ export function HomePage({ onSelectCourse }: { onSelectCourse: (slug: string) =>
     [c('ما مدة الوصول للدورة؟', 'How long can I access a course?'), c('كل عرض يوضح شروطه: مدة تبدأ من الشراء، موعد محدد لنهاية الترم أو السنة، أو وصول بدون انتهاء حتى الحذف النهائي للدورة. الباقات لها موعد انتهاء مشترك موضح.', 'Each offer states its terms: a duration from purchase, a fixed term or year deadline, or no expiry until permanent course removal. Packages state one shared deadline.')],
     [c('كيف أشترك في دورة مجانية أو مدفوعة؟', 'How do I enroll in a free or paid course?'), c('الدورة المجانية لا تحتاج رصيدًا؛ أكّد الاشتراك من عرضها. للدورة المدفوعة، اشحن محفظتك عند الحاجة وانتظر مراجعة الإدارة، ثم أكّد شراء الدورة بنفسك.', 'A free course needs no wallet funds; confirm enrollment from its offer. For a paid course, add funds if needed, wait for admin review, then confirm the course purchase yourself.')],
   ];
+  const founderStories = [
+    {
+      key: 'saif',
+      image: saifBanner1280,
+      srcSet: `${saifBanner640} 640w, ${saifBanner1280} 1280w`,
+      alt: c('سيف في مشهد إبداعي لإنتاج محتوى FAYQ.', 'Saif in a creative FAYQ content production scene.'),
+      names: 'SAIF',
+      title: c('الإنتاج الإبداعي', 'Creative production'),
+      description: c('بنقدّم قصص FAYQ ومحتوى التعلّم بصريًا.', 'Bringing FAYQ’s visual stories and learning content to life.'),
+    },
+    {
+      key: 'ali-taha',
+      image: aliTahaBanner1280,
+      srcSet: `${aliTahaBanner640} 640w, ${aliTahaBanner1280} 1280w`,
+      alt: c('علي وطه يتعاونان في البرمجة والتعلّم ضمن مشهد FAYQ.', 'Ali and Taha collaborating on programming and learning in a FAYQ scene.'),
+      names: 'ALI · TAHA',
+      title: c('البرمجة والتعلّم', 'Programming & learning'),
+      description: c('بنحوّل مفاهيم البرمجة لدروس واضحة وعملية.', 'Turning programming concepts into clear, practical lessons.'),
+    },
+  ];
   return (
     <main id="main" className="[&_h1]:text-[clamp(34px,3.6vw,52px)] [&_h1]:font-extrabold [&_h1]:leading-[1.4] [&_h1_span]:text-primary-strong max-sm:[&_h1]:text-[34px] max-sm:[&_h1]:leading-[1.45]">
       <section className="pb-12 pt-16 max-lg:py-9" aria-labelledby="hero-title">
         <Container>
+          <figure className="mb-9 overflow-hidden rounded-2xl border border-border bg-surface shadow-lift">
+            <img
+              src={foundersHero1280}
+              srcSet={`${foundersHero640} 640w, ${foundersHero1280} 1280w, ${foundersHero1920} 1920w`}
+              sizes="(max-width: 640px) calc(100vw - 32px), (max-width: 1024px) calc(100vw - 48px), 1200px"
+              alt={c('علي وطه وسيف يتعاونون حول حاسوب في مشهد FAYQ تعليمي وتقني.', 'Ali, Taha and Saif collaborating around a laptop in a FAYQ learning and technology scene.')}
+              className="block h-auto w-full"
+              width={1280}
+              height={512}
+              fetchPriority="high"
+              decoding="async"
+            />
+          </figure>
           <div className="grid grid-cols-[1.15fr_0.85fr] items-center gap-16 max-lg:grid-cols-1 max-lg:gap-7">
             <div>
               <p className="mb-3 text-sm font-bold text-primary-strong">{c('FAYQ · البرمجة للمرحلة الثانوية', 'FAYQ · Programming for secondary school')}</p>
@@ -80,6 +120,39 @@ export function HomePage({ onSelectCourse }: { onSelectCourse: (slug: string) =>
       </section>
       <section className="border-t border-border bg-elevated py-7 [&>div>div]:flex [&>div>div]:flex-wrap [&>div>div]:items-center [&>div>div]:justify-between [&>div>div]:gap-5 [&_h2]:text-2xl [&_h2]:font-bold" aria-label={c('اختار دورتك', 'Choose your course')}>
         <Container><div><h2>{c('اختار اللي يناسب دراستك.', 'Find the right course for your studies.')}</h2><a className="inline-flex min-h-[52px] items-center justify-center gap-4 rounded-xl border border-transparent bg-primary px-6 py-2.5 font-extrabold text-primary-ink no-underline hover:bg-primary-hover max-sm:px-[18px] max-sm:text-sm" href={publicHref('#/courses', lang)}>{c('عرض كل الدورات', 'View all courses')}<span className="inline-block ltr:rotate-180" aria-hidden="true">←</span></a></div></Container>
+      </section>
+      <section className="border-t border-border bg-surface py-12 max-sm:py-8" aria-labelledby="founders-title">
+        <Container>
+          <div className="mb-6 flex justify-end" dir="ltr">
+            <div className="max-w-2xl" dir={lang}>
+              <p className="mb-3 text-sm font-bold text-primary-strong">{c('الفريق اللي بيبني FAYQ سوا', 'The team building FAYQ together')}</p>
+              <h2 id="founders-title" className="text-[clamp(26px,2.6vw,32px)] font-extrabold">{c('علي وطه وسيف', 'Ali, Taha & Saif')}</h2>
+              <p className="mt-3 text-muted">{c('إحنا الثلاثة مؤسسين وبنبني FAYQ سوا بهدف واحد.', 'All three of us are founders, building FAYQ together around one shared goal.')}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-6 max-md:grid-cols-1" dir="ltr">
+            {founderStories.map((story) => (
+              <article key={story.key} className="overflow-hidden rounded-2xl border border-border bg-elevated shadow-lift" dir={lang}>
+                <img
+                  src={story.image}
+                  srcSet={story.srcSet}
+                  sizes="(max-width: 768px) calc(100vw - 32px), 1200px"
+                  alt={story.alt}
+                  className="block h-auto w-full bg-[#0b1422]"
+                  width={1280}
+                  height={512}
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div className="p-6 max-sm:p-4">
+                  <p className="mb-2 text-xs font-extrabold tracking-[0.14em] text-primary-strong" dir="ltr">{story.names}</p>
+                  <h3 className="text-xl font-extrabold">{story.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">{story.description}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </Container>
       </section>
     </main>
   );
