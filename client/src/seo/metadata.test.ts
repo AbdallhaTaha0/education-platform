@@ -15,6 +15,8 @@ describe('public SEO boundaries', () => {
     expect(meta.alternatives.map(a => a.url)).toEqual(['https://seo.example.test/ar', 'https://seo.example.test/en']);
     expect(meta.robots).toBe('index, follow');
     expect(meta.schema.find(s => s['@type'] === 'WebSite')).not.toHaveProperty('potentialAction');
+    expect(meta.image).toContain('/assets/fayq-founders-1280');
+    expect(meta.preloadImage).toMatchObject({ href: expect.stringContaining('/assets/fayq-founders-1280') });
   });
   it.each(['account', 'admin', 'learn', 'assessment', 'wallet', 'login', 'register', 'terms', 'privacy', 'refunds', 'not-found'] as const)('excludes %s and removes stale public identity', route => {
     const meta = pageMetadata('en', route, base);
@@ -37,6 +39,31 @@ describe('public SEO boundaries', () => {
     const meta = pageMetadata('en', 'course-detail', { ...base, page: 'course-detail', path: '/en/courses/javascript', course });
     expect(meta.title).toBe('JavaScript basics | FAYQ'); expect(meta.description).toBe(course.titleEn + " — " + course.descriptionEn);
     expect(meta.schema.find(s => s['@type'] === 'Course')).not.toHaveProperty('aggregateRating');
+  });
+  it('uses a same-origin published course cover for its social image', () => {
+    const course = {
+      id: '10000000-0000-4000-8000-000000000001', slug: 'javascript', titleAr: 'برمجة', titleEn: 'JavaScript basics',
+      descriptionAr: 'شرح البرمجة', descriptionEn: 'Variables and functions.', publishedAt: null,
+      plans: [], coverUrl: '/catalog/courses/10000000-0000-4000-8000-000000000001/cover?v=20000000-0000-4000-8000-000000000001',
+    };
+    const meta = pageMetadata('en', 'course-detail', {
+      ...base, page: 'course-detail', path: '/en/courses/javascript', course,
+    });
+    expect(meta.image).toBe('https://seo.example.test/api/catalog/courses/10000000-0000-4000-8000-000000000001/cover?v=20000000-0000-4000-8000-000000000001');
+  });
+  it.each([
+    ['external URL', 'https://attacker.example/cover.png'],
+    ['another course cover', '/catalog/courses/30000000-0000-4000-8000-000000000001/cover?v=20000000-0000-4000-8000-000000000001'],
+  ])('rejects %s for social metadata', (_label, coverUrl) => {
+    const course = {
+      id: '10000000-0000-4000-8000-000000000001', slug: 'javascript', titleAr: 'برمجة', titleEn: 'JavaScript basics',
+      descriptionAr: 'شرح البرمجة', descriptionEn: 'Variables and functions.', publishedAt: null,
+      plans: [], coverUrl,
+    };
+    const meta = pageMetadata('en', 'course-detail', {
+      ...base, page: 'course-detail', path: '/en/courses/javascript', course,
+    });
+    expect(meta.image).toContain('/assets/fayq-founders-1280');
   });
   it('escapes script terminators while preserving JSON values', () => {
     const value = { title: '</script><script>alert(1)</script>' };

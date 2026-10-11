@@ -5,7 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { readSeoSettings } from '../../src/modules/seo/config';
 import { createSeoRouter, safeJson } from '../../src/modules/seo/router';
 const published = {
-  id: 'fixture',
+  id: '10000000-0000-4000-8000-000000000001',
+  coverId: '20000000-0000-4000-8000-000000000001',
   slug: 'javascript',
   titleAr: 'برمجة',
   titleEn: 'JavaScript basics',
@@ -66,6 +67,10 @@ describe('initial public HTML and HTTP semantics', () => {
       expect(res.status).toBe(200);
       expect(res.headers['x-robots-tag']).toBe('index, follow');
       expect(res.text).toMatch(/<h1\b/);
+      if (path === '/ar' || path === '/en')
+        expect(res.text).toMatch(/<link rel="preload" as="image"[^>]+fetchpriority="high">/);
+      else expect(res.text).not.toContain('fetchpriority="high"');
+      expect(res.text).not.toContain('fetchPriority');
       expect(res.text).toContain('rel="canonical"');
       expect(res.text).toContain('hrefLang="ar"');
       expect(res.text).not.toContain('PRIVATE LESSON');
@@ -76,6 +81,7 @@ describe('initial public HTML and HTTP semantics', () => {
     expect(res.status).toBe(200);
     expect(res.text).toContain('<title>JavaScript basics | FAYQ</title>');
     expect(res.text).toContain('Variables and functions.');
+    expect(res.text).toContain('property="og:image" content="https://seo.example.test/api/catalog/courses/10000000-0000-4000-8000-000000000001/cover?v=20000000-0000-4000-8000-000000000001"');
     expect(res.text).not.toContain('PRIVATE LESSON');
     const payload = JSON.parse(
       res.text.match(

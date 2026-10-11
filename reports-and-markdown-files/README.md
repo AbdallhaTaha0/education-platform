@@ -68,6 +68,8 @@ The owner authorized direct repairs and completion of Agents 2 and 3 on
 
 ## Recent audit reports
 
+- [Current security audit follow-up](security/security-audit-followup-20261011.md) — [132-route delta inventory](security/security-attack-surface-followup-20261011.md) and [70-phase ledger](security/security-audit-phases-followup-20261011.md).
+- [Current technical SEO/performance follow-up](seo/seo-audit-followup-20261011.md) — [70-phase ledger](seo/seo-phase-ledger-followup-20261011.md); synthetic mobile LCP remains 2.9 s.
 - [SEO audit and launch checklist](seo/seo-audit-20261006.md) — [all 70 phases](seo/seo-phase-ledger-20261006.md) and [issue register](seo/seo-issue-register-20261006.md).
 - [Security delivery](security/security-delivery-20261006.md) — [security audit](security/security-audit-summary-20261005.md).
 - [Bounded DRM security repair](drm/drm-security-repair-20261006.md).

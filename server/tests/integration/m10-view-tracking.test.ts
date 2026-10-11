@@ -109,11 +109,16 @@ describe('threshold and single-count per session', () => {
     const results = await Promise.all(payload.map((ms) => heartbeat(id, ms)));
     for (const res of results) {
       expect(res.status).toBe(200);
-      expect(res.body.data.view.counted).toBe(true);
     }
+    // A 29,999ms request can acquire the row lock before the threshold-reaching
+    // requests and correctly observe an uncounted response. The persisted row
+    // must converge to the threshold and only one response claims the count.
+    expect(results.some((res) => res.body.data.view.counted)).toBe(true);
+    expect(results.filter((res) => res.body.data.newlyCounted).length).toBe(1);
     const rows = await world.prisma.m10VideoViewSession.findMany({ where: { id } });
     expect(rows.length).toBe(1);
     expect(rows[0]!.countedAt).not.toBeNull();
+    expect(rows[0]!.playedMilliseconds).toBe(30_000);
     // Monotonic: a smaller total never rewinds the stored total.
     await heartbeat(id, 90_000);
     await heartbeat(id, 10_000);

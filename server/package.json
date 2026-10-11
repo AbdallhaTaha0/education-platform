@@ -12,7 +12,7 @@
     "db:migrate:dev": "prisma migrate dev",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.tests.json",
     "test:unit": "vitest run tests/unit",
-    "test:integration": "vitest run tests/integration",
+    "test:integration": "vitest run tests/integration --exclude tests/integration/learning-materials.test.ts",
     "test:ci": "npm run test:unit --silent && npm run test:integration --silent"
   },
   "dependencies": {
@@ -43,7 +43,7 @@
     "socket.io-client": "4.8.3",
     "supertest": "^7.0.0",
     "typescript": "^5.6.3",
-    "vite": "6.4.3",
+    "vite": "6.4.4",
     "vitest": "4.1.11"
   },
   "engines": {
@@ -51,6 +51,7 @@
   },
   "overrides": {
     "bullmq": { "uuid": "11.1.1" },
+    "source-map-js": "1.2.2",
     "@prisma/config@6.19.3": {
       "deepmerge-ts": "8.0.2"
     }

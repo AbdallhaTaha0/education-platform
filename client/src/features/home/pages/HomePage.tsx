@@ -5,9 +5,7 @@ import { PublicCatalogSections } from '../../catalog/pages/PublicCatalogPage';
 import { useLang } from '../../../i18n';
 import { useAuth } from '../../../auth';
 import { gradeLabel } from '../../academic/model';
-import foundersHero640 from '../../../assets/fayq-founders-640.webp';
-import foundersHero1280 from '../../../assets/fayq-founders-1280.webp';
-import foundersHero1920 from '../../../assets/fayq-founders-1920.webp';
+import { homeHeroImage, homeHeroImageSrcSet, homeHeroImageSizes } from '../../../seo/metadata';
 import aliTahaBanner640 from '../../../assets/fayq-ali-taha-640.webp';
 import aliTahaBanner1280 from '../../../assets/fayq-ali-taha-1280.webp';
 import saifBanner640 from '../../../assets/fayq-saif-640.webp';
@@ -73,14 +71,13 @@ export function HomePage({ onSelectCourse }: { onSelectCourse: (slug: string) =>
         <Container>
           <figure className="mb-9 overflow-hidden rounded-2xl border border-border bg-surface shadow-lift">
             <img
-              src={foundersHero1280}
-              srcSet={`${foundersHero640} 640w, ${foundersHero1280} 1280w, ${foundersHero1920} 1920w`}
-              sizes="(max-width: 640px) calc(100vw - 32px), (max-width: 1024px) calc(100vw - 48px), 1200px"
+              src={homeHeroImage}
+              srcSet={homeHeroImageSrcSet}
+              sizes={homeHeroImageSizes}
               alt={c('علي وطه وسيف يتعاونون حول حاسوب في مشهد FAYQ تعليمي وتقني.', 'Ali, Taha and Saif collaborating around a laptop in a FAYQ learning and technology scene.')}
               className="block h-auto w-full"
               width={1280}
               height={512}
-              fetchPriority="high"
               decoding="async"
             />
           </figure>
