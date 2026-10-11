@@ -7,6 +7,7 @@ import { answers, content, publicContent, type Content } from './contracts.js';
 import { preparationHash, freezePrograms } from './program-contracts.js';
 import { ensureMutable } from '../catalog/courses/service.js';
 import { withCourseLock } from '../catalog/courseTx.js';
+import { codingIdeEnabled, requireAvailableAssessment, requireCodingIde, choiceOnly, gradeChoices } from './availability.js';
 
 const json = (v: unknown): Prisma.InputJsonValue => v as Prisma.InputJsonValue;
 export async function adminLesson(db: PrismaClient, lessonId: string) {
@@ -18,6 +19,8 @@ export async function assessmentAccess(db: PrismaClient, studentId: string, id: 
   const a = await db.assessment.findUnique({ where: { id }, include: { lesson: { include: { section: true } } } });
   if (!a || a.status !== 'PUBLISHED') throw new ApiError(404, 'NOT_FOUND', 'Assessment not found.');
   await resolveCourse({ prisma: db, studentId, courseRef: a.lesson.section.courseId, nowMs: now });
+  const published = await db.assessmentVersion.findUniqueOrThrow({ where: { assessmentId_version: { assessmentId: id, version: a.version } } });
+  requireAvailableAssessment(published.content);
   await assertLessonUnlocked(db, studentId, a.lesson.section.courseId, a.lessonId);
   return a;
 }
@@ -25,6 +28,7 @@ export async function saveAssessment(db: PrismaClient, actor: string, lessonId: 
   const owner = await adminLesson(db, lessonId);
   if (typeof body.required !== 'boolean' || !['ASSIGNMENT', 'QUIZ'].includes(body.kind as string)) throw new ApiError(400, 'VALIDATION_ERROR', 'Select kind and required/optional status.');
   const c = content(body.content);
+  requireAvailableAssessment(c);
   return withCourseLock(db, owner.section.courseId, async (tx) => {
     // Serialize with permanent course deletion's existing course lock.
     const lesson = await tx.lesson.findUniqueOrThrow({ where: { id: lessonId }, include: { section: true } });
@@ -58,6 +62,7 @@ export async function publishAssessment(db: PrismaClient, actor: string, id: str
       return tx.assessment.update({ where: { id }, data: { status: 'ARCHIVED' } });
     }
     let c = content(current.content); const version = current.version + 1;
+    requireAvailableAssessment(c);
     if (c.questions.some((q) => q.type === 'PROGRAM')) {
       const prepared = await tx.assessmentPreparation.findUnique({ where: { assessmentId_contentHash: { assessmentId: id, contentHash: preparationHash(c) } } });
       if (!prepared || prepared.state !== 'READY') throw new ApiError(409, 'TESTS_NOT_READY', 'Prepare and review tests for the current draft before publishing.');
@@ -83,6 +88,7 @@ export async function submitAssessment(db: PrismaClient, studentId: string, id: 
   if (!Number.isInteger(body.version) || (body.version as number) < 1) throw new ApiError(400, 'VALIDATION_ERROR', 'Assessment version is invalid.');
   const version = await db.assessmentVersion.findUnique({ where: { assessmentId_version: { assessmentId: id, version: body.version as number } } });
   if (!version) throw new ApiError(409, 'ASSESSMENT_CHANGED', 'Reload the current assessment before submitting.');
+  requireAvailableAssessment(version.content);
   const input = answers(body.answers, version.content as unknown as Content);
   const hash = createHash('sha256').update(JSON.stringify({ id, version: version.id, input })).digest('hex');
   return db.$transaction(async (tx) => {
@@ -93,10 +99,15 @@ export async function submitAssessment(db: PrismaClient, studentId: string, id: 
     await tx.$queryRaw`SELECT id FROM "Assessment" WHERE id=${id} FOR UPDATE`;
     const current = await tx.assessment.findUnique({ where: { id } });
     if (!current || current.status !== 'PUBLISHED' || current.version !== version.version) throw new ApiError(409, 'ASSESSMENT_CHANGED', 'Reload the current assessment before submitting.');
-    const pending = await tx.assessmentSubmission.findFirst({ where: { studentId, state: { in: ['PENDING', 'RUNNING'] } }, select: { id: true } });
-    if (pending) throw new ApiError(429, 'CHECKING_IN_PROGRESS', 'Wait for the current check before submitting again.');
+    const inline = !codingIdeEnabled() && choiceOnly(version.content);
+    if (!inline) {
+      const pending = await tx.assessmentSubmission.findFirst({ where: { studentId, state: { in: ['PENDING', 'RUNNING'] } }, select: { id: true } });
+      if (pending) throw new ApiError(429, 'CHECKING_IN_PROGRESS', 'Wait for the current check before submitting again.');
+    }
     // Global bounded durable admission is maintained by database triggers.
-    const submission = await tx.assessmentSubmission.create({ data: { studentId, assessmentId: id, versionId: version.id, idempotencyKey: body.idempotencyKey as string, inputHash: hash, answers: json(input) } });
+    const result = inline ? gradeChoices(version.content as unknown as Content, input) : null;
+    const submission = await tx.assessmentSubmission.create({ data: { studentId, assessmentId: id, versionId: version.id, idempotencyKey: body.idempotencyKey as string, inputHash: hash, answers: json(input), ...(result ? { state: result.correct ? 'CORRECT' : 'INCORRECT', result: json(result) } : {}) } });
+    if (result?.correct) await tx.assessmentPass.upsert({ where: { studentId_assessmentId: { studentId, assessmentId: id } }, create: { studentId, assessmentId: id, passedVersion: version.version }, update: {} });
     return { id: submission.id, state: submission.state, duplicate: false };
   }).catch((error: unknown) => {
     if (String((error as Error)?.message).includes('M9_QUEUE_BUSY')) throw new ApiError(503, 'CHECKING_BUSY', 'Checking is busy. Your answer has not been accepted; please retry.');
@@ -104,11 +115,28 @@ export async function submitAssessment(db: PrismaClient, studentId: string, id: 
   });
 }
 export async function saveDraft(db: PrismaClient, studentId: string, context: string, data: unknown, revision: unknown) {
+  if (context.startsWith('practice')) requireCodingIde();
   if (!Number.isInteger(revision) || (revision as number) < 0 || Buffer.byteLength(JSON.stringify(data)) > 200_000) throw new ApiError(400, 'VALIDATION_ERROR', 'Draft is invalid.');
   return db.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT id FROM "User" WHERE id=${studentId} FOR UPDATE`;
     const old = await tx.assessmentDraft.findUnique({ where: { studentId_context: { studentId, context } } });
     if ((old?.revision ?? 0) !== revision) throw new ApiError(409, 'DRAFT_CONFLICT', 'A newer draft exists. Reload before saving.');
     return old ? tx.assessmentDraft.update({ where: { id: old.id }, data: { content: json(data), revision: { increment: 1 } } }) : tx.assessmentDraft.create({ data: { studentId, context, assessmentId: ['practice', 'practice:web', 'practice:python'].includes(context) ? null : context, content: json(data) } });
+  });
+}
+
+/** Finish already-accepted choice quizzes after stopping the legacy worker.
+ * Coding work remains suspended. The old worker's lease CAS loses safely if
+ * this transaction wins, and the admission trigger releases its queue budget.
+ */
+export async function completePendingChoice(db: PrismaClient, id: string): Promise<void> {
+  if (codingIdeEnabled()) return;
+  await db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "AssessmentSubmission" WHERE id=${id} FOR UPDATE`;
+    const s = await tx.assessmentSubmission.findUnique({ where: { id }, include: { version: true } });
+    if (!s || !['PENDING', 'RUNNING'].includes(s.state) || !choiceOnly(s.version.content)) return;
+    const result = gradeChoices(s.version.content, s.answers as unknown as import('./contracts.js').Answer[]);
+    await tx.assessmentSubmission.update({ where: { id }, data: { state: result.correct ? 'CORRECT' : 'INCORRECT', result: json(result), leasedUntil: null, leaseToken: null } });
+    if (result.correct) await tx.assessmentPass.upsert({ where: { studentId_assessmentId: { studentId: s.studentId, assessmentId: s.assessmentId } }, create: { studentId: s.studentId, assessmentId: s.assessmentId, passedVersion: s.version.version }, update: {} });
   });
 }

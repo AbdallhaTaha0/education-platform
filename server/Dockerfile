@@ -87,3 +87,6 @@ ENV NODE_ENV=test
 COPY --chown=app:app --from=build /srv/server /srv/server
 USER app
 CMD ["npm", "run", "test:ci", "--silent"]
+
+# Providers that build without --target must serve traffic, never run tests.
+FROM runtime AS deploy

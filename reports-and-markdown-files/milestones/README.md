@@ -13,3 +13,4 @@
 - [Milestone 8](m8/README.md)
 - [Milestone 9](m9/README.md)
 - [Milestone 10 — parent reports and student tracking](m10/README.md)
+- [Website journey verification milestone](website-journeys/README.md)

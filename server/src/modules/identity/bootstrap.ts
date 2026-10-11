@@ -12,6 +12,37 @@ import { ApiError } from './errors.js';
 /** Advisory lock key serializing first-admin creation inside one database. */
 const FIRST_ADMIN_LOCK = 424281;
 
+/** Explicit 2026-10-11 owner exception: exactly these three initial release admins. */
+export const RELEASE_ADMIN_NAMES = ['AliIbrahim', 'SeifWaleed', 'AbdallahTaha'] as const;
+
+export async function bootstrapReleaseAdmins(
+  inputs: Array<{ email: unknown; phone: unknown; password: unknown }>,
+  deps: BootstrapDeps,
+): Promise<void> {
+  if (inputs.length !== RELEASE_ADMIN_NAMES.length) throw new Error('Exactly three identities required');
+  const normalized = inputs.map((input, index) => ({
+    displayName: RELEASE_ADMIN_NAMES[index],
+    email: normalizeEmail(input.email),
+    phone: normalizePhone(input.phone),
+    password: validatePassword(input.password),
+  }));
+  if (new Set(normalized.map((input) => input.email)).size !== 3 ||
+      new Set(normalized.map((input) => input.phone)).size !== 3) {
+    throw new Error('Distinct identities required');
+  }
+  const records: Array<{ displayName: string; email: string; phone: string; passwordHash: string; role: 'ADMIN' }> = [];
+  for (const input of normalized) {
+    const { password, ...identity } = input;
+    records.push({ ...identity, passwordHash: await hashPassword(password, deps.argon2), role: 'ADMIN' as const });
+  }
+  await deps.prisma.$transaction(async (tx) => {
+    // Share the first-admin lock: concurrent ordinary/batch bootstrap cannot both win.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${FIRST_ADMIN_LOCK})`;
+    if (await tx.user.count() !== 0) throw new Error('Fresh release database required');
+    for (const record of records) await tx.user.create({ data: record });
+  });
+}
+
 export interface BootstrapInput {
   displayName: unknown;
   email: unknown;

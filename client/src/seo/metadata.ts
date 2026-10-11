@@ -4,7 +4,35 @@ import type { PublicPageData } from './publicData';
 import { routeDocumentTitle } from '../pageTitles';
 import { ar } from '../locales/ar';
 import { en } from '../locales/en';
-import hero from '../assets/fayq-learning-1280.webp';
+import hero640 from '../assets/fayq-founders-640.webp';
+import hero from '../assets/fayq-founders-1280.webp';
+import hero1920 from '../assets/fayq-founders-1920.webp';
+
+export const homeHeroImage = hero;
+export const homeHeroImageSrcSet = `${hero640} 640w, ${hero} 1280w, ${hero1920} 1920w`;
+export const homeHeroImageSizes = '(max-width: 640px) calc(100vw - 32px), (max-width: 1024px) calc(100vw - 48px), 1200px';
+
+function publicImage(origin: string, coverUrl?: string | null, courseId?: string): string {
+  if (coverUrl) {
+    try {
+      const cover = new URL(coverUrl, origin);
+      const version = cover.searchParams.get('v');
+      const coursePath = /^\/catalog\/courses\/([0-9a-f-]{36})\/cover$/i.exec(cover.pathname);
+      if (
+        cover.origin === origin &&
+        coursePath?.[1]?.toLowerCase() === courseId?.toLowerCase() &&
+        cover.searchParams.size === 1 &&
+        version &&
+        /^[0-9a-f-]{36}$/i.test(version)
+      ) {
+        return new URL(`/api${cover.pathname}?v=${encodeURIComponent(version)}`, origin).href;
+      }
+    } catch {
+      // Fall back to the public brand image if a course cover URL is malformed.
+    }
+  }
+  return new URL(hero, origin).href;
+}
 
 const copy = {
   ar: {
@@ -89,7 +117,13 @@ export function pageMetadata(lang: Lang, route: Route, data: PublicPageData | nu
         url: data!.origin + '/' + language + path.slice(3),
       }))
     : [];
-  const image = data?.origin ? new URL(hero, data.origin).href : undefined;
+  const image = data?.origin
+    ? publicImage(
+        data.origin,
+        route === 'course-detail' ? course?.coverUrl : undefined,
+        route === 'course-detail' ? course?.id : undefined,
+      )
+    : undefined;
   const schema: Record<string, unknown>[] = [];
   if (canonical && publicPage && valid) {
     schema.push({
@@ -151,6 +185,9 @@ export function pageMetadata(lang: Lang, route: Route, data: PublicPageData | nu
     canonical,
     alternatives,
     image,
+    preloadImage: route === 'home'
+      ? { href: hero, srcSet: homeHeroImageSrcSet, sizes: homeHeroImageSizes }
+      : undefined,
     schema,
     lang,
   };

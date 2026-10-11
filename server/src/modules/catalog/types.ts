@@ -27,6 +27,7 @@ export interface PublicPlan {
 }
 
 export interface PublicCourse {
+  coverUrl?: string | null;
   id: string;
   slug: string;
   titleAr: string;

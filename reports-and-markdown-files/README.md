@@ -1,5 +1,26 @@
 # Education platform documentation
 
+- [Production candidate and guided cloud release](deployment/production-candidate-20261011.md): fresh database, private admin setup, Docker evidence and launch gates.
+- [Commercial DRM provider options](deployment/commercial-drm-options-20261011.md): pricing, evaluation restrictions and remaining integration.
+
+- [UX, upload and journey delivery](delivery-and-reviews/ux-upload-and-journey-delivery-20261009.md): owner-requested platform and bounded DRM commit/push, verification and continuation scope.
+
+- [Website journey verification milestone](milestones/website-journeys/README.md): owner-assigned full student/admin desktop/mobile workflow audit and repair ledger.
+
+- [Local silent-video transcoding repair](drm/silent-video-transcode-repair-20261009.md): owner-approved worker repair, native audio/video regressions and real encrypted playback verification.
+
+## Deployment preparation — 2026-10-07
+
+- [Railway migration from GitHub](deployment/railway-github-migration-20261007.md): owner-approved trial-compatible build path, dedicated migration image and isolated PostgreSQL verification.
+
+- [Current release: IDE disabled, choice quizzes retained](deployment/ide-disabled-release-20261007.md): backend-enforced suspension, preserved data, worker-free choice marking and local Docker verification.
+
+- [Railway sandbox compatibility test](deployment/railway-sandbox-compatibility-20261007.md): JavaScript/Python/Docker passed; sandbox destroyed; production grading security remains unqualified.
+- [Actual grading-image probe](deployment/railway-grading-image-probe-20261007.md): successful retry; 18 browser groups and 18 Python checks passed; sandbox destroyed; hardened production runtime remains a gate.
+- [Railway runsc prerequisite](deployment/railway-runsc-probe-20261007.md): installation succeeds; restricted workload fails during runtime startup; all test sandboxes destroyed; production safeguard retained.
+- [Railway/Vercel setup and release runbook](deployment/railway-vercel-20261007.md).
+- [Local deployment artifact verification](deployment/railway-vercel-preparation-report-20261007.md): prepared on `dev`; cloud release and external qualification gates remain.
+
 ## Latest delivery — 2026-10-06
 
 - [Combined delivery and merged Docker verification](delivery-and-reviews/combined-caption-delivery-20261006.md).
@@ -50,6 +71,8 @@ The owner authorized direct repairs and completion of Agents 2 and 3 on
 
 ## Recent audit reports
 
+- [Current security audit follow-up](security/security-audit-followup-20261011.md) — [132-route delta inventory](security/security-attack-surface-followup-20261011.md) and [70-phase ledger](security/security-audit-phases-followup-20261011.md).
+- [Current technical SEO/performance follow-up](seo/seo-audit-followup-20261011.md) — [70-phase ledger](seo/seo-phase-ledger-followup-20261011.md); synthetic mobile LCP remains 2.9 s.
 - [SEO audit and launch checklist](seo/seo-audit-20261006.md) — [all 70 phases](seo/seo-phase-ledger-20261006.md) and [issue register](seo/seo-issue-register-20261006.md).
 - [Security delivery](security/security-delivery-20261006.md) — [security audit](security/security-audit-summary-20261005.md).
 - [Bounded DRM security repair](drm/drm-security-repair-20261006.md).

@@ -33,6 +33,8 @@ import {
 } from '../../src/modules/catalog/lifecycle/service.js';
 import { ensureRedis } from '../../src/infra/redis.js';
 
+const DAY = 86_400_000;
+
 describe('M6 committed producers, recoverable work and authorized multi-replica sockets', () => {
   let world: IdentityWorld,
     replica: PrismaClient,
@@ -499,6 +501,21 @@ describe('M6 committed producers, recoverable work and authorized multi-replica 
         where: { courseId: c.id, type: 'SUBSCRIPTION_EXPIRED' },
       }),
     ).toBe(2);
+  });
+  it('does not let a future indefinite grant hide an already expired started grant', async () => {
+    const c = await course();
+    await subscription(c.id, now - 1);
+    await world.prisma.subscription.create({
+      data: {
+        studentId: a.user.id,
+        courseId: c.id,
+        purchaseId: randomUUID(),
+        startsAt: new Date(now + DAY),
+        expiresAt: null,
+      },
+    });
+
+    expect(await recordExpiry(world.prisma, a.user.id, c.id, clock)).toBe(true);
   });
   it('rereads expiry after waiting for the renewal wallet lock', async () => {
     const c = await course();

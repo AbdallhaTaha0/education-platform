@@ -7,6 +7,7 @@ Date: 2026-10-01. Owner clarification replaces the earlier generic programming-c
 - Initial offerings serve first and second secondary grades (أولى ثانوي / ثانية ثانوي). This is catalog targeting, not an age/grade registration restriction.
 - Each grade contains monthly explanation courses: each teaching month is its own course, rather than a lesson section within one generic course.
 - A three-month package contains **three specifically identified monthly courses**, confirmed by the owner. It is not a rolling grade-wide three-month subscription, nor automatically a 90-day access plan.
+- Owner clarification, 2026-10-11: all three selected courses in a package must belong to the same academic grade; admin selection and backend validation enforce this.
 - The owner confirmed **one common end date selected by ADMIN for the whole package**. Access granted by that package to all three courses ends at that date; do not copy each course's standalone expiry rule into the package purchase.
 - Revision courses are distinct offerings alongside monthly explanation courses. They remain recorded courses under the existing external DRM boundary.
 - Both first and second secondary have term 1 and term 2, explicitly confirmed by the owner.

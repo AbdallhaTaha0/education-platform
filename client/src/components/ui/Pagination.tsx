@@ -20,8 +20,8 @@ export function Pagination({ page, pageSize, total, onPage, onSize, id, disabled
 }
 
 /** For already-loaded collections; hidden pages are not mounted. */
-export function PaginatedCollection({ children, as: Wrapper = 'div', className = '', id, resetKey = '', disabled = false }: {
-  children: ReactNode; as?: 'div' | 'ul'; className?: string; id: string; resetKey?: string; disabled?: boolean;
+export function PaginatedCollection({ children, as: Wrapper = 'div', className = '', id, resetKey = '', disabled = false, revealIndex }: {
+  children: ReactNode; as?: 'div' | 'ul'; className?: string; id: string; resetKey?: string; disabled?: boolean; revealIndex?: number;
 }): JSX.Element {
   const items = Children.toArray(children); const confirmLeave = useConfirmNavigation();
   const publicData = usePublicData();
@@ -32,6 +32,10 @@ export function PaginatedCollection({ children, as: Wrapper = 'div', className =
     const next = current.key !== resetKey ? 1 : Math.min(current.page, Math.max(1, Math.ceil(items.length / current.size)));
     return current.key === resetKey && current.page === next ? current : { ...current, key: resetKey, page: next };
   }); }, [resetKey, items.length]);
+  useEffect(() => {
+    if (revealIndex === undefined || revealIndex < 0) return;
+    setState(current => ({ ...current, key: resetKey, page: Math.floor(revealIndex / current.size) + 1 }));
+  }, [revealIndex, resetKey]);
   const page = Math.min(state.key === resetKey ? state.page : 1, Math.max(1, Math.ceil(items.length / state.size)));
   return <><Wrapper className={className} data-testid={`paged-list-${id}`}>
     {items.slice((page - 1) * state.size, page * state.size)}

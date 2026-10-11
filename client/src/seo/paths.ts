@@ -11,3 +11,12 @@ export function publicLocation(path: string): { lang: Lang; hash: string } | nul
   if (!match) return null;
   return { lang: match[1] as Lang, hash: '#' + (match[2] || '/') };
 }
+
+export function alternatePublicHref(path: string, lang: Lang, hash = ''): string | undefined {
+  const next = lang === 'ar' ? 'en' : 'ar';
+  if (hash.startsWith('#/')) {
+    const href = publicHref(hash, next);
+    return href === hash ? undefined : href;
+  }
+  return '/' + next + path.slice(3);
+}

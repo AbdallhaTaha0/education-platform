@@ -27,6 +27,11 @@ COPY client/index.html client/vite.config.ts client/vitest.config.ts client/tsco
 COPY client/src ./src
 CMD ["npm", "test"]
 
+# Inspectable Vercel Build Output artifact, independently testable in Docker.
+FROM build AS vercel
+ARG RAILWAY_GATEWAY_ORIGIN
+RUN RAILWAY_GATEWAY_ORIGIN="$RAILWAY_GATEWAY_ORIGIN" node scripts/vercel-output.mjs
+
 FROM ${NGINX_IMAGE} AS runtime
 COPY --from=build /srv/client/dist /usr/share/nginx/html
 COPY --from=build /srv/client/nginx.conf /etc/nginx/conf.d/default.conf

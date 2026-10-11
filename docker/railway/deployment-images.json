@@ -1,0 +1,7 @@
+{
+  "platform-runtime": { "context": ".", "dockerfile": "server/Dockerfile", "target": "deploy" },
+  "platform-migrate": { "context": ".", "dockerfile": "server/Dockerfile", "target": "migrate" },
+  "platform-gateway": { "context": ".", "dockerfile": "docker/railway/gateway.Dockerfile" },
+  "drm-api": { "context": "education-drm-service", "dockerfile": "apps/api/Dockerfile", "target": "deploy" },
+  "drm-worker": { "context": "education-drm-service", "dockerfile": "apps/worker/Dockerfile", "target": "runtime" }
+}

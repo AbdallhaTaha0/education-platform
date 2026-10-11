@@ -2,6 +2,7 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import { createLearningWorld, createPublishedCourse, grantSubscription, studentGet, adminGet, adminDelete, type LearningWorld } from './learning-helpers.js';
+import { adminPost } from './catalog-helpers.js';
 import { TEST_ORIGIN, uniqueIp, registerStudent } from './identity-helpers.js';
 import { StorageClient } from '../../src/infra/storage.js';
 import { reconcileMaterialObjects, uploadResource, type MaterialsDeps } from '../../src/modules/learning/materials/service.js';
@@ -122,11 +123,23 @@ describe('real material contract', () => {
   });
   it('refuses locked lessons for list and resource downloads', async () => {
     const locked = course.lessonIds[1];
-    const assessment = await world.prisma.assessment.create({ data: { lessonId: course.lessonId, kind: 'QUIZ', status: 'PUBLISHED', required: true, content: {} } });
+    const assessment = await adminPost(world.app, `/admin/assessments/lessons/${course.lessonId}`, world.adminJar, {
+      kind: 'QUIZ',
+      required: true,
+      content: {
+        titleAr: 'اختبار', titleEn: 'Quiz', instructionsAr: 'اختر', instructionsEn: 'Choose',
+        questions: [{ id: 'q1', type: 'CHOICE', titleAr: 'سؤال', titleEn: 'Question', choices: [{ id: 'a', textAr: 'الأول', textEn: 'First' }, { id: 'b', textAr: 'الثاني', textEn: 'Second' }], correctChoiceId: 'b' }],
+      },
+    });
+    expect(assessment.status).toBe(201);
+    expect((await adminPost(world.app, `/admin/assessments/${assessment.body.data.id}/publish`, world.adminJar)).status).toBe(200);
     const resource = await uploadResource(deps, locked, { labelAr: 'ع', labelEn: 'En', fileName: 'locked.txt', mimeType: 'text/plain', content: Buffer.from('locked') }, world.adminUser.id);
     try {
-      for (const path of [`/learning/lessons/${locked}/materials`, `/learning/resources/${resource.id}/download`]) expect((await studentGet(world.app, path, world.studentJar)).body.error.code).toBe('ASSESSMENTS_REQUIRED');
-    } finally { await world.prisma.assessment.delete({ where: { id: assessment.id } }); }
+      for (const path of [`/learning/lessons/${locked}/materials`, `/learning/resources/${resource.id}/download`]) {
+        const response = await studentGet(world.app, path, world.studentJar);
+        expect(response.body.error?.code, `${path} returned ${response.status}: ${JSON.stringify(response.body)}`).toBe('ASSESSMENTS_REQUIRED');
+      }
+    } finally { await world.prisma.assessment.delete({ where: { id: assessment.body.data.id } }); }
   });
   it('keeps archive objects and existing progress, subscriptions and wallet unchanged', async () => {
     const before = await world.prisma.user.findUniqueOrThrow({ where: { id: world.studentId } });

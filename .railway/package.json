@@ -1,0 +1,8 @@
+{
+  "name": "fayq-deployment-config",
+  "private": true,
+  "type": "module",
+  "scripts": { "check": "tsc --noEmit" },
+  "dependencies": { "railway": "3.13.0" },
+  "devDependencies": { "typescript": "5.6.3", "@types/node": "22.10.2" }
+}

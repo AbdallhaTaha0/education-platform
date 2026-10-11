@@ -1,15 +1,17 @@
 import { Footer } from './components/layout/Footer';
+import { FeaturesProvider, useCodingIde } from './features';
 import { usePublicData } from './seo/publicData';
 import { updateDocumentMetadata } from './seo/metadata';
 import { publicHref } from './seo/paths';
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from './auth';
 import { Container } from './components/ui/Card';
-import { ErrorFeedbackProvider } from './components/ui/ErrorFeedback';
+import { FeedbackProvider } from './components/ui/ErrorFeedback';
 import { UnsavedChangesProvider, useConfirmNavigation } from './components/ui/UnsavedChanges';
 import { useLang } from './i18n';
 import { ThemeProvider } from './theme';
 import { Header } from './components/layout/Header';
+import { PageErrorBoundary } from './components/ui/PageErrorBoundary';
 import {
   adminCourseIdFromHash,
   learnSlugFromHash,
@@ -22,6 +24,7 @@ import {
   type Route,
 } from './routes';
 import { PackagePage } from './features/academic/PackagePage';
+import { purchaseAfterLogin } from './features/purchase/loginRedirect';
 const AdminPackagesPage = lazy(() => import('./features/academic/AdminPackagesPage').then(module => ({ default: module.AdminPackagesPage })));
 const AdminSummaryPage = lazy(() => import('./features/academic/AdminSummaryPage').then(module => ({ default: module.AdminSummaryPage })));
 import { AdminScreen, LoginScreen, RegisterScreen } from './screens';
@@ -55,6 +58,7 @@ const AssessmentPage = lazy(() => import('./features/assessments/AssessmentPage'
 const AdminQuotaPage = lazy(() => import('./features/assessments/AdminQuotaPage').then((m) => ({ default: m.AdminQuotaPage })));
 
 function Shell(): JSX.Element {
+  const codingEnabled = useCodingIde();
   const confirmNavigation = useConfirmNavigation();
   const { lang, t, setLang } = useLang();
   const { user } = useAuth();
@@ -111,6 +115,9 @@ function Shell(): JSX.Element {
         {t.skipToContent}
       </a>
       <Header onSwitch={setLang} route={route} />
+      <PageErrorBoundary key={`${route}:${lang}`} lang={lang} onReload={() => {
+        if (confirmNavigation()) window.location.reload();
+      }}>
       <Suspense fallback={<main id="main"><Container><Loading text={t.loading} /></Container></main>}>
       {route==='admin-students'?<AccountWorkspace route={route}><StudentDirectoryPage/></AccountWorkspace>:null}
       {route==='support'?<SupportPage/>:null}
@@ -144,7 +151,7 @@ function Shell(): JSX.Element {
       {route === 'login' ? (
         <main id="main">
           <section className="py-8">
-            <LoginScreen onDone={() => go('#/account')} />
+            <LoginScreen onDone={() => go(purchaseAfterLogin(window.location.hash))} />
           </section>
         </main>
       ) : null}
@@ -184,14 +191,15 @@ function Shell(): JSX.Element {
         </AccountWorkspace>
       ) : null}
       {route === 'notifications' ? <AccountWorkspace route={route}><NotificationsPage /></AccountWorkspace> : null}
-      {route === 'admin-practice' ? (
+      {route === 'admin-practice' && codingEnabled ? (
         <AccountWorkspace route={route}>
           <Suspense fallback={<main id="main"><Container><Loading text={t.loading} /></Container></main>}>
             <AdminQuotaPage key={user?.id ?? 'anonymous'} />
           </Suspense>
         </AccountWorkspace>
       ) : null}
-      {['practice', 'assessment'].includes(route) ? <Suspense fallback={<main id="main"><Container><Loading text={t.loading} /></Container></main>}>
+      {!codingEnabled && ['practice', 'admin-practice'].includes(route) ? <main id="main"><Container><p className="py-10" role="status">{lang === 'ar' ? 'المحرر متوقف مؤقتًا في هذا الإصدار. أعمالك محفوظة؛ الاختبارات متعددة الخيارات متاحة داخل الدروس.' : 'The IDE is temporarily disabled in this version. Your work is preserved; multiple-choice quizzes remain available in lessons.'}</p></Container></main> : null}
+      {(route === 'assessment' || (route === 'practice' && codingEnabled)) ? <Suspense fallback={<main id="main"><Container><Loading text={t.loading} /></Container></main>}>
         {route === 'practice' ? <PracticePage key={user?.id ?? 'anonymous'} /> : <AssessmentPage key={`${user?.id ?? 'anonymous'}:${hash}`} id={decodeURIComponent(hash.slice('#/assessment/'.length))} />}
       </Suspense> : null}
       {route === 'learn' ? (
@@ -208,6 +216,7 @@ function Shell(): JSX.Element {
         </Suspense>
       ) : null}
       </Suspense>
+      </PageErrorBoundary>
       <Footer />
     </div>
   );
@@ -219,7 +228,7 @@ export default function App(): JSX.Element {
     <ThemeProvider initialTheme={publicData ? "dark" : undefined}>
       <AuthProvider initialLang={publicData?.lang}>
         <NotificationsProvider>
-          <ErrorFeedbackProvider><UnsavedChangesProvider><Shell /></UnsavedChangesProvider></ErrorFeedbackProvider>
+          <FeaturesProvider><FeedbackProvider><UnsavedChangesProvider><Shell /></UnsavedChangesProvider></FeedbackProvider></FeaturesProvider>
         </NotificationsProvider>
       </AuthProvider>
     </ThemeProvider>

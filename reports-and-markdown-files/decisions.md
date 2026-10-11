@@ -1,5 +1,31 @@
 # Decision register
 
+## Guided production preparation — 2026-10-11
+
+The owner authorized preparation, merging delivered changes into `deployment`,
+and guided Railway backend / Vercel frontend deployment using generated URLs.
+Use a fresh production database; bootstrap exactly AliIbrahim, SeifWaleed and
+AbdallahTaha through private one-time setup with individually supplied credentials.
+This explicitly supersedes the historical single-first-admin restriction for
+this release. Do not commit supplied contact details or passwords. Preserve all
+local owner data. Reuse the owner's local R2 credentials privately on Railway.
+Student launch stays gated while commercial DRM is completed; R2 is storage,
+not license issuance. No provider account exists; research is authorized, paid
+subscription/contract selection is pending. See
+[candidate evidence and gates](deployment/production-candidate-20261011.md) and
+[provider research](deployment/commercial-drm-options-20261011.md).
+
+## Temporary IDE suspension — 2026-10-07
+
+Owner requested disabling the IDE across the current version and explicitly
+confirmed keeping multiple-choice quizzes. Disable standalone practice and all
+coding/mixed assessments, admin IDE controls and execution workers; preserve
+existing code, drafts, submissions, quota settings and passes. Exempt disabled
+coding requirements from lesson progression while continuing to require choice
+quizzes. Mark choices privately inside the modular backend without an execution
+host. No DRM change, schema deletion, deployment or new capacity acceptance.
+[Implementation, verification and reactivation](deployment/ide-disabled-release-20261007.md).
+
 ## Bounded DRM security repair — 2026-10-06
 
 Owner instructed "fix the drm" after the security audit: repair F01 key-bearing worker errors and F03 webhook destination validation/pinned transport. Owner separately approved the TypeScript ESLint v8 tooling upgrade; qualified8.71.0 removes the vulnerable development chain without relaxing package-age policy. [105 passing Docker tests and outcome](drm/drm-security-repair-20261006.md). No architecture/persistence change, production release, historical-data deletion or commit/push is authorized.
@@ -28,6 +54,8 @@ Owner selected Railway; custom domain is undecided. Owner delegated recovery cho
 ## D27 — academic courses, three-member packages and optional expiry (2026-10-01, CONFIRMED)
 
 Initial coverage is first and second secondary, each with terms 1 and 2, monthly explanation courses and revision courses. Every package contains three specifically identified monthly courses with one common ADMIN-selected Cairo deadline, independent of standalone access. Unpublished package members are permitted with a clear warning and no viewing before publication. Active overlapping ownership warns without blocking package purchase or shortening earlier access; no overlap discounts or refunds are introduced.
+
+Owner clarification, 2026-10-11: all three monthly courses in a package must belong to the same academic grade. The admin interface and backend enforce this when composing and purchasing a package.
 
 ADMIN chooses standalone access explicitly: DURATION, TERM_END, YEAR_END or UNTIL_REMOVAL. The last mode has no expiry until permanent ADMIN removal, as the owner clarified in Arabic on 2026-10-01. Omitted duration alone never implies indefinite access. ADMIN supplies real term/year deadlines; none are inferred. Cairo date/time and price/access terms are snapshotted at purchase; later offer changes affect new purchases only. Fixed-deadline repurchase is allowed only when it adds access; existing indefinite ownership prevents redundant standalone payment. Three included months do not mean 90-day validity. Publication/archive/removal protection, cookie authentication, manual recharge and external API-only DRM remain unchanged.
 

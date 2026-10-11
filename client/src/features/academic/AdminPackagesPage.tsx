@@ -114,7 +114,26 @@ export function AdminPackagesPage(): JSX.Element {
   }
   const eligible = courses.filter(
     (c) =>
-      c.courseKind === 'MONTHLY_EXPLANATION' && c.status !== 'ARCHIVED' && !c.deletionRequestedAt,
+      c.courseKind === 'MONTHLY_EXPLANATION' &&
+      c.status !== 'ARCHIVED' &&
+      !c.deletionRequestedAt &&
+      Boolean(c.grade && c.academicYear && c.teachingMonth),
+  );
+  const firstSelectedCourse = eligible.find((course) => course.id === form.courseIds[0]);
+  const packageCourseOptions = (index: number) => {
+    const compatible = index === 0 || !firstSelectedCourse
+      ? eligible
+      : eligible.filter((course) => course.grade === firstSelectedCourse.grade);
+    const options = compatible.filter(
+      (course) => !form.courseIds.some((id, otherIndex) => otherIndex !== index && id === course.id),
+    );
+    const current = eligible.find((course) => course.id === form.courseIds[index]);
+    return current && !options.some((course) => course.id === current.id)
+      ? [current, ...options]
+      : options;
+  };
+  const hasThreeInSameGrade = eligible.some(
+    (course) => eligible.filter((candidate) => candidate.grade === course.grade).length >= 3,
   );
   return (
     <main id="main">
@@ -143,18 +162,22 @@ export function AdminPackagesPage(): JSX.Element {
                     ? ar
                       ? 'الباقة اتغيّرت. أعد التحميل ثم اخترها من جديد.'
                       : 'The package changed. Reload and select it again.'
-                    : ar
-                      ? 'تعذّر الحفظ أو التحميل. راجع البيانات وحاول مجددًا.'
-                      : 'Could not save or load. Check the fields and retry.'}
+                    : error === 'PACKAGE_GRADE_MISMATCH'
+                      ? ar
+                        ? 'اختَر ثلاثة كورسات من نفس الصف الدراسي.'
+                        : 'Choose three courses from the same grade.'
+                      : ar
+                        ? 'تعذّر الحفظ أو التحميل. راجع البيانات وحاول مجددًا.'
+                        : 'Could not save or load. Check the fields and retry.'}
                 </Notice>
               ) : null}
               <Button variant="secondary" onClick={() => void load()} disabled={busy}>
                 {error ? t.retryLabel : ar?'تحديث الباقات':'Refresh packages'}
               </Button>
               {loading ? <Loading text={t.loading} /> : null}
-              {!loading && eligible.length < 3 ? <Notice kind="info">{ar?'تحتاج الباقة إلى ٣ كورسات شرح شهرية مختلفة ومصنفة لنفس الصف والسنة والترم. صنّف الكورسات من إدارة الكورسات أولًا.':'A package needs three distinct monthly courses classified for the same grade, year and term. Set their academic classification in course management first.'} <a href="#/admin/catalog" className="underline">{ar?'إدارة الكورسات':'Manage courses'}</a></Notice>:null}
+              {!loading && !hasThreeInSameGrade ? <Notice kind="info">{ar?'تحتاج الباقة إلى ٣ كورسات شرح شهرية مختلفة ومصنفة لنفس الصف الدراسي. صنّف الكورسات من إدارة الكورسات أولًا.':'A package needs three distinct monthly courses classified for the same grade. Set their academic classification in course management first.'} <a href="#/admin/catalog" className="underline">{ar?'إدارة الكورسات':'Manage courses'}</a></Notice>:null}
               <FormActions>
-                <Button disabled={busy || eligible.length<3} disabledReason={busy ? undefined : { ar: "تحتاج الباقة إلى ٣ كورسات مؤهلة على الأقل. أضفها أولًا.", en: "A package needs at least 3 eligible courses. Add them first." }} onClick={()=>{setEditing(null);setForm(blank);setShowForm(true);}}>{ar?'إنشاء باقة':'Create package'}</Button>
+                <Button disabled={busy || !hasThreeInSameGrade} disabledReason={busy ? undefined : { ar: "تحتاج الباقة إلى ٣ كورسات مؤهلة من نفس الصف الدراسي.", en: "A package needs 3 eligible courses from the same grade." }} onClick={()=>{setEditing(null);setForm(blank);setShowForm(true);}}>{ar?'إنشاء باقة':'Create package'}</Button>
               </FormActions>
               {showForm ? <Card className="mt-6">
                 <h2 className="text-xl font-bold">
@@ -237,16 +260,20 @@ export function AdminPackagesPage(): JSX.Element {
                           onChange={(e) =>
                             setForm({
                               ...form,
-                              courseIds: form.courseIds.map((id, j) =>
-                                j === i ? e.target.value : id,
-                              ),
+                              courseIds: form.courseIds.map((id, j) => {
+                                if (j === i) return e.target.value;
+                                if (i !== 0 || j === 0 || !e.target.value) return id;
+                                const selected = eligible.find((course) => course.id === id);
+                                const nextFirst = eligible.find((course) => course.id === e.target.value);
+                                return selected?.grade === nextFirst?.grade ? id : '';
+                              }),
                             })
                           }
                         >
                           <option value="">
                             {ar ? 'اختَر كورسًا شهريًا' : 'Choose a monthly course'}
                           </option>
-                          {eligible.map((c) => (
+                          {packageCourseOptions(i).map((c) => (
                             <option key={c.id} value={c.id}>
                               {gradeLabel(c.grade, lang)} • {c.teachingMonth} •{' '}
                               {ar ? c.titleAr : c.titleEn}

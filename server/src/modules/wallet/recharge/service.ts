@@ -31,14 +31,25 @@ const SUBMIT_FIELDS = new Set([
 ]);
 const REVIEW_FIELDS = new Set(['decision', 'reason', 'receiptVerified']);
 
-function assertTransferDate(raw: unknown): Date {
+export function assertTransferDate(raw: unknown, nowMs = Date.now()): Date {
   if (typeof raw !== 'string') {
     throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid transferDate.', { field: 'transferDate' });
   }
   const date = new Date(raw);
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(raw);
+  let latestAllowed = nowMs;
+  if (dateOnly) {
+    // The form supplies a calendar day, not a future UTC timestamp.
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date(nowMs));
+    const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)!.value;
+    latestAllowed = Date.parse(`${part('year')}-${part('month')}-${part('day')}T00:00:00Z`);
+  }
   if (
     Number.isNaN(date.getTime()) ||
-    date.getTime() > Date.now() ||
+    (dateOnly && date.toISOString().slice(0, 10) !== raw) ||
+    date.getTime() > latestAllowed ||
     date.getTime() < new Date('2020-01-01').getTime()
   ) {
     throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid transferDate.', { field: 'transferDate' });

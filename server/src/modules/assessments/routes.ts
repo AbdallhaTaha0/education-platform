@@ -6,12 +6,13 @@ import { resolveCourse } from '../learning/access/service.js';
 import { assertLessonUnlocked } from './progression.js';
 import { key, object, files, invalid, answers, ideMode, type Content } from './contracts.js';
 import { requestPythonRun } from './python-runs.js';
-import { adminLesson, assessmentAccess, publishAssessment, saveAssessment, saveDraft, studentAssessment, submitAssessment } from './service.js';
+import { adminLesson, assessmentAccess, publishAssessment, saveAssessment, saveDraft, studentAssessment, submitAssessment, completePendingChoice } from './service.js';
 import { practiceEligible, readQuota, reserveRun, adjustQuota } from './quota.js';
 import { LearningError } from '../learning/errors.js';
 import { getLogger } from '../../logger.js';
 import { parseListPage, pageInfo } from '../../list-pagination.js';
 import { requestPreparation, preparationStatus } from './preparation.js';
+import { codingIdeEnabled, choiceOnly, requireCodingIde, requireAvailableAssessment } from './availability.js';
 
 const uuid = (v: unknown): string => { if (typeof v !== 'string' || !/^[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$/i.test(v)) return invalid(); return v; };
 const asyncRoute = (f: (req: Request, res: Response) => Promise<void>) => (req: Request, res: Response, next: NextFunction): void => {
@@ -26,6 +27,9 @@ const student = (req: Request): string => { if (req.auth?.role !== 'STUDENT') th
 export function assessmentRouters(db: PrismaClient, now: () => number = Date.now) {
   const r = Router(); const admin = Router();
   r.use(requireAuth); admin.use(requireAuth, requireAdmin);
+  const codingOnly = (_req: Request, _res: Response, next: NextFunction): void => { try { requireCodingIde(); next(); } catch (e) { next(e); } };
+  r.use(['/practice', '/python'], codingOnly);
+  admin.use(['/students', '/:id/prepare', '/:id/preparation'], codingOnly);
   const writes = [requireOrigin, requireSessionCsrf];
   r.get('/practice', asyncRoute(async (req, res) => {
     const id = student(req); await practiceEligible(db, id, now());
@@ -58,14 +62,24 @@ export function assessmentRouters(db: PrismaClient, now: () => number = Date.now
     const list = await db.assessment.findMany({ where: { lessonId, status: 'PUBLISHED' }, orderBy: { createdAt: 'asc' } });
     const passes = new Set((await db.assessmentPass.findMany({ where: { studentId, assessmentId: { in: list.map((a) => a.id) } } })).map((p) => p.assessmentId));
     const versions = await db.assessmentVersion.findMany({ where: { OR: list.map((a) => ({ assessmentId: a.id, version: a.version })) }, select: { assessmentId: true, content: true } });
-    res.json(ok({ assessments: list.map((a) => { const c = versions.find((v) => v.assessmentId === a.id)!.content as unknown as Content; return { id: a.id, ide: c.ide ?? 'javascript', kind: a.kind, required: a.required, titleAr: c.titleAr, titleEn: c.titleEn, passed: passes.has(a.id) }; }) }));
+    const published = new Map(versions.map((v) => [v.assessmentId, v.content as unknown as Content]));
+    res.json(ok({ assessments: list.filter((a) => published.has(a.id) && (codingIdeEnabled() || choiceOnly(published.get(a.id)))).map((a) => { const c = published.get(a.id)!; return { id: a.id, ide: c.ide ?? 'javascript', kind: a.kind, required: a.required, titleAr: c.titleAr, titleEn: c.titleEn, passed: passes.has(a.id) }; }) }));
   }));
   r.get('/submissions/:id', asyncRoute(async (req, res) => {
     const found = await db.assessmentSubmission.findFirst({ where: { id: uuid(req.params.id), studentId: student(req) }, select: { id: true, assessmentId: true, state: true, result: true, createdAt: true, answers: true } });
-    if (!found) throw new ApiError(404, 'NOT_FOUND', 'Submission not found.'); res.json(ok(found));
+    if (!found) throw new ApiError(404, 'NOT_FOUND', 'Submission not found.');
+    if (!codingIdeEnabled()) {
+      const submission = await db.assessmentSubmission.findUniqueOrThrow({ where: { id: found.id }, include: { version: true } });
+      requireAvailableAssessment(submission.version.content);
+    }
+    if (!codingIdeEnabled() && ['PENDING', 'RUNNING'].includes(found.state)) {
+      await completePendingChoice(db, found.id);
+      res.json(ok(await db.assessmentSubmission.findUniqueOrThrow({ where: { id: found.id }, select: { id: true, assessmentId: true, state: true, result: true, createdAt: true, answers: true } })));
+    } else res.json(ok(found));
   }));
   r.get('/:id/history', asyncRoute(async (req, res) => {
     const where = { studentId: student(req), assessmentId: uuid(req.params.id) }, input = parseListPage(req.query);
+    if (!codingIdeEnabled()) await assessmentAccess(db, where.studentId, where.assessmentId, now());
     const pagination = input ? pageInfo(input, await db.assessmentSubmission.count({ where })) : undefined;
     const list = await db.assessmentSubmission.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: pagination?.pageSize ?? 30, skip: pagination ? (pagination.page - 1) * pagination.pageSize : 0, select: { id: true, state: true, result: true, createdAt: true } });
     res.set('Cache-Control', 'no-store').json(ok({ submissions: list, ...(pagination ? { pagination } : {}) }));

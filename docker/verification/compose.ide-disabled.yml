@@ -1,0 +1,9 @@
+# Disposable verification only: combine with compose.test.yml and -p fayq-ide-off-test.
+# No published ports, development volumes, execution containers or Docker socket.
+services:
+  migrate:
+    image: fayq-ide-disabled-migrate:20261007
+  test:
+    image: fayq-ide-disabled-test:20261007
+  client-test:
+    image: fayq-ide-disabled-client-test:20261007

@@ -1,0 +1,4 @@
+# Local silent-video transcoding repair; retained API, storage and data are unchanged.
+services:
+  worker:
+    image: fayq-drm-worker:transcode-20261009

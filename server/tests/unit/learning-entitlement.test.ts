@@ -34,6 +34,32 @@ describe('entitlement boundary', () => {
     expect(result.allowed).toBe(false);
   });
 
+  it('does not grant a finite subscription before its start time', () => {
+    const future = {
+      courseId: 'course-1',
+      startsAt: new Date(T0 + 1),
+      expiresAt: new Date(T0 + 10 * day),
+    };
+    expect(evaluateEntitlement([future], 'course-1', T0)).toEqual({
+      allowed: false,
+      reason: 'SUBSCRIPTION_REQUIRED',
+      expiresAt: null,
+    });
+  });
+
+  it('does not let a future finite row extend already expired access', () => {
+    const future = {
+      courseId: 'course-1',
+      startsAt: new Date(T0 + 1),
+      expiresAt: new Date(T0 + 10 * day),
+    };
+    expect(evaluateEntitlement([sub(T0 - 1), future], 'course-1', T0)).toEqual({
+      allowed: false,
+      reason: 'SUBSCRIPTION_EXPIRED',
+      expiresAt: new Date(T0 - 1),
+    });
+  });
+
   it('requires a subscription for the requested course only', () => {
     const rows = [
       { courseId: 'other-course', startsAt: new Date(T0 - day), expiresAt: new Date(T0 + day) },
@@ -83,6 +109,23 @@ describe('entitlement boundary', () => {
       });
     }
     expect(evaluateEntitlement([indefinite], 'other-course', T0).allowed).toBe(false);
+  });
+
+  it('does not grant indefinite access before its start time', () => {
+    const future = { courseId: 'course-1', startsAt: new Date(T0 + 1), expiresAt: null };
+    expect(evaluateEntitlement([future], 'course-1', T0)).toEqual({
+      allowed: false,
+      reason: 'SUBSCRIPTION_REQUIRED',
+      expiresAt: null,
+    });
+  });
+
+  it('ignores a future indefinite row while current finite access is active', () => {
+    const future = { courseId: 'course-1', startsAt: new Date(T0 + 1), expiresAt: null };
+    expect(evaluateEntitlement([sub(T0 + day), future], 'course-1', T0)).toEqual({
+      allowed: true,
+      expiresAt: new Date(T0 + day),
+    });
   });
 });
 

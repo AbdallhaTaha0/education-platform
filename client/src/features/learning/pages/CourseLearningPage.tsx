@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Container } from '../../../components/ui/Card';
 import { useLang, useTranslate } from '../../../i18n';
 import { useOutline, usePlayback } from '../hooks/useLearning';
-import { ErrorBlock, LoadingBlock, RenewalRequired, formatDate } from '../components/Learning';
+import { ErrorBlock, LoadingBlock, RenewalRequired, SignInRequired, formatDate } from '../components/Learning';
 import { DashLessonPlayer } from '../player/Player';
 import { clear as clearSession } from '../player/session';
 import { LessonAssessments } from '../../assessments/LessonAssessments';
@@ -12,6 +12,7 @@ import { ResourcesPanel } from '../materials/LessonMaterials';
 import { useLessonMaterials } from '../materials/useLessonMaterials';
 import { OwnSessionRecovery } from '../sessions/OwnSessionRecovery';
 import { Button } from '../../../components/ui/Button';
+import { selectedLessonHash } from '../lessonLocation';
 
 export interface CourseLearningPageProps {
   courseSlug: string;
@@ -73,6 +74,15 @@ export function CourseLearningPage({
         : (firstPlayable?.lessonId ?? null),
     );
   }, [sections]);
+
+  useEffect(() => {
+    if (!selectedLessonId || !sections?.some((section) => section.lessons.some((lesson) => lesson.lessonId === selectedLessonId && lesson.playable))) return;
+    const next = selectedLessonHash(window.location.hash, selectedLessonId);
+    if (next && next !== window.location.hash) {
+      // Updating the address must not remount or restart the current player.
+      window.history.replaceState(window.history.state, '', next);
+    }
+  }, [selectedLessonId, sections]);
 
   useEffect(() => {
     if (!autoResume || resumeRequested.current || !initialLessonId || loading || !sections) return;
@@ -145,7 +155,11 @@ export function CourseLearningPage({
   // order stays stable across loading/error/ready renders. It fetches only the
   // entitlement-checked materials payload; the
   // server re-checks access on every request.
+  const signInLost =
+    ['TOKEN_MISSING', 'TOKEN_INVALID', 'SESSION_EXPIRED', 'SESSION_REVOKED'].includes(errorCode ?? '') ||
+    ['TOKEN_MISSING', 'TOKEN_INVALID', 'SESSION_EXPIRED', 'SESSION_REVOKED'].includes(playback.errorCode ?? '');
   const accessLost =
+    signInLost ||
     errorCode === 'LESSON_NOT_FOUND' ||
     errorCode === 'FORBIDDEN' ||
     playback.errorCode === 'LESSON_NOT_FOUND' ||
@@ -168,6 +182,17 @@ export function CourseLearningPage({
       <Container id="main">
         <main className="py-8">
           <LoadingBlock label={t('learningLoading')} />
+        </main>
+      </Container>
+    );
+  }
+
+  if (signInLost) {
+    return (
+      <Container id="main">
+        <main className="py-8">
+          <h1 className="mb-4 text-3xl font-bold">{t('learningTitle')}</h1>
+          <SignInRequired lang={lang} />
         </main>
       </Container>
     );

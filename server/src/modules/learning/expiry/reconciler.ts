@@ -361,7 +361,7 @@ export async function detectCrossedSubscriptions(
 
     const courseIds = [...new Set(active.map((r) => r.courseId))];
     const subscriptions = await prisma.subscription.findMany({
-      where: { courseId: { in: courseIds } },
+      where: { courseId: { in: courseIds }, startsAt: { lte: new Date(nowMs) } },
       select: { studentId: true, courseId: true, expiresAt: true },
     });
     const latest = new Map<string, Date | null>();

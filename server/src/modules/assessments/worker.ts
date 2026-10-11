@@ -7,8 +7,10 @@ import { executeIsolated, cleanupExpiredExecutions } from './launcher.js';
 import type { Content, Answer } from './contracts.js';
 import { processPreparation } from './preparation.js';
 import { processPythonRun } from './python-runs.js';
+import { codingIdeEnabled } from './availability.js';
 
 export async function processSubmission(db: PrismaClient, id: string, execute = executeIsolated): Promise<void> {
+  if (!codingIdeEnabled()) return; // Preserve suspended outbox jobs for reactivation.
   const token = randomUUID(); const now = new Date();
   const claimed = await db.assessmentSubmission.updateMany({ where: { id, OR: [{ state: 'PENDING' }, { state: 'RUNNING', leasedUntil: { lt: now } }] }, data: { state: 'RUNNING', leaseToken: token, leasedUntil: new Date(now.getTime() + 60000), attempts: { increment: 1 } } });
   if (!claimed.count) return;
@@ -43,6 +45,7 @@ export async function processSubmission(db: PrismaClient, id: string, execute = 
 
 /** Durable DB outbox delivery; queue loss cannot lose an accepted submission. */
 export async function reconcileGrading(db: PrismaClient, queue: Queue, now = new Date()): Promise<void> {
+  if (!codingIdeEnabled()) return;
   const due = await db.assessmentSubmission.findMany({ where: { OR: [{ state: 'PENDING' }, { state: 'RUNNING', leasedUntil: { lt: now } }] }, orderBy: { createdAt: 'asc' }, take: 500, select: { id: true } });
   for (const s of due) {
     const existing = await queue.getJob(s.id);
@@ -52,6 +55,7 @@ export async function reconcileGrading(db: PrismaClient, queue: Queue, now = new
 }
 
 export async function reconcilePreparations(db: PrismaClient, queue: Queue, now = new Date()): Promise<void> {
+  if (!codingIdeEnabled()) return;
   const due = await db.assessmentPreparation.findMany({ where: { OR: [{ state: 'PENDING' }, { state: 'RUNNING', leasedUntil: { lt: now } }] }, orderBy: { createdAt: 'asc' }, take: 32, select: { id: true } });
   for (const item of due) {
     const existing = await queue.getJob(item.id);
@@ -76,6 +80,7 @@ export async function retainGradingHistory(db: PrismaClient, now = Date.now()): 
 }
 
 export async function startGradingWorker() {
+  if (!codingIdeEnabled()) return { stop: async (): Promise<void> => {} };
   if (process.env.NODE_ENV === 'production' && process.env.GRADING_RUNTIME !== 'runsc') throw new Error('GRADING_ISOLATION_UNQUALIFIED');
   await cleanupExpiredExecutions();
   const db = new PrismaClient(); const connection = new Redis(process.env.REDIS_URL!, { maxRetriesPerRequest: null });

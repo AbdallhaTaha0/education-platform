@@ -106,8 +106,8 @@ describe('catalog ordering + constraints', () => {
 
   it('enforces database CHECKs for prices/durations/titles', async () => {
     const { courseId } = await createFullDraft(world, 'chk1');
-    // Invalid price via API.
-    const badPrice = await adminPost(
+    // Free plans are supported; negative prices remain invalid.
+    const freePlan = await adminPost(
       world.app,
       `/admin/catalog/courses/${courseId}/plans`,
       world.adminJar,
@@ -115,6 +115,14 @@ describe('catalog ordering + constraints', () => {
         currentPricePiastres: 0,
         durationDays: 30,
       },
+    );
+    expect(freePlan.status).toBe(201);
+    expect(freePlan.body.data.plan.currentPricePiastres).toBe(0);
+    const badPrice = await adminPost(
+      world.app,
+      `/admin/catalog/courses/${courseId}/plans`,
+      world.adminJar,
+      { currentPricePiastres: -1, durationDays: 30 },
     );
     expect(badPrice.status).toBe(400);
     // Previous must exceed current.
