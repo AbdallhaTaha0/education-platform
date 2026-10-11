@@ -6,6 +6,7 @@
  * No public URLs; all access goes through authenticated backend routes.
  */
 
+import { createHash, createHmac } from 'node:crypto';
 import { ApiError } from '../modules/identity/errors.js';
 import type { ServerConfig } from '../config.js';
 import { getLogger, sanitizeForLog } from '../logger.js';
@@ -61,6 +62,34 @@ export function resolveStorageAdapterConfig(config: ServerConfig): StorageAdapte
  */
 export class StorageClient {
   constructor(private readonly cfg: StorageAdapterConfig) {}
+
+  /** Short-lived S3-compatible URL for direct browser transfer of private media. */
+  presign(method: 'GET' | 'PUT', key: string, expiresSeconds: number, contentType?: string): string {
+    const encode = (part: string) => encodeURIComponent(part).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+    const endpoint = new URL(this.cfg.endpoint);
+    if (endpoint.search || endpoint.hash || endpoint.username || endpoint.password) throw new ApiError(503, 'STORAGE_UNCONFIGURED', 'Invalid storage endpoint.');
+    if (!Number.isSafeInteger(expiresSeconds) || expiresSeconds < 1 || expiresSeconds > 3600) throw new ApiError(500, 'STORAGE_UNKNOWN', 'Invalid signed URL lifetime.');
+    const path = `${endpoint.pathname.replace(/\/$/, '')}/${encode(this.cfg.bucket)}/${key.split('/').map(encode).join('/')}`;
+    const stamp = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
+    const date = stamp.slice(0, 8);
+    const scope = `${date}/${this.cfg.region}/s3/aws4_request`;
+    const signedHeaders = contentType && method === 'PUT' ? 'content-type;host' : 'host';
+    const params: Array<[string, string]> = [
+      ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
+      ['X-Amz-Credential', `${this.cfg.accessKeyId}/${scope}`],
+      ['X-Amz-Date', stamp],
+      ['X-Amz-Expires', String(expiresSeconds)],
+      ['X-Amz-SignedHeaders', signedHeaders],
+    ];
+    const canonicalQuery = params.map(([k, v]) => [encode(k), encode(v)] as const).sort(([ak, av], [bk, bv]) => ak.localeCompare(bk) || av.localeCompare(bv)).map(([k, v]) => `${k}=${v}`).join('&');
+    const canonicalHeaders = `${contentType && method === 'PUT' ? `content-type:${contentType.trim()}\n` : ''}host:${endpoint.host}\n`;
+    const canonicalRequest = `${method}\n${path}\n${canonicalQuery}\n${canonicalHeaders}${signedHeaders}\nUNSIGNED-PAYLOAD`;
+    const stringToSign = `AWS4-HMAC-SHA256\n${stamp}\n${scope}\n${createHash('sha256').update(canonicalRequest).digest('hex')}`;
+    let signing = createHmac('sha256', `AWS4${this.cfg.secretAccessKey}`).update(date).digest();
+    for (const value of [this.cfg.region, 's3', 'aws4_request']) signing = createHmac('sha256', signing).update(value).digest();
+    const signature = createHmac('sha256', signing).update(stringToSign).digest('hex');
+    return `${endpoint.origin}${path}?${canonicalQuery}&X-Amz-Signature=${signature}`;
+  }
 
   private async request(method: string, key: string, body?: Uint8Array, contentType?: string): Promise<{ body: Uint8Array; contentType: string; contentLength: number; missing: boolean }> {
     const { createHash, createHmac } = await import('node:crypto');

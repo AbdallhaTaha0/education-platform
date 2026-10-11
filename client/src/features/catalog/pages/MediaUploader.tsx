@@ -125,7 +125,6 @@ export function MediaUploader({
       setPhase('registering');
       const { uploadUrl } = await registerMedia(lessonId, {
         contentType: mime,
-        securityTier: 'STANDARD',
         title: file.name.slice(0, 120),
       });
       if (controller.signal.aborted) return;
@@ -136,8 +135,7 @@ export function MediaUploader({
       setPhase('completing');
       await completeMedia(lessonId);
       if (controller.signal.aborted) return;
-      setPhase('syncing');
-      // 100% bytes transferred does not mean DRM processing has finished.
+      setPhase('ready');
       await onChanged();
     } catch (err) {
       if (controller.signal.aborted) return;
@@ -200,7 +198,7 @@ export function MediaUploader({
       </Button>
       {phase !== null ? (
         <span role="status" aria-live="polite" className="text-sm text-muted">
-          {({registering:lang==='ar'?'تسجيل الفيديو':'Registering video',uploading:lang==='ar'?'رفع الفيديو':'Uploading video',completing:lang==='ar'?'تأكيد الرفع':'Confirming upload',syncing:lang==='ar'?'اكتمل الرفع؛ الفيديو قيد التجهيز. نتابع الحالة تلقائيًا.':'Upload complete; video processing. Status updates automatically.',ready:lang==='ar'?'الفيديو جاهز':'Video ready',failed:lang==='ar'?'فشل الرفع أو التجهيز':'Upload or processing failed'} as Record<string,string>)[phase] ?? (lang==='ar'?'تحديث الفيديو':'Updating video')}
+          {({registering:lang==='ar'?'تسجيل الفيديو':'Registering video',uploading:lang==='ar'?'رفع الفيديو':'Uploading video',completing:lang==='ar'?'تأكيد الرفع':'Confirming upload',syncing:lang==='ar'?'اكتمل الرفع؛ نتحقق من الفيديو.':'Upload complete; checking the video.',ready:lang==='ar'?'الفيديو جاهز':'Video ready',failed:lang==='ar'?'فشل الرفع أو التجهيز':'Upload or processing failed'} as Record<string,string>)[phase] ?? (lang==='ar'?'تحديث الفيديو':'Updating video')}
           {phase === 'uploading' && progress !== undefined ? ` ${progress}%` : ''}
           {mediaStatus !== null ? ` (${businessState(mediaStatus,lang==='ar')})` : ''}
         </span>

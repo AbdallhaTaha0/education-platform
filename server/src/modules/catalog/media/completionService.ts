@@ -1,80 +1,73 @@
-import type { MediaState, PrismaClient } from '@prisma/client';
+import type { PrismaClient } from '@prisma/client';
 import { ApiError } from '../../identity/errors.js';
+import { createStorageClient } from '../../../infra/storage.js';
 import { audit } from '../audit.js';
 import { courseIdForLesson, withCourseLock } from '../courseTx.js';
 import { ensureLessonAdditionAllowed } from '../courses/service.js';
-import { mapDrmStatusToLocal, assertUuid } from '../validation.js';
-import type { DrmClient } from '../drmClient.js';
 import type { ServerConfig } from '../../../config.js';
+import { assertUuid } from '../validation.js';
 
-/**
- * Completion never runs network I/O inside a transaction. Two short
- * transactions bracket the external call: the first locks the course and
- * validates fresh lifecycle/deletion state before calling DRM; the second
- * re-locks, re-reads, revalidates, then records the outcome atomically.
- * Timeout/uncertainty is resolved by querying DRM status before deciding
- * whether completion must be retried; ALREADY_COMPLETED converges.
- */
+const MAX_VIDEO_BYTES = 2 * 1024 * 1024 * 1024;
+
 export async function completeLessonUpload(
   prisma: PrismaClient,
   config: ServerConfig,
-  drmFactory: (cfg: ServerConfig) => DrmClient | null,
+  _drmFactory: unknown,
   actorId: string,
   lessonId: string,
 ) {
   assertUuid(lessonId, 'lessonId');
-  const drm = drmFactory(config);
-  if (drm === null)
-    throw new ApiError(503, 'DRM_UNCONFIGURED', 'External media service is not configured.');
-
+  const storage = createStorageClient(config);
+  if (!storage) throw new ApiError(503, 'STORAGE_UNCONFIGURED', 'Video storage is not configured.');
   const courseId = await courseIdForLesson(prisma, lessonId);
-  const precheck = await withCourseLock(prisma, courseId, async (tx) => {
+  const current = await withCourseLock(prisma, courseId, async (tx) => {
     const lesson = await tx.lesson.findUnique({
       where: { id: lessonId },
       include: { media: true, section: { include: { course: true } } },
     });
-    if (lesson === null || lesson.media === null)
-      throw new ApiError(404, 'MEDIA_MISSING', 'Media mapping not found.');
+    if (!lesson || !lesson.media)
+      throw new ApiError(404, 'MEDIA_MISSING', 'Video upload not found.');
     ensureLessonAdditionAllowed(lesson.section.course);
-    if (lesson.media.assetId === null)
-      throw new ApiError(409, 'MEDIA_MISSING', 'Media not registered with DRM.');
-    return { assetId: lesson.media.assetId, mappingId: lesson.media.id };
+    if (!lesson.media.assetId)
+      throw new ApiError(409, 'MEDIA_MISSING', 'Video upload is not registered.');
+    return lesson.media;
   });
-  const { assetId, mappingId } = precheck;
 
-  let remoteStatus: string;
-  try {
-    const result = await drm.completeUpload(assetId);
-    remoteStatus = result.status;
-  } catch (err) {
-    if (
-      err instanceof ApiError &&
-      (err.code === 'DRM_TIMEOUT' || err.code === 'DRM_NETWORK' || err.code === 'DRM_UNKNOWN')
-    ) {
-      return reconcileAfterUncertainCompletion(prisma, drm, actorId, lessonId, mappingId, assetId);
-    }
-    if (err instanceof ApiError && err.code === 'DRM_CONFLICT') {
-      return reconcileAfterUncertainCompletion(prisma, drm, actorId, lessonId, mappingId, assetId);
-    }
-    throw err;
+  const objectKey = `lesson-videos/${current.assetId}`;
+  const object = await storage.headObject(objectKey);
+  if (!object)
+    throw new ApiError(409, 'UPLOAD_NOT_FOUND', 'The uploaded video was not found in storage.');
+  if (object.contentLength < 1 || object.contentLength > MAX_VIDEO_BYTES) {
+    await storage.deleteObject(objectKey).catch(() => undefined);
+    throw new ApiError(413, 'UPLOAD_SIZE_INVALID', 'Video must be smaller than 2 GB.');
+  }
+  if (!['video/mp4', 'video/webm', 'video/quicktime'].includes(object.contentType.toLowerCase())) {
+    await storage.deleteObject(objectKey).catch(() => undefined);
+    throw new ApiError(
+      415,
+      'UPLOAD_TYPE_INVALID',
+      'Only MP4, WebM, and QuickTime videos are accepted.',
+    );
   }
 
-  const nextLocal = mapDrmStatusToLocal(remoteStatus) as MediaState;
   return withCourseLock(prisma, courseId, async (tx) => {
     const lesson = await tx.lesson.findUnique({
       where: { id: lessonId },
       include: { media: true, section: { include: { course: true } } },
     });
-    if (lesson === null || lesson.media === null || lesson.media.id !== mappingId) {
-      throw new ApiError(404, 'MEDIA_MISSING', 'Media mapping not found.');
-    }
+    if (!lesson || !lesson.media || lesson.media.id !== current.id)
+      throw new ApiError(404, 'MEDIA_MISSING', 'Video mapping changed during upload.');
     ensureLessonAdditionAllowed(lesson.section.course);
+    if (lesson.media.status === 'READY') return lesson.media;
+    if (lesson.media.status !== 'UPLOAD_PENDING')
+      throw new ApiError(409, 'MEDIA_EXISTS', 'Video is not waiting for upload completion.');
     const updated = await tx.mediaMapping.update({
-      where: { id: mappingId },
+      where: { id: current.id },
       data: {
-        status: nextLocal,
+        status: 'READY',
         uploadCompletedAt: new Date(),
         lastSyncedAt: new Date(),
+        durationSeconds: null,
         errorCategory: null,
       },
     });
@@ -83,48 +76,7 @@ export async function completeLessonUpload(
       action: 'MEDIA_COMPLETED',
       entityType: 'Lesson',
       entityId: lessonId,
-      metadata: { status: nextLocal },
-    });
-    return updated;
-  });
-}
-
-async function reconcileAfterUncertainCompletion(
-  prisma: PrismaClient,
-  drm: DrmClient,
-  actorId: string,
-  lessonId: string,
-  mappingId: string,
-  assetId: string,
-) {
-  const remote = await drm.mediaStatus(assetId);
-  const nextLocal = mapDrmStatusToLocal(remote.status) as MediaState;
-  const courseId = await courseIdForLesson(prisma, lessonId);
-  return withCourseLock(prisma, courseId, async (tx) => {
-    const lesson = await tx.lesson.findUnique({
-      where: { id: lessonId },
-      include: { media: true, section: { include: { course: true } } },
-    });
-    if (lesson === null || lesson.media === null || lesson.media.id !== mappingId) {
-      throw new ApiError(404, 'MEDIA_MISSING', 'Media mapping not found.');
-    }
-    ensureLessonAdditionAllowed(lesson.section.course);
-    const updated = await tx.mediaMapping.update({
-      where: { id: mappingId },
-      data: {
-        status: nextLocal,
-        lastSyncedAt: new Date(),
-        ...(nextLocal === 'PROCESSING' || nextLocal === 'READY'
-          ? { uploadCompletedAt: new Date(), errorCategory: null }
-          : {}),
-      },
-    });
-    await audit(tx, {
-      actorUserId: actorId,
-      action: 'MEDIA_RECONCILED',
-      entityType: 'Lesson',
-      entityId: lessonId,
-      metadata: { status: nextLocal },
+      metadata: { status: 'READY', bytes: object.contentLength },
     });
     return updated;
   });

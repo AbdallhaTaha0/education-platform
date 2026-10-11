@@ -98,23 +98,6 @@ services:
       # Local Docker HTTP explicitly disables Secure cookies. Production
       # builds fail closed unless COOKIE_SECURE=true.
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
-      # External DRM adapter (M3): all-or-none; unset is fine for non-media work.
-      # Readiness never gates on DRM. DRM-dependent mutations fail closed 503.
-      DRM_BASE_URL: ${DRM_BASE_URL:-}
-      DRM_CLIENT_ID: ${DRM_CLIENT_ID:-}
-      DRM_CLIENT_SECRET: ${DRM_CLIENT_SECRET:-}
-      DRM_REQUEST_TIMEOUT_MS: ${DRM_REQUEST_TIMEOUT_MS:-5000}
-      DRM_MAX_RETRIES: ${DRM_MAX_RETRIES:-2}
-      # M5 playback assertion trust. Real DRM verifies RS256 through the
-      # platform's public JWKS endpoint. HS256 is test-fixture-only.
-      DRM_ASSERTION_ISSUER: ${DRM_ASSERTION_ISSUER:-}
-      DRM_ASSERTION_AUDIENCE: ${DRM_ASSERTION_AUDIENCE:-}
-      DRM_ASSERTION_PRIVATE_KEY_B64: ${DRM_ASSERTION_PRIVATE_KEY_B64:-}
-      DRM_ASSERTION_KEY_ID: ${DRM_ASSERTION_KEY_ID:-}
-      DRM_ASSERTION_MODE: ${DRM_ASSERTION_MODE:-}
-      DRM_ASSERTION_SECRET: ${DRM_ASSERTION_SECRET:-}
-      DRM_ASSERTION_MAX_LIFETIME_SEC: ${DRM_ASSERTION_MAX_LIFETIME_SEC:-120}
-      DRM_PUBLIC_BASE_URL: ${DRM_PUBLIC_BASE_URL:-}
       # Optional platform-owned private materials storage (never DRM objects).
       STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-}
       STORAGE_REGION: ${STORAGE_REGION:-}

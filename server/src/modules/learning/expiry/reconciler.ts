@@ -63,6 +63,7 @@ async function release(redis: Redis, referenceId: string, token: string): Promis
 export interface EligibleReference {
   id: string;
   externalSessionId: string;
+  provider: string;
   terminationAttempts: number;
   pendingEndReason: 'VIEWER_END' | 'SUBSCRIPTION_EXPIRED' | null;
   /**
@@ -113,6 +114,7 @@ export async function findEligiblePage(
     select: {
       id: true,
       externalSessionId: true,
+      provider: true,
       terminationAttempts: true,
       pendingEndReason: true,
       nextTerminationAt: true,
@@ -125,6 +127,7 @@ export async function findEligiblePage(
     .map((row) => ({
       id: row.id,
       externalSessionId: row.externalSessionId,
+      provider: row.provider,
       terminationAttempts: row.terminationAttempts,
       pendingEndReason: row.pendingEndReason,
       nextTerminationAt: row.nextTerminationAt,
@@ -152,6 +155,21 @@ export async function terminateReference(
   reference: EligibleReference,
   nowMs: number,
 ): Promise<TerminationOutcome> {
+  if (reference.provider === 'NO_DRM') {
+    const reason = reference.pendingEndReason ?? 'SUBSCRIPTION_EXPIRED';
+    await prisma.playbackReference.updateMany({
+      where: { id: reference.id, status: { in: ['ACTIVE', 'ENDED'] } },
+      data: {
+        status: reason === 'SUBSCRIPTION_EXPIRED' ? 'TERMINATED' : 'ENDED',
+        terminationStatus: 'COMPLETED',
+        pendingEndReason: null,
+        nextTerminationAt: null,
+        endedAt: new Date(nowMs),
+        lastErrorCategory: null,
+      },
+    });
+    return reason === 'SUBSCRIPTION_EXPIRED' ? 'TERMINATED' : 'ALREADY_ENDED';
+  }
   if (drm === null) {
     await scheduleRetry(prisma, reference, 'DRM_UNCONFIGURED', nowMs);
     return 'FAILED';

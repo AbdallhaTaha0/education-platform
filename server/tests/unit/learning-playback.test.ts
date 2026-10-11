@@ -2,7 +2,7 @@
  * Unit tests for the M5 playback assertion, dependency URL validation and
  * DRM response validation. No network, no credentials, no dependency calls.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { generateKeyPairSync } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import {
@@ -52,6 +52,36 @@ function decode(token: string): Record<string, unknown> {
 }
 
 describe('playback assertion', () => {
+  it('blocks a third simultaneous no-DRM playback session for the account', async () => {
+    const updateMany = vi.fn(async () => ({ count: 0 }));
+    const count = vi.fn(async () => 2);
+    const create = vi.fn();
+    const tx = {
+      $queryRaw: async () => [],
+      playbackReference: { updateMany, count, create },
+      mediaMapping: { findUnique: vi.fn() },
+    };
+    const deps = {
+      prisma: { $transaction: async (callback: (value: typeof tx) => unknown) => callback(tx) },
+      drm: null,
+      storage: { headObject: async () => ({ size: 1024 }), presign: vi.fn() },
+      assertion: config,
+      drmPublicBaseUrl: undefined,
+    } as unknown as PlaybackDeps;
+
+    await expect(
+      createPlaybackSession(deps, {
+        binding,
+        deviceId: 'device-3',
+        nowMs: NOW,
+        resumePositionSeconds: 0,
+      }),
+    ).rejects.toMatchObject({ code: 'PLAYBACK_STREAM_LIMIT', status: 403 });
+    expect(updateMany).toHaveBeenCalledOnce();
+    expect(count).toHaveBeenCalledOnce();
+    expect(create).not.toHaveBeenCalled();
+  });
+
   it('preserves safe device and stream denials without creating a playback reference', async () => {
     for (const [upstream, expected] of [['DRM_DEVICE_LIMIT', 'PLAYBACK_DEVICE_LIMIT'], ['DRM_DEVICE_REVOKED', 'PLAYBACK_DEVICE_REVOKED'], ['DRM_STREAM_LIMIT', 'PLAYBACK_STREAM_LIMIT']]) {
       const deps = { prisma: {}, assertion: config, drmPublicBaseUrl: 'https://drm.example.com', drm: { createPlaybackSession: async () => { throw new ApiError(403, upstream!, 'private dependency detail'); } } } as unknown as PlaybackDeps;

@@ -13,8 +13,10 @@
  * memory. It is never written to PostgreSQL, Redis, logs, audit metadata or a
  * navigation URL.
  */
+import { randomUUID } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
 import type { DrmClient } from '../../catalog/drmClient.js';
+import type { StorageClient } from '../../../infra/storage.js';
 import { LearningError } from '../errors.js';
 import type { LearningBinding, PlaybackGrant } from '../types.js';
 import { mintAssertion, type AssertionConfig } from './assertion.js';
@@ -24,9 +26,14 @@ import { toWatermarkPresentation, validatePlaybackSession, validateRenewal } fro
 import { resolveDependencyUrls } from './urls.js';
 import { assertLessonUnlocked } from '../../assessments/progression.js';
 
+// Keep the no-DRM branch aligned with the platform's existing two-device
+// allowance by limiting each account to two live playback references.
+const NO_DRM_MAX_CONCURRENT_SESSIONS = 2;
+
 export interface PlaybackDeps {
   prisma: PrismaClient;
-  drm: DrmClient;
+  drm: DrmClient | null;
+  storage?: StorageClient | null;
   assertion: AssertionConfig;
   drmPublicBaseUrl: string | undefined;
 }
@@ -42,11 +49,97 @@ export async function createPlaybackSession(
   deps: PlaybackDeps,
   input: CreatePlaybackInput,
 ): Promise<PlaybackGrant> {
+  if (deps.drm === null) {
+    if (!deps.storage || !input.binding.externalAssetIdInternal)
+      throw new LearningError('MEDIA_NOT_READY');
+    const objectKey = `lesson-videos/${input.binding.externalAssetIdInternal}`;
+    const object = await deps.storage.headObject(objectKey);
+    if (!object) throw new LearningError('MEDIA_NOT_READY');
+    const expires = new Date(input.nowMs + 5 * 60_000);
+    const reference = await deps.prisma.$transaction(async (tx) => {
+      // Serialize session creation per student so two simultaneous requests
+      // cannot both pass the account-level cap.
+      await tx.$queryRaw`SELECT id FROM "User" WHERE id=${input.binding.studentId} FOR UPDATE`;
+      const now = new Date(input.nowMs);
+      await tx.playbackReference.updateMany({
+        where: {
+          studentId: input.binding.studentId,
+          provider: 'NO_DRM',
+          status: 'ACTIVE',
+          sessionExpiresAt: { lte: now },
+        },
+        data: {
+          status: 'TERMINATED',
+          terminationStatus: 'COMPLETED',
+          pendingEndReason: null,
+          nextTerminationAt: null,
+          endedAt: now,
+        },
+      });
+      const activeSessions = await tx.playbackReference.count({
+        where: {
+          studentId: input.binding.studentId,
+          provider: 'NO_DRM',
+          status: 'ACTIVE',
+          sessionExpiresAt: { gt: now },
+        },
+      });
+      if (activeSessions >= NO_DRM_MAX_CONCURRENT_SESSIONS)
+        throw new LearningError('PLAYBACK_STREAM_LIMIT');
+
+      await tx.$queryRaw`SELECT id FROM "MediaMapping" WHERE "externalAssetId"=${input.binding.externalAssetId} FOR UPDATE`;
+      const media = await tx.mediaMapping.findUnique({
+        where: { externalAssetId: input.binding.externalAssetId },
+      });
+      if (
+        !media ||
+        media.retiredAt ||
+        media.status !== 'READY' ||
+        media.assetId !== input.binding.externalAssetIdInternal
+      )
+        throw new LearningError('MEDIA_NOT_READY');
+      return tx.playbackReference.create({
+        data: {
+          studentId: input.binding.studentId,
+          lessonId: input.binding.lessonId,
+          courseId: input.binding.courseId,
+          externalSessionId: `local-${randomUUID()}`,
+          externalAssetId: input.binding.externalAssetId,
+          provider: 'NO_DRM',
+          status: 'ACTIVE',
+          tokenExpiresAt: expires,
+          sessionExpiresAt: expires,
+        },
+        select: { id: true },
+      });
+    });
+    return {
+      referenceId: reference.id,
+      playbackSessionId: reference.id,
+      playbackToken: '',
+      tokenExpiresAt: expires.toISOString(),
+      sessionExpiresAt: expires.toISOString(),
+      manifestUrl: deps.storage.presign('GET', objectKey, 300),
+      licenseUrl: '',
+      drmProvider: 'NONE',
+      watermark: {
+        type: 'VISIBLE_OVERLAY',
+        maskedIdentity: `Student •${input.binding.studentId.slice(-4)}`,
+        positions: [
+          { x: 8, y: 12 },
+          { x: 72, y: 68 },
+        ],
+        expiresAt: expires.toISOString(),
+      },
+      resumePositionSeconds: input.resumePositionSeconds,
+    };
+  }
+  const drmClient = deps.drm;
   const assertion = mintAssertion(deps.assertion, input.binding, input.nowMs, input.deviceId);
 
   let raw: unknown;
   try {
-    raw = await deps.drm.createPlaybackSession({
+    raw = await drmClient.createPlaybackSession({
       externalUserId: input.binding.studentId,
       externalAssetId: input.binding.externalAssetId,
       deviceId: input.deviceId,
@@ -63,32 +156,38 @@ export async function createPlaybackSession(
     deps.drmPublicBaseUrl,
   );
 
-  const record = await deps.prisma.$transaction(async tx => {
-    // Publication/retirement locks the same mapping. A stale in-flight grant must
-    // not appear after cleanup has determined that all existing sessions ended.
-    await tx.$queryRaw`SELECT id FROM "MediaMapping" WHERE "externalAssetId"=${input.binding.externalAssetId} FOR UPDATE`;
-    const media = await tx.mediaMapping.findUnique({ where: { externalAssetId: input.binding.externalAssetId } });
-    if (!media || media.retiredAt) throw new LearningError('MEDIA_NOT_READY');
-    return tx.playbackReference.create({
-    data: {
-      studentId: input.binding.studentId,
-      lessonId: input.binding.lessonId,
-      courseId: input.binding.courseId,
-      externalSessionId: session.playbackSessionId,
-      externalAssetId: input.binding.externalAssetId,
-      provider: session.drmProvider,
-      status: 'ACTIVE',
-      tokenExpiresAt: new Date(session.tokenExpiresAt),
-      sessionExpiresAt: new Date(session.sessionExpiresAt),
-    },
-    select: { id: true },
+  const record = await deps.prisma
+    .$transaction(async (tx) => {
+      // Publication/retirement locks the same mapping. A stale in-flight grant must
+      // not appear after cleanup has determined that all existing sessions ended.
+      await tx.$queryRaw`SELECT id FROM "MediaMapping" WHERE "externalAssetId"=${input.binding.externalAssetId} FOR UPDATE`;
+      const media = await tx.mediaMapping.findUnique({
+        where: { externalAssetId: input.binding.externalAssetId },
+      });
+      if (!media || media.retiredAt) throw new LearningError('MEDIA_NOT_READY');
+      return tx.playbackReference.create({
+        data: {
+          studentId: input.binding.studentId,
+          lessonId: input.binding.lessonId,
+          courseId: input.binding.courseId,
+          externalSessionId: session.playbackSessionId,
+          externalAssetId: input.binding.externalAssetId,
+          provider: session.drmProvider,
+          status: 'ACTIVE',
+          tokenExpiresAt: new Date(session.tokenExpiresAt),
+          sessionExpiresAt: new Date(session.sessionExpiresAt),
+        },
+        select: { id: true },
+      });
+    })
+    .catch(async (error) => {
+      // A newly created external session was never handed to the student.
+      // Fail closed if publication won the race; cleanup can safely revoke it.
+      await drmClient
+        .revokePlaybackSession(session.playbackSessionId, 'STALE_COURSE_VERSION')
+        .catch(() => undefined);
+      throw error;
     });
-  }).catch(async error => {
-    // A newly created external session was never handed to the student.
-    // Fail closed if publication won the race; cleanup can safely revoke it.
-    await deps.drm.revokePlaybackSession(session.playbackSessionId, 'STALE_COURSE_VERSION').catch(() => undefined);
-    throw error;
-  });
 
   return {
     referenceId: record.id,
@@ -122,6 +221,7 @@ export interface RenewalResult {
   playbackToken: string;
   tokenExpiresAt: string;
   sessionExpiresAt: string;
+  manifestUrl?: string;
 }
 
 export type RenewalOutcome =
@@ -134,7 +234,16 @@ export async function renewPlaybackToken(
 ): Promise<RenewalOutcome> {
   const reference = await deps.prisma.playbackReference.findFirst({
     where: { id: input.referenceId, studentId: input.studentId },
-    select: { id: true, status: true, externalSessionId: true, studentId: true, courseId: true, lessonId: true },
+    select: {
+      id: true,
+      status: true,
+      externalSessionId: true,
+      studentId: true,
+      courseId: true,
+      lessonId: true,
+      externalAssetId: true,
+      provider: true,
+    },
   });
   if (reference === null) return { renewed: false, reason: 'NOT_RENEWABLE' };
   if (reference.status !== 'ACTIVE') return { renewed: false, reason: 'NOT_RENEWABLE' };
@@ -152,11 +261,43 @@ export async function renewPlaybackToken(
     await scheduleTermination(deps.prisma, reference.id, input.nowMs, 'SUBSCRIPTION_EXPIRED');
     return { renewed: false, reason: 'NOT_RENEWABLE' };
   }
-  await assertLessonUnlocked(deps.prisma, reference.studentId, reference.courseId, reference.lessonId);
+  await assertLessonUnlocked(
+    deps.prisma,
+    reference.studentId,
+    reference.courseId,
+    reference.lessonId,
+  );
+
+  if (reference.provider === 'NO_DRM') {
+    if (!deps.storage) return { renewed: false, reason: 'SESSION_GONE' };
+    const media = await deps.prisma.mediaMapping.findUnique({
+      where: { externalAssetId: reference.externalAssetId },
+      select: { assetId: true, status: true, retiredAt: true },
+    });
+    if (!media?.assetId || media.status !== 'READY' || media.retiredAt)
+      return { renewed: false, reason: 'SESSION_GONE' };
+    const objectKey = `lesson-videos/${media.assetId}`;
+    if (!(await deps.storage.headObject(objectKey)))
+      return { renewed: false, reason: 'SESSION_GONE' };
+    const expires = new Date(input.nowMs + 5 * 60_000).toISOString();
+    const manifestUrl = deps.storage.presign('GET', objectKey, 300);
+    await deps.prisma.playbackReference.updateMany({
+      where: { id: reference.id, status: 'ACTIVE' },
+      data: { tokenExpiresAt: new Date(expires), sessionExpiresAt: new Date(expires) },
+    });
+    return {
+      renewed: true,
+      playbackToken: '',
+      tokenExpiresAt: expires,
+      sessionExpiresAt: expires,
+      manifestUrl,
+    };
+  }
+  if (!deps.drm) return { renewed: false, reason: 'SESSION_GONE' };
 
   let raw: unknown;
   try {
-    raw = await deps.drm.renewPlaybackSession(reference.externalSessionId);
+    raw = await deps.drm!.renewPlaybackSession(reference.externalSessionId);
   } catch (err) {
     // The external session is already gone: close it durably instead of
     // reporting a dependency failure.
@@ -272,7 +413,7 @@ export async function endPlaybackSession(
 ): Promise<'CONFIRMED' | 'QUEUED' | 'NOOP'> {
   const reference = await prisma.playbackReference.findFirst({
     where: { id: referenceId, studentId },
-    select: { id: true, status: true, externalSessionId: true },
+    select: { id: true, status: true, externalSessionId: true, provider: true },
   });
   if (reference === null) return 'NOOP';
   if (reference.status !== 'ACTIVE' && reference.status !== 'ENDED') return 'NOOP';
@@ -284,6 +425,14 @@ export async function endPlaybackSession(
     where: { id: referenceId, status: { in: ['ACTIVE', 'ENDED'] } },
     data: { status: 'ENDED', endedAt: new Date(nowMs) },
   });
+
+  if (reference.provider === 'NO_DRM') {
+    await prisma.playbackReference.updateMany({
+      where: { id: referenceId },
+      data: { terminationStatus: 'COMPLETED', pendingEndReason: null, nextTerminationAt: null },
+    });
+    return 'CONFIRMED';
+  }
 
   if (drm === null) {
     await scheduleTermination(prisma, referenceId, nowMs, 'VIEWER_END');

@@ -22,7 +22,7 @@ export interface LearningBinding {
   lessonId: string;
   /** Platform MediaMapping.externalAssetId. Never a browser-supplied value. */
   externalAssetId: string;
-  /** Opaque internal DRM asset id, present only when the mapping is synced. */
+  /** Opaque platform storage object id, present when the mapping is registered. */
   externalAssetIdInternal: string | null;
 }
 
@@ -46,7 +46,7 @@ export interface ProgressAggregate {
   lastLessonId: string | null;
 }
 
-/** Frontend-safe playback grant. Contains no secret and no signed URL. */
+/** Playback grant; no-DRM mode contains a short-lived private-storage URL. */
 export interface PlaybackGrant {
   referenceId: string;
   playbackSessionId: string;

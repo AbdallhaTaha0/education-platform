@@ -20,7 +20,6 @@ import { createLearningModule } from './modules/learning/index.js';
 import type { DrmClient } from './modules/catalog/drmClient.js';
 import { createDrmClient } from './modules/catalog/drmClient.js';
 import type { Clock } from './modules/identity/tokens.js';
-import { createAssertionJwks } from './modules/learning/playback/assertion.js';
 import { createNotificationRouter } from './modules/notifications/index.js';
 import { assessmentRouters } from './modules/assessments/routes.js';
 import { codingIdeEnabled } from './modules/assessments/availability.js';
@@ -188,18 +187,6 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
       ...(tunables.clock ? { clock: tunables.clock } : {}),
     }),
   );
-
-  // Public signing metadata for the independently deployed DRM verifier.
-  // Only the RSA public key is exposed; HS256 exists solely for labeled test fixtures.
-  app.get('/.well-known/jwks.json', (_req, res) => {
-    const jwks = createAssertionJwks(learning.context.playback.assertion);
-    if (jwks === null) {
-      res.status(404).json({ error: { code: 'not_found', message: 'JWKS is not configured.' } });
-      return;
-    }
-    res.setHeader('Cache-Control', 'public, max-age=300');
-    res.status(200).json(jwks);
-  });
 
   app.use(
     '/health',

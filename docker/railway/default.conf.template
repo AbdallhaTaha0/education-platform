@@ -45,13 +45,6 @@ server {
     proxy_read_timeout 75s;
     proxy_buffering off;
   }
-  location = /.well-known/jwks.json {
-    proxy_pass $backend;
-    proxy_hide_header X-Content-Type-Options;
-    proxy_hide_header Referrer-Policy;
-    proxy_set_header Host $host;
-    proxy_set_header X-Forwarded-Proto https;
-  }
   location /assets/ {
     try_files $uri =404; expires 30d;
     add_header Cache-Control 'public, immutable';

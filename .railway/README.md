@@ -1,54 +1,44 @@
-# Railway preparation
+# Railway preparation for the no-DRM branch
 
-The owner approved one Railway project with separate services and independent
-platform/DRM persistence. This is a central operations graph, not a merged backend.
-The configuration is prepared, not applied. No provider resources exist from this task.
+This graph contains only the platform PostgreSQL, Redis, Express backend,
+one-shot platform migration job, and Nginx gateway. It does not create or
+configure any DRM API, DRM worker, DRM database/cache, DRM migration, DRM image,
+or DRM secret. Video objects are stored in the platform's private Cloudflare R2
+bucket using the platform S3-compatible storage settings.
 
-The pinned SDK is installed/type-checked in Docker. Railway CLI must be at least
-5.42.1 for this SDK. Authenticate/link to the owner's selected project only at
-release time. Use `testing` for qualification and `production` for the approved
-release; environment names are checked. Do not run `apply` as a preparation check.
+## Temporary staging domains
 
-Set these orchestration variables to published immutable registry digests:
-`PLATFORM_RUNTIME_IMAGE`, `PLATFORM_MIGRATE_IMAGE`, `PLATFORM_GATEWAY_IMAGE`,
-`DRM_API_IMAGE`, `DRM_WORKER_IMAGE`, `DRM_VALKEY_IMAGE`. Use the currently approved
-Valkey image for the latter, pinned by registry digest. The SDK rejects tags without a digest.
-Also select `PLATFORM_POSTGRES_IMAGE`, `DRM_POSTGRES_IMAGE`, `PLATFORM_REDIS_IMAGE`:
-compatible Railway-managed PG16 and Redis7 images, pinned by digest. Their configured
-mounts are `/var/lib/postgresql/data` and `/bitnami` respectively; validate provider
-template startup/variables/mounts before planning. Do not substitute a plain Redis
-image that ignores managed password variables. New major versions require separate
-qualification; the SDK convenience helpers would currently choose PG18/Redis8.2.
-These variables are public artifact references, not application secrets.
+A custom domain is not required to test staging. Generate a Railway HTTPS domain
+for the gateway and use the Vercel project's stable `*.vercel.app` URL for the
+frontend. Keep Vercel's `/api` rewrite pointed at the Railway gateway so the
+browser continues to use same-origin cookie and CSRF requests. Set
+`ALLOWED_ORIGINS` to the exact Vercel HTTPS origin, `COOKIE_SECURE=true`,
+`SEO_PUBLIC_ORIGIN` to that staging origin, and keep `SEO_INDEXING_ENABLED=false`.
+Add the same exact Vercel origin to the R2 CORS policy for browser uploads and
+video playback. When a custom domain is chosen, update these origin settings and
+verify cookies and CORS again.
 
-Secrets/domains are `preserve()` variables: set missing values directly in each
-provider service before applying; preserve does not generate or validate secrets.
-Use the env examples and deployment runbook. Never apply with missing required
-variables. Database references point only at their corresponding persistence pair.
+## Required immutable images
 
-Set the environment shared variable `DRM_REDIS_URL` to the authenticated private
-Valkey URL, using the password stored as `VALKEY_PASSWORD` on `drm-valkey`.
-Keep that shared variable scoped to DRM services, never the platform backend.
-Valkey retains its existing technology and has its own persistent `/data` volume.
+Set only these image references for the platform graph:
 
-**Migration gate:** this graph describes steady state, not ordered orchestration.
-Railway does not inherit Compose dependency ordering. Provision persistence and
-run BOTH one-shot migrations to exit zero before starting/releasing backend,
-DRM API or DRM worker. Use the migration image for Prisma; serving images lack its
-CLI. On subsequent releases migrate before updating serving-image references.
-Do not apply the full graph to an empty environment with automatic service startup.
-Use manual staged setup for the initial release, then pull/compare its graph before
-the first managed apply. Do not compensate by adding destructive startup migrations.
+- `PLATFORM_RUNTIME_IMAGE`
+- `PLATFORM_MIGRATE_IMAGE`
+- `PLATFORM_GATEWAY_IMAGE`
+- `PLATFORM_POSTGRES_IMAGE`
+- `PLATFORM_REDIS_IMAGE`
 
-Only gateway and DRM API need public generated domains. Set them in Railway's
-domain settings after owner approval; backend, workers, migrations and databases
-remain private. DRM production calls use its HTTPS public API as current platform
-validation requires; do not relax TLS merely because services share a project.
+Every image must be pinned by registry digest. Configure application secrets and
+R2 credentials directly in the selected Railway environment; `preserve()` does
+not create missing values. Use the separate `testing` and `production`
+environments. Run the platform migration job and confirm exit code zero before
+starting or updating serving services. Keep databases and the backend private;
+only the gateway needs a public domain.
 
-Never apply to an existing project before importing/comparing all existing resources:
-omission from a whole-project graph can delete them. Review `railway config plan`
-for deletions, volumes, secrets, sources and restart effects. No apply was run here.
-Legacy `docker/railway/*.railway.json` files remain historical; do not attach them
-to these new services. Current Railway documentation supersedes that format.
+The graph keeps indexing disabled in both environments. Change that only after
+choosing an approved canonical domain and completing the live SEO checks.
 
-See [deployment runbook](../reports-and-markdown-files/deployment/railway-vercel-20261007.md).
+This is deployment preparation, not permission to apply it or a production
+readiness certificate. Before applying to an existing Railway project, compare
+the complete plan and check that it will not remove resources or volumes you
+intend to keep.

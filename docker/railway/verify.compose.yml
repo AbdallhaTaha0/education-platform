@@ -20,24 +20,6 @@ services:
       interval: 2s
       timeout: 3s
       retries: 30
-  drm-postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: verifier
-      POSTGRES_PASSWORD: verification-only
-      POSTGRES_DB: drm_verification
-    healthcheck:
-      test: [CMD-SHELL, pg_isready -U verifier -d drm_verification]
-      interval: 2s
-      timeout: 3s
-      retries: 30
-  drm-migrate:
-    image: fayq-deployment-drm-api:local
-    command: [node, packages/database/dist/generate.js]
-    environment:
-      DATABASE_URL: postgresql://verifier:verification-only@drm-postgres:5432/drm_verification
-    depends_on:
-      drm-postgres: { condition: service_healthy }
   migrate:
     image: fayq-deployment-platform-migrate:local
     environment:
@@ -66,5 +48,3 @@ services:
       BACKEND_PORT: 3000
     depends_on:
       backend: { condition: service_healthy }
-      # Rehearsal completion gate only; platform code never uses DRM persistence.
-      drm-migrate: { condition: service_completed_successfully }

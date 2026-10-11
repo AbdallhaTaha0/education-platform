@@ -10,6 +10,7 @@ import { isDeletionLeaseOwner, withRenewingLease } from './lease.js';
 import { finalizeMediaBackedTarget } from './finalizer.js';
 import { assertUuid } from '../validation.js';
 import { reconcileRetiredMedia } from '../media/retirement.js';
+import { createStorageClient, type StorageClient } from '../../../infra/storage.js';
 
 const DEFAULT_LEASE_TTL_MS = 30_000;
 
@@ -28,12 +29,19 @@ export interface DeletionCycleOutcome {
 
 async function recordSchedule(
   prisma: PrismaClient,
-  drm: DrmClient,
+  drm: DrmClient | null,
+  storage: StorageClient | null,
   operationId: string,
   asset: { id: string; drmAssetId: string | null; externalAssetId: string },
 ): Promise<'scheduled' | 'failed' | 'completed'> {
   if (asset.drmAssetId === null) return 'completed';
   try {
+    if (drm === null) {
+      if (!storage) throw new ApiError(503, 'STORAGE_UNCONFIGURED', 'Video storage is not configured.');
+      await storage.deleteObject(`lesson-videos/${asset.drmAssetId}`);
+      await prisma.catalogDeletionAsset.update({ where: { id: asset.id }, data: { lastState: 'COMPLETED', attemptCount: { increment: 1 }, lastCheckedAt: new Date(), errorCategory: null } });
+      return 'completed';
+    }
     const res = await drm.deleteMedia(asset.drmAssetId, asset.externalAssetId);
     await prisma.catalogDeletionAsset.update({
       where: { id: asset.id },
@@ -97,7 +105,8 @@ async function recordPoll(
  */
 export async function runDeletionCycle(
   prisma: PrismaClient,
-  drm: DrmClient,
+  drm: DrmClient | null,
+  storage: StorageClient | null,
   redis: Redis,
   operationId: string,
   opts: DeletionCycleOptions = {},
@@ -119,12 +128,17 @@ export async function runDeletionCycle(
         return { acted, completed: false, leaseLost: true };
       }
       if (asset.drmDeletionId === null) {
-        const scheduled = await recordSchedule(prisma, drm, operationId, asset);
+        const scheduled = await recordSchedule(prisma, drm, storage, operationId, asset);
         acted = true;
         if (scheduled !== 'completed') allCompleted = false;
         continue;
       }
       acted = true;
+      if (drm === null) {
+        await prisma.catalogDeletionAsset.update({ where: { id: asset.id }, data: { lastState: 'FAILED', errorCategory: 'LEGACY_DRM_OPERATION', lastCheckedAt: new Date(), attemptCount: { increment: 1 } } });
+        allCompleted = false;
+        continue;
+      }
       const done = await recordPoll(prisma, drm, {
         id: asset.id,
         drmDeletionId: asset.drmDeletionId,
@@ -140,7 +154,7 @@ export async function runDeletionCycle(
         where: { id: operationId },
         data: {
           status: failed > 0 ? 'FAILED' : 'RUNNING',
-          ...(failed > 0 ? { errorCategory: 'DRM_SERVER' } : { errorCategory: null }),
+          ...(failed > 0 ? { errorCategory: 'MEDIA_CLEANUP_FAILED' } : { errorCategory: null }),
         },
       });
       // Exactly one failure audit per operation: only on transition into FAILED.
@@ -150,7 +164,7 @@ export async function runDeletionCycle(
           action: 'DELETION_FAILED',
           entityType: op.targetType as string,
           entityId: op.targetId,
-          metadata: { operationId, errorCategory: 'DRM_SERVER' },
+          metadata: { operationId, errorCategory: 'MEDIA_CLEANUP_FAILED' },
         });
       }
       return { acted, completed: false, leaseLost: false };
@@ -175,15 +189,8 @@ export async function reconcileOperationWithLease(
   opts: DeletionCycleOptions = {},
 ): Promise<boolean> {
   assertUuid(operationId, 'operationId');
-  const drm = drmFactory(config);
-  if (drm === null) {
-    await prisma.catalogDeletionOperation.update({
-      where: { id: operationId },
-      data: { status: 'FAILED', errorCategory: 'DRM_UNCONFIGURED' },
-    });
-    return false;
-  }
-  const outcome = await runDeletionCycle(prisma, drm, redis, operationId, opts);
+  void drmFactory;
+  const outcome = await runDeletionCycle(prisma, null, createStorageClient(config), redis, operationId, opts);
   return outcome.completed;
 }
 
@@ -261,7 +268,7 @@ export function startDeletionReconciler(
     if (stopped) return;
     try {
       await reconcilePendingOperations(prisma, config, drmFactory, redis, 10);
-      await reconcileRetiredMedia(prisma, drmFactory(config), redis);
+      await reconcileRetiredMedia(prisma, createStorageClient(config), redis);
     } catch (err) {
       getLogger().warn({ err: (err as Error).message }, 'catalog deletion reconcile tick failed');
     } finally {

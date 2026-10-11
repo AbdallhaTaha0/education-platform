@@ -16,19 +16,16 @@ let exit = 1;
 try {
   mkdirSync(resolve('docker/browser/evidence'), { recursive: true });
   const fixture = run(['run','--rm','--network','none','node:22-bookworm-slim','node','-e',`
-    const c=require('node:crypto'); const pair=c.generateKeyPairSync('rsa',{modulusLength:2048});
+    const c=require('node:crypto');
     const e={NODE_ENV:'production',PORT:'3000',COOKIE_SECURE:'true',AUTH_JWT_SECRET:c.randomBytes(32).toString('hex'),
       AUTH_ISSUER:'deployment-verification',AUTH_AUDIENCE:'deployment-verification-web',ALLOWED_ORIGINS:'https://students.example.test',
       STUDENT_DATA_ENCRYPTION_KEY_B64:c.randomBytes(32).toString('base64'),STUDENT_DATA_INDEX_KEY_B64:c.randomBytes(32).toString('base64'),
-      DRM_BASE_URL:'https://drm.example.test',DRM_PUBLIC_BASE_URL:'https://drm.example.test',DRM_CLIENT_ID:'synthetic-verification',DRM_CLIENT_SECRET:c.randomBytes(32).toString('hex'),
-      DRM_ASSERTION_ISSUER:'https://students.example.test',DRM_ASSERTION_AUDIENCE:'drm-service',DRM_ASSERTION_KEY_ID:'verification-only',
-      DRM_ASSERTION_PRIVATE_KEY_B64:Buffer.from(pair.privateKey.export({type:'pkcs8',format:'pem'})).toString('base64'),
       SEO_PUBLIC_ORIGIN:'https://students.example.test',SEO_INDEXING_ENABLED:'false'};
     console.log(Object.entries(e).map(([k,v])=>k+'='+v).join(String.fromCharCode(10)));
   `], true);
   writeFileSync(file, fixture, { mode: 0o600 });
   run([...args, 'up','-d','--wait']);
-  for (const service of ['migrate', 'drm-migrate']) {
+  for (const service of ['migrate']) {
     const id = run([...args, 'ps', '--all', '--quiet', service], true).trim();
     if (!id) throw new Error(`Missing ${service} container`);
     const state = JSON.parse(run(['inspect', id], true))[0].State;

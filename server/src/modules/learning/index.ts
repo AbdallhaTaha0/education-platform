@@ -36,7 +36,9 @@ export function createLearningModule(deps: LearningModuleDeps): {
   context: LearningRouteContext;
 } {
   const now = deps.clock ?? (() => Date.now());
-  const drm = deps.drmFactory(deps.config);
+  // This branch serves progressive MP4 from platform private storage and never
+  // creates a DRM client, even when old DRM environment variables are present.
+  const drm = null;
   const storage = createStorageClient(deps.config);
   const context: LearningRouteContext = {
     prisma: deps.prisma,
@@ -44,7 +46,8 @@ export function createLearningModule(deps: LearningModuleDeps): {
     storage,
     playback: {
       prisma: deps.prisma,
-      drm: drm as NonNullable<typeof drm>,
+      drm,
+      storage,
       assertion: {
         algorithm: deps.config.drmAssertionAlgorithm ?? 'HS256',
         signingKey: deps.config.drmAssertionSigningKey ?? '',
@@ -60,7 +63,9 @@ export function createLearningModule(deps: LearningModuleDeps): {
   };
   return {
     router: createLearningRouter(context),
-    adminRouter: Router().use(createLearningAdminRouter(context)).use(createAdminMaterialsRouter(context)),
+    adminRouter: Router()
+      .use(createLearningAdminRouter(context))
+      .use(createAdminMaterialsRouter(context)),
     context,
   };
 }
@@ -78,12 +83,7 @@ export function startExpiryReconciler(deps: LearningModuleDeps): () => void {
     running = true;
     void (async () => {
       try {
-        const result = await reconcileExpiredSessions(
-          deps.prisma,
-          deps.redis,
-          deps.drmFactory(deps.config),
-          now(),
-        );
+        const result = await reconcileExpiredSessions(deps.prisma, deps.redis, null, now());
         if (result.queued > 0 || result.terminated > 0 || result.failed > 0) {
           getLogger().info(
             {
@@ -104,18 +104,32 @@ export function startExpiryReconciler(deps: LearningModuleDeps): () => void {
           { module: 'learning-expiry', code: (err as { code?: string }).code ?? 'unknown' },
           'expiry reconciliation pass failed',
         );
-      } finally { running = false; }
+      } finally {
+        running = false;
+      }
     })();
   }, EXPIRY_RECONCILE_INTERVAL_MS);
   let cleaning = false;
-  const materialTimer = storage ? setInterval(() => {
-    if (cleaning) return;
-    cleaning = true;
-    void reconcileMaterialObjects({ prisma: deps.prisma, storage, now }).catch(() => {
-      getLogger().warn({ module: 'material-cleanup' }, 'owned-object cleanup remains pending');
-    }).finally(() => { cleaning = false; });
-  }, EXPIRY_RECONCILE_INTERVAL_MS) : null;
+  const materialTimer = storage
+    ? setInterval(() => {
+        if (cleaning) return;
+        cleaning = true;
+        void reconcileMaterialObjects({ prisma: deps.prisma, storage, now })
+          .catch(() => {
+            getLogger().warn(
+              { module: 'material-cleanup' },
+              'owned-object cleanup remains pending',
+            );
+          })
+          .finally(() => {
+            cleaning = false;
+          });
+      }, EXPIRY_RECONCILE_INTERVAL_MS)
+    : null;
   materialTimer?.unref?.();
   timer.unref?.();
-  return () => { clearInterval(timer); if (materialTimer) clearInterval(materialTimer); };
+  return () => {
+    clearInterval(timer);
+    if (materialTimer) clearInterval(materialTimer);
+  };
 }

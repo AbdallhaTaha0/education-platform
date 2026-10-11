@@ -11,6 +11,7 @@ import { collectDeletionScope, findActiveOpForCourse, findActiveOpForTarget } fr
 import { runDeletionCycle } from './reconciler.js';
 import { finalizeNoMediaTarget } from './finalizer.js';
 import { getLogger } from '../../../logger.js';
+import { createStorageClient } from '../../../infra/storage.js';
 
 function confirmationFor(
   targetType: DeletionTargetType,
@@ -43,8 +44,8 @@ function confirmationFor(
 }
 
 /**
- * Permanent-deletion request. For targets with externally registered media
- * the adapter must be configured BEFORE any catalog mutation; otherwise 503
+ * Permanent-deletion request. For targets with stored media, private storage
+ * must be configured BEFORE any catalog mutation; otherwise 503
  * with zero side effects. No network I/O inside transactions.
  */
 export async function requestPermanentDeletion(
@@ -66,13 +67,12 @@ export async function requestPermanentDeletion(
     throw new ApiError(404, 'NOT_FOUND', 'Course not found.');
   confirmationFor(targetType, targetId, courseSlug, body['confirmation']);
 
-  // Read-only scope inspection first: fail 503 before mutating when DRM is
-  // required but unconfigured. No operation, audit, marker, or media change.
+  // Read-only scope inspection first: fail before mutating when private storage
+  // is unavailable. No operation, audit, marker, or media change.
   const preview = await collectDeletionScope(prisma as unknown as TxClient, targetType, targetId);
-  const needsDrm = preview.affected.some((a) => a.drmAssetId !== null);
-  const drm = drmFactory(config);
-  if (needsDrm && drm === null) {
-    throw new ApiError(503, 'DRM_UNCONFIGURED', 'External media service is not configured.');
+  const needsStorage = preview.affected.some((a) => a.drmAssetId !== null);
+  if (needsStorage && createStorageClient(config) === null) {
+    throw new ApiError(503, 'STORAGE_UNCONFIGURED', 'Video storage is not configured.');
   }
 
   const created = await prisma.$transaction(async (tx) => {
@@ -116,9 +116,9 @@ export async function requestPermanentDeletion(
         'Media registration must be reconciled before deletion.',
       );
     }
-    const lockedNeedsDrm = scope.affected.length > 0;
-    if (lockedNeedsDrm && drm === null) {
-      throw new ApiError(503, 'DRM_UNCONFIGURED', 'External media service is not configured.');
+    const lockedNeedsStorage = scope.affected.length > 0;
+    if (lockedNeedsStorage && createStorageClient(config) === null) {
+      throw new ApiError(503, 'STORAGE_UNCONFIGURED', 'Video storage is not configured.');
     }
     for (const cid of [scope.courseId]) {
       await tx.course.update({ where: { id: cid }, data: { deletionRequestedAt: new Date() } });
@@ -158,10 +158,10 @@ export async function requestPermanentDeletion(
       entityId: targetId,
       metadata: { operationId: op.id, assetCount: scope.affected.length },
     });
-    return { op, scope, needsDrm: lockedNeedsDrm };
+    return { op, scope, needsStorage: lockedNeedsStorage };
   });
 
-  if (!created.needsDrm) {
+  if (!created.needsStorage) {
     await finalizeNoMediaTarget(prisma, actorId, created.op.id);
     return prisma.catalogDeletionOperation.findUnique({
       where: { id: created.op.id },
@@ -187,8 +187,8 @@ export async function requestPermanentDeletion(
     where: { id: created.op.id },
     data: { status: 'RUNNING' },
   });
-  const client = drm as DrmClient;
-  await runDeletionCycle(prisma, client, redis, created.op.id).catch(() => null);
+  void drmFactory;
+  await runDeletionCycle(prisma, null, createStorageClient(config), redis, created.op.id).catch(() => null);
   return prisma.catalogDeletionOperation.findUnique({
     where: { id: created.op.id },
     include: { assets: true },

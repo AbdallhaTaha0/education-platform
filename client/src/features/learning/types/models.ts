@@ -151,6 +151,8 @@ export interface PlaybackRenewal {
   playbackToken: string;
   tokenExpiresAt: string;
   sessionExpiresAt: string;
+  /** Rotated short-lived object URL for the no-DRM progressive player. */
+  manifestUrl?: string;
 }
 
 export type PlayerPhase =

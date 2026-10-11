@@ -213,6 +213,7 @@ export function usePlayback(courseRef: string): PlaybackController {
             playbackToken: renewal.playbackToken,
             tokenExpiresAt: renewal.tokenExpiresAt,
             sessionExpiresAt: renewal.sessionExpiresAt,
+            ...(renewal.manifestUrl ? { manifestUrl: renewal.manifestUrl } : {}),
           };
           grantRef.current = next;
           setGrant(next);

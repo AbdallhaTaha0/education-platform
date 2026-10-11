@@ -214,7 +214,7 @@ export async function reorderLessons(sectionId: string, orderedIds: string[]): P
 
 export async function registerMedia(
   lessonId: string,
-  input: { contentType: string; securityTier: string; title: string },
+  input: { contentType: string; title: string },
 ): Promise<{ uploadUrl: string }> {
   const body = await apiFetch<{ data: { uploadUrl: string } }>(
     `/admin/catalog/lessons/${lessonId}/media`,

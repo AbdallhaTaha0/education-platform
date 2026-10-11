@@ -224,6 +224,40 @@ export function DashLessonPlayer({
     if (video === null) return;
     setCanPlay(false); setQualities([]); setQuality('auto'); setQualityFailed(false);
     video.playbackRate = 1;
+    if (grant.drmProvider === 'NONE') {
+      playerRef.current = null;
+      const onMetadata = () => {
+        if (!resumeApplied.current) {
+          const target = grantRefPosition.current;
+          if (target > 0 && Number.isFinite(video.duration) && target < video.duration) video.currentTime = target;
+          resumeApplied.current = true;
+        }
+        dispatch({ type: 'LOADING' });
+      };
+      const onCanPlay = () => setCanPlay(true);
+      const onError = () => {
+        dispatch({ type: 'FAILED', code: 'PLAYBACK_ERROR' });
+        onErrorRef.current?.('PLAYBACK_ERROR');
+      };
+      video.addEventListener('loadedmetadata', onMetadata);
+      video.addEventListener('canplay', onCanPlay);
+      video.addEventListener('error', onError);
+      video.src = grant.manifestUrl;
+      video.load();
+      return () => {
+        captureProgress(video);
+        reportProgress(false, true);
+        if (Number.isFinite(video.currentTime)) grantRefPosition.current = video.currentTime;
+        resumeApplied.current = false;
+        video.removeEventListener('loadedmetadata', onMetadata);
+        video.removeEventListener('canplay', onCanPlay);
+        video.removeEventListener('error', onError);
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+        clearSession();
+      };
+    }
     const keySystem = emeKeyForProvider(grant.drmProvider);
     if (keySystem === null || isUnsupportedProvider(grant)) {
       dispatch({ type: 'FAILED', code: 'UNSUPPORTED_PROVIDER' });

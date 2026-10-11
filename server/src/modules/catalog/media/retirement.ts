@@ -5,7 +5,7 @@ import { ApiError } from '../../identity/errors.js';
 import { courseIdForLesson, withCourseLock } from '../courseTx.js';
 import { ensureStructuralAllowed } from '../courses/service.js';
 import { audit } from '../audit.js';
-import type { DrmClient } from '../drmClient.js';
+import type { StorageClient } from '../../../infra/storage.js';
 import { withRenewingLease } from '../deletion/lease.js';
 
 export async function removeDraftVideo(db: PrismaClient, actor: string, lessonId: string) {
@@ -28,8 +28,8 @@ export async function removeDraftVideo(db: PrismaClient, actor: string, lessonId
 }
 
 /** Durable, bounded, replica-leased cleanup. Never deletes an inherited or session-used asset. */
-export async function reconcileRetiredMedia(db: PrismaClient, drm: DrmClient | null, redis: Redis, now = new Date()) {
-  if (!drm) return;
+export async function reconcileRetiredMedia(db: PrismaClient, storage: StorageClient | null, redis: Redis, now = new Date()) {
+  if (!storage) return;
   const rows = await db.mediaMapping.findMany({ where: { retiredAt: { not: null }, retirementNextAttempt: { lte: now } }, orderBy: { retirementNextAttempt: 'asc' }, take: 10 });
   for (const candidate of rows) await withRenewingLease(redis, `retired-${candidate.id}`, 30000, async scope => {
     const m = await db.mediaMapping.findUnique({ where: { id: candidate.id }, include: { lesson: { include: { section: { include: { course: true } } } } } });
@@ -44,37 +44,15 @@ export async function reconcileRetiredMedia(db: PrismaClient, drm: DrmClient | n
       return;
     }
     try {
-      // Revoke expired references through the API before deleting, including missed end callbacks.
       for (const s of sessions) {
         if (scope.lost) return;
-        const result = await drm.revokePlaybackSession(s.externalSessionId, 'SUPERSEDED_VIDEO').catch(error => {
-          if ((error as { code?: string }).code !== 'DRM_NOT_FOUND') throw error;
-          return { status: 'ended' };
-        });
-        if (!['revoked', 'ended'].includes(result.status)) throw new Error('Unconfirmed session closure');
         await db.playbackReference.updateMany({ where: { id: s.id }, data: { status: s.status === 'ENDED' ? 'ENDED' : 'TERMINATED', endedAt: now, terminationStatus: 'COMPLETED', nextTerminationAt: null, pendingEndReason: null } });
       }
       if (scope.lost) return;
-      let operation = m.retirementOperationId;
-      if (!operation) {
-        const result = await drm.deleteMedia(m.assetId, m.externalAssetId).catch(error => {
-          if ((error as { code?: string }).code !== 'DRM_NOT_FOUND') throw error;
-          return null;
-        });
-        if (!result) {
-          if (!scope.lost) await db.mediaMapping.deleteMany({ where: { id: m.id, retiredAt: { not: null } } });
-          return;
-        }
-        operation = result.deletionId;
-        await db.mediaMapping.update({ where: { id: m.id }, data: { retirementOperationId: operation } });
-      }
-      const result = await drm.deletionStatus(operation);
-      if (scope.lost) return;
-      if (result.status === 'COMPLETED') {
-        await db.mediaMapping.deleteMany({ where: { id: m.id, retiredAt: { not: null } } });
-      } else await db.mediaMapping.update({ where: { id: m.id }, data: { retirementOperationId: result.status === 'FAILED' ? null : operation, retirementNextAttempt: new Date(now.getTime() + 30000) } });
+      await storage.deleteObject(`lesson-videos/${m.assetId}`);
+      if (!scope.lost) await db.mediaMapping.deleteMany({ where: { id: m.id, retiredAt: { not: null } } });
     } catch (error) {
-      await db.mediaMapping.updateMany({ where: { id: m.id }, data: { ...((error as { code?: string }).code === 'DRM_NOT_FOUND' ? { retirementOperationId: null } : {}), retirementNextAttempt: new Date(now.getTime() + 60000), errorCategory: 'RETIREMENT_RETRY' } });
+      await db.mediaMapping.updateMany({ where: { id: m.id }, data: { retirementNextAttempt: new Date(now.getTime() + 60000), errorCategory: 'RETIREMENT_RETRY' } });
     }
   });
 }
