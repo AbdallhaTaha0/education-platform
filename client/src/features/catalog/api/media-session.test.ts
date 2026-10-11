@@ -11,7 +11,7 @@ describe('video upload session recovery', () => {
       if (!refreshed) return new Response(JSON.stringify({ error: { code: 'TOKEN_MISSING' } }), { status: 401 });
       return new Response(JSON.stringify({ data: { uploadUrl: 'https://storage.example.test/upload', mapping: { status: 'READY' } } }));
     }));
-    if (phase === 'register') await registerMedia('lesson', { contentType: 'video/mp4', securityTier: 'STANDARD', title: 'Fixture' });
+    if (phase === 'register') await registerMedia('lesson', { contentType: 'video/mp4', title: 'Fixture' });
     else if (phase === 'complete') await completeMedia('lesson');
     else expect(await syncLessonMedia('lesson')).toBe('READY');
     expect(calls).toHaveLength(4); expect(calls[0].path).toBe(calls[3].path);
