@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 import { Button } from './Button';
 import { FormActions } from './FormActions';
 
@@ -12,6 +12,41 @@ interface ConfirmDialogProps {
   onCancel: () => void;
 }
 
+function useModalKeyboard(open: boolean, onClose: () => void, container: RefObject<HTMLDivElement>): void {
+  const close = useRef(onClose);
+  close.current = onClose;
+  useEffect(() => {
+    if (!open) return;
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const root = container.current;
+    (root?.querySelector<HTMLElement>('[data-dialog-initial]') ?? root)?.focus();
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        close.current();
+      }
+      if (event.key !== 'Tab' || !container.current) return;
+      const controls = [...container.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')]
+        .filter(element => element.getClientRects().length > 0);
+      if (!controls.length) { event.preventDefault(); container.current.focus(); return; }
+      const first = controls[0], last = controls[controls.length - 1];
+      const initial = container.current.querySelector<HTMLElement>('[data-dialog-initial]');
+      if (!container.current.contains(document.activeElement)) { event.preventDefault(); first?.focus(); }
+      else if (event.shiftKey && document.activeElement === initial) { event.preventDefault(); last?.focus(); }
+      else if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [open, container]);
+}
+
 /** Keyboard-operable confirmation dialog with visible focus and sane tab order. */
 export function ConfirmDialog({
   open,
@@ -22,28 +57,26 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps): JSX.Element | null {
-  const confirmRef = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    if (open) confirmRef.current?.querySelector('button')?.focus();
-  }, [open]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalKeyboard(open, onCancel, dialogRef);
   if (!open) return null;
   return (
     <div
+      ref={dialogRef}
+      tabIndex={-1}
       className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4"
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
-      <div className="w-full max-w-md rounded-card border border-border-strong bg-elevated p-6 shadow-lift">
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto overscroll-contain rounded-card border border-border-strong bg-elevated p-6 shadow-lift">
         <h2 className="mb-2 text-xl font-bold">{title}</h2>
         <p className="mb-6 text-muted">{body}</p>
         <FormActions className="mt-0">
-          <span ref={confirmRef} className="contents">
-            <Button variant="primary" onClick={onConfirm}>
-              {confirmLabel}
-            </Button>
-          </span>
-          <Button variant="secondary" onClick={onCancel}>
+          <Button variant="primary" onClick={onConfirm}>
+            {confirmLabel}
+          </Button>
+          <Button data-dialog-initial variant="secondary" onClick={onCancel}>
             {cancelLabel}
           </Button>
         </FormActions>
@@ -61,33 +94,20 @@ interface DialogProps {
 
 /** Generic accessible dialog shell with initial focus and Escape-to-close. */
 export function Dialog({ open, title, onClose, children }: DialogProps): JSX.Element | null {
-  const titleRef = useRef<HTMLHeadingElement>(null);
-  useEffect(() => {
-    if (open) titleRef.current?.focus();
-  }, [open]);
-  useEffect(() => {
-    if (!open) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const onKey = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [open, onClose]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useModalKeyboard(open, onClose, dialogRef);
   if (!open) return null;
   return (
     <div
+      ref={dialogRef}
+      tabIndex={-1}
       className="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4"
       role="dialog"
       aria-modal="true"
       aria-label={title}
     >
       <div className="max-h-[calc(100dvh-2rem)] min-w-0 w-full max-w-lg overflow-y-auto overscroll-contain rounded-card border border-border-strong bg-elevated p-4 shadow-lift sm:p-6">
-        <h2 ref={titleRef} tabIndex={-1} className="mb-2 text-xl font-bold">
+        <h2 data-dialog-initial tabIndex={-1} className="mb-2 text-xl font-bold">
           {title}
         </h2>
         {children}

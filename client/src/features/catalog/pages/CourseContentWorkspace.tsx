@@ -19,6 +19,7 @@ export function CourseContentWorkspace({ course, mode, onChanged, blockedReason,
   const sections = course.sections.filter(s => `${s.titleAr} ${s.titleEn} ${s.lessons.map(l => `${l.titleAr} ${l.titleEn}`).join(' ')}`.toLowerCase().includes(search.trim().toLowerCase()));
   const section = course.sections.find(s => s.id === selected) ?? course.sections[0];
   const selectedId = section?.id ?? '';
+  const selectionOutsideResults = Boolean(search.trim() && section && !sections.some(s => s.id === selectedId));
   useEffect(() => { if (selected !== selectedId) setSelected(selectedId); }, [selected, selectedId]);
   useEffect(() => {
     if (!createdSection || !course.sections.some(s => s.id === createdSection)) return;
@@ -45,6 +46,7 @@ export function CourseContentWorkspace({ course, mode, onChanged, blockedReason,
         {!sections.length ? <p className="mt-3 text-sm text-muted">{ar ? 'لا توجد أقسام مطابقة.' : 'No matching sections.'}</p> : null}
       </nav>
       <section id="selected-section-workspace" className="min-w-0 rounded-card border border-border p-4 sm:p-5">
+        {selectionOutsideResults ? <p role="status" className="mb-3 rounded-control border border-info-fg bg-info-bg p-3 text-sm text-info-fg">{ar ? 'القسم المفتوح حاليًا خارج نتائج البحث. امسح البحث أو اختَر نتيجة أخرى لتغيير القسم.' : 'The open section is outside the search results. Clear the search or choose another result to switch sections.'}</p> : null}
         {section ? <><h3 ref={sectionHeading} tabIndex={-1} className="text-xl font-bold">#{section.position} {ar ? section.titleAr : section.titleEn}</h3>
           <LessonList key={`${section.id}-${mode}`} sectionId={section.id} lessons={section.lessons} onChanged={onChanged} blockedReason={blockedReason} additionBlockedReason={additionBlockedReason} workspaceMode={mode} />
           {mode === 'video' ? <DeletionPanel kind="sections" targetId={section.id} expectedConfirmation={section.id} entityName={ar ? section.titleAr : section.titleEn} onChanged={onChanged} /> : null}

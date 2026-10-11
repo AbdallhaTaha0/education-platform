@@ -58,7 +58,7 @@ export function ParentReportWorkspace({ courseId, studentId, studentName, guardi
             disabledReason="" aria-describedby={!guardianContactAvailable ? 'guardian-contact-warning' : undefined}
             disabled={busy || !studentId || courseIds.length === 0 || !guardianContactAvailable}
             onClick={() => handoff.generateAndSend({ studentId, courseIds, reportType, language: lang, format: 'SHORT' })}>
-            {busy ? (ar ? 'جارٍ التجهيز…' : 'Preparing…') : (ar ? 'إرسال واتساب' : 'Send via WhatsApp')}
+            {busy ? (ar ? 'جارٍ التجهيز…' : 'Preparing…') : (ar ? 'فتح في واتساب' : 'Open in WhatsApp')}
           </Button>
           {busy ? <Button type="button" variant="secondary" data-testid="cancel-generation" onClick={handoff.dispose}>{tr('cancel', lang)}</Button> : null}
         </div>

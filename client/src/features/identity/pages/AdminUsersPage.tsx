@@ -18,6 +18,7 @@ export function AdminScreen({ go }: { go: (route: string) => void }): JSX.Elemen
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [fieldError, setFieldError] = useState<'name' | 'email' | 'phone' | 'password' | null>(null);
   const [createdEmail, setCreatedEmail] = useState<string | null>(null);
 
   if (status === 'loading') {
@@ -64,6 +65,7 @@ export function AdminScreen({ go }: { go: (route: string) => void }): JSX.Elemen
     if (busy) return;
     setBusy(true);
     setErrorCode(null);
+    setFieldError(null);
     setCreatedEmail(null);
     try {
       const body = await apiFetch<{ data: { user: SafeUser } }>('/admin/users', {
@@ -78,6 +80,10 @@ export function AdminScreen({ go }: { go: (route: string) => void }): JSX.Elemen
       setPassword('');
     } catch (err) {
       setErrorCode(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
+      const apiField = err instanceof ApiError ? err.details?.['field'] : null;
+      const field = err instanceof ApiError && err.code === 'EMAIL_TAKEN' ? 'email' : err instanceof ApiError && err.code === 'PHONE_TAKEN' ? 'phone' : apiField === 'displayName' ? 'name' : apiField === 'email' || apiField === 'phone' || apiField === 'password' ? apiField : null;
+      setFieldError(field);
+      if (field) document.getElementById(`adm-${field}`)?.focus();
     } finally {
       setBusy(false);
     }
@@ -94,10 +100,12 @@ export function AdminScreen({ go }: { go: (route: string) => void }): JSX.Elemen
         <Notice kind="success">
           {createdEmail ? `${t.successAdminCreate} (${createdEmail})` : null}
         </Notice>
-        <form onSubmit={(e) => void submit(e)} noValidate>
+        <form onSubmit={(e) => void submit(e)}>
           <Field id="adm-name" label={t.fieldName}>
             <input
               id="adm-name"
+              aria-invalid={fieldError === 'name' || undefined}
+              aria-describedby={fieldError === 'name' ? 'adm-name-error' : undefined}
               name="name"
               autoComplete="off"
               required
@@ -107,10 +115,13 @@ export function AdminScreen({ go }: { go: (route: string) => void }): JSX.Elemen
               onChange={(e) => setName(e.target.value)}
               className={textInputClassName(false)}
             />
+            {fieldError === 'name' ? <p id="adm-name-error" className="text-sm text-error-fg">{lang === 'ar' ? 'راجع الاسم المعروض وأعد المحاولة.' : 'Check the display name and try again.'}</p> : null}
           </Field>
           <Field id="adm-email" label={t.fieldEmail} dir="ltr">
             <input
               id="adm-email"
+              aria-invalid={fieldError === 'email' || undefined}
+              aria-describedby={fieldError === 'email' ? 'adm-email-error' : undefined}
               name="email"
               type="email"
               autoComplete="off"
@@ -119,10 +130,13 @@ export function AdminScreen({ go }: { go: (route: string) => void }): JSX.Elemen
               onChange={(e) => setEmail(e.target.value)}
               className={textInputClassName(false)}
             />
+            {fieldError === 'email' ? <p id="adm-email-error" className="text-sm text-error-fg">{errorCode === 'EMAIL_TAKEN' ? (lang === 'ar' ? 'البريد الإلكتروني مستخدم بالفعل.' : 'This email is already registered.') : (lang === 'ar' ? 'راجع البريد الإلكتروني وأعد المحاولة.' : 'Check the email and try again.')}</p> : null}
           </Field>
           <Field id="adm-phone" label={t.fieldPhone} dir="ltr">
             <input
               id="adm-phone"
+              aria-invalid={fieldError === 'phone' || undefined}
+              aria-describedby={fieldError === 'phone' ? 'adm-phone-error' : undefined}
               name="phone"
               type="tel"
               inputMode="tel"
@@ -132,10 +146,12 @@ export function AdminScreen({ go }: { go: (route: string) => void }): JSX.Elemen
               onChange={(e) => setPhone(e.target.value)}
               className={textInputClassName(false)}
             />
+            {fieldError === 'phone' ? <p id="adm-phone-error" className="text-sm text-error-fg">{errorCode === 'PHONE_TAKEN' ? (lang === 'ar' ? 'رقم الهاتف مستخدم بالفعل.' : 'This phone number is already registered.') : (lang === 'ar' ? 'راجع رقم الهاتف وأعد المحاولة.' : 'Check the phone number and try again.')}</p> : null}
           </Field>
           <Field id="adm-password" label={t.fieldPassword} dir="ltr">
             <input
               id="adm-password"
+              aria-invalid={fieldError === 'password' || undefined}
               name="new-password"
               type="password"
               autoComplete="new-password"
@@ -144,12 +160,13 @@ export function AdminScreen({ go }: { go: (route: string) => void }): JSX.Elemen
               maxLength={256}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              aria-describedby="adm-password-hint"
+              aria-describedby={fieldError === 'password' ? 'adm-password-hint adm-password-error' : 'adm-password-hint'}
               className={textInputClassName(false)}
             />
             <p className="mt-2 text-sm text-muted" id="adm-password-hint">
               {t.passwordHint}
             </p>
+            {fieldError === 'password' ? <p id="adm-password-error" className="text-sm text-error-fg">{lang === 'ar' ? 'راجع كلمة المرور وأعد المحاولة.' : 'Check the password and try again.'}</p> : null}
           </Field>
           <FormActions>
             <Button type="submit" disabled={busy}>

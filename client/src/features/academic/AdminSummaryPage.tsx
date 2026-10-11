@@ -100,7 +100,7 @@ export function AdminSummaryPage({ accountOverview = false }: { accountOverview?
                     {ar ? 'آخر تحديث بتوقيت القاهرة:' : 'Last updated, Cairo:'}{' '}
                     {displayDeadline(data.asOf, lang)}
                   </p>
-                  <a href="#/admin/recharge" className="mb-5 block rounded-card border border-primary bg-elevated p-5 font-bold">{ar?`${data.pendingRecharges} طلب شحن يحتاج المراجعة — افتح قائمة الطلبات`:`${data.pendingRecharges} recharge requests need review — open the queue`}</a>
+                  <a href="#/admin/recharge" className={`mb-5 block rounded-card border p-5 font-bold ${data.pendingRecharges > 0 ? 'border-pending-fg bg-pending-bg text-pending-fg' : 'border-border bg-surface text-ink'}`}>{ar?`${data.pendingRecharges} طلب شحن يحتاج المراجعة — افتح قائمة الطلبات`:`${data.pendingRecharges} recharge requests need review — open the queue`}</a>
                   <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {metrics.map(([key, label]) => (
                       <Card key={key}>

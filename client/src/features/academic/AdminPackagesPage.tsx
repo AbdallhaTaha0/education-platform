@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { ApiError, useAuth } from '../../auth';
 import { useLang } from '../../i18n';
 import { Card, Container } from '../../components/ui/Card';
@@ -7,6 +7,8 @@ import { FormActions } from '../../components/ui/FormActions';
 import { PaginatedCollection } from '../../components/ui/Pagination';
 import { Field, textInputClassName } from '../../components/ui/Field';
 import { Loading, Notice } from '../../components/ui/Notice';
+import { ConfirmDialog } from '../../components/ui/Dialog';
+import { useUnsavedChanges } from '../../components/ui/UnsavedChanges';
 import { fetchAdminCourses } from '../catalog/api/client';
 import type { AdminCourseSummary } from '../catalog/types/models';
 import { adminPackages, saveSchoolPackage, type AdminPackage } from './api';
@@ -39,7 +41,11 @@ export function AdminPackagesPage(): JSX.Element {
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [fieldError, setFieldError] = useState<'courseIds' | 'deadline' | 'price' | 'titleAr' | 'titleEn' | 'descriptionAr' | 'descriptionEn' | null>(null);
   const [showForm,setShowForm]=useState(false);
+  const [archiveTarget, setArchiveTarget] = useState<AdminPackage | null>(null);
+  const baseline = useRef(blank);
+  const confirmDiscard = useUnsavedChanges(showForm && JSON.stringify(form) !== JSON.stringify(baseline.current), ar ? 'تعديلات الباقة غير محفوظة. هل تريد تركها؟' : 'Package changes are unsaved. Leave without saving?');
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
@@ -57,10 +63,12 @@ export function AdminPackagesPage(): JSX.Element {
     if (status === 'authenticated' && user?.role === 'ADMIN') void load();
   }, [status, user?.role, load]);
   function edit(p: AdminPackage) {
+    if (!confirmDiscard()) return;
     setShowForm(true);
     setEditing(p);
     setError('');
-    setForm({
+    setFieldError(null);
+    const next = {
       titleAr: p.titleAr,
       titleEn: p.titleEn,
       descriptionAr: p.descriptionAr,
@@ -69,13 +77,21 @@ export function AdminPackagesPage(): JSX.Element {
       deadline: cairoWallTime(p.endsAt),
       status: p.status,
       courseIds: [...p.members].sort((a, b) => a.position - b.position).map((m) => m.courseId),
-    });
+    };
+    baseline.current = next;
+    setForm(next);
   }
   async function submit(e: FormEvent) {
     e.preventDefault();
     if (busy) return;
+    if (form.courseIds.some(id => !id) || new Set(form.courseIds).size !== 3) {
+      setFieldError('courseIds');
+      document.getElementById('pkg-member-0')?.focus();
+      return;
+    }
     setBusy(true);
     setError('');
+    setFieldError(null);
     try {
       const body = {
         titleAr: form.titleAr,
@@ -91,10 +107,21 @@ export function AdminPackagesPage(): JSX.Element {
       await saveSchoolPackage(editing?.id ?? null, body);
       setEditing(null);
       setForm(blank);
+      baseline.current = blank;
       setShowForm(false);
       await load();
     } catch (e) {
-      setError(e instanceof ApiError ? e.code : 'VALIDATION_ERROR');
+      const code = e instanceof ApiError ? e.code : 'VALIDATION_ERROR';
+      setError(code);
+      const apiField = e instanceof ApiError ? e.details?.['field'] : null;
+      const target = code === 'PACKAGE_UNAVAILABLE' || code === 'PACKAGE_GRADE_MISMATCH' ? 'courseIds'
+        : code === 'OFFER_EXPIRED' ? 'deadline'
+        : apiField === 'pricePiastres' ? 'price'
+        : apiField === 'titleAr' || apiField === 'titleEn' || apiField === 'descriptionAr' || apiField === 'descriptionEn' ? apiField
+        : apiField === 'courseIds' ? 'courseIds'
+        : apiField === 'endsAt' ? 'deadline' : null;
+      setFieldError(target);
+      if (target) document.getElementById(target === 'courseIds' ? 'pkg-member-0' : `pkg-${target}`)?.focus();
     } finally {
       setBusy(false);
     }
@@ -110,6 +137,7 @@ export function AdminPackagesPage(): JSX.Element {
       setError(e instanceof ApiError ? e.code : 'SERVICE_ERROR');
     } finally {
       setBusy(false);
+      setArchiveTarget(null);
     }
   }
   const eligible = courses.filter(
@@ -166,6 +194,10 @@ export function AdminPackagesPage(): JSX.Element {
                       ? ar
                         ? 'اختَر ثلاثة كورسات من نفس الصف الدراسي.'
                         : 'Choose three courses from the same grade.'
+                    : error === 'PACKAGE_UNAVAILABLE'
+                      ? ar ? 'راجع الكورسات الثلاثة: يجب أن تكون كورسات شهرية متاحة ومصنفة للصف نفسه.' : 'Review all three courses: they must be available monthly courses in the same grade.'
+                    : error === 'OFFER_EXPIRED'
+                      ? ar ? 'موعد انتهاء الباقة مضى. اختَر موعدًا لاحقًا.' : 'The package deadline has passed. Choose a later time.'
                       : ar
                         ? 'تعذّر الحفظ أو التحميل. راجع البيانات وحاول مجددًا.'
                         : 'Could not save or load. Check the fields and retry.'}
@@ -177,7 +209,7 @@ export function AdminPackagesPage(): JSX.Element {
               {loading ? <Loading text={t.loading} /> : null}
               {!loading && !hasThreeInSameGrade ? <Notice kind="info">{ar?'تحتاج الباقة إلى ٣ كورسات شرح شهرية مختلفة ومصنفة لنفس الصف الدراسي. صنّف الكورسات من إدارة الكورسات أولًا.':'A package needs three distinct monthly courses classified for the same grade. Set their academic classification in course management first.'} <a href="#/admin/catalog" className="underline">{ar?'إدارة الكورسات':'Manage courses'}</a></Notice>:null}
               <FormActions>
-                <Button disabled={busy || !hasThreeInSameGrade} disabledReason={busy ? undefined : { ar: "تحتاج الباقة إلى ٣ كورسات مؤهلة من نفس الصف الدراسي.", en: "A package needs 3 eligible courses from the same grade." }} onClick={()=>{setEditing(null);setForm(blank);setShowForm(true);}}>{ar?'إنشاء باقة':'Create package'}</Button>
+                <Button disabled={busy || !hasThreeInSameGrade} disabledReason={busy ? undefined : { ar: "تحتاج الباقة إلى ٣ كورسات مؤهلة من نفس الصف الدراسي.", en: "A package needs 3 eligible courses from the same grade." }} onClick={()=>{if (!confirmDiscard()) return; setEditing(null); baseline.current = blank; setForm(blank); setFieldError(null); setError(''); setShowForm(true);}}>{ar?'إنشاء باقة':'Create package'}</Button>
               </FormActions>
               {showForm ? <Card className="mt-6">
                 <h2 className="text-xl font-bold">
@@ -201,14 +233,16 @@ export function AdminPackagesPage(): JSX.Element {
                               k === 'titleAr'
                                 ? 'اسم الباقة بالعربية'
                                 : k === 'titleEn'
-                                  ? 'Package name in English'
+                                  ? ar ? 'اسم الباقة بالإنجليزية' : 'Package name in English'
                                   : k === 'descriptionAr'
                                     ? 'الوصف بالعربية'
-                                    : 'Description in English'
+                                    : ar ? 'الوصف بالإنجليزية' : 'Description in English'
                             }
                           >
                             <input
                               id={`pkg-${k}`}
+                              aria-invalid={fieldError === k || undefined}
+                              aria-describedby={fieldError === k ? `pkg-${k}-error` : undefined}
                               required
                               maxLength={k.startsWith('title') ? 200 : 5000}
                               dir={k.endsWith('Ar') ? 'rtl' : 'ltr'}
@@ -216,6 +250,7 @@ export function AdminPackagesPage(): JSX.Element {
                               value={form[k]}
                               onChange={(e) => setForm({ ...form, [k]: e.target.value })}
                             />
+                            {fieldError === k ? <p id={`pkg-${k}-error`} className="text-sm text-error-fg">{ar ? 'راجع هذا الحقل وأعد المحاولة.' : 'Check this field and try again.'}</p> : null}
                           </Field>
                         ),
                       )}
@@ -224,12 +259,15 @@ export function AdminPackagesPage(): JSX.Element {
                       <Field id="pkg-price" label={ar ? 'السعر بالجنيه المصري' : 'Price in EGP'}>
                         <input
                           id="pkg-price"
+                          aria-invalid={fieldError === 'price' || undefined}
+                          aria-describedby={fieldError === 'price' ? 'pkg-price-error' : undefined}
                           inputMode="decimal"
                           required
                           className={textInputClassName(false)}
                           value={form.price}
                           onChange={(e) => setForm({ ...form, price: e.target.value })}
                         />
+                        {fieldError === 'price' ? <p id="pkg-price-error" className="text-sm text-error-fg">{ar ? 'أدخل سعرًا صحيحًا بالجنيه المصري.' : 'Enter a valid price in EGP.'}</p> : null}
                       </Field>
                       <Field
                         id="pkg-deadline"
@@ -238,12 +276,15 @@ export function AdminPackagesPage(): JSX.Element {
                         <input
                           id="pkg-deadline"
                           type="datetime-local"
+                          aria-invalid={fieldError === 'deadline' || undefined}
+                          aria-describedby={fieldError === 'deadline' ? 'pkg-deadline-error' : undefined}
                           step="1"
                           required
                           className={textInputClassName(false)}
                           value={form.deadline}
                           onChange={(e) => setForm({ ...form, deadline: e.target.value })}
                         />
+                        {fieldError === 'deadline' ? <p id="pkg-deadline-error" className="text-sm text-error-fg">{ar ? 'اختَر موعدًا لاحقًا.' : 'Choose a later deadline.'}</p> : null}
                       </Field>
                     </div>
                     {[0, 1, 2].map((i) => (
@@ -255,6 +296,8 @@ export function AdminPackagesPage(): JSX.Element {
                         <select
                           id={`pkg-member-${i}`}
                           required
+                          aria-invalid={fieldError === 'courseIds' || undefined}
+                          aria-describedby={fieldError === 'courseIds' && i === 0 ? 'pkg-members-error' : undefined}
                           className={textInputClassName(false)}
                           value={form.courseIds[i] ?? ''}
                           onChange={(e) =>
@@ -294,6 +337,7 @@ export function AdminPackagesPage(): JSX.Element {
                             </option>
                           ) : null}
                         </select>
+                        {fieldError === 'courseIds' && i === 0 ? <p id="pkg-members-error" className="text-sm text-error-fg">{ar ? 'اختَر ثلاثة كورسات شهرية مختلفة ومتاحة من نفس الصف.' : 'Choose three distinct, available monthly courses from the same grade.'}</p> : null}
                       </Field>
                     ))}
                     <Field id="pkg-status" label={ar ? 'حالة الباقة' : 'Package status'}>
@@ -333,8 +377,11 @@ export function AdminPackagesPage(): JSX.Element {
                         type="button"
                         variant="secondary"
                         onClick={() => {
+                          if (!confirmDiscard()) return;
                           setEditing(null);
                           setForm(blank);
+                          baseline.current = blank;
+                          setFieldError(null);
                           setShowForm(false); setError('');
                         }}
                       >
@@ -371,7 +418,7 @@ export function AdminPackagesPage(): JSX.Element {
                         {ar ? 'تعديل' : 'Edit'}
                       </Button>
                       {p.status !== 'ARCHIVED' ? (
-                        <Button variant="secondary" onClick={() => void archive(p)} disabled={busy}>
+                        <Button variant="secondary" onClick={() => setArchiveTarget(p)} disabled={busy}>
                           {ar ? 'أرشفة' : 'Archive'}
                         </Button>
                       ) : null}
@@ -379,6 +426,7 @@ export function AdminPackagesPage(): JSX.Element {
                   </li>
                 ))}
               </PaginatedCollection>
+              <ConfirmDialog open={archiveTarget !== null} title={ar ? 'أرشفة الباقة؟' : 'Archive package?'} body={ar ? `ستُؤرشف «${archiveTarget?.titleAr ?? ''}» ولن تظهر للمشتريات الجديدة. يمكن استعادة الباقة لاحقًا.` : `“${archiveTarget?.titleEn ?? ''}” will be archived and unavailable for new purchases. You can restore it later.`} confirmLabel={ar ? 'تأكيد الأرشفة' : 'Confirm archive'} cancelLabel={t.cancel} onConfirm={() => { if (archiveTarget) void archive(archiveTarget); }} onCancel={() => { if (!busy) setArchiveTarget(null); }} />
             </>
           )}
         </section>

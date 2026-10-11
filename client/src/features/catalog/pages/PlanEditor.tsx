@@ -7,6 +7,7 @@ import { FormActions } from '../../../components/ui/FormActions';
 import { Card } from '../../../components/ui/Card';
 import { Field, textInputClassName } from '../../../components/ui/Field';
 import { Notice } from '../../../components/ui/Notice';
+import { ConfirmDialog } from '../../../components/ui/Dialog';
 import { PriceDisplay } from '../components/PriceDisplay';
 import { createPlan, patchPlan, removePlan } from '../api/client';
 import type { AdminPlan } from '../types/models';
@@ -31,6 +32,7 @@ export function PlanEditor({
   const [access, setAccess] = useState<AccessDraft>(initialAccess);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<AdminPlan | null>(null);
   const [baseline,setBaseline]=useState(JSON.stringify({current:'',previous:'',access:initialAccess}));
   const discard=useUnsavedChanges(JSON.stringify({current,previous,access})!==baseline,ar?'عرض السعر والوصول غير محفوظ. هل تريد تركه؟':'The price/access offer is unsaved. Leave without saving?');
   function reset() {
@@ -92,6 +94,7 @@ export function PlanEditor({
       setError(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
     } finally {
       setBusy(false);
+      setRemoveTarget(null);
     }
   }
   return (
@@ -116,12 +119,13 @@ export function PlanEditor({
             <Button variant="secondary" disabled={busy} onClick={() => edit(plan)}>
               {t.actionEdit}
             </Button>
-            <Button variant="secondary" disabled={busy} onClick={() => void remove(plan.id)}>
+            <Button variant="secondary" disabled={busy} onClick={() => setRemoveTarget(plan)}>
               {t.actionRemove}
             </Button>
           </li>
         ))}
       </PaginatedCollection>
+      <ConfirmDialog open={removeTarget !== null} title={ar ? 'إزالة عرض السعر؟' : 'Remove price offer?'} body={ar ? `سيُزال عرض ${((removeTarget?.currentPricePiastres ?? 0) / 100).toFixed(2)} ج.م من المشتريات الجديدة. شروط الوصول التي اشتراها الطلاب سابقًا لا تتغير.` : `The EGP ${((removeTarget?.currentPricePiastres ?? 0) / 100).toFixed(2)} offer will be removed for new purchases. Existing purchased access does not change.`} confirmLabel={ar ? 'تأكيد الإزالة' : 'Confirm removal'} cancelLabel={t.actionCancel} onConfirm={() => { if (removeTarget) void remove(removeTarget.id); }} onCancel={() => { if (!busy) setRemoveTarget(null); }} />
       <form onSubmit={(event) => void submit(event)} className="mt-6 space-y-4">
         <h3 className="font-bold">{editing ? t.actionEdit : t.actionAddPlan}</h3>
         <label className="flex items-center gap-2 font-semibold">
