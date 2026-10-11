@@ -145,6 +145,7 @@ export async function purchaseCourse(
       const now = new Date();
       if (await tx.subscription.findFirst({ where: {
         studentId, courseId: plan.course.id,
+        startsAt: { lte: now },
         OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
       }, select: { id: true } })) {
         throw new ApiError(409, 'COURSE_ALREADY_SUBSCRIBED', 'You already have access to this course. No payment was taken.');

@@ -6,11 +6,12 @@ import { publicHref } from './seo/paths';
 import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { AuthProvider, useAuth } from './auth';
 import { Container } from './components/ui/Card';
-import { ErrorFeedbackProvider } from './components/ui/ErrorFeedback';
+import { FeedbackProvider } from './components/ui/ErrorFeedback';
 import { UnsavedChangesProvider, useConfirmNavigation } from './components/ui/UnsavedChanges';
 import { useLang } from './i18n';
 import { ThemeProvider } from './theme';
 import { Header } from './components/layout/Header';
+import { PageErrorBoundary } from './components/ui/PageErrorBoundary';
 import {
   adminCourseIdFromHash,
   learnSlugFromHash,
@@ -23,6 +24,7 @@ import {
   type Route,
 } from './routes';
 import { PackagePage } from './features/academic/PackagePage';
+import { purchaseAfterLogin } from './features/purchase/loginRedirect';
 const AdminPackagesPage = lazy(() => import('./features/academic/AdminPackagesPage').then(module => ({ default: module.AdminPackagesPage })));
 const AdminSummaryPage = lazy(() => import('./features/academic/AdminSummaryPage').then(module => ({ default: module.AdminSummaryPage })));
 import { AdminScreen, LoginScreen, RegisterScreen } from './screens';
@@ -113,6 +115,9 @@ function Shell(): JSX.Element {
         {t.skipToContent}
       </a>
       <Header onSwitch={setLang} route={route} />
+      <PageErrorBoundary key={`${route}:${lang}`} lang={lang} onReload={() => {
+        if (confirmNavigation()) window.location.reload();
+      }}>
       <Suspense fallback={<main id="main"><Container><Loading text={t.loading} /></Container></main>}>
       {route==='admin-students'?<AccountWorkspace route={route}><StudentDirectoryPage/></AccountWorkspace>:null}
       {route==='support'?<SupportPage/>:null}
@@ -146,7 +151,7 @@ function Shell(): JSX.Element {
       {route === 'login' ? (
         <main id="main">
           <section className="py-8">
-            <LoginScreen onDone={() => go('#/account')} />
+            <LoginScreen onDone={() => go(purchaseAfterLogin(window.location.hash))} />
           </section>
         </main>
       ) : null}
@@ -211,6 +216,7 @@ function Shell(): JSX.Element {
         </Suspense>
       ) : null}
       </Suspense>
+      </PageErrorBoundary>
       <Footer />
     </div>
   );
@@ -222,7 +228,7 @@ export default function App(): JSX.Element {
     <ThemeProvider initialTheme={publicData ? "dark" : undefined}>
       <AuthProvider initialLang={publicData?.lang}>
         <NotificationsProvider>
-          <FeaturesProvider><ErrorFeedbackProvider><UnsavedChangesProvider><Shell /></UnsavedChangesProvider></ErrorFeedbackProvider></FeaturesProvider>
+          <FeaturesProvider><FeedbackProvider><UnsavedChangesProvider><Shell /></UnsavedChangesProvider></FeedbackProvider></FeaturesProvider>
         </NotificationsProvider>
       </AuthProvider>
     </ThemeProvider>

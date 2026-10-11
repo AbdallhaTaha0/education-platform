@@ -126,7 +126,7 @@ async function generateSnapshot(
   const courseStatus = new Map(memberCourses.map((c) => [c.id, c.status]));
   const eligible = new Set<string>();
   for (const m of rawMemberships) {
-    const okWindow = m.expiresAt === null || m.expiresAt > cutoff;
+    const okWindow = m.startsAt <= cutoff && (m.expiresAt === null || m.expiresAt > cutoff);
     if (courseStatus.get(m.courseId) === 'PUBLISHED' && okWindow) eligible.add(m.courseId);
   }
   for (const id of uniqueCourseIds) {

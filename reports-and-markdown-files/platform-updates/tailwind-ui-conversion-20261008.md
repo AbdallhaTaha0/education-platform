@@ -1,0 +1,11 @@
+# Tailwind conversion of current UI work — 2026-10-08
+
+Owner instructed “use tailwind in all.” Converted the UI styling added in this conversation on `dev`: course-first landing and compact footer, catalog filters/grade labels/card adjustments, course covers/photo previews, success/error feedback stack, and added compact-player time/volume behavior. Existing unrelated legacy interfaces remain outside this conversion; shared semantic theme variables remain centrally defined for dark/light colors.
+
+Components now use Tailwind utilities and responsive/RTL/ARIA/container variants. Removed all custom CSS added by this work and the superseded pre-existing error-feedback selectors. Course cover/preview checks use explicit test identifiers rather than styling classes. No dependency or Tailwind version change. Preserved photo uploads, course API/schema, accessibility roles, fixed popup placement/dismissal, 44px seek buttons, grade filtering and saved theme behavior.
+
+Verification: paired explicit Docker runtime builds pass, including TypeScript/browser/SSR and server runtime smoke. The isolated Chromium fixture passes nine Arabic/English desktop/mobile creation/photo-edit scenarios plus success/error dismissal, repeated success without duplicates, course covers and player controls at 320px. Read-only local-preview checks pass at Arabic 1280/320px and English 390px: expected hero/footer grid columns, heading sizing, rendered covers, grade-button selection/focus and no overflow/browser errors. Full-page screenshots were saved in ignored evidence; the Arabic desktop landing/footer was visually inspected.
+
+Preview refresh checked the serving command and recovered PostgreSQL volume, recreated only local client/server with `--no-deps`, then restarted Nginx. No migration, course mutation, private setting change, external DRM edit, commit/push or production deployment in this conversion.
+
+Cleanup verified `fayq.tailwind-review=20261008` labels on the test web container and network, then removed them. One-shot copy/build/browser containers were removed. Final label-filtered container/network listings are empty; no task volume was created. Preserved preview services/data, reusable images and ignored evidence. Rollback the component utility changes and removed style rules together, then rebuild paired runtime images; no database rollback is needed.

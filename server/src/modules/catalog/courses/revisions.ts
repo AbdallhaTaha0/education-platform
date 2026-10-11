@@ -4,7 +4,7 @@ import { ApiError } from '../../identity/errors.js';
 import type { TxClient } from '../types.js';
 import { audit } from '../audit.js';
 
-const details = (c: Course) => ({ titleAr: c.titleAr, titleEn: c.titleEn, descriptionAr: c.descriptionAr, descriptionEn: c.descriptionEn, grade: c.grade, academicYear: c.academicYear, term: c.term, courseKind: c.courseKind, teachingMonth: c.teachingMonth });
+const details = (c: Course) => ({ titleAr: c.titleAr, titleEn: c.titleEn, descriptionAr: c.descriptionAr, descriptionEn: c.descriptionEn, coverId: c.coverId, grade: c.grade, academicYear: c.academicYear, term: c.term, courseKind: c.courseKind, teachingMonth: c.teachingMonth });
 const json = (v: Prisma.JsonValue) => v as Prisma.InputJsonValue;
 
 /** Called under the canonical course lock. A working copy never owns inherited video objects. */

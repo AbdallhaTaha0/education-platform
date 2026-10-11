@@ -1,6 +1,6 @@
 import { useCodingIde } from '../../features';
 import { usePublicData } from '../../seo/publicData';
-import { publicHref } from '../../seo/paths';
+import { alternatePublicHref, publicHref } from '../../seo/paths';
 import { useState } from 'react';
 import { useAuth } from '../../auth';
 import { useLang, type Lang } from '../../i18n';
@@ -47,7 +47,7 @@ export function Header({
   const { lang, t } = useLang();
   const publicData = usePublicData();
   const alternateHref = publicData && ["home", "courses", "course-detail", "package", "support"].includes(route)
-    ? "/" + (lang === "ar" ? "en" : "ar") + publicData.path.slice(3) : undefined;
+    ? alternatePublicHref(publicData.path, lang, typeof window === 'undefined' ? '' : window.location.hash) : undefined;
   const { theme, toggleTheme } = useTheme();
   const { status, user, logout } = useAuth();
   const confirmLeave = useConfirmNavigation();

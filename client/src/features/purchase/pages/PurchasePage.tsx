@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ApiError } from '../../../auth';
+import { ApiError, useAuth } from '../../../auth';
+import { purchaseLoginHash } from '../loginRedirect';
 import { localizeCode, useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
 import { FormActions } from '../../../components/ui/FormActions';
@@ -22,6 +23,7 @@ export function PurchasePage({
   go: (hash: string) => void;
 }): JSX.Element {
   const { t, lang } = useLang();
+  const { status } = useAuth();
   const [phase, setPhase] = useState<Phase>('loading');
   const [price, setPrice] = useState<number | null>(null);
   const [duration, setDuration] = useState<number | null>(null);
@@ -35,6 +37,11 @@ export function PurchasePage({
   const key = useMemo(() => newIdempotencyKey(), []);
 
   useEffect(() => {
+    if (status === 'loading') return;
+    if (status === 'anonymous') {
+      go(purchaseLoginHash(planId));
+      return;
+    }
     let live = true;
     (async () => {
       try {
@@ -59,6 +66,10 @@ export function PurchasePage({
         setPhase('review');
       } catch (err) {
         if (live) {
+          if (err instanceof ApiError && err.status === 401) {
+            go(purchaseLoginHash(planId));
+            return;
+          }
           setErrorCode(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
           setPhase('failed');
         }
@@ -67,7 +78,7 @@ export function PurchasePage({
     return () => {
       live = false;
     };
-  }, [planId, lang]);
+  }, [planId, lang, status, go]);
 
   async function confirm(): Promise<void> {
     if (phase === 'confirming' || phase === 'receipt') return;
@@ -80,12 +91,16 @@ export function PurchasePage({
       const wallet = await fetchWallet().catch(() => null);
       if (wallet) setBalance(wallet.balancePiastres);
     } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        go(purchaseLoginHash(planId));
+        return;
+      }
       setErrorCode(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
       setPhase(err instanceof ApiError && err.code === 'INSUFFICIENT_FUNDS' ? 'review' : 'failed');
     }
   }
 
-  if (phase === 'loading') {
+  if (status !== 'authenticated' || phase === 'loading') {
     return (
       <main id="main">
         <section className="py-8">
@@ -190,6 +205,7 @@ export function PurchasePage({
   }
 
   const short = balance !== null && balance < price;
+  const needsRecharge = short || errorCode === 'INSUFFICIENT_FUNDS';
 
   return (
     <main id="main">
@@ -234,12 +250,15 @@ export function PurchasePage({
                 </div>
               ) : null}
             </dl>
-            {errorCode === 'INSUFFICIENT_FUNDS' ? (
+            {needsRecharge ? (
               <div className="mt-4">
-                <Notice kind="error">{localizeCode(t, 'INSUFFICIENT_FUNDS')}</Notice>
+                <Notice kind="info">{localizeCode(t, 'INSUFFICIENT_FUNDS')}</Notice>
                 <FormActions className="mt-3">
-                  <Button variant="secondary" onClick={() => go('#/wallet/recharge')}>
+                  <Button onClick={() => go('#/wallet')}>
                     {t.goRecharge}
+                  </Button>
+                  <Button variant="secondary" onClick={() => go('#/courses')}>
+                    {t.cancel}
                   </Button>
                 </FormActions>
               </div>
@@ -249,7 +268,7 @@ export function PurchasePage({
                 <Notice kind="error">{localizeCode(t, errorCode)}</Notice>
               </div>
             ) : null}
-            {!short ? (
+            {!needsRecharge ? (
               <FormActions>
                 <Button onClick={() => void confirm()} disabled={phase === 'confirming'}>
                   {phase === 'confirming' ? <Loading text={t.confirming} /> : price === 0 ? (lang === 'ar' ? 'اشترك مجانًا' : 'Enroll for free') : t.confirmPurchase}

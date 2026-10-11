@@ -6,6 +6,7 @@ import { nonBlankString, rejectUnknownFields, validateSlug, assertUuid } from '.
 import type { PublicCourse } from '../types.js';
 import { academicPlacement, type AcademicPlacement } from '../academic.js';
 import { effectiveHierarchy } from './revisions.js';
+import { validateCourseCover } from './cover.js';
 
 const CREATE_FIELDS = new Set([
   'slug',
@@ -14,6 +15,7 @@ const CREATE_FIELDS = new Set([
   'descriptionAr',
   'descriptionEn',
   'academic',
+  'coverImage',
 ]);
 const UPDATE_FIELDS = new Set([
   'slug',
@@ -22,6 +24,7 @@ const UPDATE_FIELDS = new Set([
   'descriptionAr',
   'descriptionEn',
   'academic',
+  'coverImage',
 ]);
 
 function toPublicCourse(row: {
@@ -31,6 +34,7 @@ function toPublicCourse(row: {
   titleEn: string;
   descriptionAr: string;
   descriptionEn: string;
+  coverId: string | null;
   publishedAt: Date | null;
   grade: string | null;
   academicYear: string | null;
@@ -53,6 +57,7 @@ function toPublicCourse(row: {
     titleEn: row.titleEn,
     descriptionAr: row.descriptionAr,
     descriptionEn: row.descriptionEn,
+    coverUrl: row.coverId ? `/catalog/courses/${row.id}/cover?v=${row.coverId}` : null,
     publishedAt: row.publishedAt?.toISOString() ?? null,
     academic: {
       grade: row.grade,
@@ -210,6 +215,7 @@ export async function createCourse(prisma: PrismaClient, actorId: string, raw: u
       descriptionAr,
       descriptionEn,
       status: 'DRAFT',
+      ...(body.coverImage === undefined ? {} : { cover: { create: validateCourseCover(body.coverImage) } }),
       ...(body.academic === undefined ? {} : academicPlacement(body.academic)),
     },
   });
@@ -238,8 +244,10 @@ export async function updateCourse(
     titleEn?: string;
     descriptionAr?: string;
     descriptionEn?: string;
+    cover?: { create: ReturnType<typeof validateCourseCover> };
   } = {};
   if (body.academic !== undefined) Object.assign(data, academicPlacement(body.academic));
+  if (body.coverImage !== undefined) data.cover = { create: validateCourseCover(body.coverImage) };
   if (body['slug'] !== undefined) data.slug = validateSlug(body['slug']);
   if (body['titleAr'] !== undefined) data.titleAr = nonBlankString(body['titleAr'], 'titleAr', 300);
   if (body['titleEn'] !== undefined) data.titleEn = nonBlankString(body['titleEn'], 'titleEn', 300);

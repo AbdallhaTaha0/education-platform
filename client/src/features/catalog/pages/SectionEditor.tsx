@@ -18,11 +18,13 @@ export function SectionEditor({
   sections,
   onChanged,
   blockedReason,
+  onCreated,
 }: {
   courseId: string;
   sections: AdminSection[];
   onChanged: () => Promise<void>;
   blockedReason?: string;
+  onCreated?: (sectionId: string) => void;
 }): JSX.Element {
   const { t, lang } = useLang();
   const [titleAr, setTitleAr] = useState('');
@@ -37,10 +39,11 @@ export function SectionEditor({
     setBusy(true);
     setError(null);
     try {
-      await createSection(courseId, { titleAr, titleEn });
+      const created = await createSection(courseId, { titleAr, titleEn });
       setTitleAr('');
       setTitleEn('');
       await onChanged();
+      onCreated?.(created.id);
     } catch (err) {
       setError(err instanceof ApiError ? err.code : 'SERVICE_ERROR');
     } finally {

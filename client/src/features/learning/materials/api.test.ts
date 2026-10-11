@@ -57,6 +57,7 @@ describe("material requests share cookie-session refresh", () => {
         refreshed = true;
         return json({});
       }
+      if (url.endsWith("/auth/me")) return refreshed ? json({}) : denied();
       const headers = new Headers(init.headers);
       expect(headers.has("Content-Type")).toBe(false); // Browser owns multipart boundary.
       forms.push(init.body as FormData);
@@ -77,7 +78,7 @@ describe("material requests share cookie-session refresh", () => {
     expect(forms).toHaveLength(2);
     expect(forms[0]).toBe(forms[1]);
     expect(csrf).toEqual(["before-refresh", "after-refresh"]);
-    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(fetcher).toHaveBeenCalledTimes(4);
   });
 
   it("shares one in-flight refresh between JSON, metadata and resource requests", async () => {
@@ -164,7 +165,7 @@ describe("material requests share cookie-session refresh", () => {
       await expect(
         lessonMaterialsApi.getLessonMaterials("lesson"),
       ).rejects.toMatchObject({ code: "TOKEN_MISSING" });
-      expect(fetcher).toHaveBeenCalledTimes(succeeds ? 3 : 2);
+      expect(fetcher).toHaveBeenCalledTimes(succeeds ? 4 : 3);
     },
   );
 
@@ -178,6 +179,7 @@ describe("material requests share cookie-session refresh", () => {
           refreshed = true;
           return json({});
         }
+        if (url.endsWith("/auth/me")) return refreshed ? json({}) : denied();
         methods.push(init.method!);
         return refreshed ? json({ removed: true }) : denied();
       }),

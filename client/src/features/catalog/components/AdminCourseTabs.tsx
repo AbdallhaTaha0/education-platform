@@ -11,6 +11,7 @@ import { Notice } from '../../../components/ui/Notice';
 export function AdminCourseTabs({ current, currentTitle, courses: supplied }: { current?: string; currentTitle?: { ar: string; en: string }; courses?: AdminCourseSummary[] }): JSX.Element {
   const { user } = useAuth(); const { lang } = useLang(); const ar = lang === 'ar';
   const [loaded, setLoaded] = useState<AdminCourseSummary[]>([]), [query, setQuery] = useState(''), [failed, setFailed] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   useEffect(() => {
     if (supplied || user?.role !== 'ADMIN') return;
     let active = true; setFailed(false);
@@ -21,6 +22,10 @@ export function AdminCourseTabs({ current, currentTitle, courses: supplied }: { 
   const filtered = courses.filter(c => `${c.titleAr} ${c.titleEn} ${c.slug}`.toLowerCase().includes(query.trim().toLowerCase()));
   return <nav aria-label={ar ? 'مساحات عمل الكورسات' : 'Course workspaces'} data-testid="admin-course-switcher" className="my-5 rounded-card border border-border bg-surface p-4">
     <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">{ar ? 'اختَر الكورس' : 'Choose a course'}</h2><a href="#/admin/catalog" aria-current={!current ? 'page' : undefined} className="min-h-[44px] rounded-control border border-border px-4 py-2 font-semibold">{ar ? 'كل الكورسات وإضافة كورس' : 'All courses & create course'}</a></div>
+    {current ? <button type="button" aria-expanded={expanded} aria-controls="course-switcher-options" onClick={() => setExpanded(!expanded)} className="mt-2 min-h-[44px] w-full break-words rounded-control border border-border px-3 py-2 text-start text-sm font-semibold sm:hidden">
+      {ar ? 'تغيير الكورس' : 'Change course'}{currentTitle ? ` · ${ar ? currentTitle.ar : currentTitle.en}` : ''}
+    </button> : null}
+    <div id="course-switcher-options" className={current && !expanded ? 'hidden sm:block' : ''}>
     <label className="mt-3 block text-sm" htmlFor="course-switcher-search">{ar ? 'ابحث للوصول إلى كورس' : 'Find a course workspace'}</label>
     <input id="course-switcher-search" value={query} maxLength={100} onChange={e => setQuery(e.target.value)} className={`${textInputClassName(false)} mt-2`} />
     {failed ? <Notice kind="error">{ar ? 'تعذر تحميل اختصارات الكورسات. استخدم قائمة الكورسات.' : 'Course shortcuts could not load. Use the course list.'}</Notice> : null}
@@ -28,5 +33,6 @@ export function AdminCourseTabs({ current, currentTitle, courses: supplied }: { 
       {filtered.map(c => <a key={c.id} href={`#/admin/courses/${c.workingCopyId ?? c.id}`} aria-current={c.id === current ? 'page' : undefined} className={`min-h-[44px] max-w-full break-words rounded-control border px-4 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${c.id === current ? 'border-primary bg-primary text-canvas' : 'border-border bg-elevated text-ink'}`}>{ar ? c.titleAr : c.titleEn}</a>)}
     </PaginatedCollection>
     {query && !filtered.length ? <p className="mt-3 text-sm text-muted">{ar ? 'لا توجد نتائج.' : 'No matching courses.'}</p> : null}
+    </div>
   </nav>;
 }

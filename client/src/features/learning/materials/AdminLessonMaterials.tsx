@@ -239,6 +239,11 @@ export function AdminLessonMaterials({
                       unstyled
                       type="button"
                       disabled={removingId !== null || resource.inherited}
+                      disabledReason={resource.inherited && removingId === null
+                        ? ar
+                          ? "هذا الملف موروث من الإصدار المنشور ولا يمكن إزالته من هذه المسودة."
+                          : "This file is inherited from the published version and cannot be removed from this draft."
+                        : undefined}
                       onClick={() => void removeResource(resource.id)}
                       data-testid={`admin-resource-remove-${resource.id}`}
                       className="inline-flex min-h-[44px] items-center rounded-control border border-border px-2 font-bold"

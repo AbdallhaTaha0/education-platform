@@ -11,9 +11,14 @@ import { archiveCourse, requestTransition, unarchiveCourse } from '../lifecycle/
 import { availableLifecycleActions } from '../lifecycle/policy.js';
 import type { CatalogRouteContext } from '../types.js';
 import { asyncRoute, authOf } from './shared.js';
+import { readCourseCover } from '../courses/cover.js';
 
 export function createCourseAdminRouter(ctx: CatalogRouteContext): Router {
   const router = Router();
+  router.get('/catalog/courses/:id/cover', [...readGuard], asyncRoute(async (req, res) => {
+    const image = await readCourseCover(ctx.prisma, req.params.id, true);
+    res.set({ 'Content-Type': image.mime, 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' }).send(Buffer.from(image.bytes));
+  }));
 
   router.get(
     '/catalog/courses',

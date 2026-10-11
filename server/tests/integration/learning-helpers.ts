@@ -207,7 +207,9 @@ export async function grantSubscription(
       studentId,
       courseId,
       purchaseId: purchase.id,
-      startsAt: new Date(expiresAtMs - 86_400_000),
+      // Fixtures represent already-started access even when the exact expiry
+      // is far ahead; keep that invariant explicit for entitlement tests.
+      startsAt: new Date(Math.min(Date.now() - 1000, expiresAtMs - 1)),
       expiresAt: new Date(expiresAtMs),
     },
   });

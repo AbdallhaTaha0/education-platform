@@ -126,6 +126,24 @@ describe('playback grant', () => {
     expect(res.body.error.code).toBe('SUBSCRIPTION_EXPIRED');
   });
 
+  it.each(['finite', 'indefinite'] as const)(
+    'denies playback before %s subscription starts',
+    async (kind) => {
+      const other = await createPublishedCourse(world, `playback-future-${kind}`);
+      const expiry = new Date(Date.now() + 10 * DAY);
+      const start = new Date(Date.now() + DAY);
+      await grantSubscription(world, world.studentId, other.courseId, expiry.getTime());
+      await world.prisma.subscription.updateMany({
+        where: { studentId: world.studentId, courseId: other.courseId },
+        data: { startsAt: start, expiresAt: kind === 'finite' ? expiry : null },
+      });
+
+      const res = await startPlaybackOn(other);
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('SUBSCRIPTION_REQUIRED');
+    },
+  );
+
   it('rejects a missing device id and a non-string one', async () => {
     expect((await startPlayback(course.lessonId, '' as string)).status).toBe(400);
     const bad = await studentPost(

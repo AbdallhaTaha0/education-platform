@@ -34,7 +34,7 @@ export function canonicalCourseWhere() {
 /** Existing entitlement rule (learning/access/entitlement.ts): never extended. */
 export function entitledSubscriptionWhere(nowMs: number) {
   const now = new Date(nowMs);
-  return { OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] };
+  return { startsAt: { lte: now }, OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] };
 }
 
 export interface RosterRow {

@@ -2,7 +2,7 @@
 import {spawnSync} from 'node:child_process';
 import assert from 'node:assert/strict';
 export function verifyCaptionRemovalUpgrade({docker,project,server,compose}) {
- const run=(args,input)=>{const r=spawnSync(docker,args,{encoding:'utf8',input,maxBuffer:400000});if(r.status!==0)throw Error('Caption upgrade command failed (see isolated logs)');return r.stdout.trim();};
+ const run=(args,input)=>{const r=spawnSync(docker,args,{encoding:'utf8',input,maxBuffer:400000});if(r.status!==0)throw Error(`Caption upgrade command failed (exit ${r.status}): ${(r.stderr||r.stdout||r.error?.message||'no diagnostic output').trim().slice(-3000)}`);return r.stdout.trim();};
  const sql=text=>run([...compose,'exec','-T','postgres','psql','-v','ON_ERROR_STOP=1','-U','materials','-d','caption_upgrade_test','-At'],text);
  run([...compose,'exec','-T','postgres','psql','-v','ON_ERROR_STOP=1','-U','materials','-d','course_learning_test','-c','CREATE DATABASE caption_upgrade_test']);
  const prefix=['run','--rm','--label',`com.docker.compose.project=${project}`,'--network',`${project}_default`,'-e','DATABASE_URL=postgresql://materials:synthetic_materials_test_only@postgres:5432/caption_upgrade_test',server];

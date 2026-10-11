@@ -30,7 +30,8 @@ A roster row is valid iff there is at least one `Subscription` for the
 Rosters and view detail include historical memberships and canonical courses
 regardless of current publication status. Current report selection/generation
 additionally requires `Course.status = 'PUBLISHED'` and entitlement at the
-cutoff: any subscription with `expiresAt IS NULL` or `expiresAt > cutoff`.
+cutoff: any subscription with `startsAt <= cutoff` and (`expiresAt IS NULL` or
+`expiresAt > cutoff`).
 
 The same-course rule set from existing entitlement logic is reused verbatim
 (`learning/access/entitlement.ts`); agent 2 does not extend, shorten or
@@ -110,7 +111,8 @@ Response data:
 { "courses": [ { "courseId": "uuid", "title": { "ar": "...", "en": "..." } } ], "nextCursor": "string|null" }
 ```
 
-Only currently eligible canonical memberships (expiresAt null or future,
+Only currently eligible canonical memberships (startsAt at or before cutoff,
+expiresAt null or future,
 PUBLISHED, non-deleted, revisionOwnerId null), deduplicated by course and
 sorted by courseId.
 

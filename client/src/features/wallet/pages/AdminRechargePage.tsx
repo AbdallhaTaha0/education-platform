@@ -37,6 +37,8 @@ export function AdminRechargePage(): JSX.Element {
   const [decision, setDecision] = useState<'APPROVE' | 'REJECT'>('APPROVE');
   const [verified, setVerified] = useState(false);
   const [reason, setReason] = useState('');
+  const [reasonMissing, setReasonMissing] = useState(false);
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
   const [busy, setBusy] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [dialogDone, setDialogDone] = useState<string | null>(null);
@@ -67,14 +69,16 @@ export function AdminRechargePage(): JSX.Element {
     setDecision('APPROVE');
     setVerified(false);
     setReason('');
+    setReasonMissing(false);
     setDialogError(null);
     setDialogDone(null);
   }
 
   async function submitReview(): Promise<void> {
-    if (selected === null || busy) return;
+    if (selected === null || selected.status !== 'PENDING' || busy || dialogDone !== null) return;
     if (decision === 'REJECT' && reason.trim().length === 0) {
-      setDialogError('VALIDATION_ERROR');
+      setReasonMissing(true);
+      reasonRef.current?.focus();
       return;
     }
     setBusy(true);
@@ -104,8 +108,11 @@ export function AdminRechargePage(): JSX.Element {
           <SectionPanel tab={paymentTabs[2]} prefix="admin-payments" active={paymentTab === 'vodafone'}><InstaPaySettings method="vodafone-cash" expanded /></SectionPanel>
           <SectionPanel tab={paymentTabs[0]} prefix="admin-payments" active={paymentTab === 'review'}>
           <p className="mt-2 text-muted">{t.adminRechargeBody}</p>
-          <div className="my-4 grid gap-3 sm:grid-cols-2"><label>{lang==='ar'?'البحث في جميع الطلبات بالاسم أو المرجع':'Search all requests by name/reference'}<input id="recharge-request-search" maxLength={100} className="w-full rounded-control border border-border bg-surface p-3" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/></label><label>{lang==='ar'?'تاريخ التحويل':'Transfer date'}<input type="date" className="w-full rounded-control border border-border bg-surface p-3" value={date} onChange={e=>{setDate(e.target.value);setPage(1);}}/></label></div><Button variant="secondary" onClick={()=>{setSearch('');setDate('');setPage(1);}}>{lang==='ar'?'مسح التصفية':'Clear filters'}</Button>
-          <Button className="my-4" variant="secondary" disabled={loading || busy} onClick={()=>void reload()}>{lang==='ar'?'تحديث الطلبات':'Refresh requests'}</Button>
+          <div className="my-4 grid gap-3 sm:grid-cols-2"><label>{lang==='ar'?'البحث في جميع الطلبات بالاسم أو المرجع':'Search all requests by name/reference'}<input id="recharge-request-search" maxLength={100} className="w-full rounded-control border border-border bg-surface p-3" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/></label><label>{lang==='ar'?'تاريخ التحويل':'Transfer date'}<input type="date" className="w-full rounded-control border border-border bg-surface p-3" value={date} onChange={e=>{setDate(e.target.value);setPage(1);}}/></label></div>
+          <div className="my-4 flex flex-wrap items-center gap-3">
+            <Button variant="secondary" onClick={()=>{setSearch('');setDate('');setPage(1);}}>{lang==='ar'?'مسح التصفية':'Clear filters'}</Button>
+            <Button variant="secondary" disabled={loading || busy} onClick={()=>void reload()}>{lang==='ar'?'تحديث الطلبات':'Refresh requests'}</Button>
+          </div>
           <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label={t.filterStatus}>
             {(['PENDING', 'APPROVED', 'REJECTED', ''] as Filter[]).map((value) => (
               <Button
@@ -165,12 +172,12 @@ export function AdminRechargePage(): JSX.Element {
                 <p>
                   <Money piastres={selected.amountPiastres} /> · {selected.senderName}
                 </p>
-                <p className="mt-1 text-sm text-muted" dir="ltr">
+                <p className="mt-1 break-all text-sm text-muted" dir="ltr">
                   {selected.referenceNorm}
                 </p>
                 <dl className="my-4 grid gap-2 text-sm"><div><dt>{lang==='ar'?'تاريخ التحويل':'Transfer date'}</dt><dd>{new Date(selected.transferDate).toLocaleString(lang==='ar'?'ar-EG':'en-GB',{timeZone:'Africa/Cairo'})}</dd></div><div><dt>{lang==='ar'?'رقم الطلب':'Request reference'}</dt><dd dir="ltr" className="break-all">{selected.id}</dd></div><div><dt>{lang==='ar'?'حجم الإثبات':'Proof size'}</dt><dd>{Math.ceil(selected.proofSize/1024)} KB</dd></div></dl>
                 <a
-                  className="mt-2 inline-block underline"
+                  className="mt-2 inline-block max-w-full break-all underline"
                   href={proofUrl(selected.id)}
                   target="_blank"
                   rel="noreferrer"
@@ -190,13 +197,20 @@ export function AdminRechargePage(): JSX.Element {
                     <Notice kind="error">{localizeCode(t, dialogError)}</Notice>
                   </div>
                 ) : null}
+                {selected.status !== 'PENDING' ? <div className="mt-4 space-y-2">
+                  <RequestStatus status={selected.status} />
+                  <p className="text-sm text-muted">{lang === 'ar'
+                    ? 'تمت مراجعة هذا الطلب بالفعل. القرار محفوظ ولا يمكن تغييره.'
+                    : 'This request has already been reviewed. Its decision is saved and cannot be changed.'}</p>
+                </div> : null}
+                {selected.status === 'PENDING' && dialogDone === null ? <>
                 <div className="mt-4 flex gap-4" role="radiogroup" aria-label={t.reviewDecision}>
                   <label className="inline-flex min-h-[44px] items-center gap-2">
                     <input
                       type="radio"
                       name="decision"
                       checked={decision === 'APPROVE'}
-                      onChange={() => setDecision('APPROVE')}
+                      onChange={() => { setDecision('APPROVE'); setReasonMissing(false); }}
                     />
                     {t.approveAction}
                   </label>
@@ -214,11 +228,17 @@ export function AdminRechargePage(): JSX.Element {
                   <Field id="review-reason" label={t.rejectReason}>
                     <textarea
                       id="review-reason"
+                      ref={reasonRef}
+                      aria-invalid={reasonMissing || undefined}
+                      aria-describedby={reasonMissing ? 'review-reason-error' : undefined}
                       rows={3}
                       value={reason}
-                      onChange={(e) => setReason(e.target.value)}
+                      onChange={(e) => { setReason(e.target.value); if (e.target.value.trim()) setReasonMissing(false); }}
                       className="w-full rounded-control border border-border bg-surface px-3 py-2"
                     />
+                    {reasonMissing ? <p id="review-reason-error" role="alert" className="mt-2 text-sm text-error-fg">
+                      {lang === 'ar' ? 'اكتب سبب الرفض قبل تأكيد القرار.' : 'Enter a rejection reason before confirming the decision.'}
+                    </p> : null}
                   </Field>
                 ) : null}
                 {decision === 'APPROVE' ? (
@@ -235,13 +255,15 @@ export function AdminRechargePage(): JSX.Element {
                 <p className="mt-1 text-sm text-muted">
                   {decision === 'APPROVE' ? t.approveEffect : t.rejectEffect}
                 </p>
+                </> : null}
                 <FormActions className="mt-4">
+                  {selected.status === 'PENDING' && dialogDone === null ?
                   <Button
                     onClick={() => void submitReview()}
                     disabled={busy || dialogDone !== null || (decision==='APPROVE' && !verified)} disabledReason={busy ? undefined : dialogDone !== null ? { ar: "تمت معالجة هذا الطلب. أغلق النافذة للاطلاع على النتيجة.", en: "This request has been processed. Close this dialog to view the result." } : { ar: "تحقق من استلام التحويل وحدد مربع التأكيد قبل الموافقة.", en: "Verify the transfer was received and check the confirmation box before approving." }}
                   >
                     {t.confirmReview}
-                  </Button>
+                  </Button> : null}
                   <Button variant="secondary" onClick={() => setSelected(null)}>
                     {t.close}
                   </Button>

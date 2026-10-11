@@ -46,7 +46,17 @@ export function renderPublicPage(data: PublicPageData): { body: string; head: st
         />
       ) : null}
     </>,
-  );
+  ) + (meta.preloadImage
+    ? '<link rel="preload" as="image" href="' + escapeAttribute(meta.preloadImage.href) +
+      '" imagesrcset="' + escapeAttribute(meta.preloadImage.srcSet) +
+      '" imagesizes="' + escapeAttribute(meta.preloadImage.sizes) + '" fetchpriority="high">'
+    : '');
   const body = renderToString(<PublicDataProvider data={data}><App /></PublicDataProvider>);
   return { body, head };
+}
+
+function escapeAttribute(value: string): string {
+  return value.replace(/[&"<>']/g, (character) => ({
+    '&': '&amp;', '"': '&quot;', '<': '&lt;', '>': '&gt;', "'": '&#39;',
+  })[character]!);
 }

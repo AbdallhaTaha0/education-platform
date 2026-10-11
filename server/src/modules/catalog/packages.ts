@@ -52,6 +52,9 @@ export async function lockedMembers(tx: TxClient, ids: string[], published: bool
   ) {
     throw new ApiError(409, 'PACKAGE_UNAVAILABLE', 'Three available monthly courses are required.');
   }
+  if (new Set(rows.map((course) => course.grade)).size !== 1) {
+    throw new ApiError(409, 'PACKAGE_GRADE_MISMATCH', 'All package courses must be from the same grade.');
+  }
   // Callers may permit presales under D27; this never releases protected content.
   if (published && rows.some((c) => c.status !== 'PUBLISHED'))
     throw new ApiError(409, 'PACKAGE_UNAVAILABLE', 'All package members must be published.');
@@ -136,6 +139,7 @@ export function publicPackage(row: Awaited<ReturnType<typeof lockPackage>>) {
       row.status === 'PUBLISHED' &&
       row.endsAt > new Date() &&
       row.members.length === 3 &&
+      new Set(row.members.map((m) => m.course.grade)).size === 1 &&
       row.members.every(
         (m) =>
           m.course.status !== 'ARCHIVED' &&

@@ -6,9 +6,14 @@ import { asyncRoute } from './shared.js';
 import { listPackages, memberInclude, publicPackage } from '../packages.js';
 import { assertUuid } from '../validation.js';
 import { ApiError } from '../../identity/errors.js';
+import { readCourseCover } from '../courses/cover.js';
 
 export function createCatalogPublicRouter(ctx: CatalogRouteContext): Router {
   const router = Router();
+  router.get('/courses/:id/cover', asyncRoute(async (req, res) => {
+    const image = await readCourseCover(ctx.prisma, req.params.id);
+    res.set({ 'Content-Type': image.mime, 'Cache-Control': 'public, max-age=0, must-revalidate', 'X-Content-Type-Options': 'nosniff' }).send(Buffer.from(image.bytes));
+  }));
   router.get(
     '/packages',
     asyncRoute(async (_req, res) => {

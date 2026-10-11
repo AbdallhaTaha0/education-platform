@@ -232,6 +232,15 @@ export function LoadingBlock({ label }: { label: string }): JSX.Element {
   );
 }
 
+export function SignInRequired({ lang }: { lang: 'ar' | 'en' }): JSX.Element {
+  return <>
+    <ErrorBlock message={lang === 'ar' ? 'انتهت جلسة الدخول. سجل الدخول مجددًا لمتابعة التعلّم.' : 'Your sign-in session has ended. Sign in again to continue learning.'} />
+    <a href="#/login" className="mt-4 inline-flex min-h-[44px] items-center rounded-control bg-primary px-4 py-2 font-bold text-canvas">
+      {lang === 'ar' ? 'تسجيل الدخول' : 'Sign in'}
+    </a>
+  </>;
+}
+
 export function ErrorBlock({
   message,
   retryLabel,

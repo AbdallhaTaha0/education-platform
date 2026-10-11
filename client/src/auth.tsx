@@ -90,13 +90,25 @@ function refreshOnce(): Promise<boolean> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       try {
-        const csrf = await ensureCsrf();
-        const res = await fetch(`${API_BASE}/auth/refresh`, {
-          method: 'POST',
-          credentials: 'include',
-          headers: { Accept: 'application/json', [CSRF_HEADER]: csrf },
-        });
-        return res.ok;
+        const rotate = async (): Promise<boolean> => {
+          // Another tab (or an earlier, delayed 401) may already have renewed
+          // the shared cookies. Check them inside the origin-wide lock first.
+          const current = await fetch(`${API_BASE}/auth/me`, {
+            credentials: 'include', headers: { Accept: 'application/json' },
+          });
+          if (current.ok) return true;
+          if (current.status !== 401 || !REFRESHABLE.has((await parseFailure(current)).code)) return false;
+          const csrf = await ensureCsrf();
+          const res = await fetch(`${API_BASE}/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { Accept: 'application/json', [CSRF_HEADER]: csrf },
+          });
+          return res.ok;
+        };
+        return typeof navigator !== 'undefined' && navigator.locks
+          ? await navigator.locks.request('fayq-session-refresh', rotate)
+          : await rotate();
       } catch {
         return false;
       } finally {

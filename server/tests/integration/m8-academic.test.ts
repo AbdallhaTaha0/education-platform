@@ -155,6 +155,40 @@ describe('M8 academic and atomic package purchase', () => {
       201,
     );
   });
+  it('rejects packages whose monthly courses belong to different grades', async () => {
+    const otherGrade = await world.prisma.course.create({
+      data: {
+        slug: `m8-other-grade-${randomUUID()}`,
+        titleAr: 'دورة صف آخر',
+        titleEn: 'Other grade month',
+        descriptionAr: 'اختبار',
+        descriptionEn: 'Test only',
+        status: 'PUBLISHED',
+        publishedAt: new Date(),
+        grade: 'SECOND_SECONDARY',
+        academicYear: '2026/2027',
+        term: 1,
+        courseKind: 'MONTHLY_EXPLANATION',
+        teachingMonth: '2026-11',
+      },
+    });
+    try {
+      const response = await adminPost(world.app, '/admin/catalog/packages', world.adminJar, {
+        titleAr: 'باقة صفوف مختلفة',
+        titleEn: 'Mixed-grade package',
+        descriptionAr: 'اختبار',
+        descriptionEn: 'Test only',
+        pricePiastres: 90000,
+        endsAt,
+        courseIds: [ids[0], ids[1], otherGrade.id],
+        status: 'PUBLISHED',
+      });
+      expect(response.status).toBe(409);
+      expect(response.body.error.code).toBe('PACKAGE_GRADE_MISMATCH');
+    } finally {
+      await world.prisma.course.delete({ where: { id: otherGrade.id } });
+    }
+  });
   it('charges once, creates exactly three grants and converges concurrent retries', async () => {
     const p = await pkg();
     const before = await balance();

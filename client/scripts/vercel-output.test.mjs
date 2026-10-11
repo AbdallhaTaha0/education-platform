@@ -28,7 +28,10 @@ test('API has no-store, static assets precede SSR, unknown pages keep origin sta
   const { routes } = configuration({ RAILWAY_GATEWAY_ORIGIN: 'https://gateway.example.com' });
   assert.equal(routes[0].dest, 'https://gateway.example.com/api/$1');
   assert.equal(routes[0].headers['Cache-Control'], 'private, no-store');
-  assert.equal(routes[1].dest, 'https://gateway.example.com/.well-known/jwks.json');
+  // Vercel reserves /.well-known. DRM uses /api/.well-known/jwks.json,
+  // which is forwarded by the existing same-origin API rule.
+  assert.ok(!routes.some(route => route.src?.includes('well-known')));
+  assert.equal('/api/.well-known/jwks.json'.replace(new RegExp(routes[0].src), routes[0].dest), 'https://gateway.example.com/api/.well-known/jwks.json');
   assert.equal(routes.at(-2).handle, 'filesystem');
   assert.equal(routes.at(-1).dest, 'https://gateway.example.com/$1');
   assert.equal(routes.some(route => route.dest === '/index.html'), false);

@@ -16,7 +16,6 @@ export function configuration(env) {
     version: 3,
     routes: [
       { src: '/api(?:/(.*))?', dest: `${gateway}/api/$1`, headers: { 'Cache-Control': 'private, no-store' } },
-      { src: '/\\.well-known/jwks\\.json', dest: `${gateway}/.well-known/jwks.json` },
       { src: '/assets/(.*)', headers: { 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' }, continue: true },
       { src: '/index\\.html', status: 308, headers: { Location: '/ar' } },
       { handle: 'filesystem' },

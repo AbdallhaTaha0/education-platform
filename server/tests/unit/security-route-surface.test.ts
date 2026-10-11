@@ -77,6 +77,10 @@ const routes = [
     "/admin/catalog/courses/11111111-1111-1111-1111-111111111111"
   ],
   [
+    "get",
+    "/admin/catalog/courses/11111111-1111-1111-1111-111111111111/cover"
+  ],
+  [
     "patch",
     "/admin/catalog/courses/11111111-1111-1111-1111-111111111111"
   ],
@@ -531,6 +535,10 @@ const adminRoutes = [
   [
     "get",
     "/admin/catalog/courses/11111111-1111-1111-1111-111111111111"
+  ],
+  [
+    "get",
+    "/admin/catalog/courses/11111111-1111-1111-1111-111111111111/cover"
   ],
   [
     "patch",

@@ -1,5 +1,28 @@
 # Education Platform — Design v1
 
+## Manual assessment completion (2026-10-09)
+
+Owner explicitly replaced the earlier three-second success redirect: show the
+successful result persistently, focus it, and return to the lesson only when the
+student chooses Continue. Preserve result checks and the existing lesson/resume
+destination. No automatic navigation or countdown after successful grading.
+
+## Tailwind styling clarification (2026-10-08)
+
+Owner requested Tailwind throughout this UI work. Landing, footer, catalog cover/filter additions, photo previews and shared success/error popups now use Tailwind utilities with existing semantic theme tokens. The additional compact player time/volume behavior uses Tailwind container variants. Remove superseded custom selectors; keep behavior, Arabic/English direction, accessibility and dark/light themes. Existing unrelated legacy styles remain outside this conversion.
+
+## Success action popups (2026-10-08)
+
+Owner requested system success popups matching errors. Existing success notices now share the fixed, dismissible feedback stack with errors, using semantic success colors and a checkmark. Success is announced politely; errors retain alert semantics. Arabic/English dismiss labels and RTL/LTR positioning match existing feedback. Completed course creation and course/photo saves explicitly confirm success after the request succeeds, including when the form closes. Persistent published-course status remains inline. See [verification](platform-updates/success-popups-20261008.md).
+
+## Course photos and player seeking (2026-10-08)
+
+Owner requested course imagery on the landing page, then clarified that creating a course should include uploading a photo. The course editor includes a file picker and preview, with a photo required for new courses through this UI. JPEG, PNG and WebP sources are optimized into a bounded JPEG cover. Published course cards on home/catalog and course offer pages show the saved cover; existing courses without a cover retain a fallback. Draft covers remain admin-only. The owner also requested the pictured 10-second rewind/forward controls; both sit beside Play with Arabic/English accessible labels, fixed chronological directions in RTL, and start/end clamping.
+
+## Course-first landing refinement (2026-10-08)
+
+Owner said the landing page's imagery, wording and layout did not feel real and instructed continuation. The current landing now leads with the secondary-school offer and a working first/second secondary selector that filters the API-backed published catalog. Use a concise bilingual hero, clear course metadata, recorded-learning/access benefits, accurate free/paid enrollment guidance, useful FAQ/support links and the compact FAYQ footer. The generated learner image, decorative floating note and illustrative project-window section are replaced in this page. Dark remains default; the owner's saved light preference remains respected. Preserve honest demo labels in local records and never fabricate real courses, instructors, testimonials, statistics or protected lesson previews. [Implementation and verification](platform-updates/course-first-landing-20261008.md).
+
 ## IDE direction and controls follow-up (2026-10-04)
 
 Owner clarification: keep the desktop code editor physically on the left and console on the right in both Arabic and English. Arabic labels retain RTL; code and console output remain LTR. Narrow layouts stack code above output. The shared IDE shows a yellow JavaScript/JS badge and an accessible green Run control with a play icon, with scoped colors easy to revise. [Local implementation and visual verification](ide-and-assessments/ide-polish-20261004/report.md).
@@ -14,7 +37,7 @@ Fullscreen targets the complete video frame, including watermark, controls and s
 
 Arabic/English, RTL/LTR and semantic dark/light tokens remain mandatory. Owner-authorized lesson search, accurate processed-duration labels, protected lesson resources and whole-frame bottom player controls are implemented. Captions were permanently removed by explicit owner instruction on 2026-10-06; see [removal evidence](caption-removal-20261006.md). ADMIN authoring preserves failed drafts; student access/stale-response cleanup preserves course protections. [Final integration](delivery-and-reviews/course-materials-and-dual-repository-delivery-20261004.md) supersedes the former proposal-only status. [Implementation and verification](course-learning/course-ux-20261004/report.md).
 
-Owner academic clarification, 2026-10-01: [D27's academic catalog/access contract](milestones/m8/m8-school-catalog-contract.md) governs subsequent M8 discovery and course editing. Lead with first/second secondary selection; first secondary has two terms; each teaching month is a course, revisions are distinct and three-month packages contain three specific courses. ADMIN-selectable access is duration-based or until term/year end; never label package membership as an automatic 90-day duration. Earlier generic demo courses are historical visual examples.
+Owner academic clarification, 2026-10-01, updated 2026-10-11: [D27's academic catalog/access contract](milestones/m8/m8-school-catalog-contract.md) governs subsequent M8 discovery and course editing. Lead with first/second secondary selection; first secondary has two terms; each teaching month is a course, revisions are distinct and three-month packages contain three specific monthly courses from the same grade. ADMIN-selectable access is duration-based or until term/year end; never label package membership as an automatic 90-day duration. Earlier generic demo courses are historical visual examples.
 
 Status: the owner approved the FAYQ identity and supplied brand board on 2026-09-30. Earlier Stitch layouts remain historical references; the FAYQ system below governs current visual implementation. This is a UI specification, not a backend contract.
 
