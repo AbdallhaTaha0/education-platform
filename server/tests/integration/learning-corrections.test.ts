@@ -512,6 +512,17 @@ describe('D: reconciliation does not starve behind 500 references', () => {
     const lapsedId = start.body.data.playback.referenceId;
 
     await expireSubscription(world, world.studentId, lapsed.courseId);
+    // A future indefinite grant must not keep the currently active playback
+    // alive after the started subscription has expired.
+    await world.prisma.subscription.create({
+      data: {
+        studentId: world.studentId,
+        courseId: lapsed.courseId,
+        purchaseId: randomUUID(),
+        startsAt: new Date(Date.now() + DAY),
+        expiresAt: null,
+      },
+    });
 
     const queued = await detectCrossedSubscriptions(world.prisma, Date.now(), {
       pageSize: 200,

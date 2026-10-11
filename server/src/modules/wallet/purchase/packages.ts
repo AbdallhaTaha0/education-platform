@@ -21,11 +21,13 @@ export async function packageReview(prisma: PrismaClient, studentId: string, pac
   });
   if (!row || row.status !== 'PUBLISHED')
     throw new ApiError(404, 'NOT_FOUND', 'Package not found.');
+  const now = new Date();
   const existing = await prisma.subscription.findMany({
     where: {
       studentId,
       courseId: { in: row.members.map((m) => m.courseId) },
-      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+      startsAt: { lte: now },
+      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
     },
     select: { courseId: true, expiresAt: true },
   });

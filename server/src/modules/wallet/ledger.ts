@@ -7,16 +7,16 @@ import type { TxClient } from './types.js';
  * concurrent spenders serialize on the row and cannot overspend.
  */
 export async function getOrCreateWallet(tx: TxClient, userId: string) {
-  const existing = await tx.wallet.findUnique({ where: { userId } });
-  if (existing) return existing;
-  try {
-    return await tx.wallet.create({ data: { userId, balancePiastres: 0 } });
-  } catch {
-    // Lost a create race: the winner's row is now visible.
-    const winner = await tx.wallet.findUnique({ where: { userId } });
-    if (!winner) throw new Error('Wallet creation raced without a winner.');
-    return winner;
-  }
+  // PostgreSQL marks a transaction failed after a unique-constraint error,
+  // even when application code catches it. INSERT ... ON CONFLICT (Prisma's
+  // skipDuplicates) makes the concurrent first-wallet race safe in-transaction.
+  await tx.wallet.createMany({
+    data: [{ userId, balancePiastres: 0 }],
+    skipDuplicates: true,
+  });
+  const wallet = await tx.wallet.findUnique({ where: { userId } });
+  if (!wallet) throw new Error('Wallet initialization completed without a row.');
+  return wallet;
 }
 
 /**

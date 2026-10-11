@@ -273,6 +273,34 @@ describe('M10 parent reports backend', () => {
     expect(rc2.body.data.courses.map((c: { courseId: string }) => c.courseId)).toContain(courseA.id);
   });
 
+  it('excludes future finite and indefinite memberships from current report eligibility', async () => {
+    const futureStart = new Date(NOW.getTime() + 86_400_000);
+    const futureFinite = await makeStudent(world, 'Future Finite Student');
+    const futureIndefinite = await makeStudent(world, 'Future Indefinite Student');
+    await grant(
+      world,
+      futureFinite.studentId,
+      courseA.id,
+      futureStart,
+      new Date(futureStart.getTime() + 30 * 86_400_000),
+    );
+    await grant(world, futureIndefinite.studentId, courseA.id, futureStart, null);
+
+    for (const studentId of [futureFinite.studentId, futureIndefinite.studentId]) {
+      const courses = await adminGet(world, `/admin/students/${studentId}/report-courses`, adminJar);
+      expect(courses.status).toBe(200);
+      expect(courses.body.data.courses.map((c: { courseId: string }) => c.courseId)).not.toContain(courseA.id);
+
+      const generated = await adminPost(world, '/admin/parent-reports/generate', adminJar, {
+        studentId,
+        courseIds: [courseA.id],
+        reportType: 'WEEK',
+        language: 'en',
+      });
+      expect(generated.status).toBe(404);
+    }
+  });
+
   it('excludes working-copy/historical courses from canonical eligibility', async () => {
     const list = await adminGet(world, `/admin/students/${(await world.prisma.user.findFirstOrThrow({ where: { displayName: 'Indefinite Student' } })).id}/report-courses`, adminJar);
     expect(list.body.data.courses.length).toBe(1);

@@ -82,10 +82,10 @@ export async function recordExpiry(
     const user = await tx.user.findUnique({ where: { id: studentId }, select: { role: true } });
     if (user?.role !== 'STUDENT') return false;
     const rollout = await tx.notificationRollout.findUniqueOrThrow({ where: { id: 1 } });
-    if (await tx.subscription.count({ where: { studentId, courseId, expiresAt: null } }))
+    if (await tx.subscription.count({ where: { studentId, courseId, startsAt: { lte: now }, expiresAt: null } }))
       return false;
     const group = await tx.subscription.aggregate({
-      where: { studentId, courseId },
+      where: { studentId, courseId, startsAt: { lte: now } },
       _max: { expiresAt: true },
     });
     const expiry = group._max.expiresAt;
@@ -113,13 +113,14 @@ export async function recordExpiry(
 }
 
 export async function scanExpiries(prisma: PrismaClient, clock: Clock = Date.now, limit = 100) {
+  const now = new Date(clock());
   const candidates = await prisma.$queryRaw<Array<{ studentId: string; courseId: string }>>`
     SELECT s."studentId", s."courseId" FROM "Subscription" s
     JOIN "User" u ON u.id = s."studentId" AND u.role = 'STUDENT'
     LEFT JOIN "NotificationExpiryMarker" m ON m."studentId" = s."studentId" AND m."courseId" = s."courseId"
     CROSS JOIN "NotificationRollout" r
-    WHERE r.id = 1 GROUP BY s."studentId", s."courseId", m."recordedExpiry", r."installedAt"
-    HAVING COUNT(*) = COUNT(s."expiresAt") AND MAX(s."expiresAt") <= ${new Date(clock())} AND MAX(s."expiresAt") > r."installedAt"
+    WHERE r.id = 1 AND s."startsAt" <= ${now} GROUP BY s."studentId", s."courseId", m."recordedExpiry", r."installedAt"
+    HAVING COUNT(*) = COUNT(s."expiresAt") AND MAX(s."expiresAt") <= ${now} AND MAX(s."expiresAt") > r."installedAt"
       AND (m."recordedExpiry" IS NULL OR MAX(s."expiresAt") > m."recordedExpiry")
     ORDER BY s."studentId", s."courseId" LIMIT ${limit}`;
   let recorded = 0;
