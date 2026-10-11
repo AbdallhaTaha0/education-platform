@@ -51,7 +51,7 @@ export function NotificationsPage(): JSX.Element {
               <h1 ref={heading} tabIndex={-1} className="page-title">
                 {t.navNotifications}
               </h1>
-              <p className="mt-2 text-muted">{t.notificationsSubtitle}</p>
+              <p className="mt-2 text-muted">{user?.role === 'ADMIN' ? (lang === 'ar' ? 'تحديثات إدارة المنصة التي تحتاج متابعتك، في مكان واحد.' : 'Platform administration updates that need your attention, in one place.') : t.notificationsSubtitle}</p>
             </div>
           </div>
           {status === 'loading' ? (

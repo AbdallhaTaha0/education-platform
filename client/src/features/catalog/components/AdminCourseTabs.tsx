@@ -20,17 +20,17 @@ export function AdminCourseTabs({ current, currentTitle, courses: supplied }: { 
   }, [supplied, user?.role]);
   const courses = (supplied ?? loaded).map(c => c.id === current && currentTitle ? { ...c, titleAr: currentTitle.ar, titleEn: currentTitle.en } : c);
   const filtered = courses.filter(c => `${c.titleAr} ${c.titleEn} ${c.slug}`.toLowerCase().includes(query.trim().toLowerCase()));
-  return <nav aria-label={ar ? 'مساحات عمل الكورسات' : 'Course workspaces'} data-testid="admin-course-switcher" className="my-5 rounded-card border border-border bg-surface p-4">
-    <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-bold">{ar ? 'اختَر الكورس' : 'Choose a course'}</h2><a href="#/admin/catalog" aria-current={!current ? 'page' : undefined} className="min-h-[44px] rounded-control border border-border px-4 py-2 font-semibold">{ar ? 'كل الكورسات وإضافة كورس' : 'All courses & create course'}</a></div>
-    {current ? <button type="button" aria-expanded={expanded} aria-controls="course-switcher-options" onClick={() => setExpanded(!expanded)} className="mt-2 min-h-[44px] w-full break-words rounded-control border border-border px-3 py-2 text-start text-sm font-semibold sm:hidden">
+  return <nav aria-label={ar ? 'مساحات عمل الكورسات' : 'Course workspaces'} data-testid="admin-course-switcher" className={`${current ? 'my-2 p-3' : 'my-5 p-4'} rounded-card border border-border bg-surface`}>
+    <div className="flex flex-wrap items-center justify-between gap-2">{current ? <h2 className="sr-only">{ar ? 'اختَر الكورس' : 'Choose a course'}</h2> : <h2 className="text-lg font-bold">{ar ? 'اختَر الكورس' : 'Choose a course'}</h2>}<a href="#/admin/catalog" aria-current={!current ? 'page' : undefined} className="min-h-[44px] rounded-control border border-border px-3 py-2 text-sm font-semibold">{current ? (ar ? 'كل الكورسات' : 'All courses') : (ar ? 'كل الكورسات وإضافة كورس' : 'All courses & create course')}</a>
+    {current ? <button type="button" aria-expanded={expanded} aria-controls="course-switcher-options" onClick={() => setExpanded(!expanded)} className="min-h-[44px] min-w-0 flex-1 break-words rounded-control border border-border px-3 py-2 text-start text-sm font-semibold">
       {ar ? 'تغيير الكورس' : 'Change course'}{currentTitle ? ` · ${ar ? currentTitle.ar : currentTitle.en}` : ''}
-    </button> : null}
-    <div id="course-switcher-options" className={current && !expanded ? 'hidden sm:block' : ''}>
+    </button> : null}</div>
+    <div id="course-switcher-options" hidden={Boolean(current && !expanded)}>
     <label className="mt-3 block text-sm" htmlFor="course-switcher-search">{ar ? 'ابحث للوصول إلى كورس' : 'Find a course workspace'}</label>
     <input id="course-switcher-search" value={query} maxLength={100} onChange={e => setQuery(e.target.value)} className={`${textInputClassName(false)} mt-2`} />
     {failed ? <Notice kind="error">{ar ? 'تعذر تحميل اختصارات الكورسات. استخدم قائمة الكورسات.' : 'Course shortcuts could not load. Use the course list.'}</Notice> : null}
     <PaginatedCollection id="course-shortcuts" resetKey={query} className="mt-3 flex flex-wrap gap-2">
-      {filtered.map(c => <a key={c.id} href={`#/admin/courses/${c.workingCopyId ?? c.id}`} aria-current={c.id === current ? 'page' : undefined} className={`min-h-[44px] max-w-full break-words rounded-control border px-4 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${c.id === current ? 'border-primary bg-primary text-canvas' : 'border-border bg-elevated text-ink'}`}>{ar ? c.titleAr : c.titleEn}</a>)}
+      {filtered.map(c => <a key={c.id} href={`#/admin/courses/${c.workingCopyId ?? c.id}`} aria-current={c.id === current ? 'page' : undefined} className={`min-h-[44px] max-w-full break-words rounded-control border px-4 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${c.id === current ? 'border-primary bg-primary text-primary-ink' : 'border-border bg-elevated text-ink'}`}>{ar ? c.titleAr : c.titleEn}</a>)}
     </PaginatedCollection>
     {query && !filtered.length ? <p className="mt-3 text-sm text-muted">{ar ? 'لا توجد نتائج.' : 'No matching courses.'}</p> : null}
     </div>

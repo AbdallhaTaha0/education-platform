@@ -60,6 +60,7 @@ export function LessonList({
     setRevealCreated(null);
   }, [revealCreated, selectedId]);
   const filtered = lessons.filter(l => `${l.titleAr} ${l.titleEn}`.toLowerCase().includes(search.trim().toLowerCase()));
+  const selectionOutsideResults = Boolean(search.trim() && selectedLesson && !filtered.some(l => l.id === selectedId));
   useUnsavedChanges(!!(titleAr || titleEn),lang==='ar'?'اسم الدرس الجديد غير محفوظ. هل تريد تركه؟':'The new lesson name is unsaved. Leave without saving?');
 
   async function submit(e: FormEvent<HTMLFormElement>): Promise<void> {
@@ -109,6 +110,7 @@ export function LessonList({
         {filtered.map(l => <li key={l.id}><Button unstyled variant="secondary" aria-pressed={l.id === selectedLesson?.id} aria-controls={`lesson-workspace-${sectionId}`} disabled={busy} className={`min-h-[48px] w-full rounded-control border p-3 text-start ${l.id === selectedLesson?.id ? 'border-primary bg-elevated' : 'border-border bg-surface'}`} onClick={() => { if (l.id !== selectedLesson?.id && confirmLeave()) setSelected(l.id); }}><span className="block break-words font-bold">#{l.position} {lang === 'ar' ? l.titleAr : l.titleEn}</span><span className="text-sm text-muted">{t.mediaStatusLabel}: {l.media ? businessState(l.media.status, lang === 'ar') : '—'}</span></Button></li>)}
       </PaginatedCollection>
       {!filtered.length ? <p className="my-3 text-sm text-muted">{lang === 'ar' ? 'لا توجد دروس مطابقة.' : 'No matching lessons.'}</p> : null}
+      {selectionOutsideResults ? <p role="status" className="my-3 rounded-control border border-info-fg bg-info-bg p-3 text-sm text-info-fg">{lang === 'ar' ? 'الدرس المفتوح حاليًا خارج نتائج البحث. امسح البحث أو اختَر درسًا آخر لتغيير المحرر.' : 'The open lesson is outside the search results. Clear the search or choose another lesson to switch editors.'}</p> : null}
       <ul ref={editorRef} tabIndex={-1} id={`lesson-workspace-${sectionId}`} className="mt-4 scroll-mt-24 space-y-3" data-testid="selected-lesson-editor">
         {lessons.map((l, i) => l.id === selectedLesson?.id ? (
           <li key={l.id} className="rounded-control border border-border p-3">

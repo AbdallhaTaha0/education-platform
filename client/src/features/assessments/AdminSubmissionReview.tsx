@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, type ReactNode } from 'react';
 import { useFocusedWorkspace } from '../../components/ui/useFocusedWorkspace';
 import { useLang } from '../../i18n';
 import { Button } from '../../components/ui/Button';
@@ -12,6 +12,15 @@ interface Summary {
 }
 interface Page { submissions: Summary[]; nextCursor: string | null }
 interface Detail extends Summary { answers: unknown; result: unknown }
+
+function SubmissionValue({ value, ar, depth = 0 }: { value: unknown; ar: boolean; depth?: number }): ReactNode {
+  if (value === null || value === undefined) return <span className="text-muted">—</span>;
+  if (depth > 5) return <span className="text-muted">{ar ? 'تفاصيل إضافية في البيانات الخام أدناه' : 'More detail in raw data below'}</span>;
+  if (Array.isArray(value)) return value.length ? <ol className="space-y-2 ps-5 list-decimal">{value.map((entry, index) => <li key={index}><SubmissionValue value={entry} ar={ar} depth={depth + 1} /></li>)}</ol> : <span className="text-muted">{ar ? 'لا توجد عناصر' : 'No items'}</span>;
+  if (typeof value === 'object') return <dl className="space-y-2">{Object.entries(value).map(([key, entry]) => <div key={key} className="rounded-control border border-border p-2"><dt className="text-sm font-semibold text-muted">{key.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ')}</dt><dd className="mt-1 min-w-0"><SubmissionValue value={entry} ar={ar} depth={depth + 1} /></dd></div>)}</dl>;
+  if (typeof value === 'boolean') return <span>{value ? (ar ? 'نعم' : 'Yes') : (ar ? 'لا' : 'No')}</span>;
+  return <span dir={typeof value === 'string' && /[A-Za-z0-9{}();=]/.test(value) ? 'ltr' : undefined} className="whitespace-pre-wrap break-words">{String(value)}</span>;
+}
 
 /** Only bounded summaries are loaded for browsing. Source/result are fetched
  * for one explicitly selected submission and rendered as escaped text. */
@@ -53,6 +62,7 @@ export function AdminSubmissionReview({ assessmentId, title, onClose }: {
     {!page && !error ? <Loading text={label('تحميل…', 'Loading…')} /> : null}
     {page ? <>
       <div className="flex flex-wrap gap-3"><label>{label('ابحث في هذه الصفحة بالطالب','Find a student on this page')}<input value={search} onChange={e=>setSearch(e.target.value)} className="block rounded-control border border-border bg-surface p-2" /></label><label>{label('نتيجة في هذه الصفحة','Result on this page')}<select value={result} onChange={e=>setResult(e.target.value)} className="block rounded-control border border-border bg-surface p-2"><option value="">{label('كل النتائج','All results')}</option>{['CORRECT','INCORRECT','ERROR'].map(s=><option key={s} value={s}>{stateLabel(s)}</option>)}</select></label><Button variant="secondary" onClick={()=>{setSearch('');setResult('');}}>{label('مسح عوامل التصفية','Clear filters')}</Button></div>
+      <p className="text-sm text-muted">{label('البحث والتصفية يعملان على الحلول العشرة في الصفحة الحالية فقط. استخدم التالي لمراجعة صفحات أخرى.','Search and result filters cover only the ten submissions on this page. Use Next to review other pages.')}</p>
       {page.submissions.length && !shown.length ? <p>{label('لا توجد نتائج مطابقة في هذه الصفحة. امسح التصفية أو انتقل لصفحة أخرى.','No matches on this page. Clear filters or try another page.')}</p> : null}
       {!page.submissions.length ? <p>{label('لا توجد حلول مرسلة بعد.', 'No submissions yet.')}</p> : <div className="overflow-x-auto"><table className="w-full text-start text-sm">
         <thead><tr>{[label('الطالب', 'Student'), label('التاريخ', 'Date'), label('النتيجة', 'Result'), label('النسخة', 'Revision'), label('التفاصيل', 'Details')].map((h) => <th key={h} scope="col" className="p-2 text-start">{h}</th>)}</tr></thead>
@@ -62,7 +72,7 @@ export function AdminSubmissionReview({ assessmentId, title, onClose }: {
     </> : null}
     {selected ? <div data-testid="submission-detail" className="border-t border-border pt-3">
       {!detail && !error ? <Loading text={label('تحميل الحل…', 'Loading answer…')} /> : null}
-      {detail ? <><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><strong>{detail.student.displayName} · {stateLabel(detail.state)}</strong><Button variant="secondary" onClick={() => setSelected(null)}>{label('إغلاق الحل', 'Close answer')}</Button></div><div className="max-h-96 space-y-3 overflow-auto"><h4>{label('كود الطالب وإجاباته', 'Student code and answers')}</h4><pre dir="ltr" className="whitespace-pre-wrap break-words rounded-control bg-surface p-3 text-xs">{JSON.stringify(detail.answers, null, 2)}</pre><h4>{label('نتيجة التقييم', 'Grading result')}</h4><pre dir="ltr" className="whitespace-pre-wrap break-words rounded-control bg-surface p-3 text-xs">{JSON.stringify(detail.result, null, 2)}</pre></div></> : null}
+      {detail ? <><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><strong>{detail.student.displayName} · {stateLabel(detail.state)}</strong><Button variant="secondary" onClick={() => setSelected(null)}>{label('إغلاق الحل', 'Close answer')}</Button></div><div className="max-h-96 space-y-4 overflow-auto"><section aria-label={label('إجابات الطالب','Student answers')}><h4 className="mb-2 font-semibold">{label('كود الطالب وإجاباته', 'Student code and answers')}</h4><SubmissionValue value={detail.answers} ar={ar} /></section><section aria-label={label('نتيجة التقييم','Grading result')}><h4 className="mb-2 font-semibold">{label('نتيجة التقييم', 'Grading result')}</h4><SubmissionValue value={detail.result} ar={ar} /></section><details className="rounded-control border border-border p-3"><summary className="cursor-pointer font-semibold">{label('عرض البيانات الخام','View raw data')}</summary><pre dir="ltr" className="mt-2 whitespace-pre-wrap break-words text-xs">{JSON.stringify({ answers: detail.answers, result: detail.result }, null, 2)}</pre></details></div></> : null}
     </div> : null}
   </section>;
 }
