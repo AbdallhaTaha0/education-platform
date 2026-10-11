@@ -45,18 +45,26 @@ export function HomePage({ onSelectCourse }: { onSelectCourse: (slug: string) =>
       image: saifBanner1280,
       srcSet: `${saifBanner640} 640w, ${saifBanner1280} 1280w`,
       alt: c('سيف في مشهد إبداعي لإنتاج محتوى FAYQ.', 'Saif in a creative FAYQ content production scene.'),
-      names: 'SAIF',
-      title: c('الإنتاج الإبداعي', 'Creative production'),
-      description: c('بنقدّم قصص FAYQ ومحتوى التعلّم بصريًا.', 'Bringing FAYQ’s visual stories and learning content to life.'),
+      founders: [
+        {
+          name: 'SAIF',
+          title: 'Founder & Marketing Lead',
+          description: 'صاحب الفكرة التي انطلقت منها FAYQ، ويقود التوجه التسويقي والهوية الإبداعية للمنصة، إلى جانب الإشراف على صناعة المحتوى والإنتاج المرئي والحملات الإعلانية.',
+        },
+      ],
     },
     {
       key: 'ali-taha',
       image: aliTahaBanner1280,
       srcSet: `${aliTahaBanner640} 640w, ${aliTahaBanner1280} 1280w`,
       alt: c('علي وطه يتعاونان في البرمجة والتعلّم ضمن مشهد FAYQ.', 'Ali and Taha collaborating on programming and learning in a FAYQ scene.'),
-      names: 'ALI · TAHA',
-      title: c('البرمجة والتعلّم', 'Programming & learning'),
-      description: c('بنحوّل مفاهيم البرمجة لدروس واضحة وعملية.', 'Turning programming concepts into clear, practical lessons.'),
+      founders: [
+        {
+          name: 'ALI · TAHA',
+          title: 'Founders & Technology and Education Leads',
+          description: 'يعمل علي وطه معًا على تطوير منصة FAYQ وتجربتها التعليمية، ويجمعان بين بناء الجانب التقني وإعداد محتوى تعليمي يبسّط البرمجة لطلاب المرحلة الثانوية خطوة بخطوة.',
+        },
+      ],
     },
   ];
   return (
@@ -124,15 +132,15 @@ export function HomePage({ onSelectCourse }: { onSelectCourse: (slug: string) =>
       <section className="border-t border-border bg-surface py-12 max-sm:py-8" aria-labelledby="founders-title">
         <Container>
           <div className="mb-6 flex justify-end" dir="ltr">
-            <div className="max-w-2xl" dir={lang}>
+            <div className="max-w-2xl" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
               <p className="mb-3 text-sm font-bold text-primary-strong">{c('الفريق اللي بيبني FAYQ سوا', 'The team building FAYQ together')}</p>
-              <h2 id="founders-title" className="text-[clamp(26px,2.6vw,32px)] font-extrabold">{c('علي وطه وسيف', 'Ali, Taha & Saif')}</h2>
+              <h2 id="founders-title" className="text-end text-[clamp(26px,2.6vw,32px)] font-extrabold" dir="ltr">ALI · TAHA · SAIF</h2>
               <p className="mt-3 text-muted">{c('إحنا الثلاثة مؤسسين وبنبني FAYQ سوا بهدف واحد.', 'All three of us are founders, building FAYQ together around one shared goal.')}</p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-6 max-md:grid-cols-1" dir="ltr">
             {founderStories.map((story) => (
-              <article key={story.key} className="overflow-hidden rounded-2xl border border-border bg-elevated shadow-lift" dir={lang}>
+              <article key={story.key} className="overflow-hidden rounded-2xl border border-border bg-elevated shadow-lift" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
                 <img
                   src={story.image}
                   srcSet={story.srcSet}
@@ -144,10 +152,14 @@ export function HomePage({ onSelectCourse }: { onSelectCourse: (slug: string) =>
                   loading="lazy"
                   decoding="async"
                 />
-                <div className="p-6 max-sm:p-4">
-                  <p className="mb-2 text-xs font-extrabold tracking-[0.14em] text-primary-strong" dir="ltr">{story.names}</p>
-                  <h3 className="text-xl font-extrabold">{story.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-muted">{story.description}</p>
+                <div className={`grid gap-6 p-6 max-sm:p-4 ${story.founders.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+                  {story.founders.map((founder) => (
+                    <div key={founder.name}>
+                      <p className={`mb-2 text-xs font-extrabold tracking-[0.14em] text-primary-strong ${lang === 'ar' ? 'text-center' : 'text-start'}`} dir="ltr">{founder.name}</p>
+                      <h3 className={`text-xl font-extrabold ${lang === 'ar' ? 'text-center' : 'text-start'}`} dir="ltr">{founder.title}</h3>
+                      <p className="mt-2 text-sm leading-relaxed text-muted">{founder.description}</p>
+                    </div>
+                  ))}
                 </div>
               </article>
             ))}
