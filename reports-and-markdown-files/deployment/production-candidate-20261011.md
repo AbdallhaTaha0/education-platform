@@ -124,3 +124,18 @@ The current launch gate is operational: no public cloud API/frontend is deployed
 There is no new application registration-disable flag. Keep services private
 until commercial integration and the controlled cloud qualification plan exist;
 do not expose the gateway and rely on an unpublished link as protection.
+
+## Promotion receipt
+
+Platform preparation commit: `9f33adc`; testing merge: `88415b7`; deployment
+merge: `0d6592d`. Implementation, Docker files and the DRM reference in the
+deployment merge match the Docker-verified candidate exactly. Testing's six
+historical grading-probe evidence files are preserved. A historical gitlink
+conflict was resolved to external `53de347`, confirmed to descend from the
+previous deployment reference `d1bfd69`.
+
+Previous remote testing/deployment histories and platform dev are ancestors of
+this merge. This report receipt accompanies the same verified candidate;
+promotion introduces no extra application code. Owner preview's five services
+remain healthy. Disposable suite containers/network/data volume were independently
+confirmed absent after cleanup.
