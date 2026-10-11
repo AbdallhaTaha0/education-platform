@@ -150,7 +150,7 @@ can delete resources. Do not apply it to unrelated/existing projects unchanged.
 | platform `DRM_BASE_URL` / `DRM_PUBLIC_BASE_URL` | DRM HTTPS public API/media origin (current production validation requires HTTPS) |
 | platform `DRM_ASSERTION_ISSUER` | matches DRM `JWT_ISSUER` exactly |
 | assertion audience | matches DRM `JWT_AUDIENCE` exactly |
-| DRM `JWT_JWKS_URL` | frontend `/.well-known/jwks.json` or `/api/.well-known/jwks.json`; verify JSON, not SPA HTML |
+| DRM `JWT_JWKS_URL` | frontend `/api/.well-known/jwks.json`; Vercel reserves root `/.well-known`; verify JSON, not SPA HTML |
 | DRM `CORS_ORIGIN` | exact approved frontend origin(s) |
 | R2 video bucket CORS | exact approved browser-upload origins and required PUT headers; behavioral browser proof |
 

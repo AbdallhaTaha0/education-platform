@@ -1,5 +1,8 @@
 # Education platform documentation
 
+- [Production candidate and guided cloud release](deployment/production-candidate-20261011.md): fresh database, private admin setup, Docker evidence and launch gates.
+- [Commercial DRM provider options](deployment/commercial-drm-options-20261011.md): pricing, evaluation restrictions and remaining integration.
+
 - [UX, upload and journey delivery](delivery-and-reviews/ux-upload-and-journey-delivery-20261009.md): owner-requested platform and bounded DRM commit/push, verification and continuation scope.
 
 - [Website journey verification milestone](milestones/website-journeys/README.md): owner-assigned full student/admin desktop/mobile workflow audit and repair ledger.
