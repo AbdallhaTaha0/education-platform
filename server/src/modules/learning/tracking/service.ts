@@ -62,18 +62,22 @@ export interface TrackingState {
   startedAt: Date;
 }
 
-/** Singleton coverage fence; replica-safe upsert, never backfills. */
+/** Singleton coverage fence; replica-safe atomic insert, never backfills. */
 export async function ensureTrackingState(
   prisma: PrismaClient,
   nowMs: number,
 ): Promise<TrackingState> {
-  const row = await prisma.m10ViewTrackingState.upsert({
+  // Use a single INSERT ... ON CONFLICT statement. Prisma's emulated upsert
+  // can race across replicas when the singleton row is first created.
+  await prisma.$executeRaw`
+    INSERT INTO "M10ViewTrackingState" ("id", "startedAt")
+    VALUES ('global', ${new Date(nowMs)})
+    ON CONFLICT ("id") DO NOTHING
+  `;
+  return prisma.m10ViewTrackingState.findUniqueOrThrow({
     where: { id: 'global' },
-    create: { id: 'global', startedAt: new Date(nowMs) },
-    update: {},
     select: { id: true, startedAt: true },
   });
-  return row;
 }
 
 export async function readTrackingState(prisma: PrismaClient): Promise<TrackingState | null> {

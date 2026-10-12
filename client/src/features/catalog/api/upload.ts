@@ -10,10 +10,11 @@ export function uploadVideo(url: string, file: File, mime: string, onProgress: (
     xhr.open('PUT', url);
     xhr.withCredentials = false;
     xhr.setRequestHeader('Content-Type', mime);
+    xhr.setRequestHeader('If-None-Match', '*');
     xhr.upload.onprogress = (event) => onProgress(event.lengthComputable && event.total > 0
       ? Math.min(100, Math.max(0, Math.round(event.loaded / event.total * 100))) : undefined);
     xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) { onProgress(100); finish(); }
+      if ((xhr.status >= 200 && xhr.status < 300) || xhr.status === 412) { onProgress(100); finish(); }
       else finish(new Error('UPLOAD_FAILED'));
     };
     xhr.onerror = () => finish(new Error('UPLOAD_FAILED'));

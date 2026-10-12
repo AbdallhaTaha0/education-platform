@@ -11,7 +11,7 @@
  * surfaces an error state instead of silently downgrading.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import * as dashjs from 'dashjs';
+import type * as DashJsTypes from 'dashjs';
 import { useLang } from '../../../i18n';
 import { INITIAL_PLAYER_STATE, reducePlayerState, shouldFlushProgress } from './state';
 import { authHeaders, clear as clearSession, isExpired, setSession } from './session';
@@ -27,7 +27,7 @@ import { finishAfterViewFlush } from './finalViewFlush';
 import { videoQualityOptions, type VideoQualityOption } from './playbackOptions';
 import type { PlaybackGrant, PlayerState } from '../types/models';
 
-type MediaPlayerClass = ReturnType<ReturnType<typeof dashjs.MediaPlayer>['create']>;
+type MediaPlayerClass = ReturnType<ReturnType<typeof DashJsTypes.MediaPlayer>['create']>;
 type Interceptor = Parameters<MediaPlayerClass['addRequestInterceptor']>[0];
 type InterceptedRequest = Parameters<Interceptor>[0];
 
@@ -266,6 +266,7 @@ export function DashLessonPlayer({
     }
 
     let player: MediaPlayerClass | null = null;
+    let active = true;
     // Every manifest, segment and license request carries the transient bearer
     // token, read from memory at request time so a refreshed grant is used.
     const interceptor: Interceptor = async (request: InterceptedRequest) => {
@@ -283,7 +284,12 @@ export function DashLessonPlayer({
     // data is set before initialize (the one legal pre-initialization spot);
     // initialize(video, url, autoplay=false) then performs attachView and
     // attachSource internally. Autoplay stays off: the bottom control bar drives playback.
-    try {
+    const initializeDashPlayer = async () => {
+      try {
+      // No-DRM lessons use the native video element above. Load the much larger
+      // DASH/EME library only if a grant actually requires that path.
+      const dashjs = await import('dashjs');
+      if (!active) return;
       player = dashjs.MediaPlayer().create();
       playerRef.current = player;
       player.setProtectionData({
@@ -346,13 +352,17 @@ export function DashLessonPlayer({
         onErrorRef.current?.(code);
       });
       player.initialize(video, grant.manifestUrl, false);
-    } catch {
-      playerRef.current = null;
-      dispatch({ type: 'FAILED', code: 'PLAYER_INIT_FAILED' });
-      onErrorRef.current?.('PLAYER_INIT_FAILED');
-    }
+      } catch {
+        if (!active) return;
+        playerRef.current = null;
+        dispatch({ type: 'FAILED', code: 'PLAYER_INIT_FAILED' });
+        onErrorRef.current?.('PLAYER_INIT_FAILED');
+      }
+    };
+    void initializeDashPlayer();
 
     return () => {
+      active = false;
       // Capture before DASH reset or React detaches the video ref.
       captureProgress(video);
       reportProgress(false, true);

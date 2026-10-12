@@ -29,6 +29,10 @@ import { assertLessonUnlocked } from '../../assessments/progression.js';
 // Keep the no-DRM branch aligned with the platform's existing two-device
 // allowance by limiting each account to two live playback references.
 const NO_DRM_MAX_CONCURRENT_SESSIONS = 2;
+// Keep the durable playback-reference lease one hour, matching the session
+// lifetime used by the DRM-backed provider. The signed object URL remains
+// short-lived (five minutes) and is refreshed through the platform endpoint.
+const NO_DRM_SESSION_TTL_MS = 60 * 60_000;
 
 export interface PlaybackDeps {
   prisma: PrismaClient;
@@ -56,6 +60,7 @@ export async function createPlaybackSession(
     const object = await deps.storage.headObject(objectKey);
     if (!object) throw new LearningError('MEDIA_NOT_READY');
     const expires = new Date(input.nowMs + 5 * 60_000);
+    const sessionExpires = new Date(input.nowMs + NO_DRM_SESSION_TTL_MS);
     const reference = await deps.prisma.$transaction(async (tx) => {
       // Serialize session creation per student so two simultaneous requests
       // cannot both pass the account-level cap.
@@ -108,7 +113,7 @@ export async function createPlaybackSession(
           provider: 'NO_DRM',
           status: 'ACTIVE',
           tokenExpiresAt: expires,
-          sessionExpiresAt: expires,
+          sessionExpiresAt: sessionExpires,
         },
         select: { id: true },
       });
@@ -118,7 +123,7 @@ export async function createPlaybackSession(
       playbackSessionId: reference.id,
       playbackToken: '',
       tokenExpiresAt: expires.toISOString(),
-      sessionExpiresAt: expires.toISOString(),
+      sessionExpiresAt: sessionExpires.toISOString(),
       manifestUrl: deps.storage.presign('GET', objectKey, 300),
       licenseUrl: '',
       drmProvider: 'NONE',
@@ -243,6 +248,7 @@ export async function renewPlaybackToken(
       lessonId: true,
       externalAssetId: true,
       provider: true,
+      sessionExpiresAt: true,
     },
   });
   if (reference === null) return { renewed: false, reason: 'NOT_RENEWABLE' };
@@ -269,27 +275,35 @@ export async function renewPlaybackToken(
   );
 
   if (reference.provider === 'NO_DRM') {
-    if (!deps.storage) return { renewed: false, reason: 'SESSION_GONE' };
+    if (reference.sessionExpiresAt.getTime() <= input.nowMs || !deps.storage) {
+      await terminateNoDrmReference(deps.prisma, reference.id, input.nowMs);
+      return { renewed: false, reason: 'SESSION_GONE' };
+    }
     const media = await deps.prisma.mediaMapping.findUnique({
       where: { externalAssetId: reference.externalAssetId },
       select: { assetId: true, status: true, retiredAt: true },
     });
-    if (!media?.assetId || media.status !== 'READY' || media.retiredAt)
+    if (!media?.assetId || media.status !== 'READY' || media.retiredAt) {
+      await terminateNoDrmReference(deps.prisma, reference.id, input.nowMs);
       return { renewed: false, reason: 'SESSION_GONE' };
+    }
     const objectKey = `lesson-videos/${media.assetId}`;
-    if (!(await deps.storage.headObject(objectKey)))
+    if (!(await deps.storage.headObject(objectKey))) {
+      await terminateNoDrmReference(deps.prisma, reference.id, input.nowMs);
       return { renewed: false, reason: 'SESSION_GONE' };
-    const expires = new Date(input.nowMs + 5 * 60_000).toISOString();
+    }
+    const expires = new Date(input.nowMs + 5 * 60_000);
+    const sessionExpires = new Date(input.nowMs + NO_DRM_SESSION_TTL_MS);
     const manifestUrl = deps.storage.presign('GET', objectKey, 300);
     await deps.prisma.playbackReference.updateMany({
       where: { id: reference.id, status: 'ACTIVE' },
-      data: { tokenExpiresAt: new Date(expires), sessionExpiresAt: new Date(expires) },
+      data: { tokenExpiresAt: expires, sessionExpiresAt: sessionExpires },
     });
     return {
       renewed: true,
       playbackToken: '',
-      tokenExpiresAt: expires,
-      sessionExpiresAt: expires,
+      tokenExpiresAt: expires.toISOString(),
+      sessionExpiresAt: sessionExpires.toISOString(),
       manifestUrl,
     };
   }
@@ -349,6 +363,23 @@ export async function renewPlaybackToken(
   };
 }
 
+async function terminateNoDrmReference(
+  prisma: PrismaClient,
+  referenceId: string,
+  nowMs: number,
+): Promise<void> {
+  await prisma.playbackReference.updateMany({
+    where: { id: referenceId, status: 'ACTIVE' },
+    data: {
+      status: 'TERMINATED',
+      terminationStatus: 'COMPLETED',
+      pendingEndReason: null,
+      nextTerminationAt: null,
+      lastErrorCategory: null,
+      endedAt: new Date(nowMs),
+    },
+  });
+}
 /** Backend-time entitlement re-check used only by the renewal path. */
 async function recheckEntitlement(
   prisma: PrismaClient,

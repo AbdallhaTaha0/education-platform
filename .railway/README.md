@@ -15,7 +15,9 @@ browser continues to use same-origin cookie and CSRF requests. Set
 `ALLOWED_ORIGINS` to the exact Vercel HTTPS origin, `COOKIE_SECURE=true`,
 `SEO_PUBLIC_ORIGIN` to that staging origin, and keep `SEO_INDEXING_ENABLED=false`.
 Add the same exact Vercel origin to the R2 CORS policy for browser uploads and
-video playback. When a custom domain is chosen, update these origin settings and
+video playback. Allow `PUT`/`GET` with `Content-Type` and `If-None-Match` request
+headers; upload URLs use a conditional write to prevent object replacement.
+When a custom domain is chosen, update these origin settings and
 verify cookies and CORS again.
 
 ## Required immutable images

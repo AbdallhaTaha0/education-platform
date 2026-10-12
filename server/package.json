@@ -13,7 +13,7 @@
     "db:migrate:dev": "prisma migrate dev",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.tests.json",
     "test:unit": "vitest run tests/unit",
-    "test:integration": "vitest run tests/integration --exclude tests/integration/learning-materials.test.ts",
+    "test:integration": "vitest run tests/integration --exclude tests/integration/learning-materials.test.ts --exclude tests/integration/learning-playback.test.ts --exclude tests/integration/playback-recovery.test.ts --exclude tests/integration/drm-contract.test.ts",
     "test:ci": "npm run test:unit --silent && npm run test:integration --silent"
   },
   "dependencies": {

@@ -3,6 +3,8 @@ import request from 'supertest';
 import {
   adminGet,
   adminPost,
+  registerTestVideo,
+  uploadTestVideo,
   createCatalogWorld,
   createFullDraft,
   type CatalogWorld,
@@ -41,16 +43,7 @@ describe('catalog publication + lifecycle', () => {
   it('blocks publication with missing translations or unready media', async () => {
     const { courseId, lessonId } = await createFullDraft(world, 'pubb');
     // Register media but do not mark ready → PROCESSING transition must fail (upload not completed).
-    const reg = await adminPost(
-      world.app,
-      `/admin/catalog/lessons/${lessonId}/media`,
-      world.adminJar,
-      {
-        contentType: 'video/mp4',
-        securityTier: 'STANDARD',
-      },
-    );
-    expect(reg.status).toBe(201);
+    const reg = await registerTestVideo(world, lessonId);
     const toProc = await adminPost(
       world.app,
       `/admin/catalog/courses/${courseId}/transitions`,
@@ -60,7 +53,8 @@ describe('catalog publication + lifecycle', () => {
     // UPLOAD_PENDING without completion blocks.
     expect(toProc.status).toBe(409);
 
-    // Complete upload → PROCESSING status, then sync to READY via fixture.
+    // A completed private-storage upload is immediately READY.
+    await uploadTestVideo(reg.uploadUrl);
     const comp = await adminPost(
       world.app,
       `/admin/catalog/lessons/${lessonId}/media/complete`,
@@ -68,11 +62,6 @@ describe('catalog publication + lifecycle', () => {
       {},
     );
     expect(comp.status).toBe(200);
-    // Fixture asset is PROCESSING; mark READY then sync.
-    const mapping = await world.prisma.mediaMapping.findFirstOrThrow({ where: { lessonId } });
-    const internal = world.fixture!.assets.get(mapping.assetId as string);
-    expect(internal).toBeDefined();
-    world.fixture!.markReady(mapping.assetId as string);
     const sync = await adminPost(
       world.app,
       `/admin/catalog/lessons/${lessonId}/media/sync`,
@@ -132,18 +121,9 @@ describe('catalog publication + lifecycle', () => {
   it('archive hides content and unarchive restores valid prior state', async () => {
     const { courseId, lessonId } = await createFullDraft(world, 'arch');
     // Prepare publishable course quickly.
-    await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media`, world.adminJar, {
-      contentType: 'video/mp4',
-      securityTier: 'STANDARD',
-    });
-    await adminPost(
-      world.app,
-      `/admin/catalog/lessons/${lessonId}/media/complete`,
-      world.adminJar,
-      {},
-    );
-    const mapping = await world.prisma.mediaMapping.findFirstOrThrow({ where: { lessonId } });
-    world.fixture!.markReady(mapping.assetId as string);
+    const registration = await registerTestVideo(world, lessonId);
+    await uploadTestVideo(registration.uploadUrl);
+    await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media/complete`, world.adminJar, {});
     await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media/sync`, world.adminJar, {});
     await adminPost(world.app, `/admin/catalog/courses/${courseId}/transitions`, world.adminJar, {
       to: 'PROCESSING',
@@ -167,8 +147,7 @@ describe('catalog publication + lifecycle', () => {
     expect(arch.body.data.course.status).toBe('ARCHIVED');
     const pubAfterArch = await request(world.app).get(`/catalog/courses/${slug}`);
     expect(pubAfterArch.status).toBe(404);
-    // Archive never calls DRM delete: fixture deletions must be empty.
-    expect(world.fixture!.deletions.size).toBe(0);
+    // Archiving changes visibility without deleting the private source object.
     // Unarchive restores PUBLISHED.
     const unarch = await adminPost(
       world.app,
@@ -194,7 +173,7 @@ describe('catalog publication + lifecycle', () => {
   it('fails closed with 503 when DRM unconfigured', async () => {
     // `resetSharedState: false`: this world is a sibling of the outer one, which
     // is still in use. A reset here would delete the outer world's courses.
-    const plain = await createCatalogWorld(false, {}, { resetSharedState: false });
+    const plain = await createCatalogWorld(false, { storageEndpoint: undefined, storageRegion: undefined, storageAccessKeyId: undefined, storageSecretAccessKey: undefined, storageBucket: undefined }, { resetSharedState: false });
     try {
       const { lessonId } = await createFullDraft(plain, 'unconf');
       const reg = await adminPost(
@@ -202,12 +181,10 @@ describe('catalog publication + lifecycle', () => {
         `/admin/catalog/lessons/${lessonId}/media`,
         plain.adminJar,
         {
-          contentType: 'video/mp4',
-          securityTier: 'STANDARD',
-        },
+          contentType: 'video/mp4',        },
       );
       expect(reg.status).toBe(503);
-      expect(reg.body.error.code).toBe('DRM_UNCONFIGURED');
+      expect(reg.body.error.code).toBe('STORAGE_UNCONFIGURED');
     } finally {
       await plain.close();
     }

@@ -12,6 +12,37 @@
 # a transient table that is never part of Prisma migrations.
 
 services:
+  storage:
+    build:
+      context: ..
+      dockerfile: docker/course-learning-backend/Minio.Dockerfile
+    image: fayq-materials-minio-fixture:20261004
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: minio-test-access
+      MINIO_ROOT_PASSWORD: minio-test-secret-not-for-use-outside-docker
+    healthcheck:
+      test: [CMD, node, -e, "fetch(\x27http://localhost:9000/minio/health/live\x27).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: 'no'
+
+  storage-init:
+    image: edu-platform-server-test:0.4.0-m4
+    depends_on:
+      storage:
+        condition: service_healthy
+    entrypoint: node
+    command: tests/fixtures/createS3TestBucket.mjs
+    environment:
+      STORAGE_ENDPOINT: http://storage:9000
+      STORAGE_REGION: us-east-1
+      STORAGE_ACCESS_KEY_ID: minio-test-access
+      STORAGE_SECRET_ACCESS_KEY: minio-test-secret-not-for-use-outside-docker
+      STORAGE_BUCKET: fayq-test-bucket
+    restart: 'no'
+
   postgres:
     image: postgres:16-alpine
     environment:
@@ -67,6 +98,11 @@ services:
       DRM_MAX_RETRIES: 2
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/education_platform_test
       REDIS_URL: redis://redis:6379
+      STORAGE_ENDPOINT: http://storage:9000
+      STORAGE_REGION: us-east-1
+      STORAGE_ACCESS_KEY_ID: minio-test-access
+      STORAGE_SECRET_ACCESS_KEY: minio-test-secret-not-for-use-outside-docker
+      STORAGE_BUCKET: fayq-test-bucket
       # Isolated test-only secrets. Distinct from every other environment;
       # never production credentials.
       AUTH_JWT_SECRET: 9f3k7q2m4x8z1v6n7h2j5t9w3q6w8e1r5t9y2u4i6o0p
@@ -85,6 +121,8 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
+      storage-init:
+        condition: service_completed_successfully
     restart: 'no'
 
   # Client-side unit tests for the pure M5 learning logic (player state machine

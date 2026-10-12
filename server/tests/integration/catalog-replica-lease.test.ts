@@ -11,6 +11,8 @@ import {
 } from '../../src/modules/catalog/deletion/reconciler.js';
 import {
   adminPost,
+  registerTestVideo,
+  uploadTestVideo,
   createCatalogWorld,
   createFullDraft,
   type CatalogWorld,
@@ -39,18 +41,9 @@ function cfg() {
 }
 
 async function readyLesson(lessonId: string): Promise<void> {
-  await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media`, world.adminJar, {
-    contentType: 'video/mp4',
-    securityTier: 'STANDARD',
-  });
-  await adminPost(
-    world.app,
-    `/admin/catalog/lessons/${lessonId}/media/complete`,
-    world.adminJar,
-    {},
-  );
-  const mapping = await world.prisma.mediaMapping.findFirstOrThrow({ where: { lessonId } });
-  world.fixture!.markReady(mapping.assetId as string);
+  const registration = await registerTestVideo(world, lessonId);
+  await uploadTestVideo(registration.uploadUrl);
+  await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media/complete`, world.adminJar, {});
   await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media/sync`, world.adminJar, {});
 }
 

@@ -1,8 +1,7 @@
 /**
  * M10 video-view tracking integration (agent 1, platform-owned).
  *
- * Uses the labeled HTTP DRM fixture for real playback grants. The fixture
- * proves platform integration only, not real DRM security.
+ * Uses the no-DRM private-storage playback path exercised by this release candidate.
  *
  * Contract under test:
  * - one count per logical session after 30s of actual playing time;
@@ -13,32 +12,40 @@
  * - duplicates, remounts, retries and concurrent writes count once;
  * - role/ownership/expiry/binding enforced server-side.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
-  createLearningWorld,
+  createNoDrmLearningWorld,
   createPublishedCourse,
   grantSubscription,
+  isolateReferences,
   setCourseStatus,
   studentPost,
-  type LearningWorld,
+  type NoDrmLearningWorld,
 } from './learning-helpers.js';
 import { registerStudent } from './identity-helpers.js';
 
-let world: LearningWorld;
+let world: NoDrmLearningWorld;
 let course: Awaited<ReturnType<typeof createPublishedCourse>>;
 const DAY = 86_400_000;
 const DEVICE = 'm10-device-0001';
 
 beforeAll(async () => {
-  world = await createLearningWorld();
+  world = await createNoDrmLearningWorld();
   course = await createPublishedCourse(world, 'm10tracking');
   await grantSubscription(world, world.studentId, course.courseId, Date.now() + 30 * DAY);
   await world.prisma.m10VideoViewSession.deleteMany();
   await world.prisma.m10ViewTrackingState.deleteMany();
 });
 
+beforeEach(async () => {
+  // The no-DRM playback contract limits each account to two live references.
+  // Each tracking test starts fresh sessions, so retire prior test references.
+  await isolateReferences(world);
+  await world.prisma.m10VideoViewSession.deleteMany();
+  await world.prisma.m10ViewTrackingState.deleteMany();
+});
+
 afterAll(async () => {
-  await world?.fixture?.stop();
   await world?.close();
 });
 
@@ -164,10 +171,16 @@ describe('session restart rules', () => {
   });
 
   it('failed reconnect creates no view', async () => {
-    world.playback!.failNextCreates = 1;
-    const failed = await startPlayback(course.lessonId, `${DEVICE}-failed`);
-    expect(failed.status).toBe(502);
-    world.playback!.failNextCreates = 0;
+    await world.prisma.mediaMapping.updateMany({
+      where: { lessonId: course.lessonId },
+      data: { status: 'FAILED' },
+    });
+    const failed = await startPlayback(course.lessonId, 'm10-device-failed');
+    expect(failed.status).toBe(409);
+    await world.prisma.mediaMapping.updateMany({
+      where: { lessonId: course.lessonId },
+      data: { status: 'READY' },
+    });
     // No grant means no reference to start a view with; a fabricated id fails.
     const res = await startView(course.slug, course.lessonId, 'f6c0ffee-0000-4000-8000-000000000000');
     expect(res.status).toBe(401);
@@ -443,6 +456,9 @@ describe('authorization and binding', () => {
   });
 
   it('exposes tracking coverage from the singleton state', async () => {
+    const play = await startPlayback();
+    const referenceId = play.body.data.playback.referenceId as string;
+    await startView(course.slug, course.lessonId, referenceId);
     const state = await world.prisma.m10ViewTrackingState.findUnique({
       where: { id: 'global' },
     });
@@ -452,12 +468,12 @@ describe('authorization and binding', () => {
 
   it('never persists credentials in view rows', async () => {
     const play = await startPlayback();
-    const token = play.body.data.playback.playbackToken as string;
+    const signedUrl = play.body.data.playback.manifestUrl as string;
     const referenceId = play.body.data.playback.referenceId as string;
     const started = await startView(course.slug, course.lessonId, referenceId);
     const id = (started.body.data.view as { viewSessionId: string }).viewSessionId;
     const row = await world.prisma.m10VideoViewSession.findUniqueOrThrow({ where: { id } });
-    expect(JSON.stringify(row)).not.toContain(token);
+    expect(JSON.stringify(row)).not.toContain(signedUrl);
   });
 });
 

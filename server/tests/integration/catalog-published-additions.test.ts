@@ -27,7 +27,7 @@ describe('owner-approved published lesson additions', () => {
     expect(pending.body.error.code).toBe('MEDIA_NOT_READY');
     await makeLessonPlayable(world, c.courseId, id, 120);
     expect((await playback(id)).status).toBe(201);
-    const replacement = await adminPost(world.app, `/admin/catalog/lessons/${id}/media`, world.adminJar, { contentType: 'video/mp4', securityTier: 'STANDARD' });
+    const replacement = await adminPost(world.app, `/admin/catalog/lessons/${id}/media`, world.adminJar, { contentType: 'video/mp4' });
     expect(replacement.status).toBe(409);
     expect(replacement.body.error.code).toBe('MEDIA_EXISTS');
     expect(await world.prisma.auditEvent.count({ where: { entityId: id, action: 'LESSON_CREATED' } })).toBe(1);
@@ -70,6 +70,6 @@ describe('owner-approved published lesson additions', () => {
     await world.prisma.course.update({ where: { id: c.courseId }, data: state === 'DELETION_PENDING' ? { deletionRequestedAt: new Date() } : { status: state } });
     const code = state === 'DELETION_PENDING' ? state : state === 'ARCHIVED' ? 'COURSE_ARCHIVED' : 'COURSE_NOT_DRAFT';
     expect((await adminPost(world.app, `/admin/catalog/sections/${c.sectionId}/lessons`, world.adminJar, titles)).body.error.code).toBe(code);
-    expect((await adminPost(world.app, `/admin/catalog/lessons/${id}/media`, world.adminJar, { contentType: 'video/mp4', securityTier: 'STANDARD' })).body.error.code).toBe(code);
+    expect((await adminPost(world.app, `/admin/catalog/lessons/${id}/media`, world.adminJar, { contentType: 'video/mp4' })).body.error.code).toBe(code);
   });
 });

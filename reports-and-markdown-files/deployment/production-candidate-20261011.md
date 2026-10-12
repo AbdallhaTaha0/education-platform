@@ -1,5 +1,12 @@
 # Production candidate preparation — 2026-10-11
 
+**Scope update — 2026-10-12:** For `codex/no-drm`, the owner accepted the
+reduced video-protection level. Commercial DRM is therefore not a launch gate
+for that branch. This report records the earlier DRM-enabled candidate; its
+commercial-DRM deployment steps and DRM gateway evidence do not apply to
+`codex/no-drm`. Follow the current [no-DRM readiness report](no-drm-branch-report.md)
+for that branch's actual launch gates and evidence.
+
 Owner authorized release preparation, merging delivered changes into
 `deployment`, and guided Railway backend / Vercel frontend deployment using
 generated URLs. This supersedes historical no-deployment instructions for this

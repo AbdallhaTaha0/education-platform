@@ -11,7 +11,7 @@
 
 ## Deployment preparation — 2026-10-07
 
-- [No-DRM branch and production-readiness gates](deployment/no-drm-branch-report.md): private R2 delivery, two-session best-effort cap, DRM feature losses and launch blockers.
+- [No-DRM branch and production-readiness gates](deployment/no-drm-branch-report.md): private R2 delivery, owner-accepted video-protection tradeoff and remaining launch blockers.
 - [Railway migration from GitHub](deployment/railway-github-migration-20261007.md): owner-approved trial-compatible build path, dedicated migration image and isolated PostgreSQL verification.
 
 - [Current release: IDE disabled, choice quizzes retained](deployment/ide-disabled-release-20261007.md): backend-enforced suspension, preserved data, worker-free choice marking and local Docker verification.

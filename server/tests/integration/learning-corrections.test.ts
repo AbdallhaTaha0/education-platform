@@ -120,27 +120,27 @@ describe('B: platform-mediated token renewal', () => {
     await setCourseStatus(world, course.courseId, 'PUBLISHED');
   });
 
-  it('returns a fresh token for an active session', async () => {
+  it('renews a private signed URL for an active session', async () => {
     const start = await startPlayback();
     expect(start.status).toBe(201);
-    const { referenceId, playbackToken } = start.body.data.playback;
+    const { referenceId } = start.body.data.playback;
 
     const res = await renew(referenceId);
     expect(res.status).toBe(200);
     const renewal = res.body.data.renewal;
     expect(renewal.renewed).toBe(true);
-    expect(typeof renewal.playbackToken).toBe('string');
-    expect(renewal.playbackToken).not.toBe(playbackToken);
-    expect(Date.parse(renewal.tokenExpiresAt)).toBeGreaterThan(0);
+    expect(renewal.playbackToken).toBe('');
+    expect(renewal.manifestUrl).toContain('X-Amz-Signature=');
+    expect(Date.parse(renewal.sessionExpiresAt)).toBeGreaterThan(Date.parse(renewal.tokenExpiresAt));
   });
 
-  it('minimizes the renewal response to credential fields only', async () => {
+  it('returns only short-lived playback renewal fields', async () => {
     const start = await startPlayback();
     const res = await renew(start.body.data.playback.referenceId);
     expect(res.status).toBe(200);
     const renewal = res.body.data.renewal;
     expect(Object.keys(renewal).sort()).toEqual(
-      ['playbackToken', 'renewed', 'sessionExpiresAt', 'tokenExpiresAt'].sort(),
+      ['manifestUrl', 'playbackToken', 'renewed', 'sessionExpiresAt', 'tokenExpiresAt'].sort(),
     );
     const serialized = JSON.stringify(res.body);
     expect(serialized).not.toContain('assertion');
@@ -148,15 +148,16 @@ describe('B: platform-mediated token renewal', () => {
     expect(serialized).not.toContain('kid');
   });
 
-  it('does not persist the renewed token', async () => {
+  it('does not persist the renewed signed object URL', async () => {
     const start = await startPlayback();
     const referenceId = start.body.data.playback.referenceId;
     const res = await renew(referenceId);
-    const token = res.body.data.renewal.playbackToken as string;
+    const manifestUrl = res.body.data.renewal.manifestUrl as string;
     const reference = await world.prisma.playbackReference.findUniqueOrThrow({
       where: { id: referenceId },
     });
-    expect(JSON.stringify(reference)).not.toContain(token);
+    expect(manifestUrl).toContain('X-Amz-Signature=');
+    expect(JSON.stringify(reference)).not.toContain(manifestUrl);
   });
 
   it('re-checks entitlement on backend time and refuses at expiry', async () => {
@@ -174,7 +175,7 @@ describe('B: platform-mediated token renewal', () => {
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('PLAYBACK_SESSION_EXPIRED');
 
-    // A refused renewal also requests durable external termination.
+    // A refused renewal queues durable subscription-expiry termination.
     const reference = await world.prisma.playbackReference.findUniqueOrThrow({
       where: { id: referenceId },
     });
@@ -193,17 +194,27 @@ describe('B: platform-mediated token renewal', () => {
     expect((await renew(referenceId)).status).toBe(401);
   });
 
-  it('surfaces a dependency renewal failure as 502 and does not leak the body', async () => {
+  it('terminates a reference when its media is no longer ready', async () => {
     const start = await startPlayback();
-    const referenceId = start.body.data.playback.referenceId;
-    world.playback!.renewAlwaysFails = true;
+    const referenceId = start.body.data.playback.referenceId as string;
+    await world.prisma.mediaMapping.updateMany({
+      where: { lessonId: course.lessonId },
+      data: { status: 'FAILED' },
+    });
     const res = await renew(referenceId);
-    world.playback!.renewAlwaysFails = false;
-    expect(res.status).toBe(502);
-    expect(res.body.error.code).toBe('DRM_DEPENDENCY_FAILED');
-    expect(JSON.stringify(res.body)).not.toContain('transient renew failure');
+    await world.prisma.mediaMapping.updateMany({
+      where: { lessonId: course.lessonId },
+      data: { status: 'READY' },
+    });
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe('PLAYBACK_SESSION_EXPIRED');
+    const reference = await world.prisma.playbackReference.findUniqueOrThrow({
+      where: { id: referenceId },
+    });
+    expect(reference.status).toBe('TERMINATED');
+    expect(reference.terminationStatus).toBe('COMPLETED');
+    expect(JSON.stringify(res.body)).not.toContain(reference.externalAssetId);
   });
-
   it('refuses to renew another student reference', async () => {
     const start = await startPlayback();
     const res = await studentPost(

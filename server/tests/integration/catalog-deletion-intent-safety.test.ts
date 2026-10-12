@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { randomUUID } from 'node:crypto';
 import { lockCourseRow } from '../../src/modules/catalog/locks.js';
+import { createStorageClient } from '../../src/infra/storage.js';
 import {
   adminPost,
   createCatalogWorld,
@@ -10,11 +12,10 @@ import {
 let world: CatalogWorld;
 
 beforeAll(async () => {
-  world = await createCatalogWorld(true);
+  world = await createCatalogWorld(false);
 });
 
 afterAll(async () => {
-  await world.fixture?.stop();
   await world.close();
 });
 
@@ -61,6 +62,12 @@ describe('deletion safety around media registration intents', () => {
   it('uses the locked scope when media appears after the initial preview', async () => {
     const { courseId, lessonId } = await createFullDraft(world, 'delete-locked-scope');
     const course = await world.prisma.course.findUniqueOrThrow({ where: { id: courseId } });
+    const lateAssetId = randomUUID();
+    await createStorageClient(world.config)!.putObject(
+      `lesson-videos/${lateAssetId}`,
+      Buffer.from('late private video fixture'),
+      'video/mp4',
+    );
     let release!: () => void;
     let locked!: () => void;
     const releaseGate = new Promise<void>((resolve) => {
@@ -79,7 +86,7 @@ describe('deletion safety around media registration intents', () => {
           data: {
             lessonId,
             externalAssetId: `late-media-${Date.now().toString(36)}`,
-            assetId: '11111111-1111-4111-8111-111111111111',
+            assetId: lateAssetId,
             status: 'READY',
             idempotencyKey: `late-idem-${Date.now().toString(36)}`,
           },
@@ -109,7 +116,8 @@ describe('deletion safety around media registration intents', () => {
     const response = await deletion;
     expect(response.status).toBe(202);
     expect(response.body.data.operation.assets).toHaveLength(1);
-    expect(response.body.data.operation.status).not.toBe('COMPLETED');
-    expect(await world.prisma.course.findUnique({ where: { id: courseId } })).not.toBeNull();
+    expect(response.body.data.operation.status).toBe('COMPLETED');
+    expect(await world.prisma.course.findUnique({ where: { id: courseId } })).toBeNull();
+    expect(await createStorageClient(world.config)!.headObject(`lesson-videos/${lateAssetId}`)).toBeNull();
   });
 });

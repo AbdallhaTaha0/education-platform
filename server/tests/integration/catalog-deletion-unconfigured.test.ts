@@ -6,7 +6,7 @@ import {
   type CatalogWorld,
 } from './catalog-helpers.js';
 
-/** Exact regression: unconfigured DRM deletion must be side-effect free. */
+/** Storage-backed deletion must be side-effect free when private storage is unavailable. */
 let world: CatalogWorld;
 
 beforeAll(async () => {
@@ -17,7 +17,7 @@ afterAll(async () => {
   await world.close();
 });
 
-describe('unconfigured deletion is side-effect free', () => {
+describe('unconfigured private storage deletion is side-effect free', () => {
   it('returns 503 with zero operations, markers, or media changes', async () => {
     const { courseId, lessonId } = await createFullDraft(world, 'unconf-reg');
     const mapping = await world.prisma.mediaMapping.create({
@@ -34,14 +34,26 @@ describe('unconfigured deletion is side-effect free', () => {
     const auditsBefore = await world.prisma.auditEvent.count();
 
     const course = await world.prisma.course.findUniqueOrThrow({ where: { id: courseId } });
-    const res = await adminPost(
-      world.app,
-      `/admin/catalog/courses/${courseId}/delete`,
-      world.adminJar,
-      { confirmation: course.slug },
-    );
+    const config = world.app.get('catalog').config;
+    const storageValues = [config.storageEndpoint, config.storageRegion, config.storageAccessKeyId, config.storageSecretAccessKey, config.storageBucket];
+    config.storageEndpoint = undefined;
+    config.storageRegion = undefined;
+    config.storageAccessKeyId = undefined;
+    config.storageSecretAccessKey = undefined;
+    config.storageBucket = undefined;
+    let res: Awaited<ReturnType<typeof adminPost>>;
+    try {
+      res = await adminPost(
+        world.app,
+        `/admin/catalog/courses/${courseId}/delete`,
+        world.adminJar,
+        { confirmation: course.slug },
+      );
+    } finally {
+      [config.storageEndpoint, config.storageRegion, config.storageAccessKeyId, config.storageSecretAccessKey, config.storageBucket] = storageValues;
+    }
     expect(res.status).toBe(503);
-    expect(res.body.error.code).toBe('DRM_UNCONFIGURED');
+    expect(res.body.error.code).toBe('STORAGE_UNCONFIGURED');
 
     expect(await world.prisma.catalogDeletionOperation.count()).toBe(opsBefore);
     expect(

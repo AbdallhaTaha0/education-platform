@@ -370,11 +370,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
       throw new Error('Invalid STORAGE_ENDPOINT (production requires an HTTPS base URL).');
     }
   }
-  // Storage is optional in all environments (local dev, test, production).
-  // Production deployments must configure it explicitly, but the application
-  // does not fail startup without it to maintain compatibility with existing
-  // test fixtures and local development workflows.
-  // TODO: Make required in production after owner approval for storage deployment.
+  // Video upload and playback are unavailable without private object storage.
+  // Fail closed in production instead of accepting traffic with a broken media path.
+  if (isProduction && storageConfiguredCount !== 5) {
+    throw new Error(
+      'Invalid storage configuration (STORAGE_ENDPOINT, STORAGE_REGION, STORAGE_ACCESS_KEY_ID, STORAGE_SECRET_ACCESS_KEY and STORAGE_BUCKET are required in production).',
+    );
+  }
 
   // Assertion signing and DRM public origins are unused in no-DRM mode.
   const drmAssertionIssuer = undefined;

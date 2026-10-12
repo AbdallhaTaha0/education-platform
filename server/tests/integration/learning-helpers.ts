@@ -8,7 +8,7 @@
 import type { Express } from 'express';
 import { DrmFixture } from '../fixtures/drmFixture.js';
 import { DrmPlaybackFixture } from '../fixtures/drmPlaybackFixture.js';
-import { createCatalogWorld, type CatalogWorld } from './catalog-helpers.js';
+import { createCatalogWorld, registerTestVideo, uploadTestVideo, type CatalogWorld } from './catalog-helpers.js';
 import { createDrmClient, type DrmClient } from '../../src/modules/catalog/drmClient.js';
 import { TEST_ORIGIN, uniqueIp, type Jar } from './identity-helpers.js';
 import request from 'supertest';
@@ -27,6 +27,14 @@ export interface LearningWorld extends CatalogWorld {
   studentId: string;
 }
 
+export interface NoDrmLearningWorld extends CatalogWorld {
+  studentId: string;
+}
+
+export async function createNoDrmLearningWorld(): Promise<NoDrmLearningWorld> {
+  const world = await createCatalogWorld();
+  return Object.assign(world, { studentId: world.studentUser.id });
+}
 export interface PublishedCourse {
   courseId: string;
   sectionId: string;
@@ -70,22 +78,13 @@ export async function createLearningWorld(): Promise<LearningWorld> {
 
 /** Register media for a lesson and drive the fixture asset to READY. */
 export async function makeLessonPlayable(
-  world: LearningWorld,
+  world: CatalogWorld,
   courseId: string,
   lessonId: string,
   durationSeconds?: number,
 ): Promise<{ externalAssetId: string }> {
-  const reg = await adminPost(
-    world.app,
-    `/admin/catalog/lessons/${lessonId}/media`,
-    world.adminJar,
-    {
-      contentType: 'video/mp4',
-      securityTier: 'STANDARD',
-    },
-  );
-  if (reg.status !== 201)
-    throw new Error(`media register failed ${reg.status} ${JSON.stringify(reg.body)}`);
+  const registration = await registerTestVideo(world, lessonId);
+  await uploadTestVideo(registration.uploadUrl);
   const complete = await adminPost(
     world.app,
     `/admin/catalog/lessons/${lessonId}/media/complete`,
@@ -94,7 +93,6 @@ export async function makeLessonPlayable(
   );
   if (complete.status !== 200) throw new Error(`media complete failed ${complete.status}`);
   const mapping = await world.prisma.mediaMapping.findFirstOrThrow({ where: { lessonId } });
-  world.fixture!.markReady(mapping.assetId as string, durationSeconds);
   const sync = await adminPost(
     world.app,
     `/admin/catalog/lessons/${lessonId}/media/sync`,
@@ -102,14 +100,13 @@ export async function makeLessonPlayable(
     {},
   );
   if (sync.status !== 200) throw new Error(`media sync failed ${sync.status}`);
-  const internal = world.fixture!.assets.get(mapping.assetId as string);
-  if (!internal) throw new Error('fixture asset missing');
-  return { externalAssetId: internal.externalAssetId };
+
+  return { externalAssetId: mapping.externalAssetId };
 }
 
 /** Create, register, sync and publish a course with one playable lesson. */
 export async function createPublishedCourse(
-  world: LearningWorld,
+  world: CatalogWorld,
   suffix: string,
   options: { extraLessons?: number } = {},
 ): Promise<PublishedCourse> {
@@ -186,7 +183,7 @@ export async function createPublishedCourse(
  * entitlement rule under test reads Subscription.expiresAt only.
  */
 export async function grantSubscription(
-  world: LearningWorld,
+  world: CatalogWorld,
   studentId: string,
   courseId: string,
   expiresAtMs: number,
@@ -224,7 +221,7 @@ export function studentGet(app: Express, path: string, jar: Jar) {
  * the accepted `Subscription_interval_check` constraint stays satisfied.
  */
 export async function expireSubscription(
-  world: LearningWorld,
+  world: CatalogWorld,
   studentId: string,
   courseId: string,
 ): Promise<void> {
@@ -241,7 +238,7 @@ export async function expireSubscription(
  * for asserting the four non-releasable states.
  */
 export async function setCourseStatus(
-  world: LearningWorld,
+  world: CatalogWorld,
   courseId: string,
   status: 'DRAFT' | 'PROCESSING' | 'READY' | 'PUBLISHED' | 'ARCHIVED',
 ): Promise<void> {
@@ -253,7 +250,7 @@ export async function setCourseStatus(
  * assert exact counts, so they must not inherit rows from other cases in the
  * shared database.
  */
-export async function isolateReferences(world: LearningWorld, keepId?: string): Promise<void> {
+export async function isolateReferences(world: CatalogWorld, keepId?: string): Promise<void> {
   await world.prisma.playbackReference.updateMany({
     where:
       keepId === undefined

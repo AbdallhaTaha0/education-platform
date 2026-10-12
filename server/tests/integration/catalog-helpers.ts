@@ -102,6 +102,28 @@ export function adminPost(
     .send(body);
 }
 
+export async function uploadTestVideo(uploadUrl: string, contentType = 'video/mp4'): Promise<void> {
+  const response = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': contentType, 'If-None-Match': '*' },
+    body: Buffer.from('disposable platform video fixture bytes'),
+  });
+  if (!response.ok) throw new Error(`test video upload failed with HTTP ${response.status}.`);
+  await response.body?.cancel();
+}
+
+export async function registerTestVideo(world: CatalogWorld, lessonId: string) {
+  const response = await adminPost(
+    world.app,
+    `/admin/catalog/lessons/${lessonId}/media`,
+    world.adminJar,
+    { contentType: 'video/mp4' },
+  );
+  if (response.status !== 201) {
+    throw new Error(`video registration failed ${response.status}: ${JSON.stringify(response.body)}`);
+  }
+  return response.body.data as { mapping: { id: string; assetId: string; status: string }; uploadUrl: string };
+}
 export function adminPatch(
   app: Express,
   path: string,

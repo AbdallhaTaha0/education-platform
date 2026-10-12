@@ -1,14 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateKeyPairSync } from 'node:crypto';
 import { loadConfig, redactUrlForLog } from '../../src/config.js';
-
-const TEST_RSA_PRIVATE_KEY_B64 = Buffer.from(
-  generateKeyPairSync('rsa', {
-    modulusLength: 2048,
-    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
-    publicKeyEncoding: { type: 'spki', format: 'pem' },
-  }).privateKey,
-).toString('base64');
 
 const baseEnv = {
   DATABASE_URL: 'postgresql://postgres:postgres@postgres:5432/education_platform',
@@ -17,6 +8,14 @@ const baseEnv = {
   AUTH_ISSUER: 'edu-platform-test',
   AUTH_AUDIENCE: 'edu-platform-test-web',
   ALLOWED_ORIGINS: 'http://localhost:8080',
+};
+
+const storageEnv = {
+  STORAGE_ENDPOINT: 'https://account-id.r2.cloudflarestorage.com',
+  STORAGE_REGION: 'auto',
+  STORAGE_ACCESS_KEY_ID: 'test-access-key',
+  STORAGE_SECRET_ACCESS_KEY: 'test-storage-secret',
+  STORAGE_BUCKET: 'fayq-lesson-files-prod',
 };
 
 describe('loadConfig', () => {
@@ -31,69 +30,47 @@ describe('loadConfig', () => {
     expect(config.drmMaxRetries).toBe(2);
   });
 
-  it('accepts explicit valid values including optional DRM settings', () => {
+  it('accepts valid production settings and ignores legacy DRM variables', () => {
     const config = loadConfig({
       ...baseEnv,
+      ...storageEnv,
       PORT: '4000',
       NODE_ENV: 'production',
       COOKIE_SECURE: 'true',
       READY_TIMEOUT_MS: '1500',
-      DRM_BASE_URL: 'https://drm.example.internal',
-      DRM_CLIENT_ID: 'test-client-01',
-      DRM_CLIENT_SECRET: 'test-secret-that-is-long-enough-0123456789',
-      // M5 requires playback assertion trust settings whenever DRM is enabled.
-      DRM_ASSERTION_ISSUER: 'https://platform.example.internal',
-      DRM_ASSERTION_AUDIENCE: 'edu-drm-test',
-      DRM_ASSERTION_PRIVATE_KEY_B64: TEST_RSA_PRIVATE_KEY_B64,
-      DRM_ASSERTION_KEY_ID: 'production-key-1',
+      DRM_BASE_URL: 'https://legacy-drm.example.internal',
+      DRM_CLIENT_ID: 'legacy-client',
+      DRM_CLIENT_SECRET: 'legacy-secret',
     });
     expect(config.port).toBe(4000);
     expect(config.readyTimeoutMs).toBe(1500);
-    expect(config.drmBaseUrl).toBe('https://drm.example.internal');
+    expect(config.drmBaseUrl).toBeUndefined();
+    expect(config.drmClientId).toBeUndefined();
+    expect(config.drmClientSecret).toBeUndefined();
+    expect(config.storageBucket).toBe(storageEnv.STORAGE_BUCKET);
     expect(config.isProduction).toBe(true);
     expect(config.cookieSecure).toBe(true);
     expect(config.jwtSecret).toBe(baseEnv.AUTH_JWT_SECRET);
     expect(config.allowedOrigins).toEqual(['http://localhost:8080']);
   });
 
-  it('rejects partial DRM configuration (all-or-none)', () => {
-    expect(() => loadConfig({ ...baseEnv, DRM_BASE_URL: 'https://drm.example.internal' })).toThrow(
-      /DRM/,
-    );
-    expect(() => loadConfig({ ...baseEnv, DRM_CLIENT_ID: 'abc12345' })).toThrow(/DRM/);
+  it('requires complete HTTPS object storage in production for lesson videos', () => {
+    const production = { ...baseEnv, NODE_ENV: 'production', COOKIE_SECURE: 'true' };
+    expect(() => loadConfig(production)).toThrow(/STORAGE_ENDPOINT.*required in production/);
     expect(() =>
-      loadConfig({ ...baseEnv, DRM_BASE_URL: 'https://x.example', DRM_CLIENT_ID: 'abc12345' }),
-    ).toThrow(/DRM/);
-  });
-
-  it('rejects out-of-range DRM timeout/retry bounds', () => {
-    expect(() => loadConfig({ ...baseEnv, DRM_REQUEST_TIMEOUT_MS: '10' })).toThrow(
-      /DRM_REQUEST_TIMEOUT_MS/,
-    );
-    expect(() => loadConfig({ ...baseEnv, DRM_REQUEST_TIMEOUT_MS: '99999' })).toThrow(
-      /DRM_REQUEST_TIMEOUT_MS/,
-    );
-    expect(() => loadConfig({ ...baseEnv, DRM_MAX_RETRIES: '-1' })).toThrow(/DRM_MAX_RETRIES/);
-    expect(() => loadConfig({ ...baseEnv, DRM_MAX_RETRIES: '9' })).toThrow(/DRM_MAX_RETRIES/);
-    const ok = loadConfig({ ...baseEnv, DRM_REQUEST_TIMEOUT_MS: '250', DRM_MAX_RETRIES: '0' });
-    expect(ok.drmRequestTimeoutMs).toBe(250);
-    expect(ok.drmMaxRetries).toBe(0);
-  });
-
-  it('requires HTTPS DRM URL and full credentials in production', () => {
+      loadConfig({ ...production, STORAGE_ENDPOINT: storageEnv.STORAGE_ENDPOINT }),
+    ).toThrow(/all-or-none/);
     expect(() =>
       loadConfig({
-        ...baseEnv,
-        NODE_ENV: 'production',
-        COOKIE_SECURE: 'true',
-        DRM_BASE_URL: 'http://drm.example.internal',
-        DRM_CLIENT_ID: 'test-client-01',
-        DRM_CLIENT_SECRET: 'test-secret-that-is-long-enough-0123456789',
+        ...production,
+        ...storageEnv,
+        STORAGE_ENDPOINT: 'http://account-id.r2.cloudflarestorage.com',
       }),
-    ).toThrow(/HTTPS/);
-    expect(() => loadConfig({ ...baseEnv, NODE_ENV: 'production', COOKIE_SECURE: 'true' })).toThrow(
-      /DRM/,
-    );
+    ).toThrow(/STORAGE_ENDPOINT.*HTTPS/);
+    const config = loadConfig({ ...production, ...storageEnv });
+    expect(config.storageEndpoint).toBe(storageEnv.STORAGE_ENDPOINT);
+    expect(config.storageRegion).toBe('auto');
+    expect(config.storageBucket).toBe(storageEnv.STORAGE_BUCKET);
   });
 
   it('rejects missing required platform dependencies', () => {
@@ -161,129 +138,22 @@ describe('loadConfig', () => {
   });
 });
 
-describe('M5 playback assertion configuration', () => {
-  const drmEnv = {
-    ...baseEnv,
-    DRM_BASE_URL: 'https://drm.example.internal',
-    DRM_CLIENT_ID: 'test-client-01',
-    DRM_CLIENT_SECRET: 'test-secret-that-is-long-enough-0123456789',
-  };
-  const assertionEnv = {
-    DRM_ASSERTION_ISSUER: 'https://platform.example.internal',
-    DRM_ASSERTION_AUDIENCE: 'edu-drm',
-    DRM_ASSERTION_PRIVATE_KEY_B64: TEST_RSA_PRIVATE_KEY_B64,
-    DRM_ASSERTION_KEY_ID: 'm5-test-key',
-  };
-
-  it('loads the assertion trust settings when DRM is configured', () => {
-    const config = loadConfig({ ...drmEnv, ...assertionEnv });
-    expect(config.drmAssertionIssuer).toBe(assertionEnv.DRM_ASSERTION_ISSUER);
-    expect(config.drmAssertionAudience).toBe(assertionEnv.DRM_ASSERTION_AUDIENCE);
-    expect(config.drmAssertionAlgorithm).toBe('RS256');
-    expect(config.drmAssertionSigningKey).toContain('PRIVATE KEY');
-    expect(config.drmAssertionKeyId).toBe(assertionEnv.DRM_ASSERTION_KEY_ID);
-  });
-
-  it('keeps the assertion signing key separate from the session secret', () => {
-    const config = loadConfig({ ...drmEnv, ...assertionEnv });
-    expect(config.drmAssertionSigningKey).not.toBe(config.jwtSecret);
-  });
-
-  it('fails closed when any assertion setting is missing but DRM is configured', () => {
-    for (const key of Object.keys(assertionEnv)) {
-      const partial: Record<string, string> = { ...assertionEnv };
-      delete partial[key];
-      expect(() => loadConfig({ ...drmEnv, ...partial })).toThrow(/DRM.*assertion|DRM_ASSERTION/i);
-    }
-  });
-
-  it('fails closed on an invalid assertion key or a wildcarded identity', () => {
-    expect(() =>
-      loadConfig({ ...drmEnv, ...assertionEnv, DRM_ASSERTION_PRIVATE_KEY_B64: 'not-a-key' }),
-    ).toThrow(/DRM_ASSERTION_PRIVATE_KEY_B64/);
-    expect(() => loadConfig({ ...drmEnv, ...assertionEnv, DRM_ASSERTION_AUDIENCE: '*' })).toThrow(
-      /DRM_ASSERTION_AUDIENCE/,
-    );
-  });
-
-  it('bounds the assertion lifetime to the external maximum', () => {
-    const defaultConfig = loadConfig({ ...drmEnv, ...assertionEnv });
-    expect(defaultConfig.drmAssertionMaxLifetimeSec).toBe(120);
-    expect(
-      loadConfig({ ...drmEnv, ...assertionEnv, DRM_ASSERTION_MAX_LIFETIME_SEC: '30' })
-        .drmAssertionMaxLifetimeSec,
-    ).toBe(30);
-    expect(() =>
-      loadConfig({ ...drmEnv, ...assertionEnv, DRM_ASSERTION_MAX_LIFETIME_SEC: '29' }),
-    ).toThrow(/DRM_ASSERTION_MAX_LIFETIME_SEC/);
-    expect(() =>
-      loadConfig({ ...drmEnv, ...assertionEnv, DRM_ASSERTION_MAX_LIFETIME_SEC: '301' }),
-    ).toThrow(/DRM_ASSERTION_MAX_LIFETIME_SEC/);
-  });
-
-  it('normalises the public DRM origin and rejects unsafe values', () => {
-    expect(
-      loadConfig({
-        ...drmEnv,
-        ...assertionEnv,
-        DRM_PUBLIC_BASE_URL: 'https://drm.example.internal/',
-      }).drmPublicBaseUrl,
-    ).toBe('https://drm.example.internal');
-    expect(() =>
-      loadConfig({ ...drmEnv, ...assertionEnv, DRM_PUBLIC_BASE_URL: 'ftp://drm.example.internal' }),
-    ).toThrow(/DRM_PUBLIC_BASE_URL/);
-    expect(() =>
-      loadConfig({
-        ...drmEnv,
-        ...assertionEnv,
-        DRM_PUBLIC_BASE_URL: 'https://u:p@drm.example.internal',
-      }),
-    ).toThrow(/DRM_PUBLIC_BASE_URL/);
-    expect(() =>
-      loadConfig({ ...drmEnv, ...assertionEnv, DRM_PUBLIC_BASE_URL: 'not-a-url' }),
-    ).toThrow(/DRM_PUBLIC_BASE_URL/);
-  });
-
-  it('requires HTTPS for the public DRM origin in production only', () => {
-    const prod = { ...drmEnv, ...assertionEnv, NODE_ENV: 'production', COOKIE_SECURE: 'true' };
-    expect(() =>
-      loadConfig({ ...prod, DRM_PUBLIC_BASE_URL: 'http://drm.example.internal' }),
-    ).toThrow(/HTTPS/);
-    expect(
-      loadConfig({ ...prod, DRM_PUBLIC_BASE_URL: 'https://drm.example.internal' }).drmPublicBaseUrl,
-    ).toBe('https://drm.example.internal');
-  });
-
-  it('leaves playback unconfigured rather than half-configured when DRM is absent', () => {
-    const config = loadConfig(baseEnv);
+describe('no-DRM configuration', () => {
+  it('does not expose playback assertion settings even when legacy values are present', () => {
+    const config = loadConfig({
+      ...baseEnv,
+      DRM_ASSERTION_ISSUER: 'https://legacy.example',
+      DRM_ASSERTION_AUDIENCE: 'legacy',
+      DRM_ASSERTION_PRIVATE_KEY_B64: 'legacy-key',
+      DRM_ASSERTION_KEY_ID: 'legacy-key-id',
+      DRM_PUBLIC_BASE_URL: 'https://legacy.example',
+    });
     expect(config.drmAssertionIssuer).toBeUndefined();
     expect(config.drmAssertionAudience).toBeUndefined();
     expect(config.drmAssertionAlgorithm).toBeUndefined();
     expect(config.drmAssertionSigningKey).toBeUndefined();
     expect(config.drmAssertionKeyId).toBeUndefined();
     expect(config.drmPublicBaseUrl).toBeUndefined();
-  });
-
-  it('permits HS256 only for an explicitly test-only fixture', () => {
-    const fixture = loadConfig({
-      ...drmEnv,
-      DRM_ASSERTION_ISSUER: assertionEnv.DRM_ASSERTION_ISSUER,
-      DRM_ASSERTION_AUDIENCE: assertionEnv.DRM_ASSERTION_AUDIENCE,
-      DRM_ASSERTION_SECRET: 'fixture-secret-that-is-long-enough-0123456789',
-      DRM_ASSERTION_MODE: 'fixture-hs256',
-    });
-    expect(fixture.drmAssertionAlgorithm).toBe('HS256');
-    expect(() =>
-      loadConfig({
-        ...drmEnv,
-        NODE_ENV: 'production',
-        COOKIE_SECURE: 'true',
-        DRM_ASSERTION_ISSUER: assertionEnv.DRM_ASSERTION_ISSUER,
-        DRM_ASSERTION_AUDIENCE: assertionEnv.DRM_ASSERTION_AUDIENCE,
-        DRM_ASSERTION_SECRET: 'fixture-secret-that-is-long-enough-0123456789',
-        DRM_ASSERTION_MODE: 'fixture-hs256',
-      }),
-    ).toThrow(/test-fixture-only/);
   });
 });
 

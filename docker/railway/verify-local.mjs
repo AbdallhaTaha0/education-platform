@@ -20,6 +20,8 @@ try {
     const e={NODE_ENV:'production',PORT:'3000',COOKIE_SECURE:'true',AUTH_JWT_SECRET:c.randomBytes(32).toString('hex'),
       AUTH_ISSUER:'deployment-verification',AUTH_AUDIENCE:'deployment-verification-web',ALLOWED_ORIGINS:'https://students.example.test',
       STUDENT_DATA_ENCRYPTION_KEY_B64:c.randomBytes(32).toString('base64'),STUDENT_DATA_INDEX_KEY_B64:c.randomBytes(32).toString('base64'),
+      STORAGE_ENDPOINT:'https://storage.example.test',STORAGE_REGION:'auto',STORAGE_ACCESS_KEY_ID:'synthetic-access-key',
+      STORAGE_SECRET_ACCESS_KEY:c.randomBytes(32).toString('hex'),STORAGE_BUCKET:'verification-media',
       SEO_PUBLIC_ORIGIN:'https://students.example.test',SEO_INDEXING_ENABLED:'false'};
     console.log(Object.entries(e).map(([k,v])=>k+'='+v).join(String.fromCharCode(10)));
   `], true);
@@ -40,6 +42,17 @@ try {
   exit = 0;
 } catch (error) {
   console.error(error.message);
+  try {
+    // Startup diagnostics are useful on failure, but verification fixtures can
+    // contain credentials. Redact URL passwords and common secret assignments.
+    const logs = run([...args, 'logs', '--no-color', '--tail', '80', 'backend'], true);
+    const safeLogs = logs
+      .replace(/(\b(?:PASSWORD|SECRET|TOKEN|ACCESS_KEY_ID|SECRET_ACCESS_KEY)\s*[=:]\s*)[^\s,;]+/gi, '$1[REDACTED]')
+      .replace(/(\b[a-z][a-z0-9+.-]*:\/\/[^:\s/@]+:)[^@\s/]+@/gi, '$1[REDACTED]@');
+    if (safeLogs.trim()) console.error(`Backend startup log (redacted):\n${safeLogs}`);
+  } catch {
+    // Preserve the original failure if the service never created a log stream.
+  }
 } finally {
   try {
     const ids = run(['ps','-aq','--filter',`label=com.docker.compose.project=${project}`], true).trim().split(/\s+/).filter(Boolean);

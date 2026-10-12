@@ -1,49 +1,29 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
-import { createDrmClient } from '../../src/modules/catalog/drmClient.js';
-import { reconcilePendingOperations } from '../../src/modules/catalog/deletion/reconciler.js';
+import { StorageClient } from '../../src/infra/storage.js';
 import {
   adminPost,
+  registerTestVideo,
+  uploadTestVideo,
   createCatalogWorld,
   createFullDraft,
   type CatalogWorld,
 } from './catalog-helpers.js';
-import { loadConfig } from '../../src/config.js';
 
 let world: CatalogWorld;
 
 beforeAll(async () => {
-  world = await createCatalogWorld(true);
+  world = await createCatalogWorld(false);
 });
 
 afterAll(async () => {
-  await world.fixture?.stop();
   await world.close();
 });
 
-function cfg() {
-  const config = loadConfig(process.env);
-  return {
-    ...config,
-    drmBaseUrl: world.fixture!.url,
-    drmClientId: world.fixture!.expectedClientId,
-    drmClientSecret: world.fixture!.expectedClientSecret,
-  };
-}
-
 async function readyLesson(lessonId: string): Promise<void> {
-  await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media`, world.adminJar, {
-    contentType: 'video/mp4',
-    securityTier: 'STANDARD',
-  });
-  await adminPost(
-    world.app,
-    `/admin/catalog/lessons/${lessonId}/media/complete`,
-    world.adminJar,
-    {},
-  );
-  const mapping = await world.prisma.mediaMapping.findFirstOrThrow({ where: { lessonId } });
-  world.fixture!.markReady(mapping.assetId as string);
+  const registration = await registerTestVideo(world, lessonId);
+  await uploadTestVideo(registration.uploadUrl);
+  await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media/complete`, world.adminJar, {});
   await adminPost(world.app, `/admin/catalog/lessons/${lessonId}/media/sync`, world.adminJar, {});
 }
 
@@ -79,7 +59,7 @@ describe('course visibility across partial deletion', () => {
     expect(course?.deletionRequestedAt).toBeNull();
   });
 
-  it('media-backed lesson deletion clears the marker only after DRM completion', async () => {
+  it('media-backed lesson deletion removes the private object before clearing the marker', async () => {
     const { courseId, lessonId } = await createFullDraft(world, 'vis-media');
     await readyLesson(lessonId);
     const del = await adminPost(
@@ -90,17 +70,7 @@ describe('course visibility across partial deletion', () => {
     );
     expect(del.status).toBe(202);
     const opId = del.body.data.operation.id as string;
-    expect(
-      (await world.prisma.course.findUnique({ where: { id: courseId } }))?.deletionRequestedAt,
-    ).not.toBeNull();
-    for (let i = 0; i < 8; i += 1) {
-      await reconcilePendingOperations(world.prisma, cfg(), createDrmClient, world.redis, 10);
-      if (
-        (await world.prisma.catalogDeletionOperation.findUniqueOrThrow({ where: { id: opId } }))
-          .status === 'COMPLETED'
-      )
-        break;
-    }
+    expect(del.body.data.operation.status).toBe('COMPLETED');
     expect(
       (await world.prisma.catalogDeletionOperation.findUniqueOrThrow({ where: { id: opId } }))
         .status,
@@ -111,10 +81,10 @@ describe('course visibility across partial deletion', () => {
     expect(await world.prisma.lesson.findUnique({ where: { id: lessonId } })).toBeNull();
   });
 
-  it('failure keeps the course hidden; retry-to-completion restores the survivor', async () => {
+  it('storage failure keeps the course hidden until a retry succeeds', async () => {
     const { courseId, lessonId } = await createFullDraft(world, 'vis-fail');
     await readyLesson(lessonId);
-    world.fixture!.failNextDeletes = 99;
+    const failedDelete = vi.spyOn(StorageClient.prototype, 'deleteObject').mockRejectedValueOnce(new Error('synthetic storage outage'));
     const del = await adminPost(
       world.app,
       `/admin/catalog/lessons/${lessonId}/delete`,
@@ -122,24 +92,18 @@ describe('course visibility across partial deletion', () => {
       { confirmation: lessonId },
     );
     const opId = del.body.data.operation.id as string;
-    await reconcilePendingOperations(world.prisma, cfg(), createDrmClient, world.redis, 10);
+    expect(del.status).toBe(202);
+    failedDelete.mockRestore();
     const failed = await world.prisma.catalogDeletionOperation.findUniqueOrThrow({
       where: { id: opId },
     });
     expect(failed.status).toBe('FAILED');
+    expect(await world.prisma.lesson.findUnique({ where: { id: lessonId } })).not.toBeNull();
     expect(
       (await world.prisma.course.findUnique({ where: { id: courseId } }))?.deletionRequestedAt,
     ).not.toBeNull();
-    world.fixture!.failNextDeletes = 0;
-    await adminPost(world.app, `/admin/catalog/deletions/${opId}/retry`, world.adminJar, {});
-    for (let i = 0; i < 8; i += 1) {
-      await reconcilePendingOperations(world.prisma, cfg(), createDrmClient, world.redis, 10);
-      if (
-        (await world.prisma.catalogDeletionOperation.findUniqueOrThrow({ where: { id: opId } }))
-          .status === 'COMPLETED'
-      )
-        break;
-    }
+    const retry = await adminPost(world.app, `/admin/catalog/deletions/${opId}/retry`, world.adminJar, {});
+    expect(retry.status).toBe(200);
     expect(
       (await world.prisma.catalogDeletionOperation.findUniqueOrThrow({ where: { id: opId } }))
         .status,
@@ -159,15 +123,30 @@ describe('course visibility across partial deletion', () => {
       { titleAr: 'قسم ثان', titleEn: 'Section two' },
     );
     const section2 = s2.body.data.section.id as string;
-    // Media-backed section deletion stays active (RUNNING) until DRM polls complete.
-    const first = await adminPost(
+    let releaseDelete!: () => void;
+    let deleteStarted!: () => void;
+    const blocked = new Promise<void>((resolve) => { releaseDelete = resolve; });
+    const started = new Promise<void>((resolve) => { deleteStarted = resolve; });
+    const realDelete = StorageClient.prototype.deleteObject;
+    const blockedDelete = vi.spyOn(StorageClient.prototype, 'deleteObject').mockImplementation(
+      async function (this: StorageClient, key: string) {
+        deleteStarted();
+        await blocked;
+        await realDelete.call(this, key);
+      },
+    );
+    const firstRequest = adminPost(
       world.app,
       `/admin/catalog/sections/${sectionId}/delete`,
       world.adminJar,
       { confirmation: sectionId },
     );
-    expect(first.status).toBe(202);
-    expect(['PENDING', 'RUNNING', 'FAILED']).toContain(first.body.data.operation.status);
+    const enteredStorage = await Promise.race([
+      started.then(() => true),
+      firstRequest.then((response) => { throw new Error(`first deletion returned before storage request (${response.status}: ${JSON.stringify(response.body)})`); }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('first deletion did not reach storage in time')), 5_000)),
+    ]);
+    expect(enteredStorage).toBe(true);
     const second = await adminPost(
       world.app,
       `/admin/catalog/sections/${section2}/delete`,
@@ -176,6 +155,11 @@ describe('course visibility across partial deletion', () => {
     );
     expect(second.status).toBe(409);
     expect(second.body.error.code).toBe('DELETION_IN_PROGRESS');
+    releaseDelete();
+    const first = await firstRequest;
+    blockedDelete.mockRestore();
+    expect(first.status).toBe(202);
+    expect(first.body.data.operation.status).toBe('COMPLETED');
   });
 
   it('deleting one course never changes another course', async () => {

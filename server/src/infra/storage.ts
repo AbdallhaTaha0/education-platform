@@ -2,8 +2,9 @@
  * Platform-owned private object storage client (S3-compatible).
  *
  * Separate from DRM-owned video storage. Server-side credentials only.
- * Used for protected lesson resources.
- * No public URLs; all access goes through authenticated backend routes.
+ * Used for protected lesson resources and the no-DRM lesson-video path.
+ * Buckets stay private. Direct browser transfers use short-lived signed URLs
+ * minted only after the backend authorizes the operation.
  */
 
 import { createHash, createHmac } from 'node:crypto';
@@ -73,7 +74,7 @@ export class StorageClient {
     const stamp = new Date().toISOString().replace(/[:-]|\.\d{3}/g, '');
     const date = stamp.slice(0, 8);
     const scope = `${date}/${this.cfg.region}/s3/aws4_request`;
-    const signedHeaders = contentType && method === 'PUT' ? 'content-type;host' : 'host';
+    const signedHeaders = method === 'PUT' ? 'content-type;host;if-none-match' : 'host';
     const params: Array<[string, string]> = [
       ['X-Amz-Algorithm', 'AWS4-HMAC-SHA256'],
       ['X-Amz-Credential', `${this.cfg.accessKeyId}/${scope}`],
@@ -81,9 +82,9 @@ export class StorageClient {
       ['X-Amz-Expires', String(expiresSeconds)],
       ['X-Amz-SignedHeaders', signedHeaders],
     ];
-    const canonicalQuery = params.map(([k, v]) => [encode(k), encode(v)] as const).sort(([ak, av], [bk, bv]) => ak.localeCompare(bk) || av.localeCompare(bv)).map(([k, v]) => `${k}=${v}`).join('&');
-    const canonicalHeaders = `${contentType && method === 'PUT' ? `content-type:${contentType.trim()}\n` : ''}host:${endpoint.host}\n`;
-    const canonicalRequest = `${method}\n${path}\n${canonicalQuery}\n${canonicalHeaders}${signedHeaders}\nUNSIGNED-PAYLOAD`;
+    const canonicalQuery = params.map(([k, v]) => [encode(k), encode(v)] as const).sort(([ak, av], [bk, bv]) => (ak < bk ? -1 : ak > bk ? 1 : av < bv ? -1 : av > bv ? 1 : 0)).map(([k, v]) => `${k}=${v}`).join('&');
+    const canonicalHeaders = `${method === 'PUT' ? `content-type:${contentType?.trim() ?? ''}\n` : ''}host:${endpoint.host}\n${method === 'PUT' ? 'if-none-match:*\n' : ''}`;
+    const canonicalRequest = `${method}\n${path}\n${canonicalQuery}\n${canonicalHeaders}\n${signedHeaders}\nUNSIGNED-PAYLOAD`;
     const stringToSign = `AWS4-HMAC-SHA256\n${stamp}\n${scope}\n${createHash('sha256').update(canonicalRequest).digest('hex')}`;
     let signing = createHmac('sha256', `AWS4${this.cfg.secretAccessKey}`).update(date).digest();
     for (const value of [this.cfg.region, 's3', 'aws4_request']) signing = createHmac('sha256', signing).update(value).digest();

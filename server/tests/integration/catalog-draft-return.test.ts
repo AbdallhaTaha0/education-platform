@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { adminDelete, adminGet, adminPatch, adminPost, createCatalogWorld, createFullDraft, type CatalogWorld } from './catalog-helpers.js';
 import { reconcileRetiredMedia } from '../../src/modules/catalog/media/retirement.js';
-import type { DrmClient } from '../../src/modules/catalog/drmClient.js';
+import type { StorageClient } from '../../src/infra/storage.js';
 
 let world: CatalogWorld;
 beforeAll(async () => { world = await createCatalogWorld(); });
@@ -113,12 +113,12 @@ describe('owner-approved published course return to draft', () => {
     expect((await world.prisma.mediaMapping.findUniqueOrThrow({ where: { lessonId: ids.lessonId } })).id).toBe(replacement.id);
     expect((await world.prisma.mediaMapping.findUniqueOrThrow({ where: { id: old.id } })).retiredAt).not.toBeNull();
     let deletes = 0;
-    const drm = { deleteMedia: async () => { deletes++; return { deletionId: 'synthetic-deletion', status: 'PENDING' }; }, deletionStatus: async () => ({ status: 'COMPLETED' }), revokePlaybackSession: async () => ({ status: 'revoked' }) } as unknown as DrmClient;
-    await reconcileRetiredMedia(world.prisma, drm, world.redis);
+    const storage = { deleteObject: async () => { deletes++; } } as unknown as StorageClient;
+    await reconcileRetiredMedia(world.prisma, storage, world.redis);
     expect(deletes).toBe(0);
     await world.prisma.playbackReference.update({ where: { id: session.id }, data: { status: 'ENDED', endedAt: new Date(), terminationStatus: 'COMPLETED' } });
     await world.prisma.mediaMapping.update({ where: { id: old.id }, data: { retirementNextAttempt: new Date(0) } });
-    await reconcileRetiredMedia(world.prisma, drm, world.redis);
+    await reconcileRetiredMedia(world.prisma, storage, world.redis);
     expect(deletes).toBe(1);
     expect(await world.prisma.mediaMapping.findUnique({ where: { id: old.id } })).toBeNull();
     expect(await world.prisma.mediaMapping.findUnique({ where: { id: replacement.id } })).not.toBeNull();
