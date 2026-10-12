@@ -1,5 +1,20 @@
 # Decision register
 
+## Guided production preparation — 2026-10-11
+
+The owner authorized preparation, merging delivered changes into `deployment`,
+and guided Railway backend / Vercel frontend deployment using generated URLs.
+Use a fresh production database; bootstrap exactly AliIbrahim, SeifWaleed and
+AbdallahTaha through private one-time setup with individually supplied credentials.
+This explicitly supersedes the historical single-first-admin restriction for
+this release. Do not commit supplied contact details or passwords. Preserve all
+local owner data. Reuse the owner's local R2 credentials privately on Railway.
+Student launch stays gated while commercial DRM is completed; R2 is storage,
+not license issuance. No provider account exists; research is authorized, paid
+subscription/contract selection is pending. See
+[candidate evidence and gates](deployment/production-candidate-20261011.md) and
+[provider research](deployment/commercial-drm-options-20261011.md).
+
 ## Temporary IDE suspension — 2026-10-07
 
 Owner requested disabling the IDE across the current version and explicitly

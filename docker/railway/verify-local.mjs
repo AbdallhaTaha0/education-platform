@@ -35,6 +35,8 @@ try {
   // Feed the probe through stdin; no host mount enters serving containers.
   run([...args, 'cp','docker/railway/verify-probe.mjs','backend:/tmp/verify-probe.mjs']);
   run([...args, 'exec','-T','backend','node','/tmp/verify-probe.mjs']);
+  run([...args, 'cp','docker/railway/verify-release-admins.mjs','backend:/tmp/verify-release-admins.mjs']);
+  run([...args, 'exec','-T','backend','node','/tmp/verify-release-admins.mjs']);
   exit = 0;
 } catch (error) {
   console.error(error.message);
