@@ -54,12 +54,12 @@ describe('notification realtime lifecycle', () => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
   });
-  it('uses same-origin polling with a WebSocket upgrade and the readable CSRF synchronizer in auth', () => {
+  it('uses same-origin polling and the readable CSRF synchronizer in auth', () => {
     start();
     const [namespace, options] = mock.io.mock.calls[0];
     expect(namespace).toBe('/notifications');
     expect(options.path).toBe('/api/notifications/socket.io/');
-    expect(options.transports).toEqual(['polling', 'websocket']);
+    expect(options.transports).toEqual(['polling']);
     const done = vi.fn();
     options.auth(done);
     expect(done).toHaveBeenCalledWith({ csrf: 'fixture-csrf' });

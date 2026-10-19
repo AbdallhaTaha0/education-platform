@@ -9,9 +9,12 @@ export function connectInbox(
   authFailed: (code: string) => void,
 ) {
   // Same Nginx origin and cookie path; no credential, recipient or room in URLs.
+  // Polling only: the Vercel /api rewrite proxies HTTP but cannot upgrade a
+  // WebSocket, so offering the upgrade just logs a failed createSocket in the
+  // browser console. Polling carries the same authenticated connection.
   const socket = io('/notifications', {
     path: '/api/notifications/socket.io/',
-    transports: ['polling', 'websocket'],
+    transports: ['polling'],
     withCredentials: true,
     autoConnect: false,
     reconnectionDelay: 1000,
