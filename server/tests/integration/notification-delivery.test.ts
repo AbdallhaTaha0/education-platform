@@ -148,6 +148,25 @@ describe('M6 committed producers, recoverable work and authorized multi-replica 
     sockets.push(s);
     return s;
   }
+  function pollingSocket(
+    url: string,
+    credential: Credential,
+    origin: string | null = TEST_ORIGIN,
+  ) {
+    const s = io(url + '/notifications', {
+      path: '/notifications/socket.io/',
+      transports: ['polling'],
+      upgrade: false,
+      reconnection: false,
+      extraHeaders: {
+        ...(origin ? { Origin: origin } : {}),
+        Cookie: credential.jar.header(),
+      },
+      auth: { csrf: credential.jar.csrf() },
+    });
+    sockets.push(s);
+    return s;
+  }
   const connected = (s: Socket) =>
     new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('socket fixture timeout')), 5000);
@@ -588,6 +607,31 @@ describe('M6 committed producers, recoverable work and authorized multi-replica 
     await materializeNotification(world.prisma, source.id, a.user.id, clock);
     await right.runtime.publish(a.user.id, '1');
     expect(await received).toEqual({ schemaVersion: 1, revision: '1' });
+  });
+  it('accepts an origin-less polling handshake and delivers revisions through it', async () => {
+    const node = await startReplica();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const s = pollingSocket(node.url, a, null);
+    await connected(s);
+    const received = new Promise<unknown>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('polling revision fixture timeout')), 5000);
+      s.on('notifications:changed', (signal) => {
+        if (signal.revision === '5') {
+          clearTimeout(timer);
+          resolve(signal);
+        }
+      });
+    });
+    const source = await event();
+    await materializeNotification(world.prisma, source.id, a.user.id, clock);
+    await node.runtime.publish(a.user.id, '5');
+    expect(await received).toEqual({ schemaVersion: 1, revision: '5' });
+  });
+  it('rejects a cross-origin polling handshake', async () => {
+    const node = await startReplica();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const s = pollingSocket(node.url, a, 'https://evil.example');
+    await expect(connected(s)).rejects.toThrow();
   });
   it('denies foreign recipient selection and missing session CSRF in handshakes', async () => {
     const node = await startReplica();

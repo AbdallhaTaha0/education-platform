@@ -71,7 +71,7 @@ export async function attachNotificationRealtime(
   }
   const io = new Server(server, {
     path: '/notifications/socket.io/',
-    transports: ['websocket'],
+    transports: ['polling', 'websocket'],
     serveClient: false,
     maxHttpBufferSize: 2048,
     pingInterval: 25000,
@@ -79,7 +79,9 @@ export async function attachNotificationRealtime(
     allowRequest: (req, callback) =>
       callback(
         null,
-        Boolean(req.headers.origin && deps.auth.allowedOrigins.includes(req.headers.origin)),
+        req.headers.origin
+          ? deps.auth.allowedOrigins.includes(req.headers.origin)
+          : (req.headers.upgrade ?? '').toLowerCase() !== 'websocket',
       ),
   });
   io.adapter(createAdapter(pub, sub, { key: 'education-platform:m6', requestsTimeout: 5000 }));

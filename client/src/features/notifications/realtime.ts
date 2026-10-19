@@ -11,7 +11,7 @@ export function connectInbox(
   // Same Nginx origin and cookie path; no credential, recipient or room in URLs.
   const socket = io('/notifications', {
     path: '/api/notifications/socket.io/',
-    transports: ['websocket'],
+    transports: ['polling', 'websocket'],
     withCredentials: true,
     autoConnect: false,
     reconnectionDelay: 1000,
