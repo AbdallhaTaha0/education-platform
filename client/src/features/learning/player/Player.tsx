@@ -19,6 +19,7 @@ import { emeKeyForProvider, isUnsupportedProvider } from './eme';
 import { PlayerOverlay, WatermarkOverlay, phaseLabel, type PlayerLabels } from './PlayerChrome';
 import { protectedRequestUrl } from './requests';
 import { classifyPlayRejection } from './playRejection';
+import { classifyMediaFailure } from './mediaFailure';
 import { awaitsEncryptionInitData } from './errors';
 import { usePlayerFullscreen } from './fullscreen';
 import { PlayerControls } from './PlayerControls';
@@ -227,6 +228,11 @@ export function DashLessonPlayer({
     if (grant.drmProvider === 'NONE') {
       playerRef.current = null;
       const onMetadata = () => {
+        if (video.error === null && video.videoWidth === 0 && video.videoHeight === 0) {
+          dispatch({ type: 'FAILED', code: 'UNSUPPORTED_MEDIA' });
+          onErrorRef.current?.('UNSUPPORTED_MEDIA');
+          return;
+        }
         if (!resumeApplied.current) {
           const target = grantRefPosition.current;
           if (target > 0 && Number.isFinite(video.duration) && target < video.duration) video.currentTime = target;
@@ -236,8 +242,13 @@ export function DashLessonPlayer({
       };
       const onCanPlay = () => setCanPlay(true);
       const onError = () => {
-        dispatch({ type: 'FAILED', code: 'PLAYBACK_ERROR' });
-        onErrorRef.current?.('PLAYBACK_ERROR');
+        const code = classifyMediaFailure({
+          errorCode: video.error?.code ?? null,
+          videoWidth: video.videoWidth,
+          videoHeight: video.videoHeight,
+        });
+        dispatch({ type: 'FAILED', code });
+        onErrorRef.current?.(code);
       };
       video.addEventListener('loadedmetadata', onMetadata);
       video.addEventListener('canplay', onCanPlay);

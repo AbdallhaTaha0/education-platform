@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { errorDetail } from './PlayerChrome';
 import { classifyPlayRejection, isStalePlayResult } from './playRejection';
+import { classifyMediaFailure } from './mediaFailure';
 
 const labels = {
   loading: 'loading',
@@ -20,6 +21,7 @@ const labels = {
   exitFullscreen: 'exit',
   needsGesture: 'press play',
   unsupportedDetail: 'supported browser',
+  unsupportedMediaDetail: 're-upload mp4',
   networkDetail: 'network retry',
   expiredDetail: 'renew',
   deviceDetail: 'device support',
@@ -42,6 +44,33 @@ describe('player error categories', () => {
     expect(detail).not.toContain('token');
     expect(detail).not.toContain('http');
     expect(detail).not.toContain(' drm ');
+  });
+});
+
+describe('no-DRM media failure classification', () => {
+  it('maps an audio-only or undecodable video to explicit format guidance', () => {
+    expect(classifyMediaFailure({ errorCode: null, videoWidth: 0, videoHeight: 0 })).toBe(
+      'UNSUPPORTED_MEDIA',
+    );
+    expect(classifyMediaFailure({ errorCode: 3, videoWidth: 0, videoHeight: 0 })).toBe(
+      'UNSUPPORTED_MEDIA',
+    );
+    expect(classifyMediaFailure({ errorCode: 4, videoWidth: 0, videoHeight: 0 })).toBe(
+      'UNSUPPORTED_MEDIA',
+    );
+    expect(errorDetail('UNSUPPORTED_MEDIA', labels)).toBe('re-upload mp4');
+  });
+
+  it('keeps network, aborted and playable-resource failures retryable', () => {
+    expect(classifyMediaFailure({ errorCode: 1, videoWidth: 0, videoHeight: 0 })).toBe(
+      'PLAYBACK_ERROR',
+    );
+    expect(classifyMediaFailure({ errorCode: 2, videoWidth: 1920, videoHeight: 1080 })).toBe(
+      'PLAYBACK_ERROR',
+    );
+    expect(classifyMediaFailure({ errorCode: null, videoWidth: 1920, videoHeight: 1080 })).toBe(
+      'PLAYBACK_ERROR',
+    );
   });
 });
 

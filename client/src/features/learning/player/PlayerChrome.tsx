@@ -27,6 +27,7 @@ export interface PlayerLabels {
   exitFullscreen: string;
   needsGesture?: string;
   unsupportedDetail?: string;
+  unsupportedMediaDetail?: string;
   networkDetail?: string;
   expiredDetail?: string;
   deviceDetail?: string;
@@ -37,6 +38,7 @@ export interface PlayerLabels {
 export function errorDetail(code: string | null, labels: PlayerLabels): string | null {
   if (!code) return null;
   if (code === 'UNSUPPORTED_PROVIDER') return labels.unsupportedDetail ?? labels.unsupported;
+  if (code === 'UNSUPPORTED_MEDIA') return labels.unsupportedMediaDetail ?? labels.error;
   if (code === 'PLAYBACK_GESTURE_REQUIRED') return labels.needsGesture ?? null;
   if (code === 'PLAYBACK_ERROR' || code.startsWith('DASH_') || code === 'STREAM_SETUP_ERROR' || code === 'PLAYER_INIT_FAILED')
     return labels.networkDetail ?? null;

@@ -526,6 +526,7 @@ function playerLabels(t: Translate): {
   exitFullscreen: string;
   needsGesture: string;
   unsupportedDetail: string;
+  unsupportedMediaDetail: string;
   networkDetail: string;
   expiredDetail: string;
   deviceDetail: string;
@@ -550,6 +551,7 @@ function playerLabels(t: Translate): {
     exitFullscreen: t('playerExitFullscreen'),
     needsGesture: t('playerNeedsGesture'),
     unsupportedDetail: t('playerUnsupportedDetail'),
+    unsupportedMediaDetail: t('playerUnsupportedMediaDetail'),
     networkDetail: t('playerNetworkDetail'),
     expiredDetail: t('playerExpiredDetail'),
     deviceDetail: t('playerDeviceDetail'),

@@ -400,6 +400,7 @@ export const en = {
   recoveryChecking: 'Checking…',
   playerNeedsGesture: 'Press Play to start (the browser blocks autoplay).',
   playerUnsupportedDetail: 'This browser does not support protected playback. Use a supported browser.',
+  playerUnsupportedMediaDetail: 'This video cannot be played in this browser. The file may be audio-only or use an unsupported codec (such as HEVC/QuickTime). Re-upload it as MP4 with H.264 video and AAC audio.',
   playerNetworkDetail: 'Could not load the video due to a network issue. Retry without creating a new session.',
   playerExpiredDetail: 'The session or subscription expired. Renew and restart the lesson.',
   playerDeviceDetail: 'The device limit was reached. Contact support to free a slot.',
