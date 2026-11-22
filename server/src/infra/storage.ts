@@ -117,7 +117,8 @@ export class StorageClient {
         for (const value of [this.cfg.region, 's3', 'aws4_request']) signing = createHmac('sha256', signing).update(value).digest();
         const signature = createHmac('sha256', signing).update(`AWS4-HMAC-SHA256\n${stamp}\n${scope}\n${createHash('sha256').update(canonical).digest('hex')}`).digest('hex');
         headers.authorization = `AWS4-HMAC-SHA256 Credential=${this.cfg.accessKeyId}/${scope}, SignedHeaders=${signed}, Signature=${signature}`;
-        const res = await fetch(url, { method, headers, body: bytes, signal: controller.signal, redirect: 'error' });
+        // Workers fetch rejects redirect:'error'; 'manual' keeps redirects unfollowed (3xx fails the !res.ok check below).
+        const res = await fetch(url, { method, headers, body: bytes, signal: controller.signal, redirect: 'manual' });
         if (res.status === 404 && (method === 'DELETE' || method === 'HEAD')) {
           await res.body?.cancel();
           return { body: new Uint8Array(), contentType: '', contentLength: 0, missing: true };
