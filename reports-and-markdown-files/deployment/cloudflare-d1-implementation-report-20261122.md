@@ -115,21 +115,32 @@ No remote push was performed.
 | Server typecheck (`src` + `tests`) | `npm --prefix server run typecheck` | **PASS** (0 errors) |
 | Server build (`prisma generate` + `tsc`) | `npm --prefix server run build` | **PASS** (0 errors) |
 | Cloudflare D1 integration & concurrency suite | `cd server; npx vitest run tests/integration/cloudflare-d1-platform.test.ts` | **PASS — `7/7` tests**: PBKDF2-SHA256 constant-time hash/verify; concurrent 3-admin release bootstrap race; Subject/Teacher CRUD + `SUBJECT_IN_USE`/`TEACHER_IN_USE` + catalog filters + `PACKAGE_SUBJECT_MISMATCH`/`PACKAGE_TEACHER_MISMATCH` + working-copy swap + immutable purchase snapshots; **4-way concurrent spending race (`1 x 201`, `3 x 402`, 1 debit, 0 reconciled balance)**; concurrent refresh-token reuse family revocation; R2 proof offload + 180-day cleanup; `MutexDurableObject` & `UserRealtimeDurableObject` |
-| Wrangler local D1 migration apply | `npx --prefix server wrangler d1 migrations apply fayq-platform-db --local` | **PASS** (`0001_init.sql`: 156 commands executed successfully) |
-| Server legacy unit tests | `npm --prefix server run test:unit` | **32/36 files (`286/301` tests) passed**; 4 legacy test files had expected post-migration drift: `identity-crypto.test.ts` (1 test asserting `$argon2id$` prefix), `playback-recovery.test.ts` (2 synthetic double tests checking array `path: ['deviceReference']` instead of SQLite `'$.deviceReference'`), `seo-public.test.ts` (12 tests expecting pre-copied `server/public-render/index.html`), and `security-route-surface.test.ts` (0 tests collected due to stale import). |
+| Server legacy unit tests | `npm --prefix server run test:unit` | **PASS — `36/36` files (`634/634` tests)** (including `seo-public.test.ts` 28/28, `security-route-surface.test.ts` 333/333 with the 8 new `/admin/subjects*` and `/admin/teachers*` routes, `identity-crypto.test.ts` 8/8, and `playback-recovery.test.ts` 5/5) |
+| Wrangler local D1 migration apply | `npx --prefix server wrangler d1 migrations apply fayq-platform-db --local` | **PASS** (`0001_init.sql`: 157 commands executed successfully) |
 
 ---
 
-## 5. Remaining Blockers & Unverified Live Cloud Gates
+## 5. Independent Reviewer Verification & Fixes (`dev` → `testing` → `deployment`)
+
+During independent reviewer inspection on `testing`, the following refinements were applied on `dev` (`57c71c1`), merged and re-verified on `testing`, and promoted to `deployment`:
+1. **Worker SSR route dispatch (`server/src/worker.ts`, `server/src/modules/seo/router.ts`)**: Corrected public SSR route forwarding to dispatch directly to `/seo/*` and added automatic template/bundle resolution across `public-render/` and `client/dist` + `client/dist-ssr`.
+2. **Workers Paid Plan (\$5/month) quota guards**:
+   - **D1-first idle check in Cron (`server/src/worker.ts`)**: Every scheduled reconciler checks D1 via `findFirst({ select: { id: true } })` before acquiring a `MutexDurableObject` `cron:*` lock, reducing idle Cron Durable Object requests and D1 writes to `0`.
+   - **Zero per-request KV reads (`server/src/infra/cache.ts`)**: `CloudflareCache.hasTombstone` checks an isolate-local tombstone map while `getActiveSession` checks `AuthSession.revokedAt` authoritatively in D1 (25B included row reads/month vs 10M KV reads/month).
+   - **Full binary R2 offload (`server/prisma/schema.prisma`, `cover.ts`, `payment-qr.ts`)**: Added `CourseCover.storageKey` and `InstaPaySettings.qrStorageKey` alongside `RechargeProof.storageKey`.
+3. **100% unit test alignment (`36/36` files / `634/634` tests)**: Aligned `identity-crypto.test.ts`, `playback-recovery.test.ts`, `seo-public.test.ts`, and `security-route-surface.test.ts` (expanded to 333 route authorization checks including `/admin/subjects*` and `/admin/teachers*`).
+
+---
+
+## 6. Remaining Blockers & Unverified Live Cloud Gates
 
 1. **Cloudflare account & production resource IDs**: `wrangler.toml` contains placeholder IDs (`00000000-...`) for `database_id` (D1) and `SESSION_KV` (KV), plus `MEDIA_BUCKET` (R2). Real production IDs and secrets (`AUTH_JWT_SECRET`, `STORAGE_*`, `PAYMENT_CHANNELS`, `ALLOWED_ORIGINS`) must be provisioned per environment via `wrangler secret put` / `wrangler deploy`.
-2. **Live `wrangler dev` browser E2E journey**: Full interactive Playwright/Chromium desktop & mobile walkthroughs against a live `wrangler dev` + remote R2 bucket were not executed in this worker pass.
-3. **4 legacy server unit test files**: Updating `identity-crypto.test.ts`, `playback-recovery.test.ts`, `security-route-surface.test.ts`, and staging `server/public-render/` for `seo-public.test.ts` remains a small follow-up item for the review/hardening pass.
-4. **Commercial DRM & capacity qualification**: External commercial DRM provider selection and 10,000-concurrent-user load testing remain separate owner-gated milestones.
+2. **Live `wrangler dev` browser E2E journey**: Full interactive Playwright/Chromium desktop & mobile walkthroughs against a live `wrangler dev` + remote R2 bucket remain a pre-launch qualification step once Cloudflare credentials are connected.
+3. **Commercial DRM & capacity qualification**: External commercial DRM provider selection and 10,000-concurrent-user load testing remain separate owner-gated milestones.
 
 ---
 
-## 6. Cleanup Verification (2026-10-01 Owner Rule)
+## 7. Cleanup Verification (2026-10-01 Owner Rule)
 
 - **Disposable `.wrangler/state` cleanup**: Removed `.wrangler` and `server/.wrangler` after local Wrangler D1 migration verification. Confirmed `Test-Path .wrangler` → `False` and `Test-Path server/.wrangler` → `False`.
 - **Temporary SQLite test DB**: `cloudflare-d1-platform.test.ts` created an isolated `os.tmpdir()/fayq-d1-test-*` directory and deleted it in `afterAll`.
