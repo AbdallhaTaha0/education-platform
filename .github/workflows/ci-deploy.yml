@@ -92,7 +92,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: cloudflare-client-build
-          path: .
+          path: client
 
       - name: Install server dependencies & generate Prisma client
         run: |
