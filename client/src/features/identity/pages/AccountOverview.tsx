@@ -97,18 +97,18 @@ function StudentAccountOverview({ go }: { go: (hash: string) => void }): JSX.Ele
         ) : null}
         {!loading && errorCode === null && data !== null ? (
           <>
-            <dl className="mt-4 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-card border border-border p-4">
+            <dl className="mt-5 grid gap-3 sm:grid-cols-3 tabular-nums">
+              <div className="rounded-2xl border border-border bg-elevated/40 p-4">
                 <dt className="text-sm text-muted">{ar ? 'كورسات نشطة' : 'Active courses'}</dt>
-                <dd className="mt-1 text-3xl font-bold">{activeCount.toLocaleString(ar ? 'ar-EG' : 'en-GB')}</dd>
+                <dd className="mt-1 text-3xl font-extrabold">{activeCount.toLocaleString(ar ? 'ar-EG' : 'en-GB')}</dd>
               </div>
-              <div className="rounded-card border border-border p-4">
+              <div className="rounded-2xl border border-border bg-elevated/40 p-4">
                 <dt className="text-sm text-muted">{ar ? 'اشتراكات منتهية' : 'Expired'}</dt>
-                <dd className="mt-1 text-3xl font-bold">{expiredCount.toLocaleString(ar ? 'ar-EG' : 'en-GB')}</dd>
+                <dd className="mt-1 text-3xl font-extrabold">{expiredCount.toLocaleString(ar ? 'ar-EG' : 'en-GB')}</dd>
               </div>
-              <div className="rounded-card border border-border p-4">
+              <div className="rounded-2xl border border-border bg-elevated/40 p-4">
                 <dt className="text-sm text-muted">{t.walletBalance}</dt>
-                <dd className="mt-1 text-3xl font-bold">
+                <dd className="mt-1 text-3xl font-extrabold">
                   {formatEgp(wallet ?? 0, lang)}
                 </dd>
               </div>

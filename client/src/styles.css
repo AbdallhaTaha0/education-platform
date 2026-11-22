@@ -127,7 +127,9 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: var(--color-bg);
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: var(--color-ink);
   font-family: var(--font-arabic);
   font-size: 16px;
@@ -449,11 +451,22 @@ html[data-theme='light'] .hero-grid::before {
 }
 
 /* M8 youth foundation. Semantic colors remain shared with the rest of the app. */
+h1, h2, h3 {
+  text-wrap: balance;
+}
+p {
+  text-wrap: pretty;
+}
+html {
+  scroll-padding-top: 96px;
+}
 .site-header {
   position: sticky;
   top: 0;
   z-index: 40;
-  background: var(--color-bg);
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--color-border);
 }
 .site-header__inner {
@@ -722,7 +735,9 @@ html[data-theme='light'] .hero-grid::before {
   border: 1px solid var(--color-border-strong);
   border-radius: 18px;
   overflow: hidden;
-  background: var(--color-bg);
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   transform: rotate(-3deg);
 }
 .project-window__bar {
@@ -876,7 +891,7 @@ html[data-theme='light'] .hero-grid::before {
     scroll-padding-bottom: 120px;
   }
   .site-shell {
-    padding-bottom: calc(104px + env(safe-area-inset-bottom));
+    padding-bottom: calc(128px + env(safe-area-inset-bottom));
   }
   .site-header__inner {
     min-height: 72px;
@@ -1223,7 +1238,9 @@ html[data-theme="light"] { --ide-keyword: #6d28d9; --ide-string: #166534; --ide-
   z-index: 45;
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: var(--color-bg);
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   padding: 1rem max(1rem, calc((100vw - 1100px) / 2));
   padding-bottom: 8rem;
 }

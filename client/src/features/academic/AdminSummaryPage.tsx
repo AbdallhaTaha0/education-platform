@@ -67,7 +67,11 @@ export function AdminSummaryPage({ accountOverview = false }: { accountOverview?
     <main id="main">
       <Container>
         <section className="py-10">
-          <h1 className="section-title">{ar ? 'نظرة عامة على المنصة' : 'Platform overview'}</h1>
+          <h1 className="section-title text-balance">
+            {status === 'authenticated' && user?.role !== 'ADMIN'
+              ? (ar ? 'غير مسموح' : 'Access denied')
+              : (ar ? 'نظرة عامة على المنصة' : 'Platform overview')}
+          </h1>
           {accountOverview && status === 'authenticated' && user?.role === 'ADMIN' ? (
             <p className="mt-3 text-muted">{user.displayName} · <a className="underline" href="#/account/profile">
               {ar ? 'الملف والأمان' : 'Profile & security'}</a></p>

@@ -236,7 +236,7 @@ export function Header({
                 {status === 'anonymous' ? <a href="#/login" data-testid="header-login"
                   className="inline-flex min-h-[44px] items-center justify-center rounded-control bg-primary px-4 py-2 font-bold text-primary-ink whitespace-nowrap">
                   <span className="hidden lg:inline">{t.navLogin}</span><span className="lg:hidden">{label('دخول', 'Login')}</span>
-                </a> : signedIn ? <Button variant="secondary" className="whitespace-nowrap px-4"
+                </a> : signedIn ? <Button variant="secondary" className="min-h-[44px] rounded-xl border-border/80 bg-transparent px-3.5 text-sm text-muted hover:border-border-strong hover:bg-elevated hover:text-ink whitespace-nowrap"
                   data-testid="header-logout" disabled={signingOut} onClick={() => void signOut()}>
                   <span className="hidden lg:inline">{signingOut ? t.loading : t.logout}</span><span className="lg:hidden">{label('خروج', 'Logout')}</span>
                 </Button> : null}

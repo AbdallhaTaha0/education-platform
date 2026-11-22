@@ -10,7 +10,7 @@ import type { SeoSettings } from './config';
 export interface SiteData {
   lang: 'ar' | 'en';
   path: string;
-  page: 'home' | 'courses' | 'course-detail' | 'package' | 'support' | 'not-found';
+  page: 'home' | 'courses' | 'course-detail' | 'package' | 'support' | 'terms' | 'privacy' | 'refunds' | 'not-found';
   pageNumber: number;
   pageSize: number;
   origin?: string;
@@ -192,7 +192,7 @@ export function createSeoRouter(
       );
       return;
     }
-    const match = /^\/(ar|en)(?:\/(courses|support|package)(?:\/([^/]+))?)?$/.exec(pathname);
+    const match = /^\/(ar|en)(?:\/(courses|support|package|terms|privacy|refunds)(?:\/([^/]+))?)?$/.exec(pathname);
     const lang = pathname.startsWith('/en') ? 'en' : 'ar';
     let status = 200;
     const pageRaw = String(req.query['page'] ?? '1');
@@ -283,6 +283,9 @@ export function createSeoRouter(
           where: { id: 1 },
           select: { email: true, phone: true, version: true },
         });
+      } else if ((match[2] === 'terms' || match[2] === 'privacy' || match[2] === 'refunds') && !match[3]) {
+        data.page = match[2];
+        data.indexing = false;
       } else status = 404;
     } catch (error) {
       if ((error as { status?: number }).status === 404) status = 404;

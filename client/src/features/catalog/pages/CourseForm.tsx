@@ -48,6 +48,10 @@ export function CourseForm({
   const [descEn, setDescEn] = useState(initial?.descriptionEn ?? '');
   const [subjectId, setSubjectId] = useState<string>(initial?.subjectId ?? '');
   const [teacherId, setTeacherId] = useState<string>(initial?.teacherId ?? '');
+  useEffect(() => {
+    setSubjectId(initial?.subjectId ?? '');
+    setTeacherId(initial?.teacherId ?? '');
+  }, [initial?.subjectId, initial?.teacherId]);
   const [subjects, setSubjects] = useState<AdminSubject[]>([]);
   const [teachers, setTeachers] = useState<AdminTeacher[]>([]);
   const [academic, setAcademic] = useState<Academic | null>(initial?.academic ?? null);

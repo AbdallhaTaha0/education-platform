@@ -107,7 +107,23 @@ export function WatermarkOverlay({ grant }: { grant: PlaybackGrant }): JSX.Eleme
     if (labelRef.current) observer.observe(labelRef.current);
     const controls = areaRef.current?.parentElement?.querySelector('[data-testid="player-controls"]');
     if (controls) observer.observe(controls);
-    return () => { clearInterval(timer); observer.disconnect(); };
+    const parent = areaRef.current?.parentElement;
+    const guard = parent && typeof MutationObserver !== 'undefined'
+      ? new MutationObserver(() => {
+          const el = areaRef.current;
+          const lbl = labelRef.current;
+          const hidden = !el || !lbl || !parent.contains(el) || !el.contains(lbl) ||
+            getComputedStyle(el).display === 'none' || getComputedStyle(el).visibility === 'hidden' ||
+            Number(getComputedStyle(el).opacity) === 0 || getComputedStyle(lbl).display === 'none' ||
+            getComputedStyle(lbl).visibility === 'hidden' || Number(getComputedStyle(lbl).opacity) === 0;
+          if (hidden) {
+            const video = parent.querySelector('video');
+            if (video && !video.paused) video.pause();
+          }
+        })
+      : null;
+    if (guard && parent) guard.observe(parent, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
+    return () => { clearInterval(timer); observer.disconnect(); guard?.disconnect(); };
   }, [visible, text, grant.referenceId]);
   if (!visible) return null;
   return (

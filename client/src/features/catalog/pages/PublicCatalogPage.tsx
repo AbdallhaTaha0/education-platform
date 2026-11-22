@@ -8,7 +8,7 @@ import { Field, textInputClassName } from '../../../components/ui/Field';
 import { localizeCode } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
 import { Card, Container } from '../../../components/ui/Card';
-import { EmptyState, Loading, Notice } from '../../../components/ui/Notice';
+import { EmptyState, Notice } from '../../../components/ui/Notice';
 import { usePublicCourses } from '../hooks/usePublicCourses';
 import { fetchPublicSubjects, fetchPublicTeachers } from '../api/client';
 import type { PublicSubject, PublicTeacher } from '../types/models';
@@ -193,7 +193,7 @@ export function PublicCatalogSections({
         </section>
       ) : null}
       <section
-        className={compact ? 'py-12 max-sm:py-8' : 'py-10'}
+        className={compact ? 'pt-14 pb-12 max-sm:pt-10 max-sm:pb-8' : 'py-10'}
         aria-labelledby="catalog-title"
         aria-live="polite"
       >
@@ -203,7 +203,7 @@ export function PublicCatalogSections({
               <p className="text-sm font-bold text-primary-strong">
                 {compact ? (lang === 'ar' ? 'اختار محتواك' : 'Find your content') : (lang === 'ar' ? 'تعلّم بطريقتك' : 'Learn your way')}
               </p>
-              <h2 id="catalog-title" className="mt-1 scroll-mt-[100px] text-[clamp(24px,2.5vw,34px)] font-extrabold" tabIndex={compact ? -1 : undefined}>
+              <h2 id="catalog-title" className="mt-1 scroll-mt-[100px] text-balance text-[clamp(24px,2.5vw,34px)] font-extrabold" tabIndex={compact ? -1 : undefined}>
                 {compact
                   ? lang === 'ar'
                     ? 'الدورات المتاحة'
@@ -214,49 +214,92 @@ export function PublicCatalogSections({
             {compact ? (
               <a
                 href={publicHref("#/courses", lang)}
-                className="font-bold text-primary-strong underline-offset-4 hover:underline"
+                className="inline-flex min-h-[44px] items-center gap-1.5 font-bold text-primary-strong underline-offset-4 hover:underline"
               >
-                {lang === 'ar' ? 'عرض كل الدورات' : 'View all courses'} →
+                {lang === 'ar' ? 'عرض كل الدورات' : 'View all courses'} <span aria-hidden="true">→</span>
               </a>
             ) : null}
           </div>
           {compact && onCompactGradeChange ? (
-            <div className="mt-5 space-y-3">
-              <div className="flex flex-wrap gap-2" role="group" aria-label={lang === 'ar' ? 'تصفية الدورات حسب الصف' : 'Filter courses by grade'}>
-                {['', 'FIRST_SECONDARY', 'SECOND_SECONDARY'].map(value => (
-                  <button key={value} className="min-h-[44px] rounded-[10px] border border-border-strong bg-surface px-4 py-2 text-sm font-bold hover:shadow-[inset_0_0_0_1px_var(--color-border-strong)] aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-ink" type="button" aria-pressed={compactGrade === value} onClick={() => onCompactGradeChange(value)}>
-                    {value ? gradeLabel(value, lang) : (lang === 'ar' ? 'كل الدورات' : 'All courses')}
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface/80 p-3">
+              <div
+                className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-elevated p-1"
+                role="group"
+                aria-label={lang === 'ar' ? 'تصفية الدورات حسب الصف' : 'Filter courses by grade'}
+              >
+                {['', 'FIRST_SECONDARY', 'SECOND_SECONDARY'].map((value) => (
+                  <button
+                    key={value}
+                    className="min-h-[40px] rounded-lg px-4 py-1.5 text-sm font-bold text-muted transition-[background-color,color] duration-150 hover:text-ink aria-pressed:bg-primary aria-pressed:text-primary-ink"
+                    type="button"
+                    aria-pressed={compactGrade === value}
+                    onClick={() => onCompactGradeChange(value)}
+                  >
+                    {value ? gradeLabel(value, lang) : lang === 'ar' ? 'كل الدورات' : 'All courses'}
                   </button>
                 ))}
               </div>
-              {subjects.length > 0 ? (
-                <div className="flex flex-wrap gap-2" role="group" aria-label={t.subject}>
-                  <button type="button" aria-pressed={subjectId === ''} onClick={() => setSubjectId('')} className="min-h-[40px] rounded-[10px] border border-border-strong bg-surface px-3.5 py-1.5 text-sm font-bold aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-ink">
-                    {t.allSubjects}
+              <div className="flex flex-wrap items-center gap-2.5">
+                {subjects.length > 0 ? (
+                  <select
+                    aria-label={t.subject}
+                    value={subjectId}
+                    onChange={(e) => setSubjectId(e.target.value)}
+                    className="min-h-[44px] rounded-xl border border-border-strong bg-elevated px-3.5 py-2 text-sm font-semibold text-ink transition-colors hover:border-primary/60 focus:border-primary focus:outline-none"
+                  >
+                    <option value="">{t.allSubjects}</option>
+                    {subjects.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {lang === 'ar' ? s.nameAr : s.nameEn}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+                {teachers.length > 0 ? (
+                  <select
+                    aria-label={t.teacher}
+                    value={teacherId}
+                    onChange={(e) => setTeacherId(e.target.value)}
+                    className="min-h-[44px] rounded-xl border border-border-strong bg-elevated px-3.5 py-2 text-sm font-semibold text-ink transition-colors hover:border-primary/60 focus:border-primary focus:outline-none"
+                  >
+                    <option value="">{t.allTeachers}</option>
+                    {teachers.map((te) => (
+                      <option key={te.id} value={te.id}>
+                        {lang === 'ar' ? te.nameAr : te.nameEn}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
+                {compactGrade || subjectId || teacherId ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onCompactGradeChange('');
+                      setSubjectId('');
+                      setTeacherId('');
+                    }}
+                    className="min-h-[44px] rounded-xl border border-border px-3.5 py-2 text-sm font-semibold text-muted transition-colors hover:border-border-strong hover:text-ink"
+                  >
+                    {lang === 'ar' ? 'مسح' : 'Clear'}
                   </button>
-                  {subjects.map((s) => (
-                    <button key={s.id} type="button" aria-pressed={subjectId === s.id} onClick={() => setSubjectId(s.id)} className="min-h-[40px] rounded-[10px] border border-border-strong bg-surface px-3.5 py-1.5 text-sm font-bold aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-ink">
-                      {lang === 'ar' ? s.nameAr : s.nameEn}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-              {teachers.length > 0 ? (
-                <div className="flex flex-wrap gap-2" role="group" aria-label={t.teacher}>
-                  <button type="button" aria-pressed={teacherId === ''} onClick={() => setTeacherId('')} className="min-h-[40px] rounded-[10px] border border-border-strong bg-surface px-3.5 py-1.5 text-sm font-bold aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-ink">
-                    {t.allTeachers}
-                  </button>
-                  {teachers.map((te) => (
-                    <button key={te.id} type="button" aria-pressed={teacherId === te.id} onClick={() => setTeacherId(te.id)} className="min-h-[40px] rounded-[10px] border border-border-strong bg-surface px-3.5 py-1.5 text-sm font-bold aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-ink">
-                      {lang === 'ar' ? te.nameAr : te.nameEn}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
+                ) : null}
+              </div>
             </div>
           ) : null}
-          {loading ? <Loading text={t.catalogLoading} /> : null}
-          {!compact && !loading ? <div className="my-4 flex flex-wrap items-center gap-3"><p role="status">{lang==='ar'?`${filtered.length} من ${courses.length} كورس`:`${filtered.length} of ${courses.length} courses`}</p><Button variant="secondary" onClick={()=>{setQuery('');setGrade('');setSubjectId('');setTeacherId('');setTerm('');setYear('');setKind('');}}>{lang==='ar'?'مسح البحث والتصفية':'Clear search and filters'}</Button></div>:null}
+          {loading ? (
+            <div className="mt-6 grid grid-cols-3 gap-6 max-lg:grid-cols-2 max-sm:grid-cols-1" aria-busy="true">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="rounded-2xl border border-border bg-surface p-3.5">
+                  <div className="aspect-video w-full animate-pulse rounded-xl bg-elevated" />
+                  <div className="mt-4 h-3 w-1/3 animate-pulse rounded bg-elevated" />
+                  <div className="mt-2 h-5 w-3/4 animate-pulse rounded bg-elevated" />
+                  <div className="mt-3 h-4 w-full animate-pulse rounded bg-elevated" />
+                  <div className="mt-5 h-11 w-full animate-pulse rounded-xl bg-elevated" />
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {!compact && !loading ? <div className="my-4 flex flex-wrap items-center gap-3"><p role="status" className="tabular-nums text-sm text-muted">{lang==='ar'?`${filtered.length} من ${courses.length} كورس`:`${filtered.length} of ${courses.length} courses`}</p><Button variant="secondary" onClick={()=>{setQuery('');setGrade('');setSubjectId('');setTeacherId('');setTerm('');setYear('');setKind('');}}>{lang==='ar'?'مسح البحث والتصفية':'Clear search and filters'}</Button></div>:null}
           {error !== null ? (
             <div>
               <Notice kind="error">{localizeCode(t, error)}</Notice>
@@ -271,42 +314,53 @@ export function PublicCatalogSections({
           <PaginatedCollection id="public-courses" resetKey={JSON.stringify([query,grade,subjectId,teacherId,term,year,compactGrade])} className="mt-6 grid grid-cols-3 gap-6 max-lg:grid-cols-2 max-sm:grid-cols-1">
             {filtered.slice(0, compact ? 3 : filtered.length).map((c) => (
               <article key={c.id}>
-                <Card className={`group relative flex h-full flex-col gap-3 overflow-hidden border-border-strong transition-[border-color,transform,box-shadow] hover:border-primary ${compact ? '!p-5 !shadow-none' : 'hover:-translate-y-1 hover:shadow-lift'}`}>
-                  <CourseCover path={c.coverUrl} title={lang === 'ar' ? c.titleAr : c.titleEn} />
-                  {compact ? <div className="flex flex-wrap justify-between gap-2 rounded-control bg-selected px-3.5 py-2.5 text-sm font-bold text-ink"><span>{gradeLabel(c.academic?.grade, lang)}</span>{c.academic?.term ? <span>{lang === 'ar' ? 'الترم' : 'Term'} {c.academic.term}</span> : null}</div> : null}
-                  {(c.subject || c.teacher) ? (
-                    <div className="flex flex-wrap gap-2 text-xs font-bold">
-                      {c.subject ? <span className="rounded-full border border-primary/50 bg-primary/10 px-2.5 py-0.5 text-primary-strong">{lang === 'ar' ? c.subject.nameAr : c.subject.nameEn}</span> : null}
-                      {c.teacher ? <span className="rounded-full border border-border-strong bg-elevated px-2.5 py-0.5 text-ink">{lang === 'ar' ? c.teacher.nameAr : c.teacher.nameEn}</span> : null}
-                    </div>
-                  ) : null}
-                  <h3 className="m-0 text-xl font-bold">{lang === 'ar' ? c.titleAr : c.titleEn}</h3>
-                  {c.academic?.grade ? (
-                    <p className="text-sm font-bold text-primary-strong">
-                      {gradeLabel(c.academic.grade, lang)} • {lang === 'ar' ? 'ترم' : 'Term'}{' '}
-                      {c.academic.term} •{' '}
-                      {c.academic.courseKind === 'REVISION'
-                        ? lang === 'ar'
-                          ? 'مراجعة'
-                          : 'Revision'
-                        : c.academic.teachingMonth}
+                <Card className="group relative flex h-full flex-col gap-3 overflow-hidden rounded-2xl border-border bg-surface !p-3.5 transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-primary/70 hover:shadow-lift">
+                  <div className="relative overflow-hidden rounded-xl">
+                    <CourseCover path={c.coverUrl} title={lang === 'ar' ? c.titleAr : c.titleEn} />
+                    {c.academic?.grade ? (
+                      <span className="pointer-events-none absolute start-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-lg bg-bg/85 px-2.5 py-1 text-xs font-bold text-ink backdrop-blur-md">
+                        {gradeLabel(c.academic.grade, lang)}
+                        {c.academic.term ? ` · ${lang === 'ar' ? 'ترم' : 'Term'} ${c.academic.term}` : ''}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-1 flex-col gap-2 px-1 pt-0.5">
+                    {(c.subject || c.teacher) ? (
+                      <p className="text-xs font-semibold text-primary-strong">
+                        {[
+                          c.subject ? (lang === 'ar' ? c.subject.nameAr : c.subject.nameEn) : null,
+                          c.teacher ? (lang === 'ar' ? c.teacher.nameAr : c.teacher.nameEn) : null,
+                          c.academic?.courseKind === 'REVISION'
+                            ? (lang === 'ar' ? 'مراجعة' : 'Revision')
+                            : c.academic?.teachingMonth ?? null,
+                        ].filter(Boolean).join(' · ')}
+                      </p>
+                    ) : null}
+                    <h3 className="m-0 text-balance text-lg font-extrabold leading-snug text-ink">
+                      {lang === 'ar' ? c.titleAr : c.titleEn}
+                    </h3>
+                    <p className="line-clamp-2 text-pretty text-sm leading-relaxed text-muted">
+                      {lang === 'ar' ? c.descriptionAr : c.descriptionEn}
                     </p>
-                  ) : null}
-                  <p className="line-clamp-3 text-muted">
-                    {lang === 'ar' ? c.descriptionAr : c.descriptionEn}
-                  </p>
-                  {c.plans[0] !== undefined ? (
-                    <PriceDisplay
-                      current={c.plans[0].currentPricePiastres}
-                      previous={c.plans[0].previousPricePiastres}
-                      durationDays={c.plans[0].durationDays}
-                      accessMode={c.plans[0].accessMode}
-                      accessEndsAt={c.plans[0].accessEndsAt}
-                    />
-                  ) : null}
-                  <a href={publicHref(`#/courses/${encodeURIComponent(c.slug)}`, lang)} aria-label={(lang === "ar" ? "عرض العرض: " : "View offer: ") + (lang === "ar" ? c.titleAr : c.titleEn)} className="mt-auto inline-flex min-h-[44px] w-full items-center justify-center rounded-control bg-primary px-6 py-2 font-bold text-primary-ink hover:bg-primary-hover">
-                    {compact ? (lang === 'ar' ? 'تفاصيل الدورة' : 'Course details') : (lang === 'ar' ? 'عرض العرض' : 'View offer')}
-                  </a>
+                    <div className="mt-auto flex flex-col gap-3 border-t border-border/60 pt-3 tabular-nums">
+                      {c.plans[0] !== undefined ? (
+                        <PriceDisplay
+                          current={c.plans[0].currentPricePiastres}
+                          previous={c.plans[0].previousPricePiastres}
+                          durationDays={c.plans[0].durationDays}
+                          accessMode={c.plans[0].accessMode}
+                          accessEndsAt={c.plans[0].accessEndsAt}
+                        />
+                      ) : null}
+                      <a
+                        href={publicHref(`#/courses/${encodeURIComponent(c.slug)}`, lang)}
+                        aria-label={(lang === "ar" ? "عرض العرض: " : "View offer: ") + (lang === "ar" ? c.titleAr : c.titleEn)}
+                        className="inline-flex min-h-[44px] w-full items-center justify-center rounded-xl bg-primary px-5 py-2 text-sm font-bold text-primary-ink transition-colors duration-150 hover:bg-primary-hover"
+                      >
+                        {compact ? (lang === 'ar' ? 'تفاصيل الدورة' : 'Course details') : (lang === 'ar' ? 'عرض العرض' : 'View offer')}
+                      </a>
+                    </div>
+                  </div>
                 </Card>
               </article>
             ))}

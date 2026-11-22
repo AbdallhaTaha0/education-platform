@@ -6,7 +6,7 @@ import type { Lang } from '../i18n';
 export interface PublicPageData {
   lang: Lang;
   path: string;
-  page: 'home' | 'courses' | 'course-detail' | 'package' | 'support' | 'not-found';
+  page: 'home' | 'courses' | 'course-detail' | 'package' | 'support' | 'terms' | 'privacy' | 'refunds' | 'not-found';
   pageNumber: number;
   pageSize: number;
   courses?: PublicCourse[];

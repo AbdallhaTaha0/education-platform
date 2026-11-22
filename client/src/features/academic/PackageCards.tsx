@@ -87,18 +87,16 @@ export function PackageCards({
         {!failed &&
           !loading &&
           visible.map((p) => (
-            <Card key={p.id} className="flex flex-col gap-4 border-primary/50">
-              <span className="text-sm font-bold text-primary-strong">
-                {ar ? '٣ كورسات • دفعة واحدة' : '3 courses • One payment'}
-              </span>
-              {(p.subject || p.teacher) ? (
-                <div className="flex flex-wrap gap-2 text-xs font-bold">
-                  {p.subject ? <span className="rounded-full border border-primary/50 bg-primary/10 px-2.5 py-0.5 text-primary-strong">{ar ? p.subject.nameAr : p.subject.nameEn}</span> : null}
-                  {p.teacher ? <span className="rounded-full border border-border-strong bg-elevated px-2.5 py-0.5 text-ink">{ar ? p.teacher.nameAr : p.teacher.nameEn}</span> : null}
-                </div>
-              ) : null}
-              <h3 className="text-2xl font-bold">{ar ? p.titleAr : p.titleEn}</h3>
-              <p className="text-muted">{ar ? p.descriptionAr : p.descriptionEn}</p>
+            <Card key={p.id} className="flex flex-col gap-3 rounded-2xl border-border bg-surface !p-5 transition-[border-color,transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-primary/70 hover:shadow-lift">
+              <p className="text-xs font-semibold text-primary-strong">
+                {[
+                  ar ? '٣ كورسات · دفعة واحدة' : '3 courses · One payment',
+                  p.subject ? (ar ? p.subject.nameAr : p.subject.nameEn) : null,
+                  p.teacher ? (ar ? p.teacher.nameAr : p.teacher.nameEn) : null,
+                ].filter(Boolean).join(' · ')}
+              </p>
+              <h3 className="text-balance text-xl font-extrabold leading-snug text-ink">{ar ? p.titleAr : p.titleEn}</h3>
+              <p className="text-pretty text-sm leading-relaxed text-muted">{ar ? p.descriptionAr : p.descriptionEn}</p>
               <ol className="list-inside list-decimal space-y-2">
                 {p.courses.map((c) => (
                   <li key={c.id}>

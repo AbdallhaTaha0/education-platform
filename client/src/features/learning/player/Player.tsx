@@ -583,9 +583,13 @@ export function DashLessonPlayer({
           ref={(element: HTMLVideoElement | null) => {
             videoRef.current = element;
           }}
-          className="h-full w-full"
+          className="h-full w-full select-none"
           playsInline
           preload="metadata"
+          controlsList="nodownload noremoteplayback"
+          disablePictureInPicture
+          onContextMenu={(event) => event.preventDefault()}
+          onDragStart={(event) => event.preventDefault()}
           aria-label={labels.playerLabel}
           onTimeUpdate={handleTimeUpdate}
           onPause={handlePause}

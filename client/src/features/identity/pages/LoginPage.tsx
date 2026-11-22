@@ -74,10 +74,8 @@ export function LoginScreen({ onDone }: { onDone: () => void }): JSX.Element {
               className={textInputClassName(false)}
             />
           </Field>
-          <FormActions>
-            <Button type="button" variant="secondary" aria-pressed={showPassword} onClick={()=>setShowPassword(v=>!v)}>{lang==='ar'?(showPassword?'إخفاء كلمة المرور':'إظهار كلمة المرور'):(showPassword?'Hide password':'Show password')}</Button>
-          </FormActions>
-          <FormActions>
+          <FormActions className="mt-3">
+            <Button type="button" variant="secondary" aria-pressed={showPassword} aria-label={lang==='ar'?(showPassword?'إخفاء أحرف السر':'إظهار أحرف السر'):(showPassword?'Hide secret text':'Show secret text')} onClick={()=>setShowPassword(v=>!v)}>{lang==='ar'?(showPassword?'إخفاء':'إظهار'):(showPassword?'Hide':'Show')}</Button>
             <Button type="submit" disabled={busy}>
               {t.submitLogin}
             </Button>
