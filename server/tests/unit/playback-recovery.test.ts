@@ -125,13 +125,27 @@ describe('durable release audit (synthetic doubles, coordinator probe shape)', (
     const rows: Array<{ id: string; action: string; entityId: string; metadata: Record<string, unknown>; createdAt: Date }> = [];
     let creates = 0;
     const match = (row: (typeof rows)[number], where: Record<string, unknown>): boolean => {
+      if (Array.isArray(where['OR'])) {
+        const orList = where['OR'] as Array<Record<string, unknown>>;
+        const rest = { ...where };
+        delete rest['OR'];
+        return match(row, rest) && orList.some((clause) => match(row, clause));
+      }
       const action = (where['action'] as string | { in: string[] }) ?? null;
       const actionOk =
-        action === null || typeof action === 'string' ? row.action === action : action.in.includes(row.action);
+        action === null || typeof action === 'string'
+          ? action === null || row.action === action
+          : action.in.includes(row.action);
       const entityOk = where['entityId'] === undefined || row.entityId === where['entityId'];
-      const metadata = where['metadata'] as { path: string[]; equals: string } | undefined;
+      const metadata = where['metadata'] as { path: string | string[]; equals: string } | undefined;
+      const metaField =
+        metadata === undefined
+          ? null
+          : Array.isArray(metadata.path)
+            ? metadata.path[0]!
+            : metadata.path.replace(/^\$\./, '');
       const metadataOk =
-        metadata === undefined || (row.metadata[metadata.path[0]!] as unknown) === metadata.equals;
+        metadata === undefined || (row.metadata[metaField!] as unknown) === metadata.equals;
       const createdOk =
         where['createdAt'] === undefined ||
         row.createdAt >= (where['createdAt'] as { gte: Date }).gte;

@@ -179,9 +179,17 @@ export class InMemoryCache implements PlatformCache {
   }
 }
 
-/** Cloudflare Workers PlatformCache backed by KV (tombstones) + MutexDurableObject (rate limits & leases). */
+/**
+ * Cloudflare Workers PlatformCache.
+ * - Cost-guard optimization ($5 Workers Paid Plan): D1 includes 25B row reads/month
+ *   and `getActiveSession()` already queries `AuthSession.revokedAt` in D1 on every
+ *   authenticated request. `hasTombstone` therefore checks a fast isolate-local
+ *   memory map rather than issuing a KV read on every request (saving the 10M/month
+ *   KV read quota), while `setTombstone` records both locally and in KV.
+ */
 export class CloudflareCache implements PlatformCache {
   private readonly leases = new Map<string, { token: string; expiresAt: number }>();
+  private readonly localTombstones = new Map<string, number>();
 
   constructor(
     private readonly kv: KVNamespaceLike,
@@ -189,11 +197,19 @@ export class CloudflareCache implements PlatformCache {
   ) {}
 
   async setTombstone(sessionId: string, ttlSec: number): Promise<void> {
+    this.localTombstones.set(tombstoneKey(sessionId), Date.now() + ttlSec * 1000);
     await this.kv.put(tombstoneKey(sessionId), '1', { expirationTtl: Math.max(60, ttlSec) });
   }
 
   async hasTombstone(sessionId: string): Promise<boolean> {
-    return (await this.kv.get(tombstoneKey(sessionId))) !== null;
+    const key = tombstoneKey(sessionId);
+    const exp = this.localTombstones.get(key);
+    if (exp === undefined) return false;
+    if (exp <= Date.now()) {
+      this.localTombstones.delete(key);
+      return false;
+    }
+    return true;
   }
 
   async checkRateLimit(

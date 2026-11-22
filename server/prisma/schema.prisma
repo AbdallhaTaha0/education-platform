@@ -231,11 +231,12 @@ model Course {
 
 // M9: platform-owned assessments, never external DRM records.
 model CourseCover {
-  id        String @id @default(uuid())
-  bytes     Bytes
-  mime      String
-  courses   Course[]
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  bytes      Bytes?
+  storageKey String?  @unique
+  mime       String
+  courses    Course[]
+  createdAt  DateTime @default(now())
 }
 
 model Assessment {
@@ -981,15 +982,16 @@ model NotificationRollout {
 
 /// Owner-editable manual InstaPay receiving instructions. Bank transfers retain deployment configuration.
 model InstaPaySettings {
-  id Int @id
-  enabled Boolean
-  accountLabel String
+  id             Int      @id
+  enabled        Boolean
+  accountLabel   String
   instructionsAr String
   instructionsEn String
-  version Int @default(1)
-  updatedAt DateTime @updatedAt
-  qrBytes Bytes?
-  qrMime String?
+  version        Int      @default(1)
+  updatedAt      DateTime @updatedAt
+  qrBytes        Bytes?
+  qrStorageKey   String?
+  qrMime         String?
 }
 
 model AssessmentPreparation {

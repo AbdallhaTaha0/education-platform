@@ -56,8 +56,20 @@ async function changeQr(prisma: PrismaClient, version: number, qrBytes: Buffer |
   if (result.count !== 1) throw new ApiError(409, 'OFFER_CHANGED', 'Receiving details changed. Reload before changing the QR image.');
 }
 
-export async function readQr(prisma: PrismaClient, admin: boolean) {
-  const row = await prisma.instaPaySettings.findUnique({ where: { id: 1 }, select: { enabled: true, qrBytes: true, qrMime: true } });
-  if (!row?.qrBytes || !row.qrMime || (!admin && !row.enabled)) throw new ApiError(404, 'NOT_FOUND', 'QR image is not available.');
+export async function readQr(
+  prisma: PrismaClient,
+  admin: boolean,
+  storage?: { getObject(key: string): Promise<{ body: Uint8Array }> } | null,
+) {
+  const row = await prisma.instaPaySettings.findUnique({
+    where: { id: 1 },
+    select: { enabled: true, qrBytes: true, qrStorageKey: true, qrMime: true },
+  });
+  if (!row?.qrMime || (!admin && !row.enabled)) throw new ApiError(404, 'NOT_FOUND', 'QR image is not available.');
+  if (row.qrStorageKey && storage) {
+    const obj = await storage.getObject(row.qrStorageKey);
+    return { bytes: Buffer.from(obj.body), mime: row.qrMime };
+  }
+  if (!row.qrBytes) throw new ApiError(404, 'NOT_FOUND', 'QR image is not available.');
   return { bytes: Buffer.from(row.qrBytes), mime: row.qrMime };
 }

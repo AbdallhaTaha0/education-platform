@@ -203,15 +203,8 @@ export default {
     // 3. Public bilingual SSR & SEO routes
     if (isSsrPath(url.pathname)) {
       const { app } = buildRuntime(env);
-      if (url.pathname === '/sitemap.xml' || url.pathname === '/robots.txt') {
-        return dispatchExpress(app, request, `/seo${url.pathname}${url.search}`, clientIp);
-      }
-      return dispatchExpress(
-        app,
-        request,
-        `/seo/public-page?path=${encodeURIComponent(url.pathname + url.search)}`,
-        clientIp,
-      );
+      const seoPath = url.pathname === '/' ? '/seo/' : `/seo${url.pathname}`;
+      return dispatchExpress(app, request, `${seoPath}${url.search}`, clientIp);
     }
 
     // 4. Static hashed assets served from edge ASSETS binding
@@ -246,18 +239,56 @@ export default {
         return;
       }
 
-      await withEntityLocks(['cron:deletion'], async () => {
-        await reconcilePendingOperations(prisma, config, createDrmClient, cache);
+      // Cost-guard optimization ($5 Workers Paid Plan): check D1 first (25B included row reads)
+      // and only acquire a MutexDurableObject lock when pending work actually exists (0 DO calls when idle).
+      const pendingDeletion = await prisma.catalogDeletionOperation.findFirst({
+        where: { status: { in: ['PENDING', 'RUNNING'] } },
+        select: { id: true },
       });
+      if (pendingDeletion) {
+        await withEntityLocks(['cron:deletion'], async () => {
+          await reconcilePendingOperations(prisma, config, createDrmClient, cache);
+        });
+      }
 
-      await withEntityLocks(['cron:learning-expiry'], async () => {
-        await reconcileExpiredSessions(prisma, cache, createDrmClient(config), Date.now());
-        if (storage) {
-          await reconcileMaterialObjects({ prisma, storage, now: Date.now });
-        }
-      });
+      const nowDate = new Date();
+      const [duePlayback, dueMaterial] = await Promise.all([
+        prisma.playbackReference.findFirst({
+          where: { status: 'ACTIVE' },
+          select: { id: true },
+        }),
+        storage
+          ? prisma.materialObject.findFirst({
+              where: { state: 'PENDING', updatedAt: { lte: new Date(nowDate.getTime() - 60_000) } },
+              select: { storageKey: true },
+            })
+          : Promise.resolve(null),
+      ]);
+      if (duePlayback || dueMaterial) {
+        await withEntityLocks(['cron:learning-expiry'], async () => {
+          await reconcileExpiredSessions(prisma, cache, createDrmClient(config), Date.now());
+          if (storage) {
+            await reconcileMaterialObjects({ prisma, storage, now: Date.now });
+          }
+        });
+      }
 
-      await runNotificationDeliveryPass(prisma, publisher);
+      const [dueEvent, dueSignal] = await Promise.all([
+        prisma.notificationEvent.findFirst({
+          where: {
+            deliveryStatus: { in: ['PENDING', 'PROCESSING'] },
+            nextAttemptAt: { lte: nowDate },
+          },
+          select: { id: true },
+        }),
+        prisma.notification.findFirst({
+          where: { signalPending: true, nextSignalAt: { lte: nowDate } },
+          select: { id: true },
+        }),
+      ]);
+      if (dueEvent || dueSignal) {
+        await runNotificationDeliveryPass(prisma, publisher);
+      }
     };
 
     ctx.waitUntil(run());

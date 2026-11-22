@@ -21,10 +21,10 @@ const TOKEN_CONFIG = {
   audience: 'edu-web',
 };
 
-describe('argon2id password hashing', () => {
-  it('hashes to argon2id and verifies (wrong password fails)', async () => {
+describe('pbkdf2-sha256 password hashing', () => {
+  it('hashes to pbkdf2-sha256 and verifies (wrong password fails)', async () => {
     const hash = await hashPassword('correct horse battery staple', FAST_ARGON);
-    expect(hash.startsWith('$argon2id$')).toBe(true);
+    expect(hash.startsWith('$pbkdf2-sha256$')).toBe(true);
     expect(hash).not.toContain('correct horse');
     expect(await verifyPassword(hash, 'correct horse battery staple')).toBe(true);
     expect(await verifyPassword(hash, 'wrong password here!')).toBe(false);
