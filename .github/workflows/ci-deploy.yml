@@ -1,0 +1,115 @@
+name: CI & Cloudflare Auto-Deploy
+
+on:
+  push:
+    branches:
+      - dev
+      - testing
+      - deployment
+  pull_request:
+    branches:
+      - dev
+      - testing
+      - deployment
+  workflow_dispatch:
+
+concurrency:
+  group: ci-deploy-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/deployment' }}
+
+jobs:
+  ci:
+    name: Typecheck, Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            client/package-lock.json
+            server/package-lock.json
+
+      - name: Install client dependencies
+        run: npm --prefix client ci
+
+      - name: Install server dependencies
+        run: npm --prefix server ci
+
+      - name: Client typecheck & Cloudflare build (SPA + SSR)
+        run: |
+          npm --prefix client run typecheck
+          npm --prefix client run build:cloudflare
+
+      - name: Client tests
+        run: npm --prefix client test
+
+      - name: Server build & typecheck
+        run: |
+          npm --prefix server run build
+          npm --prefix server run typecheck
+
+      - name: Server unit tests
+        run: npm --prefix server run test:unit
+
+      - name: Upload built client artifacts for deploy
+        if: github.ref == 'refs/heads/deployment' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-client-build
+          retention-days: 1
+          path: |
+            client/dist
+            client/dist-ssr
+
+  deploy:
+    name: Deploy to Cloudflare Workers & D1
+    needs: ci
+    if: github.ref == 'refs/heads/deployment' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: cloudflare-production-deploy
+      cancel-in-progress: false
+    environment:
+      name: production
+      url: https://fayq-education-platform.at010abdallha.workers.dev
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Download built client artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: cloudflare-client-build
+          path: .
+
+      - name: Install server dependencies & generate Prisma client
+        run: |
+          npm --prefix server ci
+          npx --prefix server prisma generate --schema=server/prisma/schema.prisma
+
+      - name: Apply remote Cloudflare D1 migrations
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --prefix server wrangler d1 migrations apply fayq-platform-db --remote --config wrangler.toml
+
+      - name: Deploy Cloudflare Worker & static assets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --prefix server wrangler deploy --config wrangler.toml
+
+      - name: Verify live readiness endpoint
+        run: curl -fsS https://fayq-education-platform.at010abdallha.workers.dev/api/health/ready
