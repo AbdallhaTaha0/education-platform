@@ -150,7 +150,28 @@ export function pageMetadata(lang: Lang, route: Route, data: PublicPageData | nu
         description,
         url: canonical,
         inLanguage: lang,
-        provider: { '@type': 'Organization', name: 'FAYQ' },
+        provider: { '@type': 'Organization', name: 'FAYQ', url: data!.origin + '/' },
+        ...(course.subject
+          ? { about: lang === 'ar' ? course.subject.nameAr : course.subject.nameEn }
+          : {}),
+        ...(course.teacher
+          ? {
+              instructor: {
+                '@type': 'Person',
+                name: lang === 'ar' ? course.teacher.nameAr : course.teacher.nameEn,
+              },
+            }
+          : {}),
+        ...(course.plans[0] !== undefined
+          ? {
+              offers: {
+                '@type': 'Offer',
+                price: (course.plans[0].currentPricePiastres / 100).toFixed(2),
+                priceCurrency: 'EGP',
+                availability: 'https://schema.org/InStock',
+              },
+            }
+          : {}),
       });
     if (course || pkg)
       schema.push({

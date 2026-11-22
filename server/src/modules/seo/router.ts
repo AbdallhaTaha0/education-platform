@@ -142,10 +142,21 @@ export function createSeoRouter(
       const [courses, packages] = await Promise.all([
         prisma.course.findMany({
           where: { status: 'PUBLISHED', deletionRequestedAt: null },
-          select: { slug: true },
+          select: { slug: true, updatedAt: true },
         }),
         prisma.coursePackage.findMany({ where: { status: 'PUBLISHED' }, include: memberInclude }),
       ]);
+      const lastmodByPath = new Map<string, string>();
+      for (const c of courses) {
+        if (c.updatedAt) {
+          lastmodByPath.set('/courses/' + encodeURIComponent(c.slug), c.updatedAt.toISOString());
+        }
+      }
+      for (const p of packages) {
+        if (p.updatedAt) {
+          lastmodByPath.set('/package/' + p.id, p.updatedAt.toISOString());
+        }
+      }
       const routes = [
         '',
         '/courses',
@@ -158,18 +169,32 @@ export function createSeoRouter(
         Math.ceil(Math.max(courses.length, Math.min(packages.length, 100)) / 10),
       );
       for (let page = 2; page <= pageCount; page++) routes.push('/courses?page=' + page);
-      const urls = ['ar', 'en'].flatMap((lang) =>
-        routes.map((path) => settings.origin + '/' + lang + path),
+      const entries = ['ar', 'en'].flatMap((lang) =>
+        routes.map((path) => ({
+          url: settings.origin + '/' + lang + path,
+          lastmod: lastmodByPath.get(path),
+        })),
       );
-      if (urls.length > 50000) {
+      if (entries.length > 50000) {
         res.status(503).type('text/plain').send('Sitemap index required for this catalog size.');
         return;
       }
+      const seen = new Set<string>();
+      const uniqueEntries = entries.filter((e) => !seen.has(e.url) && (seen.add(e.url), true));
       res
         .type('application/xml')
         .send(
           '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' +
-            [...new Set(urls)].map((url) => '<url><loc>' + escape(url) + '</loc></url>').join('') +
+            uniqueEntries
+              .map(
+                (entry) =>
+                  '<url><loc>' +
+                  escape(entry.url) +
+                  '</loc>' +
+                  (entry.lastmod ? '<lastmod>' + escape(entry.lastmod) + '</lastmod>' : '') +
+                  '</url>',
+              )
+              .join('') +
             '</urlset>',
         );
     } catch {

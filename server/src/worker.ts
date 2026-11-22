@@ -81,7 +81,7 @@ const EDGE_INDEX_HTML = `<!doctype html>
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="FAYQ" />
     <meta name="twitter:description" content="FAYQ — Learn It. Code It. Get It." />
-    <script type="module" crossorigin src="/assets/index-0-kn2wIP.js"></script>
+    <script type="module" crossorigin src="/assets/index-CbjT6sv2.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-C7zoueBO.css">
   </head>
   <body>
@@ -312,18 +312,25 @@ export default {
     if (isSsrPath(url.pathname)) {
       const { app } = buildRuntime(env, url.origin);
       const seoPath = url.pathname === '/' ? '/seo/' : `/seo${url.pathname}`;
-      return dispatchExpress(app, request, `${seoPath}${url.search}`, clientIp);
+      const response = await dispatchExpress(app, request, `${seoPath}${url.search}`, clientIp);
+      const headers = new Headers(response.headers);
+      headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+      headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+      return new Response(response.body, { status: response.status, headers });
     }
 
     // 4. Static hashed assets served from edge ASSETS binding
     if (env.ASSETS) {
       const assetRes = await env.ASSETS.fetch(request);
+      const headers = new Headers(assetRes.headers);
+      headers.set('X-Content-Type-Options', 'nosniff');
+      headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+      headers.set('X-Frame-Options', 'SAMEORIGIN');
+      headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
       if (url.pathname.startsWith('/assets/') && assetRes.ok) {
-        const headers = new Headers(assetRes.headers);
         headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-        return new Response(assetRes.body, { status: assetRes.status, headers });
       }
-      return assetRes;
+      return new Response(assetRes.body, { status: assetRes.status, headers });
     }
 
     return new Response('Not found', { status: 404 });

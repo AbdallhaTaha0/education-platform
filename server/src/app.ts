@@ -69,7 +69,17 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
       },
     }),
   );
-  app.use(helmet());
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          'media-src': ["'self'", 'blob:', 'https://*.r2.cloudflarestorage.com'],
+          'connect-src': ["'self'", 'ws:', 'wss:', 'https://*.r2.cloudflarestorage.com'],
+          'img-src': ["'self'", 'data:', 'blob:', 'https://*.r2.cloudflarestorage.com'],
+        },
+      },
+    }),
+  );
   // Cookie-authenticated and credential-bearing API responses must not persist
   // in browser/shared caches. Public-only discovery can explicitly override.
   app.use((_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
