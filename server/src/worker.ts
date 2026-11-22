@@ -24,7 +24,54 @@ import {
   handleNotificationsWebSocket,
   UserRealtimeDurableObject,
 } from './modules/notifications/realtime-do.js';
+import { setEdgeSsrBundle, type SiteData } from './modules/seo/router.js';
 import { cleanupExpiredProofs } from './modules/wallet/cleanup/service.js';
+// @ts-expect-error Prebuilt Vite SSR bundle emitted by `npm --prefix client run build:cloudflare`
+import { renderPublicPage } from '../../client/dist-ssr/entry-server.mjs';
+
+const EDGE_INDEX_HTML = `<!doctype html>
+<html lang="ar" dir="rtl" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#101318" />
+    <meta name="robots" content="noindex, follow" />
+    <meta name="application-name" content="FAYQ" />
+    <meta name="apple-mobile-web-app-title" content="FAYQ" />
+    <title>FAYQ — تعلمها. برمجها. حققها.</title>
+    <meta name="description" content="FAYQ — دورات برمجة مسجلة لطلاب المرحلة الثانوية. راجع السعر وشروط الوصول لكل دورة." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="FAYQ" />
+    <meta property="og:title" content="FAYQ — تعلمها. برمجها. حققها." />
+    <meta property="og:description" content="FAYQ — دورات برمجة مسجلة لطلاب المرحلة الثانوية. راجع السعر وشروط الوصول لكل دورة." />
+    <meta property="og:locale" content="ar_EG" />
+    <meta property="og:locale:alternate" content="en_US" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="FAYQ" />
+    <meta name="twitter:description" content="FAYQ — Learn It. Code It. Get It." />
+    <script type="module" crossorigin src="/assets/index-B3VDVzBd.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DMuD5ogH.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      try {
+        var stored = window.localStorage.getItem('edu-platform-theme');
+        document.documentElement.dataset.theme =
+          stored === 'light' || stored === 'dark' ? stored : 'dark';
+      } catch (e) {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    </script>
+  </body>
+</html>`;
+
+setEdgeSsrBundle({
+  html: EDGE_INDEX_HTML,
+  renderPublicPage: renderPublicPage as (data: SiteData) => { head: string; body: string },
+});
 
 export { MutexDurableObject, UserRealtimeDurableObject };
 
@@ -48,7 +95,7 @@ export interface ExecutionContextLike {
   passThroughOnException(): void;
 }
 
-function buildConfig(env: WorkerEnv): ServerConfig {
+function buildConfig(env: WorkerEnv, requestOrigin?: string): ServerConfig {
   const stringEnv: NodeJS.ProcessEnv = {
     DATABASE_URL: 'file:d1.sqlite',
     REDIS_URL: 'cloudflare://kv',
@@ -58,11 +105,22 @@ function buildConfig(env: WorkerEnv): ServerConfig {
   for (const [k, v] of Object.entries(env)) {
     if (typeof v === 'string') stringEnv[k] = v;
   }
+  if (requestOrigin && /^https?:\/\//.test(requestOrigin)) {
+    const existing = stringEnv.ALLOWED_ORIGINS
+      ? stringEnv.ALLOWED_ORIGINS.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+    if (!existing.includes(requestOrigin)) {
+      existing.push(requestOrigin);
+    }
+    stringEnv.ALLOWED_ORIGINS = existing.join(',');
+  } else if (!stringEnv.ALLOWED_ORIGINS) {
+    stringEnv.ALLOWED_ORIGINS = 'https://fayq-education-platform.workers.dev';
+  }
   return loadConfig(stringEnv);
 }
 
-function buildRuntime(env: WorkerEnv) {
-  const config = buildConfig(env);
+function buildRuntime(env: WorkerEnv, requestOrigin?: string) {
+  const config = buildConfig(env, requestOrigin);
   const lockProvider = new DurableObjectLockProvider(env.MUTEX_DO);
   setLockProvider(lockProvider);
   const cache = new CloudflareCache(env.SESSION_KV, lockProvider);
@@ -177,7 +235,7 @@ export default {
 
     // 1. Native WebSocket upgrade for per-user realtime notifications
     if (url.pathname === '/api/notifications/ws') {
-      const { config, cache, prisma } = buildRuntime(env);
+      const { config, cache, prisma } = buildRuntime(env, url.origin);
       return handleNotificationsWebSocket(request, {
         prisma,
         cache,
@@ -191,7 +249,7 @@ export default {
 
     // 2. Platform API routes (/api/* -> /*)
     if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {
-      const { app } = buildRuntime(env);
+      const { app } = buildRuntime(env, url.origin);
       const stripped = url.pathname.slice(4) || '/';
       const response = await dispatchExpress(app, request, `${stripped}${url.search}`, clientIp);
       const headers = new Headers(response.headers);
@@ -202,7 +260,7 @@ export default {
 
     // 3. Public bilingual SSR & SEO routes
     if (isSsrPath(url.pathname)) {
-      const { app } = buildRuntime(env);
+      const { app } = buildRuntime(env, url.origin);
       const seoPath = url.pathname === '/' ? '/seo/' : `/seo${url.pathname}`;
       return dispatchExpress(app, request, `${seoPath}${url.search}`, clientIp);
     }

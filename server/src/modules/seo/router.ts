@@ -33,6 +33,17 @@ export const safeJson = (value: unknown) =>
     .replace(/\u2028/g, '\\u2028')
     .replace(/\u2029/g, '\\u2029');
 let template: Promise<string> | undefined;
+let edgeSsrBundle: {
+  html: string;
+  renderPublicPage: (data: SiteData) => { head: string; body: string };
+} | null = null;
+
+export function setEdgeSsrBundle(bundle: {
+  html: string;
+  renderPublicPage: (data: SiteData) => { head: string; body: string };
+}): void {
+  edgeSsrBundle = bundle;
+}
 
 function resolveRenderPaths(): { htmlPath: string; ssrPath: string } {
   const candidates = [
@@ -56,17 +67,24 @@ function resolveRenderPaths(): { htmlPath: string; ssrPath: string } {
 }
 
 export async function renderSite(data: SiteData): Promise<string> {
-  const { htmlPath, ssrPath } = resolveRenderPaths();
-  // Node 22 runtime loads the bundled, private React SSR module; it has no top-level await.
-  const { renderPublicPage } = require(ssrPath) as {
-    renderPublicPage: (data: SiteData) => { head: string; body: string };
-  };
-  template ??= readFile(htmlPath, 'utf8').catch((err) => {
-    template = undefined;
-    throw err;
-  });
-  const rendered = renderPublicPage(data);
-  let html = await template;
+  let rendered: { head: string; body: string };
+  let html: string;
+  if (edgeSsrBundle) {
+    rendered = edgeSsrBundle.renderPublicPage(data);
+    html = edgeSsrBundle.html;
+  } else {
+    const { htmlPath, ssrPath } = resolveRenderPaths();
+    // Node 22 runtime loads the bundled, private React SSR module; it has no top-level await.
+    const { renderPublicPage } = require(ssrPath) as {
+      renderPublicPage: (data: SiteData) => { head: string; body: string };
+    };
+    template ??= readFile(htmlPath, 'utf8').catch((err) => {
+      template = undefined;
+      throw err;
+    });
+    rendered = renderPublicPage(data);
+    html = await template;
+  }
   html = html.replace(
     /<title>[\s\S]*?<\/title>|<meta\b[^>]*(?:name=["'](?:description|robots|twitter:[^"']+)["']|property=["']og:[^"']+["'])[^>]*>/gi,
     '',
