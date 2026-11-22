@@ -132,11 +132,23 @@ During independent reviewer inspection on `testing`, the following refinements w
 
 ---
 
-## 6. Remaining Blockers & Unverified Live Cloud Gates
+## 6. Live Cloudflare Free-Tier Deployment Verification (2026-11-22)
 
-1. **Cloudflare account & production resource IDs**: `wrangler.toml` contains placeholder IDs (`00000000-...`) for `database_id` (D1) and `SESSION_KV` (KV), plus `MEDIA_BUCKET` (R2). Real production IDs and secrets (`AUTH_JWT_SECRET`, `STORAGE_*`, `PAYMENT_CHANNELS`, `ALLOWED_ORIGINS`) must be provisioned per environment via `wrangler secret put` / `wrangler deploy`.
-2. **Live `wrangler dev` browser E2E journey**: Full interactive Playwright/Chromium desktop & mobile walkthroughs against a live `wrangler dev` + remote R2 bucket remain a pre-launch qualification step once Cloudflare credentials are connected.
-3. **Commercial DRM & capacity qualification**: External commercial DRM provider selection and 10,000-concurrent-user load testing remain separate owner-gated milestones.
+The platform was provisioned and deployed to the owner's Cloudflare account (`5dda15b0d527e709f12070b1c40def44`) on the **Workers Free Plan**:
+
+| Resource / Probe | Identifier / Endpoint | Result |
+| :--- | :--- | :--- |
+| **Cloudflare Worker** | `https://fayq-education-platform.at010abdallha.workers.dev` | **LIVE** (Startup time: `137 ms`; bundle: `2492.45 KiB` gzip; 66 static assets uploaded; Cron schedules `*/5 * * * *` and `0 2 * * *`) |
+| **Cloudflare D1 Database** | `fayq-platform-db` (`3dab8ac6-cada-4dfe-ade2-d06fca2d4d38`, region `EEUR`) | **MIGRATED** (`0001_init.sql`: 157 SQLite commands executed remotely in `13.35 ms`) |
+| **Cloudflare KV Namespace** | `fayq-session-kv` (`b21c5d5a050447d1850685744bf0d3f4`) | **BOUND** (`env.SESSION_KV`) |
+| **Cloudflare R2 Bucket** | `fayq-lesson-files-prod` | **BOUND** (`env.MEDIA_BUCKET` + 11 encrypted Worker secrets uploaded via `wrangler secret bulk`) |
+| **Durable Objects** | `MutexDurableObject`, `UserRealtimeDurableObject` | **MIGRATED (`v1` SQLite classes)** |
+| `GET /api/health/live` | `https://fayq-education-platform.at010abdallha.workers.dev/api/health/live` | **`200 OK`** (`{"status":"ok"}`) |
+| `GET /api/health/ready` | `https://fayq-education-platform.at010abdallha.workers.dev/api/health/ready` | **`200 OK`** (`{"status":"ready"}`, D1 latency `20 ms`) |
+| `GET /api/catalog/subjects` | `https://fayq-education-platform.at010abdallha.workers.dev/api/catalog/subjects` | **`200 OK`** (`{"data":{"subjects":[]}}`) |
+| `GET /api/catalog/teachers` | `https://fayq-education-platform.at010abdallha.workers.dev/api/catalog/teachers` | **`200 OK`** (`{"data":{"teachers":[]}}`) |
+| `GET /api/catalog/courses` | `https://fayq-education-platform.at010abdallha.workers.dev/api/catalog/courses` | **`200 OK`** (`{"data":{"courses":[]}}`) |
+| `GET /ar` & `GET /en` | `https://fayq-education-platform.at010abdallha.workers.dev/ar` & `/en` | **`200 OK`** (Full Arabic RTL and English LTR SSR HTML rendered at the edge) |
 
 ---
 
