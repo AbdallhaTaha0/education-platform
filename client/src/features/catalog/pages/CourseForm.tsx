@@ -1,4 +1,4 @@
-import { useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
 import { FormActions } from '../../../components/ui/FormActions';
@@ -8,6 +8,8 @@ import { AcademicFields } from '../../academic/AcademicFields';
 import type { Academic } from '../../academic/model';
 import { useUnsavedChanges } from '../../../components/ui/UnsavedChanges';
 import { prepareCoursePhoto, type CoursePhoto } from '../api/coursePhoto';
+import { fetchAdminSubjects, fetchAdminTeachers } from '../api/client';
+import type { AdminSubject, AdminTeacher } from '../types/models';
 import { CourseCover } from '../components/CourseCover';
 import { useSuccessFeedback } from '../../../components/ui/ErrorFeedback';
 
@@ -19,6 +21,8 @@ export interface CourseFormValues {
   titleEn: string;
   descriptionAr: string;
   descriptionEn: string;
+  subjectId?: string | null;
+  teacherId?: string | null;
   academic?: Academic | null;
 }
 
@@ -42,7 +46,37 @@ export function CourseForm({
   const [titleEn, setTitleEn] = useState(initial?.titleEn ?? '');
   const [descAr, setDescAr] = useState(initial?.descriptionAr ?? '');
   const [descEn, setDescEn] = useState(initial?.descriptionEn ?? '');
+  const [subjectId, setSubjectId] = useState<string>(initial?.subjectId ?? '');
+  const [teacherId, setTeacherId] = useState<string>(initial?.teacherId ?? '');
+  const [subjects, setSubjects] = useState<AdminSubject[]>([]);
+  const [teachers, setTeachers] = useState<AdminTeacher[]>([]);
   const [academic, setAcademic] = useState<Academic | null>(initial?.academic ?? null);
+  useEffect(() => {
+    let live = true;
+    void Promise.all([fetchAdminSubjects(), fetchAdminTeachers()])
+      .then(([s, te]) => {
+        if (live) {
+          setSubjects(s);
+          setTeachers(te);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+  const selectedSubject = subjects.find((s) => s.id === subjectId) ?? null;
+  const selectedTeacher = teachers.find((te) => te.id === teacherId) ?? null;
+  const taxonomyReason =
+    !subjectId
+      ? { ar: t.subjectRequiredReason, en: 'Select a subject first to continue.' }
+      : selectedSubject && !selectedSubject.active
+        ? { ar: t.subjectInactiveReason, en: 'The selected subject is inactive. Select an active subject first.' }
+        : !teacherId
+          ? { ar: t.teacherRequiredReason, en: 'Select a teacher first to continue.' }
+          : selectedTeacher && !selectedTeacher.active
+            ? { ar: t.teacherInactiveReason, en: 'The selected teacher is inactive. Select an active teacher first.' }
+            : undefined;
   const [coverImage, setCoverImage] = useState<CoursePhoto>();
   const [savedPhoto, setSavedPhoto] = useState<CoursePhoto>();
   const photoInput = useRef<HTMLInputElement>(null);
@@ -50,7 +84,17 @@ export function CourseForm({
   const previewPhoto = coverImage ?? savedPhoto;
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState(false);
-  const values = {slug,titleAr,titleEn,descriptionAr:descAr,descriptionEn:descEn,academic,...(coverImage ? { coverImage } : {})};
+  const values: CourseFormValues = {
+    slug,
+    titleAr,
+    titleEn,
+    descriptionAr: descAr,
+    descriptionEn: descEn,
+    subjectId: subjectId || null,
+    teacherId: teacherId || null,
+    academic,
+    ...(coverImage ? { coverImage } : {}),
+  };
   const [baseline,setBaseline] = useState(JSON.stringify(values));
   const dirty = JSON.stringify(values)!==baseline;
   useUnsavedChanges(dirty,lang==='ar'?'لديك بيانات كورس غير محفوظة. هل تريد تركها؟':'You have unsaved course details. Leave without saving?');
@@ -164,9 +208,45 @@ export function CourseForm({
             onChange={(e) => setDescEn(e.target.value)}
           />
         </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field id="cf-subject" label={t.subject}>
+            <select
+              id="cf-subject"
+              required
+              className={textInputClassName(false)}
+              value={subjectId}
+              onChange={(e) => setSubjectId(e.target.value)}
+            >
+              <option value="">{lang === 'ar' ? 'اختَر المادة' : 'Select subject'}</option>
+              {subjects.map((s) => (
+                <option key={s.id} value={s.id} disabled={!s.active && s.id !== subjectId}>
+                  {lang === 'ar' ? s.nameAr : s.nameEn}
+                  {!s.active ? (lang === 'ar' ? ' (معطّل)' : ' (inactive)') : ''}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field id="cf-teacher" label={t.teacher}>
+            <select
+              id="cf-teacher"
+              required
+              className={textInputClassName(false)}
+              value={teacherId}
+              onChange={(e) => setTeacherId(e.target.value)}
+            >
+              <option value="">{lang === 'ar' ? 'اختَر المدرس' : 'Select teacher'}</option>
+              {teachers.map((te) => (
+                <option key={te.id} value={te.id} disabled={!te.active && te.id !== teacherId}>
+                  {lang === 'ar' ? te.nameAr : te.nameEn}
+                  {!te.active ? (lang === 'ar' ? ' (معطّل)' : ' (inactive)') : ''}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
         <AcademicFields value={academic} onChange={setAcademic} />
         <FormActions>
-          <Button type="submit" disabled={busy || photoBusy}>
+          <Button type="submit" disabled={busy || photoBusy || Boolean(taxonomyReason)} disabledReason={busy || photoBusy ? undefined : taxonomyReason}>
             {initial === undefined ? t.submitCreate : t.submitSave}
           </Button>
         </FormActions>

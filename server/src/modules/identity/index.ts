@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import type Redis from 'ioredis';
+import type { PlatformCache as Redis } from '../../infra/cache.js';
 import type { Clock } from './tokens.js';
 import type { AuthConfig } from './service.js';
 import { createAdminRouter, createAuthRouter } from './routes.js';

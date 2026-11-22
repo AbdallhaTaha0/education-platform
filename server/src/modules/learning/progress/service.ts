@@ -60,11 +60,11 @@ export async function recordProgress(
             ${input.binding.courseId}, ${normalized.positionSeconds}, ${normalized.durationSeconds},
             ${completedAt}, ${now}, ${now}, ${now})
     ON CONFLICT ("studentId", "lessonId") DO UPDATE SET
-      "positionSeconds" = GREATEST("LessonProgress"."positionSeconds", EXCLUDED."positionSeconds"),
+      "positionSeconds" = MAX("LessonProgress"."positionSeconds", EXCLUDED."positionSeconds"),
       "durationSeconds"  = COALESCE(EXCLUDED."durationSeconds", "LessonProgress"."durationSeconds"),
       "completedAt"      = COALESCE("LessonProgress"."completedAt", EXCLUDED."completedAt"),
       "courseId"         = EXCLUDED."courseId",
-      "lastAccessedAt"   = GREATEST("LessonProgress"."lastAccessedAt", EXCLUDED."lastAccessedAt"),
+      "lastAccessedAt"   = MAX("LessonProgress"."lastAccessedAt", EXCLUDED."lastAccessedAt"),
       "updatedAt"        = EXCLUDED."updatedAt"
     RETURNING "lessonId", "positionSeconds", "durationSeconds", "completedAt"
   `;

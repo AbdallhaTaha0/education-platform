@@ -1,8 +1,8 @@
 import request from 'supertest';
 import { describe, expect, it, vi } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
-import type { Pool } from 'pg';
-import type Redis from 'ioredis';
+import type { DbHealthTarget as Pool } from '../../src/infra/postgres.js';
+import type { PlatformCache as Redis } from '../../src/infra/cache.js';
 import { createApp } from '../../src/app.js';
 import type { ServerConfig } from '../../src/config.js';
 import { REQUEST_ID_HEADER } from '../../src/middleware/requestId.js';

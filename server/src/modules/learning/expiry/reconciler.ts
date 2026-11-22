@@ -19,7 +19,7 @@
  * and the bearer token is never held server-side.
  */
 import type { PrismaClient } from '@prisma/client';
-import type Redis from 'ioredis';
+import type { PlatformCache as Redis } from '../../../infra/cache.js';
 import { getLogger } from '../../../logger.js';
 import type { DrmClient } from '../../catalog/drmClient.js';
 
@@ -39,25 +39,17 @@ export function leaseKey(referenceId: string): string {
 }
 
 async function acquire(
-  redis: Redis,
+  cache: Redis,
   referenceId: string,
   token: string,
   nowMs: number,
 ): Promise<boolean> {
-  const result = await redis.set(leaseKey(referenceId), token, 'PX', LEASE_TTL_SEC * 1000, 'NX');
   void nowMs;
-  return result === 'OK';
+  return cache.acquireLease(leaseKey(referenceId), token, LEASE_TTL_SEC * 1000);
 }
 
-async function release(redis: Redis, referenceId: string, token: string): Promise<void> {
-  const key = leaseKey(referenceId);
-  // Token-checked release: a stale owner can never drop a newer owner's lease.
-  await redis.eval(
-    "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
-    1,
-    key,
-    token,
-  );
+async function release(cache: Redis, referenceId: string, token: string): Promise<void> {
+  await cache.releaseLease(leaseKey(referenceId), token);
 }
 
 export interface EligibleReference {

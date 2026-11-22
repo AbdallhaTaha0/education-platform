@@ -1,5 +1,0 @@
-{
-  "platform-runtime": { "context": ".", "dockerfile": "server/Dockerfile", "target": "deploy" },
-  "platform-migrate": { "context": ".", "dockerfile": "server/Dockerfile", "target": "migrate" },
-  "platform-gateway": { "context": ".", "dockerfile": "docker/railway/gateway.Dockerfile" }
-}

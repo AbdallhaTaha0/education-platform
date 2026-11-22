@@ -101,6 +101,20 @@ export function PurchaseHistoryPage(): JSX.Element {
                     <Card className="flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <h2 className="mb-2 text-xl font-bold">{courseNames[row.courseId] ? ar?courseNames[row.courseId].titleAr:courseNames[row.courseId].titleEn : ar?'كورس غير متاح حاليًا':'Course currently unavailable'}</h2>
+                        {(row.subjectNameAr || row.subjectNameEn || row.teacherNameAr || row.teacherNameEn) ? (
+                          <p className="mb-1 text-sm text-muted">
+                            {[
+                              (ar ? row.subjectNameAr : row.subjectNameEn)
+                                ? `${t.subject}: ${ar ? row.subjectNameAr : row.subjectNameEn}`
+                                : null,
+                              (ar ? row.teacherNameAr : row.teacherNameEn)
+                                ? `${t.teacher}: ${ar ? row.teacherNameAr : row.teacherNameEn}`
+                                : null,
+                            ]
+                              .filter(Boolean)
+                              .join(' • ')}
+                          </p>
+                        ) : null}
                         <p className="text-xs text-muted">{ar?'اسم الكورس الحالي؛ السعر والشروط أدناه من إيصال الشراء.':'Current course name; the price and terms below are from your receipt.'}</p>
                         <p className="my-2 break-all text-xs" dir="ltr">{ar?'مرجع الإيصال':'Receipt reference'}: {row.id}</p>
                         <h2 className="font-bold">

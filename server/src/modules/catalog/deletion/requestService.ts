@@ -1,5 +1,5 @@
 import type { CatalogDeletionTarget, PrismaClient } from '@prisma/client';
-import type Redis from 'ioredis';
+import type { PlatformCache as Redis } from '../../../infra/cache.js';
 import { ApiError } from '../../identity/errors.js';
 import { audit } from '../audit.js';
 import { deletionAdvisoryKey, advisoryLock, lockCourseRow } from '../locks.js';

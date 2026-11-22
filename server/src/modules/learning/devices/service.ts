@@ -173,19 +173,15 @@ type Db = PrismaClient;
  * Synthetic doubles without `$transaction` run unlocked (unit scope only).
  */
 async function withStudentLock<T>(prisma: Db, studentId: string, fn: (tx: Db) => Promise<T>): Promise<T> {
+  const { withEntityLocks } = await import('../../../infra/locks-do.js');
   const transactional = prisma as Db & {
     $transaction?: (fn: (tx: Db) => Promise<T>) => Promise<T>;
   };
-  if (typeof transactional.$transaction !== 'function') {
-    getLogger().warn({ module: 'device-release', studentId }, 'student lock unavailable; proceeding unlocked');
-    return fn(prisma);
-  }
-  return transactional.$transaction(async (tx) => {
-    const scoped = tx as Db & { $queryRaw?: unknown };
-    if (typeof scoped.$queryRaw === 'function') {
-      await (tx as PrismaClient).$queryRaw`SELECT id FROM "User" WHERE id = ${studentId} FOR UPDATE`;
+  return withEntityLocks([`playback:${studentId}`], () => {
+    if (typeof transactional.$transaction !== 'function') {
+      return fn(prisma);
     }
-    return fn(tx as Db);
+    return transactional.$transaction(async (tx) => fn(tx as Db));
   });
 }
 
@@ -208,7 +204,7 @@ export async function findPendingReleaseIntent(
     where: {
       action: DEVICE_RELEASE_INTENT_ACTION,
       entityId: studentId,
-      metadata: { path: ['deviceReference'], equals: reference },
+      metadata: { path: '$.deviceReference', equals: reference },
     },
     orderBy: { createdAt: 'desc' },
     select: { id: true, actorUserId: true, createdAt: true },
@@ -219,9 +215,9 @@ export async function findPendingReleaseIntent(
       action: { in: [DEVICE_RELEASE_OUTCOME_ACTION, DEVICE_RELEASE_REFUSED_ACTION] },
       entityId: studentId,
       OR: [
-        { metadata: { path: ['intentId'], equals: intent.id } },
+        { metadata: { path: '$.intentId', equals: intent.id } },
         {
-          metadata: { path: ['deviceReference'], equals: reference },
+          metadata: { path: '$.deviceReference', equals: reference },
           createdAt: { gte: intent.createdAt },
         },
       ],
@@ -248,7 +244,7 @@ async function hasReleaseOutcome(
     where: {
       action: DEVICE_RELEASE_OUTCOME_ACTION,
       entityId: studentId,
-      metadata: { path: ['deviceReference'], equals: reference },
+      metadata: { path: '$.deviceReference', equals: reference },
     },
     orderBy: { createdAt: 'desc' },
     select: { id: true },
@@ -269,9 +265,9 @@ async function hasTerminalOutcome(
       action: { in: [DEVICE_RELEASE_OUTCOME_ACTION, DEVICE_RELEASE_REFUSED_ACTION] },
       entityId: studentId,
       OR: [
-        { metadata: { path: ['intentId'], equals: intentId } },
+        { metadata: { path: '$.intentId', equals: intentId } },
         {
-          metadata: { path: ['deviceReference'], equals: reference },
+          metadata: { path: '$.deviceReference', equals: reference },
           createdAt: { gte: since },
         },
       ],
@@ -376,40 +372,43 @@ const SWEEP_MAX_RECONCILE = 10;
 type IntentRow = ReleaseIntent & { metadata: unknown };
 
 async function pendingIntentBatch(prisma: Db, studentId: string, present: string[] = []): Promise<IntentRow[]> {
-  if (typeof prisma.$queryRaw !== 'function') {
-    // Synthetic unit doubles only; real Prisma always filters in PostgreSQL.
-    const rows = await prisma.auditEvent.findMany({
+  const [intents, outcomes] = await Promise.all([
+    prisma.auditEvent.findMany({
       where: { action: DEVICE_RELEASE_INTENT_ACTION, entityId: studentId },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
       select: { id: true, actorUserId: true, createdAt: true, metadata: true },
-    });
-    return rows.filter(row => !present.includes(intentReferenceOf(row) ?? ''));
+    }),
+    prisma.auditEvent.findMany({
+      where: {
+        action: { in: [DEVICE_RELEASE_OUTCOME_ACTION, DEVICE_RELEASE_REFUSED_ACTION] },
+        entityId: studentId,
+      },
+      select: { id: true, createdAt: true, metadata: true },
+    }),
+  ]);
+  const presentSet = new Set(present);
+  const latestByRef = new Map<string, IntentRow>();
+  for (const row of intents) {
+    const ref = intentReferenceOf(row);
+    if (!ref || presentSet.has(ref)) continue;
+    latestByRef.set(ref, row);
   }
-  return prisma.$queryRaw<IntentRow[]>`
-    SELECT i.id, i."actorUserId", i."createdAt", i.metadata
-    FROM "AuditEvent" i
-    WHERE i.action = ${DEVICE_RELEASE_INTENT_ACTION} AND i."entityId" = ${studentId}
-      AND i.metadata->>'deviceReference' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-      AND NOT (i.metadata->>'deviceReference' = ANY(${present}::text[]))
-      AND NOT EXISTS (
-        SELECT 1 FROM "AuditEvent" o
-        WHERE o."entityId" = i."entityId"
-          AND o.action IN (${DEVICE_RELEASE_OUTCOME_ACTION}, ${DEVICE_RELEASE_REFUSED_ACTION})
-          AND (o.metadata->>'intentId' = i.id OR (
-            o.metadata->>'intentId' IS NULL
-            AND o.metadata->>'deviceReference' = i.metadata->>'deviceReference'
-            AND o."createdAt" >= i."createdAt"
-          ))
-      )
-      AND NOT EXISTS (
-        SELECT 1 FROM "AuditEvent" newer
-        WHERE newer."entityId" = i."entityId" AND newer.action = ${DEVICE_RELEASE_INTENT_ACTION}
-          AND newer.metadata->>'deviceReference' = i.metadata->>'deviceReference'
-          AND (newer."createdAt", newer.id) > (i."createdAt", i.id)
-      )
-    ORDER BY i."createdAt", i.id
-    LIMIT ${SWEEP_MAX_RECONCILE + 1}
-  `;
+  const pending: IntentRow[] = [];
+  for (const row of latestByRef.values()) {
+    const ref = intentReferenceOf(row)!;
+    const resolved = outcomes.some((o) => {
+      const meta = (typeof o.metadata === 'object' && o.metadata !== null ? o.metadata : {}) as Record<string, unknown>;
+      if (meta['intentId'] === row.id) return true;
+      return (
+        meta['intentId'] === undefined &&
+        meta['deviceReference'] === ref &&
+        o.createdAt.getTime() >= row.createdAt.getTime()
+      );
+    });
+    if (!resolved) pending.push(row);
+  }
+  pending.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id));
+  return pending.slice(0, SWEEP_MAX_RECONCILE + 1);
 }
 
 /**

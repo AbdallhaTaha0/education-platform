@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
-import type Redis from 'ioredis';
+import type { PlatformCache as Redis } from '../../infra/cache.js';
 import { getLogger } from '../../logger.js';
 import { ensureRedis } from '../../infra/redis.js';
 import { ApiError, ok } from './errors.js';

@@ -1,4 +1,5 @@
 import type { StudentProfile } from '@prisma/client';
+import { withEntityLocks } from '../../infra/locks-do.js';
 import type { IdentityContext } from './service.js';
 import { ApiError } from './errors.js';
 import { mapUniqueViolation } from './store.js';
@@ -39,9 +40,9 @@ export async function editStudentProfile(ctx: IdentityContext, userId: string, a
   const fields = Object.keys(details).concat(protectedId ? ['nationalId'] : []);
   if (!fields.length) throw new ApiError(400, 'VALIDATION_ERROR', 'No changes supplied.');
   try {
-    return await ctx.prisma.$transaction(async tx => {
-      await tx.$queryRaw`SELECT id FROM "User" WHERE id = ${userId} FOR UPDATE`;
-      const user = await tx.user.findUnique({ where: { id: userId }, select: { role: true } });
+    return await withEntityLocks([`user:${userId}`], async () =>
+      ctx.prisma.$transaction(async tx => {
+        const user = await tx.user.findUnique({ where: { id: userId }, select: { role: true } });
       if (user?.role !== 'STUDENT') throw new ApiError(404, 'NOT_FOUND', 'Student not found.');
       const now = new Date(ctx.clock ? ctx.clock() : Date.now());
       const session = await tx.authSession.findUnique({ where: { id: sessionId }, include: { user: { select: { role: true } } } });
@@ -56,7 +57,7 @@ export async function editStudentProfile(ctx: IdentityContext, userId: string, a
       const profile = await tx.studentProfile.upsert({ where: { userId }, create: { userId, ...details, ...protectedId, version: 1 }, update: { ...details, ...protectedId, version: { increment: 1 } }, select: selection });
       await tx.auditEvent.create({ data: { actorUserId: actorId, action: admin ? 'STUDENT_PROFILE_ADMIN_UPDATED' : 'STUDENT_PROFILE_UPDATED', entityType: 'User', entityId: userId, metadata: { fields } } });
       return safeProfile(profile);
-    });
+    }));
   } catch (err) {
     if (err instanceof ApiError) throw err;
     const unique = mapUniqueViolation(err); if (unique) throw unique;

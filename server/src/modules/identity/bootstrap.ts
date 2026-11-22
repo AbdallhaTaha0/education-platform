@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { withEntityLocks } from '../../infra/locks-do.js';
 import { hashPassword, type Argon2Params } from './password.js';
 import {
   normalizeDisplayName,
@@ -35,11 +36,11 @@ export async function bootstrapReleaseAdmins(
     const { password, ...identity } = input;
     records.push({ ...identity, passwordHash: await hashPassword(password, deps.argon2), role: 'ADMIN' as const });
   }
-  await deps.prisma.$transaction(async (tx) => {
-    // Share the first-admin lock: concurrent ordinary/batch bootstrap cannot both win.
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${FIRST_ADMIN_LOCK})`;
-    if (await tx.user.count() !== 0) throw new Error('Fresh release database required');
-    for (const record of records) await tx.user.create({ data: record });
+  await withEntityLocks(['bootstrap:global'], async () => {
+    await deps.prisma.$transaction(async (tx) => {
+      if (await tx.user.count() !== 0) throw new Error('Fresh release database required');
+      for (const record of records) await tx.user.create({ data: record });
+    });
   });
 }
 
@@ -70,15 +71,16 @@ export async function bootstrapFirstAdmin(
   const password = validatePassword(input.password);
   const passwordHash = await hashPassword(password, deps.argon2);
 
-  return deps.prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${FIRST_ADMIN_LOCK})`;
-    const existing = await tx.user.count({ where: { role: 'ADMIN' } });
-    if (existing > 0) {
-      throw new ApiError(409, 'ADMIN_EXISTS', 'An admin already exists.');
-    }
-    const created = await tx.user.create({
-      data: { email, phone, displayName, passwordHash, role: 'ADMIN' },
-    });
-    return toSafeUser(created);
-  });
+  return withEntityLocks(['bootstrap:global'], async () =>
+    deps.prisma.$transaction(async (tx) => {
+      const existing = await tx.user.count({ where: { role: 'ADMIN' } });
+      if (existing > 0) {
+        throw new ApiError(409, 'ADMIN_EXISTS', 'An admin already exists.');
+      }
+      const created = await tx.user.create({
+        data: { email, phone, displayName, passwordHash, role: 'ADMIN' },
+      });
+      return toSafeUser(created);
+    }),
+  );
 }

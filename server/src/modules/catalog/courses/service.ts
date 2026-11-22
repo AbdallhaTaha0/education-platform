@@ -16,6 +16,8 @@ const CREATE_FIELDS = new Set([
   'descriptionEn',
   'academic',
   'coverImage',
+  'subjectId',
+  'teacherId',
 ]);
 const UPDATE_FIELDS = new Set([
   'slug',
@@ -25,6 +27,8 @@ const UPDATE_FIELDS = new Set([
   'descriptionEn',
   'academic',
   'coverImage',
+  'subjectId',
+  'teacherId',
 ]);
 
 function toPublicCourse(row: {
@@ -41,6 +45,15 @@ function toPublicCourse(row: {
   term: number | null;
   courseKind: string | null;
   teachingMonth: string | null;
+  subject?: { id: string; slug: string; nameAr: string; nameEn: string } | null;
+  teacher?: {
+    id: string;
+    slug: string;
+    nameAr: string;
+    nameEn: string;
+    bioAr: string | null;
+    bioEn: string | null;
+  } | null;
   plans: {
     id: string;
     currentPricePiastres: number;
@@ -59,6 +72,24 @@ function toPublicCourse(row: {
     descriptionEn: row.descriptionEn,
     coverUrl: row.coverId ? `/catalog/courses/${row.id}/cover?v=${row.coverId}` : null,
     publishedAt: row.publishedAt?.toISOString() ?? null,
+    subject: row.subject
+      ? {
+          id: row.subject.id,
+          slug: row.subject.slug,
+          nameAr: row.subject.nameAr,
+          nameEn: row.subject.nameEn,
+        }
+      : null,
+    teacher: row.teacher
+      ? {
+          id: row.teacher.id,
+          slug: row.teacher.slug,
+          nameAr: row.teacher.nameAr,
+          nameEn: row.teacher.nameEn,
+          bioAr: row.teacher.bioAr,
+          bioEn: row.teacher.bioEn,
+        }
+      : null,
     academic: {
       grade: row.grade,
       academicYear: row.academicYear,
@@ -83,15 +114,19 @@ export async function listPublishedCourses(
 ): Promise<PublicCourse[]> {
   rejectUnknownFields(
     filters,
-    new Set(['grade', 'academicYear', 'term', 'courseKind', 'teachingMonth']),
+    new Set([
+      'grade',
+      'academicYear',
+      'term',
+      'courseKind',
+      'teachingMonth',
+      'subjectId',
+      'teacherId',
+      'subjectSlug',
+      'teacherSlug',
+    ]),
   );
-  const where: {
-    grade?: string;
-    academicYear?: string;
-    term?: number;
-    courseKind?: string;
-    teachingMonth?: string;
-  } = {};
+  const where: Record<string, unknown> = {};
   for (const field of ['grade', 'academicYear', 'courseKind', 'teachingMonth'] as const) {
     if (filters[field] !== undefined) {
       const value = filters[field];
@@ -113,10 +148,22 @@ export async function listPublishedCourses(
       throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid term.');
     where.term = Number(filters.term);
   }
+  if (filters.subjectId !== undefined) {
+    where.subjectId = assertUuid(filters.subjectId, 'subjectId');
+  }
+  if (filters.teacherId !== undefined) {
+    where.teacherId = assertUuid(filters.teacherId, 'teacherId');
+  }
+  if (filters.subjectSlug !== undefined) {
+    where.subject = { slug: validateSlug(filters.subjectSlug), active: true };
+  }
+  if (filters.teacherSlug !== undefined) {
+    where.teacher = { slug: validateSlug(filters.teacherSlug), active: true };
+  }
   const rows = await prisma.course.findMany({
     where: { status: 'PUBLISHED', deletionRequestedAt: null, ...where },
     orderBy: { createdAt: 'desc' },
-    include: { plans: true },
+    include: { plans: true, subject: true, teacher: true },
   });
   return rows.map(toPublicCourse);
 }
@@ -126,7 +173,10 @@ export async function getPublishedCourseBySlug(
   slug: string,
 ): Promise<PublicCourse> {
   const clean = slug.trim().toLowerCase();
-  const row = await prisma.course.findUnique({ where: { slug: clean }, include: { plans: true } });
+  const row = await prisma.course.findUnique({
+    where: { slug: clean },
+    include: { plans: true, subject: true, teacher: true },
+  });
   if (row === null || row.status !== 'PUBLISHED' || row.deletionRequestedAt !== null) {
     throw new ApiError(404, 'NOT_FOUND', 'Course not found.');
   }
@@ -137,7 +187,7 @@ export async function listCoursesAdmin(prisma: PrismaClient) {
   return prisma.course.findMany({
     where: { revisionOwnerId: null },
     orderBy: { createdAt: 'desc' },
-    include: { plans: true, _count: { select: { sections: true } } },
+    include: { plans: true, subject: true, teacher: true, _count: { select: { sections: true } } },
   });
 }
 
@@ -196,6 +246,30 @@ export function ensureLessonAdditionAllowed(course: {
   }
 }
 
+async function resolveSubjectId(
+  prisma: PrismaClient | import('../types.js').TxClient,
+  raw: unknown,
+): Promise<string | null> {
+  if (raw === null) return null;
+  const id = assertUuid(raw, 'subjectId');
+  const subject = await prisma.subject.findUnique({ where: { id }, select: { id: true, active: true } });
+  if (!subject) throw new ApiError(404, 'SUBJECT_NOT_FOUND', 'Subject not found.');
+  if (!subject.active) throw new ApiError(409, 'SUBJECT_INACTIVE', 'Subject is inactive.');
+  return subject.id;
+}
+
+async function resolveTeacherId(
+  prisma: PrismaClient | import('../types.js').TxClient,
+  raw: unknown,
+): Promise<string | null> {
+  if (raw === null) return null;
+  const id = assertUuid(raw, 'teacherId');
+  const teacher = await prisma.teacher.findUnique({ where: { id }, select: { id: true, active: true } });
+  if (!teacher) throw new ApiError(404, 'TEACHER_NOT_FOUND', 'Teacher not found.');
+  if (!teacher.active) throw new ApiError(409, 'TEACHER_INACTIVE', 'Teacher is inactive.');
+  return teacher.id;
+}
+
 export async function createCourse(prisma: PrismaClient, actorId: string, raw: unknown) {
   rejectUnknownFields(raw, CREATE_FIELDS);
   const body = raw as Record<string, unknown>;
@@ -204,6 +278,10 @@ export async function createCourse(prisma: PrismaClient, actorId: string, raw: u
   const titleEn = nonBlankString(body['titleEn'], 'titleEn', 300);
   const descriptionAr = nonBlankString(body['descriptionAr'], 'descriptionAr', 5000);
   const descriptionEn = nonBlankString(body['descriptionEn'], 'descriptionEn', 5000);
+  const subjectId =
+    body['subjectId'] !== undefined ? await resolveSubjectId(prisma, body['subjectId']) : undefined;
+  const teacherId =
+    body['teacherId'] !== undefined ? await resolveTeacherId(prisma, body['teacherId']) : undefined;
   if ((await prisma.course.findUnique({ where: { slug } })) !== null) {
     throw new ApiError(409, 'SLUG_TAKEN', 'Slug is already taken.');
   }
@@ -215,9 +293,12 @@ export async function createCourse(prisma: PrismaClient, actorId: string, raw: u
       descriptionAr,
       descriptionEn,
       status: 'DRAFT',
+      ...(subjectId ? { subject: { connect: { id: subjectId } } } : {}),
+      ...(teacherId ? { teacher: { connect: { id: teacherId } } } : {}),
       ...(body.coverImage === undefined ? {} : { cover: { create: validateCourseCover(body.coverImage) } }),
       ...(body.academic === undefined ? {} : academicPlacement(body.academic)),
     },
+    include: { subject: true, teacher: true },
   });
   await audit(prisma, {
     actorUserId: actorId,
@@ -244,6 +325,8 @@ export async function updateCourse(
     titleEn?: string;
     descriptionAr?: string;
     descriptionEn?: string;
+    subjectId?: string | null;
+    teacherId?: string | null;
     cover?: { create: ReturnType<typeof validateCourseCover> };
   } = {};
   if (body.academic !== undefined) Object.assign(data, academicPlacement(body.academic));
@@ -255,12 +338,24 @@ export async function updateCourse(
     data.descriptionAr = nonBlankString(body['descriptionAr'], 'descriptionAr', 5000);
   if (body['descriptionEn'] !== undefined)
     data.descriptionEn = nonBlankString(body['descriptionEn'], 'descriptionEn', 5000);
+  if (body['subjectId'] !== undefined) {
+    data.subjectId = body['subjectId'] === null ? null : assertUuid(body['subjectId'], 'subjectId');
+  }
+  if (body['teacherId'] !== undefined) {
+    data.teacherId = body['teacherId'] === null ? null : assertUuid(body['teacherId'], 'teacherId');
+  }
   if (Object.keys(data).length === 0)
     throw new ApiError(400, 'VALIDATION_ERROR', 'No updatable fields.');
   return withCourseLock(prisma, courseId, async (tx) => {
     const course = await tx.course.findUnique({ where: { id: courseId } });
     if (course === null) throw new ApiError(404, 'NOT_FOUND', 'Course not found.');
     ensureMutable(course, 'Course update');
+    if (body['subjectId'] !== undefined) {
+      data.subjectId = await resolveSubjectId(tx, body['subjectId']);
+    }
+    if (body['teacherId'] !== undefined) {
+      data.teacherId = await resolveTeacherId(tx, body['teacherId']);
+    }
     if (body.academic !== undefined) {
       const effective = { ...course, ...data };
       const plans = await tx.subscriptionPlan.findMany({ where: { courseId } });
@@ -283,7 +378,21 @@ export async function updateCourse(
         const taken = await tx.course.findUnique({ where: { slug: data.slug } });
         if (taken && taken.id !== course.revisionOwnerId) throw new ApiError(409, 'SLUG_TAKEN', 'Slug is already taken.');
       }
-      const updated = await tx.course.update({ where: { id: courseId }, data: course.revisionOwnerId && data.slug ? { ...data, slug: course.slug, requestedSlug: data.slug } : data });
+      const { subjectId: nextSubjectId, teacherId: nextTeacherId, ...restData } = data;
+      const updatePayload = {
+        ...restData,
+        ...(nextSubjectId !== undefined
+          ? { subject: nextSubjectId === null ? { disconnect: true } : { connect: { id: nextSubjectId } } }
+          : {}),
+        ...(nextTeacherId !== undefined
+          ? { teacher: nextTeacherId === null ? { disconnect: true } : { connect: { id: nextTeacherId } } }
+          : {}),
+      };
+      const updated = await tx.course.update({
+        where: { id: courseId },
+        data: course.revisionOwnerId && restData.slug ? { ...updatePayload, slug: course.slug, requestedSlug: restData.slug } : updatePayload,
+        include: { subject: true, teacher: true },
+      });
       await audit(tx, {
         actorUserId: actorId,
         action: 'COURSE_UPDATED',

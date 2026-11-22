@@ -207,6 +207,8 @@ export function AdminDetailPage({ courseId }: { courseId: string }): JSX.Element
                         titleEn: course.titleEn,
                         descriptionAr: course.descriptionAr,
                         descriptionEn: course.descriptionEn,
+                        subjectId: course.subjectId ?? null,
+                        teacherId: course.teacherId ?? null,
                         coverPath: course.coverId ? `/admin/catalog/courses/${course.id}/cover?v=${course.coverId}` : null,
                         academic: course.grade
                           ? {

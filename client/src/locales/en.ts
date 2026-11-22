@@ -406,6 +406,22 @@ export const en = {
   playerDeviceDetail: 'The device limit was reached. Contact support to free a slot.',
   playerRevokedDetail: 'This device has been revoked. Contact support.',
   playerStreamDetail: 'There is a concurrent stream. Use the session recovery below.',
+  subject: 'Subject',
+  allSubjects: 'All subjects',
+  manageSubjects: 'Manage subjects',
+  addSubject: 'Add subject',
+  subjectRequiredReason: 'Select a subject first to continue.',
+  subjectInactiveReason: 'The selected subject is inactive. Select an active subject first.',
+  subjectInUseReason: 'Cannot delete a subject assigned to courses. Deactivate it instead.',
+  teacher: 'Teacher',
+  allTeachers: 'All teachers',
+  manageTeachers: 'Manage teachers',
+  addTeacher: 'Add teacher',
+  teacherBio: 'Teacher bio',
+  teacherRequiredReason: 'Select a teacher first to continue.',
+  teacherInactiveReason: 'The selected teacher is inactive. Select an active teacher first.',
+  teacherInUseReason: 'Cannot delete a teacher assigned to courses. Deactivate the teacher instead.',
+  packageSameGradeSubjectTeacherReason: 'All three courses must belong to the same grade, subject, and teacher.',
 } as const;
 
 export type EnStrings = typeof en;

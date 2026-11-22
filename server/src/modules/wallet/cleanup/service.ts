@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import type { StorageClient } from '../../../infra/storage.js';
 import { audit } from '../../catalog/audit.js';
 import { PROOF_RETENTION_DAYS } from '../errors.js';
 
@@ -9,30 +10,37 @@ export interface CleanupSummary {
 
 /**
  * Idempotent, replica-safe proof-retention cleanup (D21). Clears proof
- * BYTES whose request was reviewed more than PROOF_RETENTION_DAYS ago while
+ * BYTES and R2 objects whose request was reviewed more than PROOF_RETENTION_DAYS ago while
  * preserving metadata + sanitized audit trail. Safe under concurrency: the
- * compare-and-set update only clears rows that still hold bytes.
+ * compare-and-set update only clears rows that still hold bytes or storageKey.
  */
 export async function cleanupExpiredProofs(
   prisma: PrismaClient,
   batchLimit = 100,
   actorUserId = 'system',
+  storage?: StorageClient | null,
 ): Promise<CleanupSummary> {
   const deadline = new Date(Date.now() - PROOF_RETENTION_DAYS * 86_400_000);
   const candidates = await prisma.rechargeProof.findMany({
     where: {
-      bytes: { not: null },
+      OR: [{ bytes: { not: null } }, { storageKey: { not: null } }],
       request: { status: { in: ['APPROVED', 'REJECTED'] }, reviewedAt: { lt: deadline } },
     },
-    select: { requestId: true },
+    select: { requestId: true, storageKey: true },
     take: Math.min(Math.max(batchLimit, 1), 1000),
   });
   let cleared = 0;
   for (const candidate of candidates) {
+    if (candidate.storageKey && storage) {
+      await storage.deleteObject(candidate.storageKey);
+    }
     const didClear = await prisma.$transaction(async (tx) => {
       const done = await tx.rechargeProof.updateMany({
-        where: { requestId: candidate.requestId, bytes: { not: null } },
-        data: { bytes: null, cleanedAt: new Date() },
+        where: {
+          requestId: candidate.requestId,
+          OR: [{ bytes: { not: null } }, { storageKey: { not: null } }],
+        },
+        data: { bytes: null, storageKey: null, cleanedAt: new Date() },
       });
       if (done.count === 0) return false;
       await audit(tx, {

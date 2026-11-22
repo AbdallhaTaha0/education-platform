@@ -114,7 +114,7 @@ export function AdminPackagesPage(): JSX.Element {
       const code = e instanceof ApiError ? e.code : 'VALIDATION_ERROR';
       setError(code);
       const apiField = e instanceof ApiError ? e.details?.['field'] : null;
-      const target = code === 'PACKAGE_UNAVAILABLE' || code === 'PACKAGE_GRADE_MISMATCH' ? 'courseIds'
+      const target = code === 'PACKAGE_UNAVAILABLE' || code === 'PACKAGE_GRADE_MISMATCH' || code === 'PACKAGE_SUBJECT_MISMATCH' || code === 'PACKAGE_TEACHER_MISMATCH' ? 'courseIds'
         : code === 'OFFER_EXPIRED' ? 'deadline'
         : apiField === 'pricePiastres' ? 'price'
         : apiField === 'titleAr' || apiField === 'titleEn' || apiField === 'descriptionAr' || apiField === 'descriptionEn' ? apiField
@@ -145,13 +145,18 @@ export function AdminPackagesPage(): JSX.Element {
       c.courseKind === 'MONTHLY_EXPLANATION' &&
       c.status !== 'ARCHIVED' &&
       !c.deletionRequestedAt &&
-      Boolean(c.grade && c.academicYear && c.teachingMonth),
+      Boolean(c.grade && c.academicYear && c.teachingMonth && c.subjectId && c.subject?.active && c.teacherId && c.teacher?.active),
   );
   const firstSelectedCourse = eligible.find((course) => course.id === form.courseIds[0]);
   const packageCourseOptions = (index: number) => {
     const compatible = index === 0 || !firstSelectedCourse
       ? eligible
-      : eligible.filter((course) => course.grade === firstSelectedCourse.grade);
+      : eligible.filter(
+          (course) =>
+            course.grade === firstSelectedCourse.grade &&
+            course.subjectId === firstSelectedCourse.subjectId &&
+            course.teacherId === firstSelectedCourse.teacherId,
+        );
     const options = compatible.filter(
       (course) => !form.courseIds.some((id, otherIndex) => otherIndex !== index && id === course.id),
     );
@@ -160,9 +165,24 @@ export function AdminPackagesPage(): JSX.Element {
       ? [current, ...options]
       : options;
   };
-  const hasThreeInSameGrade = eligible.some(
-    (course) => eligible.filter((candidate) => candidate.grade === course.grade).length >= 3,
+  const hasThreeInSameGroup = eligible.some(
+    (course) =>
+      eligible.filter(
+        (candidate) =>
+          candidate.grade === course.grade &&
+          candidate.subjectId === course.subjectId &&
+          candidate.teacherId === course.teacherId,
+      ).length >= 3,
   );
+  const selectedMembers = form.courseIds
+    .map((id) => eligible.find((c) => c.id === id))
+    .filter((c): c is AdminCourseSummary => Boolean(c));
+  const membersHomogeneous =
+    selectedMembers.length === 3 &&
+    new Set(selectedMembers.map((c) => c.id)).size === 3 &&
+    new Set(selectedMembers.map((c) => c.grade)).size === 1 &&
+    new Set(selectedMembers.map((c) => c.subjectId)).size === 1 &&
+    new Set(selectedMembers.map((c) => c.teacherId)).size === 1;
   return (
     <main id="main">
       <Container>
@@ -190,10 +210,8 @@ export function AdminPackagesPage(): JSX.Element {
                     ? ar
                       ? 'الباقة اتغيّرت. أعد التحميل ثم اخترها من جديد.'
                       : 'The package changed. Reload and select it again.'
-                    : error === 'PACKAGE_GRADE_MISMATCH'
-                      ? ar
-                        ? 'اختَر ثلاثة كورسات من نفس الصف الدراسي.'
-                        : 'Choose three courses from the same grade.'
+                    : error === 'PACKAGE_GRADE_MISMATCH' || error === 'PACKAGE_SUBJECT_MISMATCH' || error === 'PACKAGE_TEACHER_MISMATCH'
+                      ? t.packageSameGradeSubjectTeacherReason
                     : error === 'PACKAGE_UNAVAILABLE'
                       ? ar ? 'راجع الكورسات الثلاثة: يجب أن تكون كورسات شهرية متاحة ومصنفة للصف نفسه.' : 'Review all three courses: they must be available monthly courses in the same grade.'
                     : error === 'OFFER_EXPIRED'
@@ -207,9 +225,9 @@ export function AdminPackagesPage(): JSX.Element {
                 {error ? t.retryLabel : ar?'تحديث الباقات':'Refresh packages'}
               </Button>
               {loading ? <Loading text={t.loading} /> : null}
-              {!loading && !hasThreeInSameGrade ? <Notice kind="info">{ar?'تحتاج الباقة إلى ٣ كورسات شرح شهرية مختلفة ومصنفة لنفس الصف الدراسي. صنّف الكورسات من إدارة الكورسات أولًا.':'A package needs three distinct monthly courses classified for the same grade. Set their academic classification in course management first.'} <a href="#/admin/catalog" className="underline">{ar?'إدارة الكورسات':'Manage courses'}</a></Notice>:null}
+              {!loading && !hasThreeInSameGroup ? <Notice kind="info">{t.packageSameGradeSubjectTeacherReason} <a href="#/admin/catalog" className="underline">{ar?'إدارة الكورسات':'Manage courses'}</a></Notice>:null}
               <FormActions>
-                <Button disabled={busy || !hasThreeInSameGrade} disabledReason={busy ? undefined : { ar: "تحتاج الباقة إلى ٣ كورسات مؤهلة من نفس الصف الدراسي.", en: "A package needs 3 eligible courses from the same grade." }} onClick={()=>{if (!confirmDiscard()) return; setEditing(null); baseline.current = blank; setForm(blank); setFieldError(null); setError(''); setShowForm(true);}}>{ar?'إنشاء باقة':'Create package'}</Button>
+                <Button disabled={busy || !hasThreeInSameGroup} disabledReason={busy ? undefined : { ar: t.packageSameGradeSubjectTeacherReason, en: 'All three courses must belong to the same grade, subject, and teacher.' }} onClick={()=>{if (!confirmDiscard()) return; setEditing(null); baseline.current = blank; setForm(blank); setFieldError(null); setError(''); setShowForm(true);}}>{ar?'إنشاء باقة':'Create package'}</Button>
               </FormActions>
               {showForm ? <Card className="mt-6">
                 <h2 className="text-xl font-bold">
@@ -308,7 +326,11 @@ export function AdminPackagesPage(): JSX.Element {
                                 if (i !== 0 || j === 0 || !e.target.value) return id;
                                 const selected = eligible.find((course) => course.id === id);
                                 const nextFirst = eligible.find((course) => course.id === e.target.value);
-                                return selected?.grade === nextFirst?.grade ? id : '';
+                                return selected?.grade === nextFirst?.grade &&
+                                  selected?.subjectId === nextFirst?.subjectId &&
+                                  selected?.teacherId === nextFirst?.teacherId
+                                  ? id
+                                  : '';
                               }),
                             })
                           }
@@ -370,7 +392,18 @@ export function AdminPackagesPage(): JSX.Element {
                         : 'Unpublished courses are allowed. Students see a notice and cannot watch until publication. The deadline stays the same.'}
                     </Notice>
                     <FormActions>
-                      <Button type="submit" disabled={busy}>
+                      <Button
+                        type="submit"
+                        disabled={busy || !membersHomogeneous}
+                        disabledReason={
+                          busy || membersHomogeneous
+                            ? undefined
+                            : {
+                                ar: t.packageSameGradeSubjectTeacherReason,
+                                en: 'All three courses must belong to the same grade, subject, and teacher.',
+                              }
+                        }
+                      >
                         {busy ? t.loading : ar ? 'حفظ الباقة' : 'Save package'}
                       </Button>
                       <Button

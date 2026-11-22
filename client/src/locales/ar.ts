@@ -401,6 +401,22 @@ export const ar = {
   playerDeviceDetail: 'تم الوصول لحد الأجهزة. تواصل مع الدعم لتحرير خانة.',
   playerRevokedDetail: 'تم إيقاف هذا الجهاز. تواصل مع الدعم.',
   playerStreamDetail: 'يوجد تشغيل متزامن. استخدم استعادة الجلسة أدناه.',
+  subject: 'المادة',
+  allSubjects: 'كل المواد',
+  manageSubjects: 'إدارة المواد',
+  addSubject: 'إضافة مادة',
+  subjectRequiredReason: 'اختر المادة أولاً للمتابعة.',
+  subjectInactiveReason: 'المادة المختارة غير نشطة. اختر مادة نشطة أولاً.',
+  subjectInUseReason: 'لا يمكن حذف مادة مرتبطة بكورسات. يمكنك تعطيلها بدلاً من ذلك.',
+  teacher: 'المدرس',
+  allTeachers: 'كل المدرسين',
+  manageTeachers: 'إدارة المدرسين',
+  addTeacher: 'إضافة مدرس',
+  teacherBio: 'نبذة عن المدرس',
+  teacherRequiredReason: 'اختر المدرس أولاً للمتابعة.',
+  teacherInactiveReason: 'المدرس المختار غير نشط. اختر مدرساً نشطاً أولاً.',
+  teacherInUseReason: 'لا يمكن حذف مدرس مرتبط بكورسات. يمكنك تعطيله بدلاً من ذلك.',
+  packageSameGradeSubjectTeacherReason: 'يجب أن تنتمي الكورسات الثلاثة لنفس الصف ونفس المادة ونفس المدرس.',
 } as const;
 
 export type ArStrings = typeof ar;

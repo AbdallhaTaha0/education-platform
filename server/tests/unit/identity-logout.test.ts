@@ -4,7 +4,7 @@
  * while a credential-less logout performs no database work at all.
  */
 import type { PrismaClient } from '@prisma/client';
-import type Redis from 'ioredis';
+import type { PlatformCache as Redis } from '../../src/infra/cache.js';
 import { describe, expect, it } from 'vitest';
 import { logout, type IdentityContext } from '../../src/modules/identity/service.js';
 

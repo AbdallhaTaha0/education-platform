@@ -8,7 +8,7 @@
 import request from 'supertest';
 import type { Express } from 'express';
 import { PrismaClient } from '@prisma/client';
-import Redis from 'ioredis';
+import type { PlatformCache as Redis } from '../../src/infra/cache.js';
 import { createApp } from '../../src/app.js';
 import { loadConfig, type ServerConfig } from '../../src/config.js';
 import { createPostgresPool, closePostgres } from '../../src/infra/postgres.js';

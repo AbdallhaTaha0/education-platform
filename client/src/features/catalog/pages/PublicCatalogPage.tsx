@@ -1,5 +1,5 @@
 import { publicHref } from '../../../seo/paths';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLang } from '../../../i18n';
 import { PaginatedCollection } from '../../../components/ui/Pagination';
 import { PackageCards } from '../../academic/PackageCards';
@@ -10,6 +10,8 @@ import { Button } from '../../../components/ui/Button';
 import { Card, Container } from '../../../components/ui/Card';
 import { EmptyState, Loading, Notice } from '../../../components/ui/Notice';
 import { usePublicCourses } from '../hooks/usePublicCourses';
+import { fetchPublicSubjects, fetchPublicTeachers } from '../api/client';
+import type { PublicSubject, PublicTeacher } from '../types/models';
 import { PriceDisplay } from '../components/PriceDisplay';
 import { CourseCover } from '../components/CourseCover';
 
@@ -25,16 +27,41 @@ export function PublicCatalogSections({
 }): JSX.Element {
   const { t, lang } = useLang();
   const { loading, courses, error, reload } = usePublicCourses();
+  const [subjects, setSubjects] = useState<PublicSubject[]>([]);
+  const [teachers, setTeachers] = useState<PublicTeacher[]>([]);
   const [grade, setGrade] = useState('');
+  const [subjectId, setSubjectId] = useState('');
+  const [teacherId, setTeacherId] = useState('');
   const [term, setTerm] = useState('');
   const [year, setYear] = useState('');
   const [kind, setKind] = useState('');
   const [query, setQuery] = useState('');
+  useEffect(() => {
+    let live = true;
+    void Promise.all([fetchPublicSubjects(), fetchPublicTeachers()])
+      .then(([s, te]) => {
+        if (live) {
+          setSubjects(s);
+          setTeachers(te);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
   const filtered = compact
-    ? courses.filter((course) => !compactGrade || course.academic?.grade === compactGrade)
+    ? courses.filter(
+        (course) =>
+          (!compactGrade || course.academic?.grade === compactGrade) &&
+          (!subjectId || course.subject?.id === subjectId) &&
+          (!teacherId || course.teacher?.id === teacherId),
+      )
     : courses.filter(
         (c) =>
           (!grade || c.academic?.grade === grade) &&
+          (!subjectId || c.subject?.id === subjectId) &&
+          (!teacherId || c.teacher?.id === teacherId) &&
           (!term || c.academic?.term === Number(term)) &&
           (!year || c.academic?.academicYear === year) &&
           (!kind || c.academic?.courseKind === kind) &&
@@ -53,7 +80,7 @@ export function PublicCatalogSections({
             </p>
             <h1 className="page-title">{t.catalogTitle}</h1>
             <p className="mt-4 max-w-[68ch] text-lg text-muted">{t.catalogBody}</p>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Field id="catalog-grade" label={lang === 'ar' ? 'صفّك الدراسي' : 'Your grade'}>
                 <select
                   id="catalog-grade"
@@ -65,6 +92,36 @@ export function PublicCatalogSections({
                   {['FIRST_SECONDARY', 'SECOND_SECONDARY'].map((g) => (
                     <option key={g} value={g}>
                       {gradeLabel(g, lang)}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field id="catalog-subject" label={t.subject}>
+                <select
+                  id="catalog-subject"
+                  className={textInputClassName(false)}
+                  value={subjectId}
+                  onChange={(e) => setSubjectId(e.target.value)}
+                >
+                  <option value="">{t.allSubjects}</option>
+                  {subjects.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {lang === 'ar' ? s.nameAr : s.nameEn}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field id="catalog-teacher" label={t.teacher}>
+                <select
+                  id="catalog-teacher"
+                  className={textInputClassName(false)}
+                  value={teacherId}
+                  onChange={(e) => setTeacherId(e.target.value)}
+                >
+                  <option value="">{t.allTeachers}</option>
+                  {teachers.map((te) => (
+                    <option key={te.id} value={te.id}>
+                      {lang === 'ar' ? te.nameAr : te.nameEn}
                     </option>
                   ))}
                 </select>
@@ -163,9 +220,43 @@ export function PublicCatalogSections({
               </a>
             ) : null}
           </div>
-          {compact && onCompactGradeChange ? <div className="mt-5 flex flex-wrap gap-2" role="group" aria-label={lang === 'ar' ? 'تصفية الدورات حسب الصف' : 'Filter courses by grade'}>{['', 'FIRST_SECONDARY', 'SECOND_SECONDARY'].map(value => <button key={value} className="min-h-[44px] rounded-[10px] border border-border-strong bg-surface px-4 py-2 text-sm font-bold hover:shadow-[inset_0_0_0_1px_var(--color-border-strong)] aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-ink" type="button" aria-pressed={compactGrade === value} onClick={() => onCompactGradeChange(value)}>{value ? gradeLabel(value, lang) : (lang === 'ar' ? 'كل الدورات' : 'All courses')}</button>)}</div> : null}
+          {compact && onCompactGradeChange ? (
+            <div className="mt-5 space-y-3">
+              <div className="flex flex-wrap gap-2" role="group" aria-label={lang === 'ar' ? 'تصفية الدورات حسب الصف' : 'Filter courses by grade'}>
+                {['', 'FIRST_SECONDARY', 'SECOND_SECONDARY'].map(value => (
+                  <button key={value} className="min-h-[44px] rounded-[10px] border border-border-strong bg-surface px-4 py-2 text-sm font-bold hover:shadow-[inset_0_0_0_1px_var(--color-border-strong)] aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-ink" type="button" aria-pressed={compactGrade === value} onClick={() => onCompactGradeChange(value)}>
+                    {value ? gradeLabel(value, lang) : (lang === 'ar' ? 'كل الدورات' : 'All courses')}
+                  </button>
+                ))}
+              </div>
+              {subjects.length > 0 ? (
+                <div className="flex flex-wrap gap-2" role="group" aria-label={t.subject}>
+                  <button type="button" aria-pressed={subjectId === ''} onClick={() => setSubjectId('')} className="min-h-[40px] rounded-[10px] border border-border-strong bg-surface px-3.5 py-1.5 text-sm font-bold aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-ink">
+                    {t.allSubjects}
+                  </button>
+                  {subjects.map((s) => (
+                    <button key={s.id} type="button" aria-pressed={subjectId === s.id} onClick={() => setSubjectId(s.id)} className="min-h-[40px] rounded-[10px] border border-border-strong bg-surface px-3.5 py-1.5 text-sm font-bold aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-ink">
+                      {lang === 'ar' ? s.nameAr : s.nameEn}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              {teachers.length > 0 ? (
+                <div className="flex flex-wrap gap-2" role="group" aria-label={t.teacher}>
+                  <button type="button" aria-pressed={teacherId === ''} onClick={() => setTeacherId('')} className="min-h-[40px] rounded-[10px] border border-border-strong bg-surface px-3.5 py-1.5 text-sm font-bold aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-ink">
+                    {t.allTeachers}
+                  </button>
+                  {teachers.map((te) => (
+                    <button key={te.id} type="button" aria-pressed={teacherId === te.id} onClick={() => setTeacherId(te.id)} className="min-h-[40px] rounded-[10px] border border-border-strong bg-surface px-3.5 py-1.5 text-sm font-bold aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-ink">
+                      {lang === 'ar' ? te.nameAr : te.nameEn}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           {loading ? <Loading text={t.catalogLoading} /> : null}
-          {!compact && !loading ? <div className="my-4 flex flex-wrap items-center gap-3"><p role="status">{lang==='ar'?`${filtered.length} من ${courses.length} كورس`:`${filtered.length} of ${courses.length} courses`}</p><Button variant="secondary" onClick={()=>{setQuery('');setGrade('');setTerm('');setYear('');setKind('');}}>{lang==='ar'?'مسح البحث والتصفية':'Clear search and filters'}</Button></div>:null}
+          {!compact && !loading ? <div className="my-4 flex flex-wrap items-center gap-3"><p role="status">{lang==='ar'?`${filtered.length} من ${courses.length} كورس`:`${filtered.length} of ${courses.length} courses`}</p><Button variant="secondary" onClick={()=>{setQuery('');setGrade('');setSubjectId('');setTeacherId('');setTerm('');setYear('');setKind('');}}>{lang==='ar'?'مسح البحث والتصفية':'Clear search and filters'}</Button></div>:null}
           {error !== null ? (
             <div>
               <Notice kind="error">{localizeCode(t, error)}</Notice>
@@ -177,12 +268,18 @@ export function PublicCatalogSections({
           {!loading && error === null && filtered.length === 0 ? (
             <EmptyState text={compact && compactGrade ? (lang === 'ar' ? 'لا توجد دورات متاحة لهذا الصف حاليًا. يمكنك عرض كل الدورات.' : 'No courses are available for this grade yet. You can view all courses.') : compact?t.catalogEmpty:lang==='ar'?'لا توجد كورسات مطابقة. غيّر البحث أو امسح التصفية.':'No matching courses. Change your search or clear the filters.'} />
           ) : null}
-          <PaginatedCollection id="public-courses" resetKey={JSON.stringify([query,grade,term,year,compactGrade])} className="mt-6 grid grid-cols-3 gap-6 max-lg:grid-cols-2 max-sm:grid-cols-1">
+          <PaginatedCollection id="public-courses" resetKey={JSON.stringify([query,grade,subjectId,teacherId,term,year,compactGrade])} className="mt-6 grid grid-cols-3 gap-6 max-lg:grid-cols-2 max-sm:grid-cols-1">
             {filtered.slice(0, compact ? 3 : filtered.length).map((c) => (
               <article key={c.id}>
                 <Card className={`group relative flex h-full flex-col gap-3 overflow-hidden border-border-strong transition-[border-color,transform,box-shadow] hover:border-primary ${compact ? '!p-5 !shadow-none' : 'hover:-translate-y-1 hover:shadow-lift'}`}>
                   <CourseCover path={c.coverUrl} title={lang === 'ar' ? c.titleAr : c.titleEn} />
                   {compact ? <div className="flex flex-wrap justify-between gap-2 rounded-control bg-selected px-3.5 py-2.5 text-sm font-bold text-ink"><span>{gradeLabel(c.academic?.grade, lang)}</span>{c.academic?.term ? <span>{lang === 'ar' ? 'الترم' : 'Term'} {c.academic.term}</span> : null}</div> : null}
+                  {(c.subject || c.teacher) ? (
+                    <div className="flex flex-wrap gap-2 text-xs font-bold">
+                      {c.subject ? <span className="rounded-full border border-primary/50 bg-primary/10 px-2.5 py-0.5 text-primary-strong">{lang === 'ar' ? c.subject.nameAr : c.subject.nameEn}</span> : null}
+                      {c.teacher ? <span className="rounded-full border border-border-strong bg-elevated px-2.5 py-0.5 text-ink">{lang === 'ar' ? c.teacher.nameAr : c.teacher.nameEn}</span> : null}
+                    </div>
+                  ) : null}
                   <h3 className="m-0 text-xl font-bold">{lang === 'ar' ? c.titleAr : c.titleEn}</h3>
                   {c.academic?.grade ? (
                     <p className="text-sm font-bold text-primary-strong">
@@ -214,7 +311,7 @@ export function PublicCatalogSections({
               </article>
             ))}
           </PaginatedCollection>
-          {!compact ? <PackageCards grade={grade} term={term} year={year} query={query} /> : null}
+          {!compact ? <PackageCards grade={grade} subjectId={subjectId} teacherId={teacherId} term={term} year={year} query={query} /> : null}
         </Container>
       </section>
     </>

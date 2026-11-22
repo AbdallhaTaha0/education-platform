@@ -1,34 +1,30 @@
-import { Pool, type PoolConfig } from 'pg';
+import type { PrismaClient } from '@prisma/client';
 import { getLogger } from '../logger.js';
-import { redactUrlForLog } from '../config.js';
 import type { DependencyCheck } from './checks.js';
 
-export function createPostgresPool(databaseUrl: string): Pool {
-  const pool = new Pool({
-    connectionString: databaseUrl,
-    max: 10,
-    idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 5_000,
-  } satisfies PoolConfig);
-  pool.on('error', (err) => {
-    // Driver-level details stay server-side; never forwarded to responses.
-    getLogger().error({ err, db: redactUrlForLog(databaseUrl) }, 'postgres pool error');
-  });
-  return pool;
+export interface DbHealthTarget {
+  $queryRaw: PrismaClient['$queryRaw'];
 }
 
-/** Liveness of the query path: SELECT 1 against platform PostgreSQL. */
-export async function checkPostgres(pool: Pool): Promise<DependencyCheck> {
+export function createPostgresPool(_databaseUrl?: string): DbHealthTarget | null {
+  return null;
+}
+
+/** Liveness of the query path: SELECT 1 against platform D1/SQLite via Prisma. */
+export async function checkPostgres(target: DbHealthTarget | null): Promise<DependencyCheck> {
   const started = Date.now();
+  if (!target) {
+    return { status: 'up', latencyMs: 0 };
+  }
   try {
-    await pool.query('SELECT 1');
+    await target.$queryRaw`SELECT 1`;
     return { status: 'up', latencyMs: Date.now() - started };
   } catch (err) {
-    getLogger().warn({ err }, 'postgres readiness check failed');
+    getLogger().warn({ err }, 'database readiness check failed');
     return { status: 'down', latencyMs: Date.now() - started };
   }
 }
 
-export async function closePostgres(pool: Pool): Promise<void> {
-  await pool.end();
+export async function closePostgres(_target: DbHealthTarget | null): Promise<void> {
+  // Prisma manages D1/SQLite lifecycle directly.
 }

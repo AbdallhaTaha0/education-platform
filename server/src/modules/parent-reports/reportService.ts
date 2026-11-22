@@ -109,8 +109,8 @@ export async function courseRoster(
     JOIN "User" u ON u.id = s."studentId"
     WHERE s."courseId" = ${args.courseId}
       AND u.role = 'STUDENT'
-      AND (${q} = '' OR u."displayName" ILIKE ${'%' + escapeLike(q) + '%'})
-      AND (${cursorKey?.name ?? ''} = '' OR (u."displayName", s."studentId") > (${cursorKey?.name ?? ''}, ${cursorKey?.id ?? ''}))
+      AND (${q} = '' OR LOWER(u."displayName") LIKE LOWER(${'%' + escapeLike(q) + '%'}) ESCAPE '\\')
+      AND (${cursorKey?.name ?? ''} = '' OR (u."displayName" > ${cursorKey?.name ?? ''} OR (u."displayName" = ${cursorKey?.name ?? ''} AND s."studentId" > ${cursorKey?.id ?? ''})))
       GROUP BY s."studentId", u."displayName"
       ORDER BY u."displayName" ASC, s."studentId" ASC
       LIMIT ${args.limit + 1}`;

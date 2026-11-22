@@ -25,11 +25,12 @@
 // AuditEvent. Wallet/purchase/subscription models arrive in later milestones.
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -150,6 +151,38 @@ enum CatalogDeletionTarget {
   LESSON
 }
 
+/// Admin-managed bilingual academic subject (e.g., Programming, Mathematics, Physics).
+model Subject {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  nameAr    String
+  nameEn    String
+  position  Int      @default(1)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  courses   Course[]
+
+  @@index([active, position])
+}
+
+/// Admin-managed bilingual teacher profile (catalog attribution only; no teacher login role).
+model Teacher {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  nameAr    String
+  nameEn    String
+  bioAr     String?
+  bioEn     String?
+  position  Int      @default(1)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  courses   Course[]
+
+  @@index([active, position])
+}
+
 model Course {
   revisionOwnerId String?
   revisionOwner Course? @relation("CourseRevisions", fields: [revisionOwnerId], references: [id], onDelete: Cascade)
@@ -166,6 +199,10 @@ model Course {
   descriptionEn       String
   coverId             String?
   cover               CourseCover? @relation(fields: [coverId], references: [id], onDelete: SetNull)
+  subjectId           String?
+  subject             Subject?     @relation(fields: [subjectId], references: [id], onDelete: Restrict)
+  teacherId           String?
+  teacher             Teacher?     @relation(fields: [teacherId], references: [id], onDelete: Restrict)
   status              CourseStatus @default(DRAFT)
   priorStatus         CourseStatus?
   publishedAt         DateTime?
@@ -184,6 +221,9 @@ model Course {
   packageMembers      PackageMember[]
 
   @@index([grade, academicYear, term, courseKind])
+  @@index([grade, subjectId, teacherId, academicYear, term, courseKind])
+  @@index([subjectId, status])
+  @@index([teacherId, status])
 
   @@index([status])
   @@index([deletionRequestedAt])
@@ -599,14 +639,15 @@ model RechargeRequest {
 /// bytes is cleared (NULL) by the retention job 180 days after review;
 /// metadata + sanitized audit trail are retained. Never served to students.
 model RechargeProof {
-  requestId String   @id
-  request   RechargeRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
-  bytes     Bytes?
-  mime      String
-  size      Int
-  hash      String
-  cleanedAt DateTime?
-  createdAt DateTime @default(now())
+  requestId  String   @id
+  request    RechargeRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  bytes      Bytes?
+  storageKey String?  @unique
+  mime       String
+  size       Int
+  hash       String
+  cleanedAt  DateTime?
+  createdAt  DateTime @default(now())
 }
 
 /// M4 purchase snapshot. planId/courseId/price/duration are historical
@@ -618,6 +659,12 @@ model Purchase {
   student         User     @relation(fields: [studentId], references: [id], onDelete: Cascade)
   planId          String
   courseId        String
+  subjectId       String?
+  subjectNameAr   String?
+  subjectNameEn   String?
+  teacherId       String?
+  teacherNameAr   String?
+  teacherNameEn   String?
   pricePiastres   Int
   durationDays    Int?
   accessMode      AccessMode @default(DURATION)
@@ -709,12 +756,18 @@ model PackagePurchase {
 }
 
 model PackagePurchaseItem {
-  purchaseId String
-  purchase PackagePurchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  courseId String
-  titleAr String
-  titleEn String
-  position Int
+  purchaseId    String
+  purchase      PackagePurchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  courseId      String
+  titleAr       String
+  titleEn       String
+  position      Int
+  subjectId     String?
+  subjectNameAr String?
+  subjectNameEn String?
+  teacherId     String?
+  teacherNameAr String?
+  teacherNameEn String?
   @@id([purchaseId, courseId])
   @@unique([purchaseId, position])
 }

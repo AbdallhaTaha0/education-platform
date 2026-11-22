@@ -7,10 +7,14 @@ import { createMediaRouter } from './media.js';
 import { createDeletionRouter } from './deletion.js';
 import { createPackageAdminRouter } from './packages.js';
 import { createSummaryRouter } from './summary.js';
+import { createSubjectAdminRouter } from './subjects.js';
+import { createTeacherAdminRouter } from './teachers.js';
 
 export function createCatalogAdminRouter(ctx: CatalogRouteContext): Router {
   const router = Router();
   router.use(createSummaryRouter(ctx));
+  router.use(createSubjectAdminRouter(ctx));
+  router.use(createTeacherAdminRouter(ctx));
   router.use(createPackageAdminRouter(ctx));
   router.use(createCourseAdminRouter(ctx));
   router.use(createHierarchyRouter(ctx));

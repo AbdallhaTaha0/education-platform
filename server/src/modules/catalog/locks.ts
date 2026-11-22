@@ -1,22 +1,23 @@
-import { Prisma } from '@prisma/client';
 import type { TxClient } from './types.js';
 
-/** Row-level lock for course-scoped mutations (transitions/reorder/archive). */
-export async function lockCourseRow(tx: TxClient, courseId: string): Promise<void> {
-  await tx.$executeRaw(Prisma.sql`SELECT id FROM "Course" WHERE id = ${courseId} FOR UPDATE`);
+/**
+ * Course/deletion lock helpers. On Cloudflare D1 (SQLite), row/advisory locks
+ * are enforced externally by `withEntityLocks` (MutexDurableObject / LocalAsyncMutex)
+ * before entering the Prisma transaction. These functions remain exported as
+ * compatibility no-ops so callers that already hold the entity lock keep working.
+ */
+export async function lockCourseRow(_tx: TxClient, _courseId: string): Promise<void> {
+  // Enforced by withEntityLocks([`course:${courseId}`]).
 }
 
-/** Shared course lock for purchase reads. Concurrent buyers may proceed, while
- * M3 lifecycle/plan/deletion writers (FOR UPDATE) must wait. */
-export async function lockCourseRowShared(tx: TxClient, courseId: string): Promise<void> {
-  await tx.$executeRaw(Prisma.sql`SELECT id FROM "Course" WHERE id = ${courseId} FOR SHARE`);
+export async function lockCourseRowShared(_tx: TxClient, _courseId: string): Promise<void> {
+  // Enforced by withEntityLocks([`course:${courseId}`]).
 }
 
-/** Transactional advisory lock for deletion coordination. */
 export function deletionAdvisoryKey(targetType: string, targetId: string): string {
   return `catalog-deletion:${targetType}:${targetId}`;
 }
 
-export async function advisoryLock(tx: TxClient, key: string): Promise<void> {
-  await tx.$executeRaw(Prisma.sql`SELECT pg_advisory_xact_lock(hashtext(${key}))`);
+export async function advisoryLock(_tx: TxClient, _key: string): Promise<void> {
+  // Enforced by withEntityLocks([`advisory:${key}`]).
 }

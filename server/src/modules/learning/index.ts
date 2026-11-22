@@ -9,7 +9,7 @@ import { createAdminMaterialsRouter } from './materials/routes.js';
 import { reconcileMaterialObjects } from './materials/service.js';
 import { Router } from 'express';
 import type { PrismaClient } from '@prisma/client';
-import type Redis from 'ioredis';
+import type { PlatformCache as Redis } from '../../infra/cache.js';
 import type { ServerConfig } from '../../config.js';
 import type { DrmClient } from '../catalog/drmClient.js';
 import type { StorageClient } from '../../infra/storage.js';

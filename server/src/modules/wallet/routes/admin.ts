@@ -17,6 +17,7 @@ import { authOf } from './auth.js';
 import type { ServerConfig } from '../../../config.js';
 import { getInstaPay, saveInstaPay, getVodafoneCash, saveVodafoneCash } from '../payment-settings.js';
 import { readQr, saveQr, removeQr } from '../payment-qr.js';
+import { createStorageClient } from '../../../infra/storage.js';
 
 export interface WalletAdminDeps {
   prisma: PrismaClient;
@@ -106,7 +107,11 @@ export function createWalletAdminRouter(deps: WalletAdminDeps) {
 
   router.get('/recharge-requests/:id/proof', ...readGuard, async (req, res, next) => {
     try {
-      const proof = await getProofBytes(deps.prisma, req.params['id'] as string);
+      const proof = await getProofBytes(
+        deps.prisma,
+        req.params['id'] as string,
+        createStorageClient(deps.config),
+      );
       const safe = (req.params['id'] as string).replace(/[^a-zA-Z0-9-]/g, '');
       res.setHeader('Content-Type', proof.mime);
       res.setHeader('Content-Length', String(proof.size));
@@ -126,7 +131,16 @@ export function createWalletAdminRouter(deps: WalletAdminDeps) {
     async (req, res, next) => {
       try {
         const { userId: reviewerId } = authOf(req);
-        res.json(ok(await cleanupExpiredProofs(deps.prisma, 100, reviewerId)));
+        res.json(
+          ok(
+            await cleanupExpiredProofs(
+              deps.prisma,
+              100,
+              reviewerId,
+              createStorageClient(deps.config),
+            ),
+          ),
+        );
       } catch (err) {
         next(err);
       }

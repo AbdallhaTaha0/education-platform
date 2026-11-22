@@ -63,9 +63,29 @@ export function OfferPage({ slug }: { slug: string; onBack: () => void }): JSX.E
           {course !== null ? (
             <Card className="mx-auto mt-4 max-w-[800px]">
               <CourseCover path={course.coverUrl} title={lang === 'ar' ? course.titleAr : course.titleEn} />
+              {(course.subject || course.teacher) ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                  {course.subject ? (
+                    <span className="rounded-full border border-primary/50 bg-primary/10 px-3 py-1 font-bold text-primary-strong">
+                      {t.subject}: {lang === 'ar' ? course.subject.nameAr : course.subject.nameEn}
+                    </span>
+                  ) : null}
+                  {course.teacher ? (
+                    <span className="rounded-full border border-border-strong bg-elevated px-3 py-1 font-semibold text-ink">
+                      {t.teacher}: {lang === 'ar' ? course.teacher.nameAr : course.teacher.nameEn}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
               <h1 className="text-3xl font-bold">
                 {lang === 'ar' ? course.titleAr : course.titleEn}
               </h1>
+              {course.teacher && (lang === 'ar' ? course.teacher.bioAr : course.teacher.bioEn) ? (
+                <p className="mt-2 rounded-control border border-border bg-field px-3.5 py-2.5 text-sm text-muted">
+                  <strong className="text-ink">{t.teacherBio}: </strong>
+                  {lang === 'ar' ? course.teacher.bioAr : course.teacher.bioEn}
+                </p>
+              ) : null}
               <p className="mt-2">{lang === 'ar' ? course.descriptionAr : course.descriptionEn}</p>
               {owned ? <a href={`#/learn/${encodeURIComponent(course.slug)}`} className="my-4 inline-flex min-h-[44px] items-center rounded-control bg-primary px-5 py-3 font-bold text-primary-ink">{lang==='ar'?'تابع التعلم':'Continue learning'}</a> : course.plans.map((p) => (
                 <div key={p.id} className="mt-3 flex flex-wrap items-center gap-3">

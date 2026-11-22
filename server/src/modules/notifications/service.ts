@@ -63,14 +63,12 @@ export async function listInbox(ctx: NotificationContext, userId: string, query:
         ...(await metadata(tx, userId, now)),
       };
     },
-    { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
   );
 }
 
 export async function unreadCount(ctx: NotificationContext, userId: string) {
   return ctx.prisma.$transaction(
     (tx) => metadata(tx, userId, new Date((ctx.clock ?? Date.now)())),
-    { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
   );
 }
 

@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import type Redis from 'ioredis';
+import type { PlatformCache as Redis } from '../../infra/cache.js';
 import type { ServerConfig } from '../../config.js';
 import type { Clock } from '../identity/tokens.js';
 import type { DrmClient } from './drmClient.js';

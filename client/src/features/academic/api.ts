@@ -1,4 +1,5 @@
 import { apiFetch } from '../../auth';
+import type { PublicSubject, PublicTeacher } from '../catalog/types/models';
 export interface SchoolPackage {
   id: string;
   titleAr: string;
@@ -8,6 +9,9 @@ export interface SchoolPackage {
   pricePiastres: number;
   endsAt: string;
   version: number;
+  grade?: string | null;
+  subject?: PublicSubject | null;
+  teacher?: PublicTeacher | null;
   available: boolean;
   courses: {
     id: string;
@@ -20,6 +24,8 @@ export interface SchoolPackage {
     academicYear: string | null;
     term: number | null;
     teachingMonth: string | null;
+    subject?: PublicSubject | null;
+    teacher?: PublicTeacher | null;
   }[];
 }
 export interface AdminPackage {
@@ -42,7 +48,18 @@ export interface PackageReceipt {
   pricePiastres: number;
   endsAt: string;
   createdAt: string;
-  items: { courseId: string; titleAr: string; titleEn: string; position: number }[];
+  items: {
+    courseId: string;
+    titleAr: string;
+    titleEn: string;
+    position: number;
+    subjectId?: string | null;
+    subjectNameAr?: string | null;
+    subjectNameEn?: string | null;
+    teacherId?: string | null;
+    teacherNameAr?: string | null;
+    teacherNameEn?: string | null;
+  }[];
 }
 export async function publicPackages(): Promise<SchoolPackage[]> {
   return (

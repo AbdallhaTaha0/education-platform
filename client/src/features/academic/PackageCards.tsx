@@ -11,11 +11,15 @@ import { displayDeadline } from './model';
 import { publicPackages, type SchoolPackage } from './api';
 export function PackageCards({
   grade = '',
+  subjectId = '',
+  teacherId = '',
   term = '',
   year = '',
   query = '',
 }: {
   grade?: string;
+  subjectId?: string;
+  teacherId?: string;
   term?: string;
   year?: string;
   query?: string;
@@ -50,6 +54,8 @@ export function PackageCards({
     (p) =>
       (!query || `${p.titleAr} ${p.titleEn}`.toLowerCase().includes(query.toLowerCase())) &&
       (!grade || p.courses.some((c) => c.grade === grade)) &&
+      (!subjectId || p.subject?.id === subjectId || p.courses.some((c) => c.subject?.id === subjectId)) &&
+      (!teacherId || p.teacher?.id === teacherId || p.courses.some((c) => c.teacher?.id === teacherId)) &&
       (!term || p.courses.some((c) => c.term === Number(term))) &&
       (!year || p.courses.some((c) => c.academicYear === year)),
   );
@@ -77,7 +83,7 @@ export function PackageCards({
           text={ar ? 'لا توجد باقات مناسبة حاليًا.' : 'No matching packages available yet.'}
         />
       ) : null}
-      <PaginatedCollection id="public-packages" resetKey={JSON.stringify([query,grade,term,year])} className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+      <PaginatedCollection id="public-packages" resetKey={JSON.stringify([query,grade,subjectId,teacherId,term,year])} className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {!failed &&
           !loading &&
           visible.map((p) => (
@@ -85,6 +91,12 @@ export function PackageCards({
               <span className="text-sm font-bold text-primary-strong">
                 {ar ? '٣ كورسات • دفعة واحدة' : '3 courses • One payment'}
               </span>
+              {(p.subject || p.teacher) ? (
+                <div className="flex flex-wrap gap-2 text-xs font-bold">
+                  {p.subject ? <span className="rounded-full border border-primary/50 bg-primary/10 px-2.5 py-0.5 text-primary-strong">{ar ? p.subject.nameAr : p.subject.nameEn}</span> : null}
+                  {p.teacher ? <span className="rounded-full border border-border-strong bg-elevated px-2.5 py-0.5 text-ink">{ar ? p.teacher.nameAr : p.teacher.nameEn}</span> : null}
+                </div>
+              ) : null}
               <h3 className="text-2xl font-bold">{ar ? p.titleAr : p.titleEn}</h3>
               <p className="text-muted">{ar ? p.descriptionAr : p.descriptionEn}</p>
               <ol className="list-inside list-decimal space-y-2">

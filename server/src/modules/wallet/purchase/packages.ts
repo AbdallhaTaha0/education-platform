@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { withEntityLocks } from '../../../infra/locks-do.js';
 import { ApiError } from '../../identity/errors.js';
 import { assertUuid, rejectUnknownFields } from '../../catalog/validation.js';
 import { lockedMembers, lockPackage } from '../../catalog/packages.js';
@@ -63,7 +64,8 @@ export async function purchasePackage(prisma: PrismaClient, studentId: string, r
       throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Key used for another package.');
     return replay;
   }
-  return prisma.$transaction(async (tx) => {
+  return withEntityLocks([`package:${packageId}`, `wallet:${studentId}`], () =>
+    prisma.$transaction(async (tx) => {
     const pkg = await lockPackage(tx, packageId);
     const afterLock = await tx.packagePurchase.findUnique({
       where: { studentId_idempotencyKey: { studentId, idempotencyKey: key } },
@@ -120,6 +122,12 @@ export async function purchasePackage(prisma: PrismaClient, studentId: string, r
             titleAr: c.titleAr,
             titleEn: c.titleEn,
             position: i + 1,
+            subjectId: c.subjectId,
+            subjectNameAr: c.subject?.nameAr ?? null,
+            subjectNameEn: c.subject?.nameEn ?? null,
+            teacherId: c.teacherId,
+            teacherNameAr: c.teacher?.nameAr ?? null,
+            teacherNameEn: c.teacher?.nameEn ?? null,
           })),
         },
         subscriptions: {
@@ -154,7 +162,8 @@ export async function purchasePackage(prisma: PrismaClient, studentId: string, r
       },
     });
     return purchase;
-  });
+  }),
+  );
 }
 
 export async function listPackagePurchases(prisma: PrismaClient, studentId: string, limit = 100, skip = 0) {

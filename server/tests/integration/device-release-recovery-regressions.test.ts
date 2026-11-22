@@ -6,7 +6,7 @@ import { reconcilePendingReleaseAudits, releaseStudentDevice } from '../../src/m
 let world: LearningWorld;
 beforeAll(async () => { world = await createLearningWorld(); });
 afterAll(async () => { await world?.fixture.stop(); await world?.close(); });
-const rows = (reference: string, action: string) => world.prisma.auditEvent.findMany({ where: { entityId: world.studentId, action, metadata: { path: ['deviceReference'], equals: reference } } });
+const rows = (reference: string, action: string) => world.prisma.auditEvent.findMany({ where: { entityId: world.studentId, action, metadata: { path: '$.deviceReference', equals: reference } } });
 
 it('finds pending work after more than the old 100-row completed-history ceiling', async () => {
   const base = Date.now() - 600_000;

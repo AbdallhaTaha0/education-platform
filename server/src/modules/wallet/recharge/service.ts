@@ -1,9 +1,12 @@
+import { randomUUID } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
+import { withEntityLocks } from '../../../infra/locks-do.js';
 import { recordRecharge } from '../../notifications/producers.js';
 import { Prisma } from '@prisma/client';
 import { ApiError } from '../../identity/errors.js';
 import { audit } from '../../catalog/audit.js';
 import type { PaymentChannelConfig } from '../../../config.js';
+import type { StorageClient } from '../../../infra/storage.js';
 import { getOrCreateWallet, lockWallet, postEntry } from '../ledger.js';
 import {
   assertIdempotencyKey,
@@ -79,6 +82,7 @@ export async function submitRecharge(
   channels: PaymentChannelConfig[],
   studentId: string,
   input: RechargeSubmitInput,
+  storage?: StorageClient | null,
 ) {
   rejectUnknownFields(input, SUBMIT_FIELDS);
   if (channels.length === 0) {
@@ -130,11 +134,21 @@ export async function submitRecharge(
     return toStudentView(prior as unknown as Record<string, unknown>);
   }
 
+  const requestId = randomUUID();
+  const storageKey = storage ? `recharge-proofs/${requestId}` : null;
+  if (storage && storageKey) {
+    await prisma.materialObject.create({
+      data: { storageKey, state: 'PENDING' },
+    });
+    await storage.putObject(storageKey, Uint8Array.from(proof.bytes), proof.mime);
+  }
+
   try {
     const created = await prisma.$transaction(async (tx) => {
       await getOrCreateWallet(tx, studentId);
       const request = await tx.rechargeRequest.create({
         data: {
+          id: requestId,
           studentId,
           amountPiastres,
           channel: input.channel,
@@ -152,12 +166,19 @@ export async function submitRecharge(
       await tx.rechargeProof.create({
         data: {
           requestId: request.id,
-          bytes: Uint8Array.from(proof.bytes),
+          bytes: storageKey ? null : Uint8Array.from(proof.bytes),
+          storageKey,
           mime: proof.mime,
           size: proof.bytes.length,
           hash: proof.hash,
         },
       });
+      if (storageKey) {
+        await tx.materialObject.updateMany({
+          where: { storageKey, state: 'PENDING' },
+          data: { state: 'COMMITTED' },
+        });
+      }
       await audit(tx, {
         actorUserId: studentId,
         action: 'RECHARGE_SUBMITTED',
@@ -169,6 +190,9 @@ export async function submitRecharge(
     });
     return toStudentView(created as unknown as Record<string, unknown>);
   } catch (err) {
+    if (storage && storageKey) {
+      await storage.deleteObject(storageKey).catch(() => undefined);
+    }
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
       const target = (err.meta?.target as string[] | undefined) ?? [];
       if (target.includes('channel') || target.includes('referenceNorm')) {
@@ -229,7 +253,12 @@ export async function reviewRecharge(
   const reason =
     input.decision === 'REJECT' ? assertNonEmptyString(input.reason, 'reason', 500) : undefined;
 
-  const outcome = await prisma.$transaction(async (tx) => {
+  const preCheck = await prisma.rechargeRequest.findUnique({
+    where: { id: requestId },
+    select: { studentId: true },
+  });
+  const lockKeys = preCheck ? [`recharge:${requestId}`, `wallet:${preCheck.studentId}`] : [`recharge:${requestId}`];
+  const outcome = await withEntityLocks(lockKeys, () => prisma.$transaction(async (tx) => {
     // Atomic compare-and-set: exactly one PENDING row flips, losers see 0.
     const flipped = await tx.rechargeRequest.updateMany({
       where: { id: requestId, status: 'PENDING' },
@@ -274,6 +303,6 @@ export async function reviewRecharge(
     });
     await recordRecharge(tx, request.id);
     return request;
-  });
+  }));
   return toStudentView(outcome as unknown as Record<string, unknown>);
 }

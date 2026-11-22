@@ -15,6 +15,7 @@
  */
 import { randomUUID } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
+import { withEntityLocks } from '../../../infra/locks-do.js';
 import type { DrmClient } from '../../catalog/drmClient.js';
 import type { StorageClient } from '../../../infra/storage.js';
 import { LearningError } from '../errors.js';
@@ -61,63 +62,63 @@ export async function createPlaybackSession(
     if (!object) throw new LearningError('MEDIA_NOT_READY');
     const expires = new Date(input.nowMs + 5 * 60_000);
     const sessionExpires = new Date(input.nowMs + NO_DRM_SESSION_TTL_MS);
-    const reference = await deps.prisma.$transaction(async (tx) => {
-      // Serialize session creation per student so two simultaneous requests
-      // cannot both pass the account-level cap.
-      await tx.$queryRaw`SELECT id FROM "User" WHERE id=${input.binding.studentId} FOR UPDATE`;
-      const now = new Date(input.nowMs);
-      await tx.playbackReference.updateMany({
-        where: {
-          studentId: input.binding.studentId,
-          provider: 'NO_DRM',
-          status: 'ACTIVE',
-          sessionExpiresAt: { lte: now },
-        },
-        data: {
-          status: 'TERMINATED',
-          terminationStatus: 'COMPLETED',
-          pendingEndReason: null,
-          nextTerminationAt: null,
-          endedAt: now,
-        },
-      });
-      const activeSessions = await tx.playbackReference.count({
-        where: {
-          studentId: input.binding.studentId,
-          provider: 'NO_DRM',
-          status: 'ACTIVE',
-          sessionExpiresAt: { gt: now },
-        },
-      });
-      if (activeSessions >= NO_DRM_MAX_CONCURRENT_SESSIONS)
-        throw new LearningError('PLAYBACK_STREAM_LIMIT');
+    const reference = await withEntityLocks(
+      [`playback:${input.binding.studentId}`, `media:${input.binding.externalAssetId}`],
+      () =>
+        deps.prisma.$transaction(async (tx) => {
+          const now = new Date(input.nowMs);
+          await tx.playbackReference.updateMany({
+            where: {
+              studentId: input.binding.studentId,
+              provider: 'NO_DRM',
+              status: 'ACTIVE',
+              sessionExpiresAt: { lte: now },
+            },
+            data: {
+              status: 'TERMINATED',
+              terminationStatus: 'COMPLETED',
+              pendingEndReason: null,
+              nextTerminationAt: null,
+              endedAt: now,
+            },
+          });
+          const activeSessions = await tx.playbackReference.count({
+            where: {
+              studentId: input.binding.studentId,
+              provider: 'NO_DRM',
+              status: 'ACTIVE',
+              sessionExpiresAt: { gt: now },
+            },
+          });
+          if (activeSessions >= NO_DRM_MAX_CONCURRENT_SESSIONS)
+            throw new LearningError('PLAYBACK_STREAM_LIMIT');
 
-      await tx.$queryRaw`SELECT id FROM "MediaMapping" WHERE "externalAssetId"=${input.binding.externalAssetId} FOR UPDATE`;
-      const media = await tx.mediaMapping.findUnique({
-        where: { externalAssetId: input.binding.externalAssetId },
-      });
-      if (
-        !media ||
-        media.retiredAt ||
-        media.status !== 'READY' ||
-        media.assetId !== input.binding.externalAssetIdInternal
-      )
-        throw new LearningError('MEDIA_NOT_READY');
-      return tx.playbackReference.create({
-        data: {
-          studentId: input.binding.studentId,
-          lessonId: input.binding.lessonId,
-          courseId: input.binding.courseId,
-          externalSessionId: `local-${randomUUID()}`,
-          externalAssetId: input.binding.externalAssetId,
-          provider: 'NO_DRM',
-          status: 'ACTIVE',
-          tokenExpiresAt: expires,
-          sessionExpiresAt: sessionExpires,
-        },
-        select: { id: true },
-      });
-    });
+          const media = await tx.mediaMapping.findUnique({
+            where: { externalAssetId: input.binding.externalAssetId },
+          });
+          if (
+            !media ||
+            media.retiredAt ||
+            media.status !== 'READY' ||
+            media.assetId !== input.binding.externalAssetIdInternal
+          )
+            throw new LearningError('MEDIA_NOT_READY');
+          return tx.playbackReference.create({
+            data: {
+              studentId: input.binding.studentId,
+              lessonId: input.binding.lessonId,
+              courseId: input.binding.courseId,
+              externalSessionId: `local-${randomUUID()}`,
+              externalAssetId: input.binding.externalAssetId,
+              provider: 'NO_DRM',
+              status: 'ACTIVE',
+              tokenExpiresAt: expires,
+              sessionExpiresAt: sessionExpires,
+            },
+            select: { id: true },
+          });
+        }),
+    );
     return {
       referenceId: reference.id,
       playbackSessionId: reference.id,
@@ -161,11 +162,8 @@ export async function createPlaybackSession(
     deps.drmPublicBaseUrl,
   );
 
-  const record = await deps.prisma
-    .$transaction(async (tx) => {
-      // Publication/retirement locks the same mapping. A stale in-flight grant must
-      // not appear after cleanup has determined that all existing sessions ended.
-      await tx.$queryRaw`SELECT id FROM "MediaMapping" WHERE "externalAssetId"=${input.binding.externalAssetId} FOR UPDATE`;
+  const record = await withEntityLocks([`media:${input.binding.externalAssetId}`], () =>
+    deps.prisma.$transaction(async (tx) => {
       const media = await tx.mediaMapping.findUnique({
         where: { externalAssetId: input.binding.externalAssetId },
       });
@@ -184,7 +182,8 @@ export async function createPlaybackSession(
         },
         select: { id: true },
       });
-    })
+    }),
+  )
     .catch(async (error) => {
       // A newly created external session was never handed to the student.
       // Fail closed if publication won the race; cleanup can safely revoke it.

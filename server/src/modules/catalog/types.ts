@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from '@prisma/client';
-import type Redis from 'ioredis';
+import type { PlatformCache as Redis } from '../../infra/cache.js';
 import type { ServerConfig } from '../../config.js';
 import type { DrmClient } from './drmClient.js';
 
@@ -26,6 +26,22 @@ export interface PublicPlan {
   accessEndsAt: string | null;
 }
 
+export interface PublicSubject {
+  id: string;
+  slug: string;
+  nameAr: string;
+  nameEn: string;
+}
+
+export interface PublicTeacher {
+  id: string;
+  slug: string;
+  nameAr: string;
+  nameEn: string;
+  bioAr: string | null;
+  bioEn: string | null;
+}
+
 export interface PublicCourse {
   coverUrl?: string | null;
   id: string;
@@ -36,6 +52,8 @@ export interface PublicCourse {
   descriptionEn: string;
   publishedAt: string | null;
   plans: PublicPlan[];
+  subject: PublicSubject | null;
+  teacher: PublicTeacher | null;
   academic: {
     grade: string | null;
     academicYear: string | null;
@@ -76,6 +94,10 @@ export interface CourseHierarchy {
   descriptionAr: string;
   descriptionEn: string;
   deletionRequestedAt: Date | null;
+  subjectId?: string | null;
+  teacherId?: string | null;
+  subject?: { id: string; active: boolean } | null;
+  teacher?: { id: string; active: boolean } | null;
   sections: CourseHierarchySection[];
   plans: { id: string }[];
 }

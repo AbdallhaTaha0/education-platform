@@ -7,6 +7,36 @@ export interface PublicPlan {
   accessEndsAt?: string | null;
 }
 
+export interface PublicSubject {
+  id: string;
+  slug: string;
+  nameAr: string;
+  nameEn: string;
+  position?: number;
+}
+
+export interface PublicTeacher {
+  id: string;
+  slug: string;
+  nameAr: string;
+  nameEn: string;
+  bioAr: string | null;
+  bioEn: string | null;
+  position?: number;
+}
+
+export interface AdminSubject extends PublicSubject {
+  position: number;
+  active: boolean;
+  _count?: { courses: number };
+}
+
+export interface AdminTeacher extends PublicTeacher {
+  position: number;
+  active: boolean;
+  _count?: { courses: number };
+}
+
 export interface PublicCourse {
   coverUrl?: string | null;
   id: string;
@@ -17,6 +47,8 @@ export interface PublicCourse {
   descriptionEn: string;
   publishedAt: string | null;
   plans: PublicPlan[];
+  subject?: PublicSubject | null;
+  teacher?: PublicTeacher | null;
   academic?: import('../../academic/model').Academic;
 }
 
@@ -32,6 +64,10 @@ export interface AdminCourseSummary {
   descriptionEn: string;
   status: string;
   deletionRequestedAt: string | null;
+  subjectId?: string | null;
+  teacherId?: string | null;
+  subject?: AdminSubject | null;
+  teacher?: AdminTeacher | null;
   grade?: string | null;
   academicYear?: string | null;
   term?: number | null;

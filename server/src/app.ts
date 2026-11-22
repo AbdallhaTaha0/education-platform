@@ -3,13 +3,11 @@ import express, { type Express } from 'express';
 import helmet from 'helmet';
 import pinoHttp from 'pino-http';
 import type { PrismaClient } from '@prisma/client';
-import type { Pool } from 'pg';
-import type Redis from 'ioredis';
 import type { Logger } from 'pino';
 import { getLogger, serializeSafeError, serializeSafeRequest } from './logger.js';
 import type { ServerConfig } from './config.js';
-import { checkPostgres } from './infra/postgres.js';
-import { checkRedis } from './infra/redis.js';
+import { checkPostgres, type DbHealthTarget } from './infra/postgres.js';
+import { checkRedis, type PlatformCache } from './infra/redis.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { createHealthRouter } from './routes/health.js';
@@ -30,8 +28,8 @@ import { createParentReportsRouter } from './modules/parent-reports/index.js';
 
 export interface AppDependencies {
   config: ServerConfig;
-  postgresPool: Pool;
-  redisClient: Redis;
+  postgresPool?: DbHealthTarget | null;
+  redisClient: PlatformCache;
   prisma: PrismaClient;
 }
 
@@ -194,7 +192,7 @@ export function createApp(deps: AppDependencies, tunables: AppTunables = {}): Ex
       serviceName: deps.config.serviceName,
       serviceVersion: deps.config.serviceVersion,
       readyTimeoutMs: deps.config.readyTimeoutMs,
-      checkPostgres: tunables.checkPostgresFn ?? (() => checkPostgres(deps.postgresPool)),
+      checkPostgres: tunables.checkPostgresFn ?? (() => checkPostgres(deps.postgresPool ?? deps.prisma)),
       checkRedis: tunables.checkRedisFn ?? (() => checkRedis(deps.redisClient)),
       startedAt,
     }),

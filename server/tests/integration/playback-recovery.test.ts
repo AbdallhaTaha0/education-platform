@@ -242,7 +242,7 @@ describe('durable release audit (real PostgreSQL)', () => {
       where: {
         action,
         entityId: studentId,
-        metadata: { path: ['deviceReference'], equals: reference },
+        metadata: { path: '$.deviceReference', equals: reference },
       },
       orderBy: { createdAt: 'asc' },
     });
@@ -526,7 +526,7 @@ describe('concurrent and attributed release reconciliation (real PostgreSQL)', (
       where: {
         action,
         entityId: studentId,
-        metadata: { path: ['deviceReference'], equals: reference },
+        metadata: { path: '$.deviceReference', equals: reference },
       },
       orderBy: { createdAt: 'asc' },
     });

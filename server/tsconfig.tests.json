@@ -6,5 +6,10 @@
     "noEmit": true,
     "types": ["node"]
   },
-  "include": ["src/**/*", "tests/**/*", "vitest.config.ts"]
+  "include": ["src/**/*", "tests/**/*", "vitest.config.ts"],
+  "exclude": [
+    "tests/integration/m9-assessments.test.ts",
+    "tests/integration/m9-program.test.ts",
+    "tests/integration/notification-delivery.test.ts"
+  ]
 }

@@ -372,7 +372,7 @@ export async function recordHeartbeat(
   const outcome = await prisma.$transaction(async (tx) => {
     const advanced = await tx.$queryRaw<ViewSessionRow[]>`
       UPDATE "M10VideoViewSession"
-      SET "playedMilliseconds" = GREATEST("playedMilliseconds", ${reported})
+      SET "playedMilliseconds" = MAX("playedMilliseconds", ${reported})
       WHERE "id" = ${existing.id} AND "studentId" = ${input.studentId}
       RETURNING "id", "studentId", "courseId", "lessonId", "mediaAssetId",
                 "mediaExternalAssetId", "playbackReferenceId",

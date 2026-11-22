@@ -2,10 +2,120 @@ import { apiFetch } from '../../../auth';
 import type {
   AdminCourseDetail,
   AdminCourseSummary,
+  AdminSubject,
+  AdminTeacher,
   DeletionOperation,
   LifecycleAction,
   PublicCourse,
+  PublicSubject,
+  PublicTeacher,
 } from '../types/models';
+
+export async function fetchPublicSubjects(): Promise<PublicSubject[]> {
+  const body = await apiFetch<{ data: { subjects: PublicSubject[] } }>('/catalog/subjects', {
+    retryOnAuth: false,
+  });
+  return body.data.subjects;
+}
+
+export async function fetchPublicTeachers(): Promise<PublicTeacher[]> {
+  const body = await apiFetch<{ data: { teachers: PublicTeacher[] } }>('/catalog/teachers', {
+    retryOnAuth: false,
+  });
+  return body.data.teachers;
+}
+
+export async function fetchAdminSubjects(): Promise<AdminSubject[]> {
+  const body = await apiFetch<{ data: { subjects: AdminSubject[] } }>('/admin/subjects', {
+    retryOnAuth: true,
+  });
+  return body.data.subjects;
+}
+
+export async function createAdminSubject(input: {
+  slug: string;
+  nameAr: string;
+  nameEn: string;
+  position?: number;
+  active?: boolean;
+}): Promise<AdminSubject> {
+  const body = await apiFetch<{ data: { subject: AdminSubject } }>('/admin/subjects', {
+    method: 'POST',
+    retryOnAuth: false,
+    body: input,
+  });
+  return body.data.subject;
+}
+
+export async function patchAdminSubject(
+  id: string,
+  input: { slug?: string; nameAr?: string; nameEn?: string; position?: number; active?: boolean },
+): Promise<AdminSubject> {
+  const body = await apiFetch<{ data: { subject: AdminSubject } }>(`/admin/subjects/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    retryOnAuth: false,
+    body: input,
+  });
+  return body.data.subject;
+}
+
+export async function deleteAdminSubject(id: string): Promise<void> {
+  await apiFetch(`/admin/subjects/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    retryOnAuth: false,
+  });
+}
+
+export async function fetchAdminTeachers(): Promise<AdminTeacher[]> {
+  const body = await apiFetch<{ data: { teachers: AdminTeacher[] } }>('/admin/teachers', {
+    retryOnAuth: true,
+  });
+  return body.data.teachers;
+}
+
+export async function createAdminTeacher(input: {
+  slug: string;
+  nameAr: string;
+  nameEn: string;
+  bioAr?: string | null;
+  bioEn?: string | null;
+  position?: number;
+  active?: boolean;
+}): Promise<AdminTeacher> {
+  const body = await apiFetch<{ data: { teacher: AdminTeacher } }>('/admin/teachers', {
+    method: 'POST',
+    retryOnAuth: false,
+    body: input,
+  });
+  return body.data.teacher;
+}
+
+export async function patchAdminTeacher(
+  id: string,
+  input: {
+    slug?: string;
+    nameAr?: string;
+    nameEn?: string;
+    bioAr?: string | null;
+    bioEn?: string | null;
+    position?: number;
+    active?: boolean;
+  },
+): Promise<AdminTeacher> {
+  const body = await apiFetch<{ data: { teacher: AdminTeacher } }>(`/admin/teachers/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    retryOnAuth: false,
+    body: input,
+  });
+  return body.data.teacher;
+}
+
+export async function deleteAdminTeacher(id: string): Promise<void> {
+  await apiFetch(`/admin/teachers/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    retryOnAuth: false,
+  });
+}
 
 export async function fetchPublicCourses(): Promise<PublicCourse[]> {
   const body = await apiFetch<{ data: { courses: PublicCourse[] } }>('/catalog/courses', {
@@ -41,6 +151,8 @@ export async function createAdminCourse(input: {
   titleEn: string;
   descriptionAr: string;
   descriptionEn: string;
+  subjectId?: string | null;
+  teacherId?: string | null;
   academic?: import('../../academic/model').Academic | null;
 }): Promise<void> {
   await apiFetch('/admin/catalog/courses', { method: 'POST', retryOnAuth: false, body: input });
@@ -65,6 +177,8 @@ export async function patchAdminCourse(
     titleEn: string;
     descriptionAr: string;
     descriptionEn: string;
+    subjectId?: string | null;
+    teacherId?: string | null;
     academic?: import('../../academic/model').Academic | null;
   },
 ): Promise<void> {

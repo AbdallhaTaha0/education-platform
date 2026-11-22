@@ -44,26 +44,27 @@ async function abandon(deps: MaterialsDeps, keys: string[]) {
   await deps.prisma.materialObject.updateMany({ where: { storageKey: { in: keys }, state: 'PENDING' }, data: { state: 'DELETE' } }).catch(() => undefined);
 }
 export async function reconcileMaterialObjects(deps: MaterialsDeps, limit = 25): Promise<number> {
-  const cutoff = new Date(deps.now() - 60 * 60 * 1000);
-  const rows = await deps.prisma.materialObject.findMany({ where: { OR: [{ state: 'DELETE' }, { state: 'PENDING', updatedAt: { lt: cutoff } }] }, orderBy: [{ updatedAt: 'asc' }, { storageKey: 'asc' }], take: limit });
-  let deleted = 0;
-  for (const row of rows) {
-    try {
-      await deps.prisma.$transaction(async tx => {
-        const locked = await tx.$queryRaw<Array<{ storageKey: string }>>`SELECT "storageKey" FROM "MaterialObject" WHERE "storageKey" = ${row.storageKey} FOR UPDATE SKIP LOCKED`;
-        if (!locked.length) return;
-        const current = await tx.materialObject.findUnique({ where: { storageKey: row.storageKey } });
-        if (!current || current.state === 'LIVE' || (current.state === 'PENDING' && current.updatedAt >= cutoff)) return;
-        await deps.storage.deleteObject(row.storageKey);
-        await tx.materialObject.delete({ where: { storageKey: row.storageKey } });
-        deleted++;
-      }, { timeout: 125_000 });
-    } catch {
-      // Fair retry: failed keys move behind other eligible work. They remain durable.
-      await deps.prisma.materialObject.updateMany({ where: { storageKey: row.storageKey, state: { not: 'LIVE' } }, data: { state: 'DELETE', updatedAt: new Date(deps.now()) } }).catch(() => undefined);
+  const { withEntityLocks } = await import('../../../infra/locks-do.js');
+  return withEntityLocks(['cron:materials'], async () => {
+    const cutoff = new Date(deps.now() - 60 * 60 * 1000);
+    const rows = await deps.prisma.materialObject.findMany({ where: { OR: [{ state: 'DELETE' }, { state: 'PENDING', updatedAt: { lt: cutoff } }] }, orderBy: [{ updatedAt: 'asc' }, { storageKey: 'asc' }], take: limit });
+    let deleted = 0;
+    for (const row of rows) {
+      try {
+        await deps.prisma.$transaction(async tx => {
+          const current = await tx.materialObject.findUnique({ where: { storageKey: row.storageKey } });
+          if (!current || current.state === 'LIVE' || current.state === 'COMMITTED' || (current.state === 'PENDING' && current.updatedAt >= cutoff)) return;
+          await deps.storage.deleteObject(row.storageKey);
+          await tx.materialObject.delete({ where: { storageKey: row.storageKey } });
+          deleted++;
+        }, { timeout: 125_000 });
+      } catch {
+        // Fair retry: failed keys move behind other eligible work. They remain durable.
+        await deps.prisma.materialObject.updateMany({ where: { storageKey: row.storageKey, state: { notIn: ['LIVE', 'COMMITTED'] } }, data: { state: 'DELETE', updatedAt: new Date(deps.now()) } }).catch(() => undefined);
+      }
     }
-  }
-  return deleted;
+    return deleted;
+  });
 }
 export async function uploadResource(deps: MaterialsDeps, lessonId: string, input: ResourceUploadInput, actorId: string): Promise<UploadedResource> {
   const labelAr = label(input.labelAr), labelEn = label(input.labelEn);

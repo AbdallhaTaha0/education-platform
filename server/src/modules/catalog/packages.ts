@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
+import { withEntityLocks } from '../../infra/locks-do.js';
 import { ApiError } from '../identity/errors.js';
 import { audit } from './audit.js';
 import { cairoDeadline, invalid } from './academic.js';
@@ -18,11 +19,13 @@ const fields = new Set([
   'expectedVersion',
 ]);
 export const memberInclude = {
-  members: { orderBy: { position: 'asc' as const }, include: { course: true } },
+  members: {
+    orderBy: { position: 'asc' as const },
+    include: { course: { include: { subject: true, teacher: true } } },
+  },
 };
 
 export async function lockPackage(tx: TxClient, id: string) {
-  await tx.$executeRaw`SELECT id FROM "CoursePackage" WHERE id = ${id} FOR UPDATE`;
   const row = await tx.coursePackage.findUnique({ where: { id }, include: memberInclude });
   if (!row) throw new ApiError(404, 'NOT_FOUND', 'Package not found.');
   return row;
@@ -37,7 +40,10 @@ export function memberIds(raw: unknown): string[] {
 
 export async function lockedMembers(tx: TxClient, ids: string[], published: boolean) {
   for (const id of [...ids].sort()) await lockCourseRowShared(tx, id);
-  const rows = await tx.course.findMany({ where: { id: { in: ids } } });
+  const rows = await tx.course.findMany({
+    where: { id: { in: ids } },
+    include: { subject: true, teacher: true },
+  });
   if (
     rows.length !== 3 ||
     rows.some(
@@ -52,8 +58,36 @@ export async function lockedMembers(tx: TxClient, ids: string[], published: bool
   ) {
     throw new ApiError(409, 'PACKAGE_UNAVAILABLE', 'Three available monthly courses are required.');
   }
+  if (rows.some((c) => !c.subjectId || !c.subject?.active)) {
+    throw new ApiError(
+      409,
+      'PACKAGE_UNAVAILABLE',
+      'All package courses must have an active subject.',
+    );
+  }
+  if (rows.some((c) => !c.teacherId || !c.teacher?.active)) {
+    throw new ApiError(
+      409,
+      'PACKAGE_UNAVAILABLE',
+      'All package courses must have an active teacher.',
+    );
+  }
   if (new Set(rows.map((course) => course.grade)).size !== 1) {
     throw new ApiError(409, 'PACKAGE_GRADE_MISMATCH', 'All package courses must be from the same grade.');
+  }
+  if (new Set(rows.map((course) => course.subjectId)).size !== 1) {
+    throw new ApiError(
+      409,
+      'PACKAGE_SUBJECT_MISMATCH',
+      'All package courses must be from the same subject.',
+    );
+  }
+  if (new Set(rows.map((course) => course.teacherId)).size !== 1) {
+    throw new ApiError(
+      409,
+      'PACKAGE_TEACHER_MISMATCH',
+      'All package courses must be from the same teacher.',
+    );
   }
   // Callers may permit presales under D27; this never releases protected content.
   if (published && rows.some((c) => c.status !== 'PUBLISHED'))
@@ -126,6 +160,37 @@ export async function savePackage(
 }
 
 export function publicPackage(row: Awaited<ReturnType<typeof lockPackage>>) {
+  const homogeneousGrade = new Set(row.members.map((m) => m.course.grade)).size === 1;
+  const homogeneousSubject =
+    new Set(row.members.map((m) => m.course.subjectId)).size === 1 &&
+    row.members.every((m) => Boolean(m.course.subjectId && m.course.subject));
+  const homogeneousTeacher =
+    new Set(row.members.map((m) => m.course.teacherId)).size === 1 &&
+    row.members.every((m) => Boolean(m.course.teacherId && m.course.teacher));
+  const first = row.members[0]?.course ?? null;
+  const mapSubject = (s: { id: string; slug: string; nameAr: string; nameEn: string } | null) =>
+    s ? { id: s.id, slug: s.slug, nameAr: s.nameAr, nameEn: s.nameEn } : null;
+  const mapTeacher = (
+    t: {
+      id: string;
+      slug: string;
+      nameAr: string;
+      nameEn: string;
+      bioAr: string | null;
+      bioEn: string | null;
+    } | null,
+  ) =>
+    t
+      ? {
+          id: t.id,
+          slug: t.slug,
+          nameAr: t.nameAr,
+          nameEn: t.nameEn,
+          bioAr: t.bioAr,
+          bioEn: t.bioEn,
+        }
+      : null;
+
   return {
     id: row.id,
     titleAr: row.titleAr,
@@ -135,11 +200,16 @@ export function publicPackage(row: Awaited<ReturnType<typeof lockPackage>>) {
     pricePiastres: row.pricePiastres,
     endsAt: row.endsAt.toISOString(),
     version: row.version,
+    grade: homogeneousGrade && first ? first.grade : null,
+    subject: homogeneousSubject && first ? mapSubject(first.subject) : null,
+    teacher: homogeneousTeacher && first ? mapTeacher(first.teacher) : null,
     available:
       row.status === 'PUBLISHED' &&
       row.endsAt > new Date() &&
       row.members.length === 3 &&
-      new Set(row.members.map((m) => m.course.grade)).size === 1 &&
+      homogeneousGrade &&
+      homogeneousSubject &&
+      homogeneousTeacher &&
       row.members.every(
         (m) =>
           m.course.status !== 'ARCHIVED' &&
@@ -159,6 +229,8 @@ export function publicPackage(row: Awaited<ReturnType<typeof lockPackage>>) {
         academicYear: m.course.academicYear,
         term: m.course.term,
         teachingMonth: m.course.teachingMonth,
+        subject: mapSubject(m.course.subject),
+        teacher: mapTeacher(m.course.teacher),
       })),
   };
 }

@@ -18,6 +18,7 @@ import type { PurchaseInput, RechargeSubmitInput } from '../types.js';
 import { listPackagePurchases, packageReview, purchasePackage } from '../purchase/packages.js';
 import { paymentChannels } from '../payment-settings.js';
 import { readQr } from '../payment-qr.js';
+import { createStorageClient } from '../../../infra/storage.js';
 
 export interface WalletStudentDeps {
   prisma: PrismaClient;
@@ -112,7 +113,7 @@ export function createWalletStudentRouter(deps: WalletStudentDeps) {
           deps.prisma,
           await paymentChannels(deps.prisma, deps.config.paymentChannels),
           userId,
-          req.body as RechargeSubmitInput,
+          req.body as RechargeSubmitInput, createStorageClient(deps.config),
         );
         res.status(201).json(ok(view));
       } catch (err) {

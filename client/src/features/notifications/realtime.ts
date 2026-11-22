@@ -1,30 +1,26 @@
-import { io } from 'socket.io-client';
 import { apiFetch, ApiError, readCsrfCookie } from '../../auth';
 import type { InboxStore } from './inbox';
 
 export type ConnectionState = 'connecting' | 'connected' | 'disconnected';
+
+/**
+ * Native WebSocket client for Cloudflare UserRealtimeDurableObject
+ * (`/api/notifications/ws?csrf=<token>`) with exponential backoff reconnect
+ * and automatic HTTP polling fallback when WebSockets are unavailable.
+ */
 export function connectInbox(
   store: InboxStore,
   connection: (state: ConnectionState) => void,
   authFailed: (code: string) => void,
 ) {
-  // Same Nginx origin and cookie path; no credential, recipient or room in URLs.
-  // Polling only: the Vercel /api rewrite proxies HTTP but cannot upgrade a
-  // WebSocket, so offering the upgrade just logs a failed createSocket in the
-  // browser console. Polling carries the same authenticated connection.
-  const socket = io('/notifications', {
-    path: '/api/notifications/socket.io/',
-    transports: ['polling'],
-    withCredentials: true,
-    autoConnect: false,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 10000,
-    auth: (done) => done({ csrf: readCsrfCookie() }),
-  });
-  let disposed = false,
-    refreshing = false,
-    dirty = false,
-    timer: ReturnType<typeof setTimeout> | undefined;
+  let disposed = false;
+  let refreshing = false;
+  let dirty = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+  let ws: WebSocket | null = null;
+  let attempt = 0;
+
   const synchronize = () => {
     dirty = true;
     if (timer || disposed) return;
@@ -36,81 +32,126 @@ export function connectInbox(
       }
     }, 100);
   };
+
   async function reauthenticate() {
     if (disposed || refreshing) return;
     refreshing = true;
     try {
-      await apiFetch('/auth/me'); // Existing coordinated refresh, never a second credential cache.
+      await apiFetch('/auth/me');
       if (!disposed) {
         store.synchronize();
-        socket.connect();
+        attempt = 0;
+        openSocket();
       }
     } catch (error) {
-      if (!disposed && error instanceof ApiError && error.status === 401) authFailed(error.code);
+      if (!disposed && error instanceof ApiError && error.status === 401) {
+        authFailed(error.code);
+      }
     } finally {
       refreshing = false;
     }
   }
-  socket.on('connect', () => {
-    if (!disposed) {
-      connection('connected');
-      synchronize();
-    }
-  });
-  socket.on('notifications:changed', (signal: unknown) => {
-    if (
-      signal &&
-      typeof signal === 'object' &&
-      'schemaVersion' in signal &&
-      signal.schemaVersion === 1 &&
-      'revision' in signal &&
-      typeof signal.revision === 'string' &&
-      /^\d{1,20}$/.test(signal.revision)
-    )
-      synchronize();
-  });
-  socket.on('notifications:reauthenticate', () => {
-    void reauthenticate();
-  });
-  socket.on('assessment:completed', (signal: unknown) => {
-    if (!disposed && signal && typeof signal === 'object' && 'submissionId' in signal && typeof signal.submissionId === 'string' && /^[a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(signal.submissionId)) {
-      window.dispatchEvent(new CustomEvent('fayq-assessment-completed', { detail: signal.submissionId }));
-    }
-  });
-  socket.on('disconnect', (reason) => {
-    if (!disposed) {
+
+  function scheduleReconnect() {
+    if (disposed || reconnectTimer) return;
+    const delay = Math.min(30_000, 1_000 * 2 ** Math.min(attempt, 5));
+    attempt += 1;
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = undefined;
+      if (!disposed && navigator.onLine) {
+        openSocket();
+      }
+    }, delay);
+  }
+
+  function openSocket() {
+    if (disposed || typeof WebSocket === 'undefined') return;
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return;
+    const csrf = readCsrfCookie() ?? '';
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${wsProtocol}//${window.location.host}/api/notifications/ws?csrf=${encodeURIComponent(csrf)}`;
+    connection('connecting');
+    try {
+      const socket = new WebSocket(wsUrl);
+      ws = socket;
+      socket.onopen = () => {
+        if (disposed) {
+          socket.close();
+          return;
+        }
+        attempt = 0;
+        connection('connected');
+        synchronize();
+      };
+      socket.onmessage = (event) => {
+        if (disposed || typeof event.data !== 'string') return;
+        try {
+          const msg = JSON.parse(event.data) as { event?: string; data?: Record<string, unknown> };
+          if (msg.event === 'notifications:changed') {
+            const sig = msg.data;
+            if (
+              sig &&
+              sig.schemaVersion === 1 &&
+              typeof sig.revision === 'string' &&
+              /^\d{1,20}$/.test(sig.revision)
+            ) {
+              synchronize();
+            }
+          } else if (msg.event === 'notifications:reauthenticate') {
+            void reauthenticate();
+          } else if (msg.event === 'assessment:completed') {
+            const subId = msg.data?.submissionId;
+            if (
+              typeof subId === 'string' &&
+              /^[a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}$/i.test(subId)
+            ) {
+              window.dispatchEvent(new CustomEvent('fayq-assessment-completed', { detail: subId }));
+            }
+          }
+        } catch {
+          // Ignore malformed messages.
+        }
+      };
+      socket.onerror = () => {
+        if (!disposed) connection('disconnected');
+      };
+      socket.onclose = (ev) => {
+        if (ws === socket) ws = null;
+        if (disposed) return;
+        connection('disconnected');
+        if (ev.code === 1008) {
+          void reauthenticate();
+        } else {
+          scheduleReconnect();
+        }
+      };
+    } catch {
       connection('disconnected');
-      if (reason === 'io server disconnect') void reauthenticate();
+      scheduleReconnect();
     }
-  });
-  socket.on('connect_error', (error: Error & { data?: { code?: string } }) => {
-    if (disposed) return;
-    connection('disconnected');
-    if (
-      [
-        'TOKEN_INVALID',
-        'TOKEN_MISSING',
-        'SESSION_EXPIRED',
-        'SESSION_REVOKED',
-        'CSRF_INVALID',
-      ].includes(error.data?.code ?? '')
-    ) {
-      void reauthenticate();
-    }
-  });
+  }
+
   const recovery = setInterval(() => {
     if (!disposed && navigator.onLine && document.visibilityState === 'visible') {
       store.synchronize();
-      if (!socket.connected) socket.connect();
+      if (!ws || ws.readyState === WebSocket.CLOSED) openSocket();
     }
-  }, 30000);
-  connection('connecting');
-  socket.connect();
+  }, 30_000);
+
+  openSocket();
+
   return () => {
     disposed = true;
     clearInterval(recovery);
     clearTimeout(timer);
-    socket.removeAllListeners();
-    socket.disconnect();
+    clearTimeout(reconnectTimer);
+    if (ws) {
+      ws.onopen = null;
+      ws.onmessage = null;
+      ws.onerror = null;
+      ws.onclose = null;
+      ws.close();
+      ws = null;
+    }
   };
 }

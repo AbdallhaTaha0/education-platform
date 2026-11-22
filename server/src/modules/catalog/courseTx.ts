@@ -1,38 +1,48 @@
 import type { PrismaClient } from '@prisma/client';
+import { withEntityLocks } from '../../infra/locks-do.js';
 import { ApiError } from '../identity/errors.js';
 import { lockCourseRow, lockCourseRowShared } from './locks.js';
 import type { TxClient } from './types.js';
 import { assertUuid } from './validation.js';
 
-/**
- * Canonical course-scoped mutation sequence. Every course mutation runs
- * inside a short transaction that FIRST acquires the owning course row lock,
- * THEN reads fresh state, validates lifecycle/deletion invariants against
- * that locked state, and finally mutates + audits atomically.
- *
- * Pure input-shape validation (unknown fields, string shapes, price bounds)
- * stays outside; anything that depends on database state happens under lock.
- */
 export async function withCourseLock<T>(
   prisma: PrismaClient,
   courseId: string,
   fn: (tx: TxClient) => Promise<T>,
 ): Promise<T> {
   assertUuid(courseId, 'courseId');
-  return prisma.$transaction(async (tx) => {
-    const owner = await tx.course.findUnique({ where: { id: courseId }, select: { revisionOwnerId: true } });
-    if (owner?.revisionOwnerId) {
-      await lockCourseRow(tx, owner.revisionOwnerId);
-      const live = await tx.course.findUniqueOrThrow({ where: { id: owner.revisionOwnerId } });
-      if (live.deletionRequestedAt) throw new ApiError(409, 'DELETION_PENDING', 'The published course is being deleted.');
-    }
-    await lockCourseRow(tx, courseId);
-    return fn(tx);
-  }, { timeout: 30000 });
+  const owner = await prisma.course.findUnique({
+    where: { id: courseId },
+    select: { revisionOwnerId: true },
+  });
+  const keys = owner?.revisionOwnerId
+    ? [`course:${owner.revisionOwnerId}`, `course:${courseId}`]
+    : [`course:${courseId}`];
+  return withEntityLocks(keys, () =>
+    prisma.$transaction(
+      async (tx) => {
+        const currentOwner = await tx.course.findUnique({
+          where: { id: courseId },
+          select: { revisionOwnerId: true },
+        });
+        if (currentOwner?.revisionOwnerId) {
+          await lockCourseRow(tx, currentOwner.revisionOwnerId);
+          const live = await tx.course.findUniqueOrThrow({
+            where: { id: currentOwner.revisionOwnerId },
+          });
+          if (live.deletionRequestedAt) {
+            throw new ApiError(409, 'DELETION_PENDING', 'The published course is being deleted.');
+          }
+        }
+        await lockCourseRow(tx, courseId);
+        return fn(tx);
+      },
+      { timeout: 30000 },
+    ),
+  );
 }
 
-/** Purchase-side counterpart: shared locks allow concurrent buyers but block
- * archive, plan mutation and deletion until the purchase snapshot commits. */
+/** Purchase-side counterpart: serializes with course mutations via MutexDurableObject. */
 export async function withCourseReadLock<T>(
   prisma: PrismaClient,
   courseId: string,
@@ -45,7 +55,6 @@ export async function withCourseReadLock<T>(
   });
 }
 
-/** Lookup-only resolvers (no state decisions) to find the owning course before locking. */
 export async function courseIdForSection(prisma: PrismaClient, sectionId: string): Promise<string> {
   assertUuid(sectionId, 'sectionId');
   const section = await prisma.courseSection.findUnique({

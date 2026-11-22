@@ -130,7 +130,27 @@ export function PackagePage({ id }: { id: string }): JSX.Element {
               <p className="text-sm font-bold text-primary-strong">
                 {ar ? 'ثلاثة كورسات. عملية شراء واحدة.' : 'Three courses. One purchase.'}
               </p>
+              {(pkg.subject || pkg.teacher) ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                  {pkg.subject ? (
+                    <span className="rounded-full border border-primary/50 bg-primary/10 px-3 py-1 font-bold text-primary-strong">
+                      {t.subject}: {ar ? pkg.subject.nameAr : pkg.subject.nameEn}
+                    </span>
+                  ) : null}
+                  {pkg.teacher ? (
+                    <span className="rounded-full border border-border-strong bg-elevated px-3 py-1 font-semibold text-ink">
+                      {t.teacher}: {ar ? pkg.teacher.nameAr : pkg.teacher.nameEn}
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
               <h1 className="mt-3 text-3xl font-bold">{ar ? pkg.titleAr : pkg.titleEn}</h1>
+              {pkg.teacher && (ar ? pkg.teacher.bioAr : pkg.teacher.bioEn) ? (
+                <p className="mt-2 rounded-control border border-border bg-field px-3.5 py-2.5 text-sm text-muted">
+                  <strong className="text-ink">{t.teacherBio}: </strong>
+                  {ar ? pkg.teacher.bioAr : pkg.teacher.bioEn}
+                </p>
+              ) : null}
               <p className="mt-3 text-muted">{ar ? pkg.descriptionAr : pkg.descriptionEn}</p>
               <ol className="my-5 list-inside list-decimal space-y-3">
                 {pkg.courses.map((c) => (

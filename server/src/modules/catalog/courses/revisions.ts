@@ -4,7 +4,20 @@ import { ApiError } from '../../identity/errors.js';
 import type { TxClient } from '../types.js';
 import { audit } from '../audit.js';
 
-const details = (c: Course) => ({ titleAr: c.titleAr, titleEn: c.titleEn, descriptionAr: c.descriptionAr, descriptionEn: c.descriptionEn, coverId: c.coverId, grade: c.grade, academicYear: c.academicYear, term: c.term, courseKind: c.courseKind, teachingMonth: c.teachingMonth });
+const details = (c: Course) => ({
+  titleAr: c.titleAr,
+  titleEn: c.titleEn,
+  descriptionAr: c.descriptionAr,
+  descriptionEn: c.descriptionEn,
+  coverId: c.coverId,
+  grade: c.grade,
+  academicYear: c.academicYear,
+  term: c.term,
+  courseKind: c.courseKind,
+  teachingMonth: c.teachingMonth,
+  subjectId: c.subjectId,
+  teacherId: c.teacherId,
+});
 const json = (v: Prisma.JsonValue) => v as Prisma.InputJsonValue;
 
 /** Called under the canonical course lock. A working copy never owns inherited video objects. */
@@ -33,7 +46,7 @@ export async function createWorkingCopy(tx: TxClient, actor: string, live: Cours
 }
 
 export async function effectiveHierarchy(tx: TxClient, courseId: string) {
-  const course = await tx.course.findUniqueOrThrow({ where: { id: courseId }, include: { plans: { orderBy: { createdAt: 'asc' } }, sections: { orderBy: { position: 'asc' }, include: { lessons: { orderBy: { position: 'asc' }, include: { media: true } } } } } });
+  const course = await tx.course.findUniqueOrThrow({ where: { id: courseId }, include: { subject: true, teacher: true, plans: { orderBy: { createdAt: 'asc' } }, sections: { orderBy: { position: 'asc' }, include: { lessons: { orderBy: { position: 'asc' }, include: { media: true } } } } } });
   const ids = course.sections.flatMap(s => s.lessons.flatMap(l => l.inheritedMediaId ? [l.inheritedMediaId] : []));
   const inherited = await tx.mediaMapping.findMany({ where: { id: { in: ids }, retiredAt: null } });
   const byId = new Map(inherited.map(m => [m.id, m]));

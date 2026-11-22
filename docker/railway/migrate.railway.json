@@ -1,7 +1,0 @@
-{
-  "$schema": "https://railway.com/railway.schema.json",
-  "deploy": {
-    "startCommand": "npx prisma migrate deploy",
-    "restartPolicyType": "NEVER"
-  }
-}

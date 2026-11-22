@@ -97,7 +97,7 @@ export function assessmentRouters(db: PrismaClient, now: () => number = Date.now
 
   admin.get('/students', asyncRoute(async (req, res) => {
     const search = typeof req.query.q === 'string' ? req.query.q.slice(0, 100) : '';
-    const where = { role: 'STUDENT' as const, ...(search ? { OR: [{ email: { contains: search, mode: 'insensitive' as const } }, { displayName: { contains: search, mode: 'insensitive' as const } }, { phone: { contains: search } }] } : {}) }, input = parseListPage(req.query);
+    const where = { role: 'STUDENT' as const, ...(search ? { OR: [{ email: { contains: search } }, { displayName: { contains: search } }, { phone: { contains: search } }] } : {}) }, input = parseListPage(req.query);
     const pagination = input ? pageInfo(input, await db.user.count({ where })) : undefined;
     const users = await db.user.findMany({ where, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: pagination?.pageSize ?? 30, skip: pagination ? (pagination.page - 1) * pagination.pageSize : 0, select: { id: true, displayName: true, email: true } });
     res.set('Cache-Control', 'no-store').json(ok({ students: users, ...(pagination ? { pagination } : {}) }));

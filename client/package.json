@@ -11,7 +11,7 @@
     "typecheck": "tsc -b",
     "test": "node --test scripts/patch-braces.test.mjs && node --test scripts/patch-dashjs.test.mjs && vitest run",
     "postinstall": "node scripts/patch-dashjs.mjs && node scripts/patch-braces.mjs",
-    "build:vercel": "npm run build && node scripts/vercel-output.mjs"
+    "build:cloudflare": "npm run build"
   },
   "dependencies": {
     "@codemirror/commands": "6.11.1",
@@ -32,8 +32,7 @@
     "gsap": "3.15.0",
     "prettier": "3.6.2",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "socket.io-client": "4.8.3"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",

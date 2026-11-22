@@ -1,4 +1,5 @@
 import type { PrismaClient, NotificationType } from '@prisma/client';
+import { withEntityLocks } from '../../infra/locks-do.js';
 import type { Clock } from '../identity/tokens.js';
 import { lockCourseRowShared } from '../catalog/locks.js';
 import { NOTIFICATION_RETENTION_MS, type NotificationTx } from './store.js';
@@ -48,7 +49,7 @@ export async function recordRecharge(tx: NotificationTx, requestId: string) {
   });
 }
 
-/** Caller holds the course UPDATE lock. Audience is frozen by one INSERT SELECT. */
+/** Caller holds the course lock. Audience is frozen by one INSERT OR IGNORE SELECT. */
 export async function recordFirstPublication(tx: NotificationTx, courseId: string, now: Date) {
   const course = await tx.course.findUniqueOrThrow({ where: { id: courseId } });
   if (course.firstPublicationAt !== null) return;
@@ -60,56 +61,63 @@ export async function recordFirstPublication(tx: NotificationTx, courseId: strin
     undefined,
     courseId,
   );
-  await tx.$executeRaw`INSERT INTO "NotificationAudience" ("eventId", "recipientId")
+  await tx.$executeRaw`INSERT OR IGNORE INTO "NotificationAudience" ("eventId", "recipientId")
     SELECT ${event.id}, id FROM "User" WHERE role = 'STUDENT'`;
   await tx.course.update({ where: { id: courseId }, data: { firstPublicationAt: now } });
 }
 
-/** Discovery is advisory; entitlement is reread after purchase's course/wallet locks. */
+/** Discovery is advisory; entitlement is reread after course/wallet locks. */
 export async function recordExpiry(
   prisma: PrismaClient,
   studentId: string,
   courseId: string,
   clock: Clock = Date.now,
 ) {
-  return prisma.$transaction(async (tx) => {
-    await lockCourseRowShared(tx, courseId); // No row is valid for a deleted course.
-    const wallets = await tx.$queryRaw<
-      Array<{ id: string }>
-    >`SELECT id FROM "Wallet" WHERE "userId" = ${studentId} FOR UPDATE`;
-    if (!wallets[0]) return false; // A genuine purchased subscription already has its wallet.
-    const now = new Date(clock());
-    const user = await tx.user.findUnique({ where: { id: studentId }, select: { role: true } });
-    if (user?.role !== 'STUDENT') return false;
-    const rollout = await tx.notificationRollout.findUniqueOrThrow({ where: { id: 1 } });
-    if (await tx.subscription.count({ where: { studentId, courseId, startsAt: { lte: now }, expiresAt: null } }))
-      return false;
-    const group = await tx.subscription.aggregate({
-      where: { studentId, courseId, startsAt: { lte: now } },
-      _max: { expiresAt: true },
-    });
-    const expiry = group._max.expiresAt;
-    if (!expiry || expiry > now || expiry <= rollout.installedAt) return false;
-    const marker = await tx.notificationExpiryMarker.findUnique({
-      where: { studentId_courseId: { studentId, courseId } },
-    });
-    if (marker && marker.recordedExpiry >= expiry) return false;
-    await intent(
-      tx,
-      `expiry:${studentId}:${courseId}:${expiry.toISOString()}`,
-      'SUBSCRIPTION_EXPIRED',
-      now,
-      studentId,
-      courseId,
-      expiry,
-    );
-    await tx.notificationExpiryMarker.upsert({
-      where: { studentId_courseId: { studentId, courseId } },
-      create: { studentId, courseId, recordedExpiry: expiry },
-      update: { recordedExpiry: expiry },
-    });
-    return true;
-  });
+  return withEntityLocks([`course:${courseId}`, `wallet:${studentId}`], () =>
+    prisma.$transaction(async (tx) => {
+      await lockCourseRowShared(tx, courseId);
+      const wallet = await tx.wallet.findUnique({
+        where: { userId: studentId },
+        select: { id: true },
+      });
+      if (!wallet) return false;
+      const now = new Date(clock());
+      const user = await tx.user.findUnique({ where: { id: studentId }, select: { role: true } });
+      if (user?.role !== 'STUDENT') return false;
+      const rollout = await tx.notificationRollout.findUniqueOrThrow({ where: { id: 1 } });
+      if (
+        await tx.subscription.count({
+          where: { studentId, courseId, startsAt: { lte: now }, expiresAt: null },
+        })
+      )
+        return false;
+      const group = await tx.subscription.aggregate({
+        where: { studentId, courseId, startsAt: { lte: now } },
+        _max: { expiresAt: true },
+      });
+      const expiry = group._max.expiresAt;
+      if (!expiry || expiry > now || expiry <= rollout.installedAt) return false;
+      const marker = await tx.notificationExpiryMarker.findUnique({
+        where: { studentId_courseId: { studentId, courseId } },
+      });
+      if (marker && marker.recordedExpiry >= expiry) return false;
+      await intent(
+        tx,
+        `expiry:${studentId}:${courseId}:${expiry.toISOString()}`,
+        'SUBSCRIPTION_EXPIRED',
+        now,
+        studentId,
+        courseId,
+        expiry,
+      );
+      await tx.notificationExpiryMarker.upsert({
+        where: { studentId_courseId: { studentId, courseId } },
+        create: { studentId, courseId, recordedExpiry: expiry },
+        update: { recordedExpiry: expiry },
+      });
+      return true;
+    }),
+  );
 }
 
 export async function scanExpiries(prisma: PrismaClient, clock: Clock = Date.now, limit = 100) {

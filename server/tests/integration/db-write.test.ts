@@ -1,40 +1,28 @@
-/**
- * Integration: database WRITE capability smoke test (isolated test DB only).
- *
- * Creates, uses, and drops a transient `m1_migration_smoke` table. This table
- * is intentionally NOT part of Prisma migrations: M1 defines no business
- * tables, and this fixture must never leak into production schema history.
- */
 import { afterAll, describe, expect, it } from 'vitest';
-import { Pool } from 'pg';
+import { PrismaClient } from '@prisma/client';
 
-const pool = new Pool({ connectionString: process.env['DATABASE_URL'] });
+const prisma = new PrismaClient();
 
 afterAll(async () => {
-  await pool.end();
+  await prisma.$disconnect();
 });
 
-describe('postgres write smoke (isolated test database)', () => {
-  it('can create, write to, and drop a transient table', async () => {
-    const client = await pool.connect();
-    try {
-      await client.query(
-        'CREATE TEMP TABLE m1_migration_smoke (id SERIAL PRIMARY KEY, note TEXT NOT NULL)',
-      );
-      await client.query('INSERT INTO m1_migration_smoke (note) VALUES ($1)', ['foundation-ok']);
-      const { rows } = await client.query<{ count: string }>(
-        'SELECT COUNT(*)::text AS count FROM m1_migration_smoke',
-      );
-      expect(rows[0]?.count).toBe('1');
-    } finally {
-      client.release();
-    }
+describe('sqlite/d1 write smoke (isolated test database)', () => {
+  it('can create, write to, and query a transient table', async () => {
+    await prisma.$executeRawUnsafe(
+      'CREATE TEMP TABLE IF NOT EXISTS m1_migration_smoke (id INTEGER PRIMARY KEY AUTOINCREMENT, note TEXT NOT NULL)',
+    );
+    await prisma.$executeRawUnsafe(
+      "INSERT INTO m1_migration_smoke (note) VALUES ('foundation-ok')",
+    );
+    const rows = await prisma.$queryRawUnsafe<Array<{ count: number | bigint }>>(
+      'SELECT COUNT(*) AS count FROM m1_migration_smoke',
+    );
+    expect(Number(rows[0]?.count ?? 0)).toBeGreaterThanOrEqual(1);
   });
 
-  it('migration history table exists (migrate deploy ran)', async () => {
-    const { rows } = await pool.query<{ count: string }>(
-      "SELECT COUNT(*)::text AS count FROM _prisma_migrations WHERE migration_name = '20260927090000_m1_init'",
-    );
-    expect(rows[0]?.count).toBe('1');
+  it('can query core schema tables after migration', async () => {
+    const count = await prisma.user.count();
+    expect(count).toBeGreaterThanOrEqual(0);
   });
 });

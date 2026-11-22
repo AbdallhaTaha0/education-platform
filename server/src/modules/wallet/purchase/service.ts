@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { Prisma } from '@prisma/client';
+import { withEntityLocks } from '../../../infra/locks-do.js';
 import { ApiError } from '../../identity/errors.js';
 import { audit } from '../../catalog/audit.js';
 import { courseIdForPlan, withCourseReadLock } from '../../catalog/courseTx.js';
@@ -16,6 +17,12 @@ function toPurchaseView(purchase: Record<string, unknown>, subscription: Record<
     id: purchase['id'],
     planId: purchase['planId'],
     courseId: purchase['courseId'],
+    subjectId: purchase['subjectId'] ?? null,
+    subjectNameAr: purchase['subjectNameAr'] ?? null,
+    subjectNameEn: purchase['subjectNameEn'] ?? null,
+    teacherId: purchase['teacherId'] ?? null,
+    teacherNameAr: purchase['teacherNameAr'] ?? null,
+    teacherNameEn: purchase['teacherNameEn'] ?? null,
     pricePiastres: purchase['pricePiastres'],
     durationDays: purchase['durationDays'],
     accessMode: purchase['accessMode'],
@@ -82,7 +89,8 @@ export async function purchaseCourse(
     // Join the canonical M3 course lock so archive, plan mutation and
     // permanent deletion cannot interleave with a purchase decision.
     const courseId = await courseIdForPlan(prisma, planId);
-    const result = await withCourseReadLock(prisma, courseId, async (tx) => {
+    const result = await withEntityLocks([`wallet:${studentId}`, `course:${courseId}`], () =>
+      withCourseReadLock(prisma, courseId, async (tx) => {
       const replay = await tx.purchase.findUnique({
         where: { studentId_idempotencyKey: { studentId, idempotencyKey } },
       });
@@ -100,7 +108,19 @@ export async function purchaseCourse(
       // Trusted server-side plan + active published course (never client input).
       const plan = await tx.subscriptionPlan.findUnique({
         where: { id: planId },
-        include: { course: { select: { id: true, slug: true, status: true } } },
+        include: {
+          course: {
+            select: {
+              id: true,
+              slug: true,
+              status: true,
+              subjectId: true,
+              teacherId: true,
+              subject: { select: { nameAr: true, nameEn: true } },
+              teacher: { select: { nameAr: true, nameEn: true } },
+            },
+          },
+        },
       });
       if (!plan || plan.course.status !== 'PUBLISHED') {
         throw new ApiError(404, 'NOT_FOUND', 'This plan is not available for purchase.');
@@ -169,6 +189,12 @@ export async function purchaseCourse(
           studentId,
           planId: plan.id,
           courseId: plan.course.id,
+          subjectId: plan.course.subjectId,
+          subjectNameAr: plan.course.subject?.nameAr ?? null,
+          subjectNameEn: plan.course.subject?.nameEn ?? null,
+          teacherId: plan.course.teacherId,
+          teacherNameAr: plan.course.teacher?.nameAr ?? null,
+          teacherNameEn: plan.course.teacher?.nameEn ?? null,
           pricePiastres: plan.currentPricePiastres,
           durationDays: plan.durationDays,
           accessMode: plan.accessMode,
@@ -210,7 +236,8 @@ export async function purchaseCourse(
         },
       });
       return { purchase, subscription };
-    });
+    }),
+    );
     return toPurchaseView(
       result.purchase as unknown as Record<string, unknown>,
       result.subscription as unknown as Record<string, unknown>,
@@ -260,6 +287,12 @@ export async function listMyPurchases(prisma: PrismaClient, studentId: string, l
       id: p.id,
       planId: p.planId,
       courseId: p.courseId,
+      subjectId: p.subjectId,
+      subjectNameAr: p.subjectNameAr,
+      subjectNameEn: p.subjectNameEn,
+      teacherId: p.teacherId,
+      teacherNameAr: p.teacherNameAr,
+      teacherNameEn: p.teacherNameEn,
       pricePiastres: p.pricePiastres,
       durationDays: p.durationDays,
       accessMode: p.accessMode,

@@ -2,6 +2,12 @@ export interface PurchaseReceipt {
   id: string;
   planId: string;
   courseId: string;
+  subjectId?: string | null;
+  subjectNameAr?: string | null;
+  subjectNameEn?: string | null;
+  teacherId?: string | null;
+  teacherNameAr?: string | null;
+  teacherNameEn?: string | null;
   pricePiastres: number;
   durationDays: number | null;
   accessMode?: 'DURATION' | 'TERM_END' | 'YEAR_END' | 'UNTIL_REMOVAL';

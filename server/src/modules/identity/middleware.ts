@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import type { PrismaClient } from '@prisma/client';
-import type Redis from 'ioredis';
+import type { PlatformCache as Redis } from '../../infra/cache.js';
 import { ApiError } from './errors.js';
 import { ACCESS_COOKIE, parseCookies } from './cookies.js';
 import { CSRF_HEADER, verifyAnonymousCsrf, verifySessionCsrf } from './csrf.js';

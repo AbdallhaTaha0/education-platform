@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import type Redis from 'ioredis';
+import type { PlatformCache as Redis } from '../../src/infra/cache.js';
 import { describe, expect, it, vi } from 'vitest';
 import { login, type IdentityContext } from '../../src/modules/identity/service.js';
 import { PASSWORD_MAX_LENGTH } from '../../src/modules/identity/validation.js';

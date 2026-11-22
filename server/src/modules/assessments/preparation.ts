@@ -1,28 +1,29 @@
 import { randomUUID } from 'node:crypto';
 import type { PrismaClient, Prisma } from '@prisma/client';
+import { withEntityLocks } from '../../infra/locks-do.js';
 import { ApiError } from '../identity/errors.js';
-import { content, type Content } from './contracts.js';
+import { content } from './contracts.js';
 import { preparationHash, freezePrograms } from './program-contracts.js';
 import { executeIsolated } from './launcher.js';
 import { codingIdeEnabled, requireCodingIde } from './availability.js';
 
 export async function requestPreparation(db: PrismaClient, actor: string, assessmentId: string) {
   requireCodingIde();
-  return db.$transaction(async (tx) => {
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(174923)`;
-    await tx.$queryRaw`SELECT id FROM "Assessment" WHERE id=${assessmentId} FOR UPDATE`;
-    const a = await tx.assessment.findUnique({ where: { id: assessmentId } });
-    if (!a) throw new ApiError(404, 'NOT_FOUND', 'Assessment not found.');
-    const c = content(a.content);
-    if (!c.questions.some((q) => q.type === 'PROGRAM')) throw new ApiError(409, 'NO_PROGRAM_PROBLEMS', 'This assessment has no input/output problems.');
-    const hash = preparationHash(c);
-    const old = await tx.assessmentPreparation.findUnique({ where: { assessmentId_contentHash: { assessmentId, contentHash: hash } } });
-    if (old && old.state !== 'FAILED') return { id: old.id, state: old.state };
-    if (await tx.assessmentPreparation.count({ where: { state: { in: ['PENDING', 'RUNNING'] } } }) >= 32) throw new ApiError(429, 'PREPARATION_BUSY', 'Test preparation queue is full. Try later.');
-    const job = old ? await tx.assessmentPreparation.update({ where: { id: old.id }, data: { state: 'PENDING', error: null, leaseToken: null, leasedUntil: null } }) : await tx.assessmentPreparation.create({ data: { assessmentId, contentHash: hash, content: c as unknown as Prisma.InputJsonValue } });
-    await tx.auditEvent.create({ data: { actorUserId: actor, action: 'ASSESSMENT_PREPARE', entityType: 'Assessment', entityId: assessmentId } });
-    return { id: job.id, state: job.state };
-  });
+  return withEntityLocks(['assessment-preparation:global', `assessment:${assessmentId}`], () =>
+    db.$transaction(async (tx) => {
+      const a = await tx.assessment.findUnique({ where: { id: assessmentId } });
+      if (!a) throw new ApiError(404, 'NOT_FOUND', 'Assessment not found.');
+      const c = content(a.content);
+      if (!c.questions.some((q) => q.type === 'PROGRAM')) throw new ApiError(409, 'NO_PROGRAM_PROBLEMS', 'This assessment has no input/output problems.');
+      const hash = preparationHash(c);
+      const old = await tx.assessmentPreparation.findUnique({ where: { assessmentId_contentHash: { assessmentId, contentHash: hash } } });
+      if (old && old.state !== 'FAILED') return { id: old.id, state: old.state };
+      if (await tx.assessmentPreparation.count({ where: { state: { in: ['PENDING', 'RUNNING'] } } }) >= 32) throw new ApiError(429, 'PREPARATION_BUSY', 'Test preparation queue is full. Try later.');
+      const job = old ? await tx.assessmentPreparation.update({ where: { id: old.id }, data: { state: 'PENDING', error: null, leaseToken: null, leasedUntil: null } }) : await tx.assessmentPreparation.create({ data: { assessmentId, contentHash: hash, content: c as unknown as Prisma.InputJsonValue } });
+      await tx.auditEvent.create({ data: { actorUserId: actor, action: 'ASSESSMENT_PREPARE', entityType: 'Assessment', entityId: assessmentId } });
+      return { id: job.id, state: job.state };
+    }),
+  );
 }
 
 export async function preparationStatus(db: PrismaClient, assessmentId: string) {

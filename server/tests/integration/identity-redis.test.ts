@@ -38,7 +38,7 @@ describe('lazy redis concurrency', () => {
         ),
       );
       expect(results.every((r) => r === 'ok')).toBe(true);
-      expect(fresh.status).toBe('ready');
+      expect(await fresh.ping()).toBe('PONG');
     } finally {
       await fresh.disconnect();
     }

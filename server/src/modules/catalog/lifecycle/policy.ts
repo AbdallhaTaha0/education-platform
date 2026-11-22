@@ -70,6 +70,12 @@ export function validateDraftForProcessing(course: CourseHierarchy): void {
 
 export function validateReadyForPublish(course: CourseHierarchy): void {
   const issues = bilingualIssues(course);
+  if (course.subjectId && course.subject && !course.subject.active) {
+    issues.push('subject is inactive');
+  }
+  if (course.teacherId && course.teacher && !course.teacher.active) {
+    issues.push('teacher is inactive');
+  }
   for (const s of course.sections) {
     for (const l of s.lessons) {
       if (l.media === null) issues.push(`lesson ${l.id} missing media`);

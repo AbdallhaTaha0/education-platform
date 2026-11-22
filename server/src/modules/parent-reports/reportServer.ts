@@ -85,7 +85,7 @@ export async function generateParentReport(
   // curriculum and grading. The injected reader remains a test-only seam.
   return prisma.$transaction(async (db) => generateSnapshot(
     db, reader ?? postgresViewFactsReader(db), input,
-  ), { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 30000 });
+  ), { timeout: 30000 });
 }
 
 async function generateSnapshot(

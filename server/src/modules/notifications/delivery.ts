@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { PrismaClient } from '@prisma/client';
+import { withEntityLocks } from '../../infra/locks-do.js';
 import { materializeNotification, lockInbox } from './store.js';
 import type { Clock } from '../identity/tokens.js';
 import { scanExpiries } from './producers.js';
@@ -19,23 +20,31 @@ export async function fanoutOnce(
 ) {
   const now = new Date(clock()),
     token = randomUUID();
-  const event = await prisma.$transaction(async (tx) => {
-    const rows = await tx.$queryRaw<Array<{ id: string }>>`SELECT id FROM "NotificationEvent"
-      WHERE "expiresAt" > ${now} AND "deliveryStatus" <> 'COMPLETED' AND "nextAttemptAt" <= ${now}
-      AND (${eventId ?? null}::text IS NULL OR id = ${eventId ?? null})
-      AND ("leaseExpiresAt" IS NULL OR "leaseExpiresAt" <= ${now})
-      ORDER BY "nextAttemptAt", id LIMIT 1 FOR UPDATE SKIP LOCKED`;
-    if (!rows[0]) return null;
-    return tx.notificationEvent.update({
-      where: { id: rows[0].id },
-      data: {
-        deliveryStatus: 'PROCESSING',
-        leaseToken: token,
-        leaseExpiresAt: new Date(now.getTime() + LEASE_MS),
-        attemptCount: { increment: 1 },
-      },
-    });
-  });
+  const event = await withEntityLocks(['cron:notifications:fanout'], () =>
+    prisma.$transaction(async (tx) => {
+      const candidate = await tx.notificationEvent.findFirst({
+        where: {
+          expiresAt: { gt: now },
+          deliveryStatus: { not: 'COMPLETED' },
+          nextAttemptAt: { lte: now },
+          ...(eventId ? { id: eventId } : {}),
+          OR: [{ leaseExpiresAt: null }, { leaseExpiresAt: { lte: now } }],
+        },
+        orderBy: [{ nextAttemptAt: 'asc' }, { id: 'asc' }],
+        select: { id: true },
+      });
+      if (!candidate) return null;
+      return tx.notificationEvent.update({
+        where: { id: candidate.id },
+        data: {
+          deliveryStatus: 'PROCESSING',
+          leaseToken: token,
+          leaseExpiresAt: new Date(now.getTime() + LEASE_MS),
+          attemptCount: { increment: 1 },
+        },
+      });
+    }),
+  );
   if (!event) return 0;
   try {
     const recipients = await prisma.notificationAudience.findMany({
@@ -95,27 +104,33 @@ export async function signalOnce(
 ) {
   const now = new Date(clock()),
     token = randomUUID();
-  const state = await prisma.$transaction(async (tx) => {
-    const rows = await tx.$queryRaw<
-      Array<{ userId: string }>
-    >`SELECT "userId" FROM "NotificationInboxState"
-      WHERE revision > "deliveredRevision" AND "signalNextAttemptAt" <= ${now}
-      AND (${userId ?? null}::text IS NULL OR "userId" = ${userId ?? null})
-      AND ("signalLeaseExpiresAt" IS NULL OR "signalLeaseExpiresAt" <= ${now})
-      ORDER BY "signalNextAttemptAt", "userId" LIMIT 1 FOR UPDATE SKIP LOCKED`;
-    if (!rows[0]) return null;
-    return tx.notificationInboxState.update({
-      where: { userId: rows[0].userId },
-      data: {
-        signalLeaseToken: token,
-        signalLeaseExpiresAt: new Date(now.getTime() + LEASE_MS),
-        signalAttemptCount: { increment: 1 },
-      },
-    });
-  });
+  const state = await withEntityLocks(['cron:notifications:signal'], () =>
+    prisma.$transaction(async (tx) => {
+      const candidates = await tx.notificationInboxState.findMany({
+        where: {
+          signalNextAttemptAt: { lte: now },
+          ...(userId ? { userId } : {}),
+          OR: [{ signalLeaseExpiresAt: null }, { signalLeaseExpiresAt: { lte: now } }],
+        },
+        orderBy: [{ signalNextAttemptAt: 'asc' }, { userId: 'asc' }],
+        take: 25,
+        select: { userId: true, revision: true, deliveredRevision: true },
+      });
+      const due = candidates.find((c) => c.revision > c.deliveredRevision);
+      if (!due) return null;
+      return tx.notificationInboxState.update({
+        where: { userId: due.userId },
+        data: {
+          signalLeaseToken: token,
+          signalLeaseExpiresAt: new Date(now.getTime() + LEASE_MS),
+          signalAttemptCount: { increment: 1 },
+        },
+      });
+    }),
+  );
   if (!state) return false;
   try {
-    await publish(state.userId, state.revision.toString()); // Never a financial or source replay.
+    await publish(state.userId, state.revision.toString());
     await prisma.notificationInboxState.updateMany({
       where: { userId: state.userId, signalLeaseToken: token },
       data: {
@@ -161,25 +176,41 @@ export async function cleanupNotifications(
   });
   let removed = 0;
   for (const recipientId of new Set(due.map((row) => row.recipientId))) {
-    removed += await prisma.$transaction(async (tx) => {
-      await lockInbox(tx, recipientId, now);
-      const result = await tx.notification.deleteMany({
-        where: { recipientId, id: { in: due.map((row) => row.id) }, expiresAt: { lte: now } },
-      });
-      if (result.count)
-        await tx.notificationInboxState.update({
-          where: { userId: recipientId },
-          data: { revision: { increment: 1n } },
+    removed += await withEntityLocks([`inbox:${recipientId}`], () =>
+      prisma.$transaction(async (tx) => {
+        await lockInbox(tx, recipientId, now);
+        const result = await tx.notification.deleteMany({
+          where: { recipientId, id: { in: due.map((row) => row.id) }, expiresAt: { lte: now } },
         });
-      return result.count;
-    });
+        if (result.count)
+          await tx.notificationInboxState.update({
+            where: { userId: recipientId },
+            data: { revision: { increment: 1n } },
+          });
+        return result.count;
+      }),
+    );
   }
-  // Only empty expired events: never cascade notices without their owner's revision lock.
   await prisma.$executeRaw`DELETE FROM "NotificationEvent" WHERE id IN (
     SELECT e.id FROM "NotificationEvent" e WHERE e."expiresAt" <= ${now}
       AND NOT EXISTS (SELECT 1 FROM "Notification" n WHERE n."eventId" = e.id)
     ORDER BY e.id LIMIT ${limit})`;
   return removed;
+}
+
+/** Single-pass delivery helper invoked by Cloudflare Cron Triggers. */
+export async function runNotificationDeliveryPass(
+  prisma: PrismaClient,
+  publish: SignalPublisher,
+  clock: Clock = Date.now,
+): Promise<void> {
+  await withEntityLocks(['cron:notifications'], async () => {
+    await fanoutOnce(prisma, clock);
+    for (let i = 0; i < 20; i++) {
+      if (!(await signalOnce(prisma, publish, clock))) break;
+    }
+    await scanExpiries(prisma, clock);
+  });
 }
 
 export function startNotificationWorker(prisma: PrismaClient, publish: SignalPublisher) {
@@ -191,7 +222,6 @@ export function startNotificationWorker(prisma: PrismaClient, publish: SignalPub
     running = (async () => {
       await fanoutOnce(prisma);
       if (stopped) return;
-      // Bound each tick; durable outstanding owner rows converge across replicas.
       for (let i = 0; i < 20 && !stopped; i++) if (!(await signalOnce(prisma, publish))) break;
       if (!stopped && ticks++ % 5 === 0) await scanExpiries(prisma);
       if (!stopped && ticks % 60 === 0) await cleanupNotifications(prisma);

@@ -1,44 +1,39 @@
 import { Prisma } from '@prisma/client';
+import { ApiError } from '../identity/errors.js';
 import type { TxClient } from './types.js';
 
 /**
- * Lock-ordered wallet access. All money movements lock the wallet row
- * (`SELECT … FOR UPDATE` via update) before touching ledger rows, so
- * concurrent spenders serialize on the row and cannot overspend.
+ * Lock-ordered wallet access. Callers acquire the `wallet:<userId>` entity lock
+ * via `withEntityLocks` (MutexDurableObject / LocalAsyncMutex) before entering
+ * any money movement so concurrent spenders serialize cleanly on D1/SQLite.
  */
 export async function getOrCreateWallet(tx: TxClient, userId: string) {
-  // PostgreSQL marks a transaction failed after a unique-constraint error,
-  // even when application code catches it. INSERT ... ON CONFLICT (Prisma's
-  // skipDuplicates) makes the concurrent first-wallet race safe in-transaction.
-  await tx.wallet.createMany({
-    data: [{ userId, balancePiastres: 0 }],
-    skipDuplicates: true,
+  return tx.wallet.upsert({
+    where: { userId },
+    create: { userId, balancePiastres: 0 },
+    update: {},
   });
-  const wallet = await tx.wallet.findUnique({ where: { userId } });
-  if (!wallet) throw new Error('Wallet initialization completed without a row.');
-  return wallet;
 }
 
 /**
- * Lock the wallet row for update and return the POST-LOCK row (deterministic
- * lock order). The returned balance reflects all previously committed
- * movements: concurrent spenders serialize on the row and cannot overspend.
- * Never use a pre-lock read for money decisions.
+ * Return the authoritative post-lock wallet row. Callers must hold
+ * `wallet:<userId>` via `withEntityLocks`.
  */
 export async function lockWallet(tx: TxClient, userId: string) {
   const wallet = await getOrCreateWallet(tx, userId);
-  // Prisma may optimize an update with an empty data object into a plain read,
-  // so it is not a lock. Acquire the PostgreSQL lock explicitly and return
-  // the row from that same post-lock statement.
-  const rows = await tx.$queryRaw<Array<{ id: string; balancePiastres: number }>>(
-    Prisma.sql`SELECT id, "balancePiastres" FROM "Wallet" WHERE id = ${wallet.id} FOR UPDATE`,
-  );
-  const locked = rows[0];
-  if (!locked) throw new Error('Wallet disappeared while acquiring its lock.');
-  return locked;
+  const fresh = await tx.wallet.findUnique({
+    where: { id: wallet.id },
+    select: { id: true, balancePiastres: true },
+  });
+  if (!fresh) throw new Error('Wallet disappeared while acquiring its lock.');
+  return fresh;
 }
 
-/** Append one ledger entry and move the cached balance in the same tx. */
+/**
+ * Append one ledger entry and apply an atomic non-negative balance update.
+ * Enforces `balancePiastres + amountPiastres >= 0` directly at the SQLite
+ * engine level so a wallet balance can never go negative.
+ */
 export async function postEntry(
   tx: TxClient,
   walletId: string,
@@ -47,12 +42,15 @@ export async function postEntry(
   refType: string,
   refId: string,
 ): Promise<void> {
+  const now = new Date();
+  const affected = await tx.$executeRaw(
+    Prisma.sql`UPDATE "Wallet" SET "balancePiastres" = "balancePiastres" + ${amountPiastres}, "updatedAt" = ${now} WHERE "id" = ${walletId} AND ("balancePiastres" + ${amountPiastres}) >= 0`,
+  );
+  if (affected !== 1) {
+    throw new ApiError(402, 'INSUFFICIENT_FUNDS', 'Wallet balance is insufficient.');
+  }
   await tx.walletLedgerEntry.create({
     data: { walletId, amountPiastres, entryType, refType, refId },
-  });
-  await tx.wallet.update({
-    where: { id: walletId },
-    data: { balancePiastres: { increment: amountPiastres } },
   });
 }
 

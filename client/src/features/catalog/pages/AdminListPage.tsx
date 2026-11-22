@@ -14,6 +14,7 @@ import { CourseForm } from './CourseForm';
 import { businessState } from '../../../components/ui/AdminNavigation';
 import { PaginatedCollection } from '../../../components/ui/Pagination';
 import { AdminCourseTabs } from '../components/AdminCourseTabs';
+import { AdminTaxonomyPanels } from '../components/AdminTaxonomyPanels';
 
 export function AdminListPage({ go }: { go: (h: string) => void }): JSX.Element {
   const { t, lang } = useLang();
@@ -97,6 +98,7 @@ export function AdminListPage({ go }: { go: (h: string) => void }): JSX.Element 
           <h1 className="text-3xl font-bold">{t.adminCatalogTitle}</h1>
           <p className="mt-2 text-muted">{t.adminCatalogBody}</p>
           <AdminCourseTabs courses={courses} />
+          <AdminTaxonomyPanels onChanged={() => void load()} />
           <a href="#/admin/packages" className="footer-discovery inline-block my-4">
             {lang === 'ar' ? 'إدارة باقات الشهور' : 'Manage monthly packages'} →
           </a>

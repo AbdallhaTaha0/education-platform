@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 import type { PrismaClient } from '@prisma/client';
-import type Redis from 'ioredis';
+import type { PlatformCache as Redis } from '../../../infra/cache.js';
 import { ApiError } from '../../identity/errors.js';
 import { audit } from '../audit.js';
 import type { DrmClient } from '../drmClient.js';
@@ -203,9 +203,12 @@ export async function reconcilePendingOperations(
   batchLimit = 10,
   opts: DeletionCycleOptions = {},
 ): Promise<{ checked: number; completed: number }> {
-  const pending = await prisma.$queryRaw<{ id: string }[]>(
-    Prisma.sql`SELECT id FROM "CatalogDeletionOperation" WHERE status IN ('PENDING','RUNNING') ORDER BY "createdAt" ASC LIMIT ${batchLimit}`,
-  );
+  const pending = await prisma.catalogDeletionOperation.findMany({
+    where: { status: { in: ['PENDING', 'RUNNING'] } },
+    orderBy: { createdAt: 'asc' },
+    take: batchLimit,
+    select: { id: true },
+  });
   let completed = 0;
   for (const row of pending) {
     const before = await prisma.catalogDeletionOperation.findUnique({

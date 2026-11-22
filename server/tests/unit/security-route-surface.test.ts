@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
-import type { Pool } from 'pg';
-import type Redis from 'ioredis';
+import type { DbHealthTarget as Pool } from '../../src/infra/postgres.js';
+import type { PlatformCache as Redis } from '../../src/infra/cache.js';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { createApp } from '../../src/app.js';

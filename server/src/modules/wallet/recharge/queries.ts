@@ -85,7 +85,7 @@ type ReviewFilter = { status?: 'PENDING' | 'APPROVED' | 'REJECTED'; channel?: st
 function reviewWhere(filter: ReviewFilter): Prisma.RechargeRequestWhereInput {
   return { ...(filter.status ? { status: filter.status } : {}),
     ...(filter.channel === 'INSTAPAY' || filter.channel === 'BANK_TRANSFER' || filter.channel === 'MOBILE_WALLET' ? { channel: filter.channel } : {}),
-    ...(filter.search ? { OR: [{ senderName: { contains: filter.search, mode: 'insensitive' } }, { referenceNorm: { contains: filter.search, mode: 'insensitive' } }] } : {}),
+    ...(filter.search ? { OR: [{ senderName: { contains: filter.search } }, { referenceNorm: { contains: filter.search } }] } : {}),
     ...(filter.date ? { transferDate: { gte: new Date(`${filter.date}T00:00:00Z`), lt: new Date(Date.parse(`${filter.date}T00:00:00Z`) + 86400000) } } : {}) };
 }
 export async function ownRequestPage(prisma: PrismaClient, studentId: string, input: ListPage) {
@@ -99,9 +99,14 @@ export async function reviewRequestPage(prisma: PrismaClient, filter: ReviewFilt
 }
 
 /** Admin-only proof bytes with safe preview/download headers. Never for students. */
-export async function getProofBytes(prisma: PrismaClient, requestId: string) {
+export async function getProofBytes(prisma: PrismaClient, requestId: string, storage?: import('../../../infra/storage.js').StorageClient | null) {
   const proof = await prisma.rechargeProof.findUnique({ where: { requestId } });
-  if (!proof || proof.bytes === null)
+  if (!proof || (proof.bytes === null && proof.storageKey === null))
     throw new ApiError(404, 'NOT_FOUND', 'Proof is no longer available.');
-  return { bytes: Buffer.from(proof.bytes), mime: proof.mime, size: proof.size };
+  if (proof.storageKey !== null) {
+    if (!storage) throw new ApiError(503, 'STORAGE_UNCONFIGURED', 'Proof storage is not configured.');
+    const obj = await storage.getObject(proof.storageKey);
+    return { bytes: Buffer.from(obj.body), mime: proof.mime, size: proof.size };
+  }
+  return { bytes: Buffer.from(proof.bytes!), mime: proof.mime, size: proof.size };
 }
