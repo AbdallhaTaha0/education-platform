@@ -1,6 +1,6 @@
 # Education platform documentation
 
-- [Cloudflare D1 + Workers migration and multi-teacher / multi-subject plan](deployment/cloudflare-d1-teachers-subjects-plan-20261122.md) and [worker implementation prompt](deployment/cloudflare-d1-worker-prompt-20261122.md): 100% Cloudflare architecture (Workers, D1, Durable Objects, KV, Cron, R2), D1 transaction/lock refactoring inventory, multi-teacher/subject contract and bounded work packages.
+- [Cloudflare D1 + Workers migration and multi-teacher / multi-subject plan](deployment/cloudflare-d1-teachers-subjects-plan-20261122.md), [worker implementation prompt](deployment/cloudflare-d1-worker-prompt-20261122.md), and [implementation report](deployment/cloudflare-d1-implementation-report-20261122.md): 100% Cloudflare architecture (Workers, D1, Durable Objects, KV, Cron, R2), D1 transaction/lock refactoring inventory, multi-teacher/subject contract, verification evidence on `testing`, and cleanup record.
 - [Production candidate and guided cloud release](deployment/production-candidate-20261011.md): fresh database, private admin setup, Docker evidence and launch gates.
 - [Commercial DRM provider options](deployment/commercial-drm-options-20261011.md): pricing, evaluation restrictions and remaining integration.
 
