@@ -22,8 +22,8 @@ export function SupportSettings(): JSX.Element {
     let active = true; setLoading(true); setError('');
     void apiFetch<{data: {contact: PublicContact | null}}>('/support/contact').then(r => {
       if (!active) return;
-      if (!r.data.contact) throw new Error('Missing contact');
-      setContact(r.data.contact); setEmail(r.data.contact.email); setPhone(r.data.contact.phone);
+      const next = r.data.contact ?? { email: '', phone: '', version: 0 };
+      setContact(next); setEmail(next.email); setPhone(next.phone);
     }).catch(() => { if (active) setError('load'); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [user?.role, retry]);

@@ -81,7 +81,7 @@ const EDGE_INDEX_HTML = `<!doctype html>
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="FAYQ" />
     <meta name="twitter:description" content="FAYQ — Learn It. Code It. Get It." />
-    <script type="module" crossorigin src="/assets/index-B3VDVzBd.js"></script>
+    <script type="module" crossorigin src="/assets/index-CbvjIkf0.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-DMuD5ogH.css">
   </head>
   <body>

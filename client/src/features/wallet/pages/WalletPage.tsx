@@ -1,3 +1,4 @@
+import { useAuth } from '../../../auth';
 import { localizeCode, useLang } from '../../../i18n';
 import { Button } from '../../../components/ui/Button';
 import { FormActions } from '../../../components/ui/FormActions';
@@ -10,8 +11,26 @@ import { PaymentDetails } from '../components/PaymentDetails';
 import { Pagination } from '../../../components/ui/Pagination';
 
 export function WalletPage({ go }: { go: (hash: string) => void }): JSX.Element {
+  const { status, user } = useAuth();
   const { t, lang } = useLang();
   const { loading, wallet, requests, instructions, instructionsError, error, reload, pagination, setPage, setPageSize } = useWallet();
+  if (status === 'anonymous' || (status !== 'loading' && !user)) {
+    return (
+      <main id="main">
+        <section className="py-8">
+          <Container>
+            <h1 className="text-3xl font-bold">{t.walletTitle}</h1>
+            <div className="mt-4">
+              <Notice kind="info">{t.needLogin}</Notice>
+              <FormActions className="mt-3">
+                <Button variant="secondary" onClick={() => go('#/login')}>{t.navLogin}</Button>
+              </FormActions>
+            </div>
+          </Container>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main id="main">

@@ -47,7 +47,10 @@ export function HomePage({ onSelectCourse }: { onSelectCourse: (slug: string) =>
         {
           name: 'SAIF',
           title: 'Founder & Marketing Lead',
-          description: 'صاحب الفكرة التي انطلقت منها FAYQ، ويقود التوجه التسويقي والهوية الإبداعية للمنصة، إلى جانب الإشراف على صناعة المحتوى والإنتاج المرئي والحملات الإعلانية.',
+          description: c(
+            'صاحب الفكرة التي انطلقت منها FAYQ، ويقود التوجه التسويقي والهوية الإبداعية للمنصة، إلى جانب الإشراف على صناعة المحتوى والإنتاج المرئي والحملات الإعلانية.',
+            'Originator of the FAYQ vision, leading marketing strategy, creative identity, content production, visual direction, and advertising campaigns.',
+          ),
         },
       ],
     },
@@ -60,7 +63,10 @@ export function HomePage({ onSelectCourse }: { onSelectCourse: (slug: string) =>
         {
           name: 'ALI · TAHA',
           title: 'Founders & Technology and Education Leads',
-          description: 'يعمل علي وطه معًا على تطوير منصة FAYQ وتجربتها التعليمية، ويجمعان بين بناء الجانب التقني وإعداد محتوى تعليمي يبسّط البرمجة لطلاب المرحلة الثانوية خطوة بخطوة.',
+          description: c(
+            'يعمل علي وطه معًا على تطوير منصة FAYQ وتجربتها التعليمية، ويجمعان بين بناء الجانب التقني وإعداد محتوى تعليمي يبسّط البرمجة لطلاب المرحلة الثانوية خطوة بخطوة.',
+            'Ali and Taha build the FAYQ platform and its learning experience together, combining software engineering with step-by-step programming courses tailored for high school students.',
+          ),
         },
       ],
     },

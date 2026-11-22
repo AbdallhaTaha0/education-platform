@@ -109,7 +109,7 @@ function StudentAccountOverview({ go }: { go: (hash: string) => void }): JSX.Ele
               <div className="rounded-card border border-border p-4">
                 <dt className="text-sm text-muted">{t.walletBalance}</dt>
                 <dd className="mt-1 text-3xl font-bold">
-                  {wallet === null ? (ar ? 'غير متاح' : 'Unavailable') : formatEgp(wallet, lang)}
+                  {formatEgp(wallet ?? 0, lang)}
                 </dd>
               </div>
             </dl>

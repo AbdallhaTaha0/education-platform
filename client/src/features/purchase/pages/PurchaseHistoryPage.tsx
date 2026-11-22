@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../../../auth';
 import { useLang } from '../../../i18n';
 import { Card, Container } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
@@ -12,6 +13,7 @@ import { displayDeadline } from '../../academic/model';
 import { learningApi } from '../../learning/api/client';
 
 export function PurchaseHistoryPage(): JSX.Element {
+  const { status, user } = useAuth();
   const [coursePage, setCoursePage] = useState(1), [packagePage, setPackagePage] = useState(1), [pageSize, setPageSize] = useState(10);
   const [coursePaging, setCoursePaging] = useState<PageInfo>({ page: 1, pageSize: 10, total: 0 }), [packagePaging, setPackagePaging] = useState<PageInfo>({ page: 1, pageSize: 10, total: 0 });
   function changeSize(value: number) { setPageSize(value); setCoursePage(1); setPackagePage(1); }
@@ -24,6 +26,10 @@ export function PurchaseHistoryPage(): JSX.Element {
   const [retry, setRetry] = useState(0);
   const [courseNames,setCourseNames]=useState<Record<string,{titleAr:string;titleEn:string}>>({});
   useEffect(() => {
+    if (status !== 'authenticated' || !user) {
+      setLoading(status === 'loading');
+      return;
+    }
     let live = true;
     setLoading(true);
     setFailed(false);
@@ -44,7 +50,24 @@ export function PurchaseHistoryPage(): JSX.Element {
     return () => {
       live = false;
     };
-  }, [retry, coursePage, packagePage, pageSize]);
+  }, [status, user, retry, coursePage, packagePage, pageSize]);
+  if (status === 'anonymous' || (status !== 'loading' && !user)) {
+    return (
+      <main id="main">
+        <section className="py-10">
+          <Container>
+            <h1 className="section-title">{t.purchaseHistory}</h1>
+            <div className="mt-4">
+              <Notice kind="info">{t.needLogin}</Notice>
+              <FormActions className="mt-3">
+                <Button variant="secondary" onClick={() => { window.location.hash = '#/login'; }}>{t.navLogin}</Button>
+              </FormActions>
+            </div>
+          </Container>
+        </section>
+      </main>
+    );
+  }
   return (
     <main id="main">
       <section className="py-10">

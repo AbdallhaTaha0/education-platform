@@ -4,7 +4,7 @@ export interface StudentDetails { nationalId: string; parentPhone: string; schoo
 export const emptyStudentDetails: StudentDetails = { nationalId:'',parentPhone:'',schoolYear:'',governorate:'',schoolName:'' };
 const years = [
  ['SECONDARY_1','أولى ثانوي','First secondary'],
- ['SECONDARY_2','تانية ثانوي','Second secondary'],
+ ['SECONDARY_2','ثانية ثانوي','Second secondary'],
 ];
 const governorates = [
  ['CAIRO','القاهرة','Cairo'],['GIZA','الجيزة','Giza'],['ALEXANDRIA','الإسكندرية','Alexandria'],['DAKAHLIA','الدقهلية','Dakahlia'],['RED_SEA','البحر الأحمر','Red Sea'],['BEHEIRA','البحيرة','Beheira'],['FAYOUM','الفيوم','Fayoum'],['GHARBIA','الغربية','Gharbia'],['ISMAILIA','الإسماعيلية','Ismailia'],['MENOUFIA','المنوفية','Menoufia'],['MINYA','المنيا','Minya'],['QALYUBIA','القليوبية','Qalyubia'],['NEW_VALLEY','الوادي الجديد','New Valley'],['SUEZ','السويس','Suez'],['ASWAN','أسوان','Aswan'],['ASSIUT','أسيوط','Assiut'],['BENI_SUEF','بني سويف','Beni Suef'],['PORT_SAID','بورسعيد','Port Said'],['DAMIETTA','دمياط','Damietta'],['SHARQIA','الشرقية','Sharqia'],['SOUTH_SINAI','جنوب سيناء','South Sinai'],['KAFR_EL_SHEIKH','كفر الشيخ','Kafr El Sheikh'],['MATROUH','مطروح','Matrouh'],['LUXOR','الأقصر','Luxor'],['QENA','قنا','Qena'],['NORTH_SINAI','شمال سيناء','North Sinai'],['SOHAG','سوهاج','Sohag'],['OTHER','أخرى / خارج مصر','Other / outside Egypt'],

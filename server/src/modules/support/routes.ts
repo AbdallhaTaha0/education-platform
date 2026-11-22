@@ -22,8 +22,13 @@ export function createSupportRouter(prisma: PrismaClient): Router {
     const input = body as Record<string, unknown>;
     if (Object.keys(input).some(key => !['email', 'phone', 'version'].includes(key))) throw new ApiError(400, 'INVALID_FIELD', 'Unknown contact field.');
     const email = normalizeEmail(input.email); const phone = normalizePhone(input.phone);
-    if (!Number.isSafeInteger(input.version) || Number(input.version) < 1 || Number(input.version) >= 2147483647) throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid contact version.');
+    if (!Number.isSafeInteger(input.version) || Number(input.version) < 0 || Number(input.version) >= 2147483647) throw new ApiError(400, 'VALIDATION_ERROR', 'Invalid contact version.');
     const contact = await prisma.$transaction(async tx => {
+      if (Number(input.version) === 0) {
+        const existing = await tx.supportContact.findUnique({where: {id: 1}, select: {id: true}});
+        if (existing) throw new ApiError(409, 'OFFER_CHANGED', 'Contact details changed. Reload before saving.');
+        return tx.supportContact.create({data: {id: 1, email, phone, version: 1}, select: {email: true, phone: true, version: true}});
+      }
       const updated = await tx.supportContact.updateMany({where: {id: 1, version: Number(input.version)}, data: {email, phone, version: {increment: 1}}});
       if (updated.count !== 1) throw new ApiError(409, 'OFFER_CHANGED', 'Contact details changed. Reload before saving.');
       return tx.supportContact.findUniqueOrThrow({where: {id: 1}, select: {email: true, phone: true, version: true}});
