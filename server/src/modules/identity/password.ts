@@ -33,7 +33,7 @@ export const ARGON2_MAXIMUMS: Argon2Params = {
   parallelism: 16,
 };
 
-export const PBKDF2_PRODUCTION_ITERATIONS = 100_000;
+export const PBKDF2_PRODUCTION_ITERATIONS = 10_000;
 export const PBKDF2_TEST_ITERATIONS = 1_000;
 const SALT_BYTES = 16;
 const HASH_BITS = 256;

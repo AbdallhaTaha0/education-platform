@@ -1,3 +1,5 @@
+// @ts-expect-error Cloudflare Workers runtime built-in module
+import { DurableObject } from 'cloudflare:workers';
 import { Readable } from 'node:stream';
 import { IncomingMessage, ServerResponse } from 'node:http';
 import { Socket } from 'node:net';
@@ -8,7 +10,7 @@ import { loadConfig, type ServerConfig } from './config.js';
 import { CloudflareCache, type KVNamespaceLike } from './infra/cache.js';
 import {
   DurableObjectLockProvider,
-  MutexDurableObject,
+  MutexDurableObject as BaseMutexDurableObject,
   setLockProvider,
   withEntityLocks,
   type DurableObjectNamespaceLike,
@@ -22,12 +24,40 @@ import { cleanupNotifications, runNotificationDeliveryPass } from './modules/not
 import {
   createDurableObjectPublisher,
   handleNotificationsWebSocket,
-  UserRealtimeDurableObject,
+  UserRealtimeDurableObject as BaseUserRealtimeDurableObject,
 } from './modules/notifications/realtime-do.js';
 import { setEdgeSsrBundle, type SiteData } from './modules/seo/router.js';
 import { cleanupExpiredProofs } from './modules/wallet/cleanup/service.js';
 // @ts-expect-error Prebuilt Vite SSR bundle emitted by `npm --prefix client run build:cloudflare`
 import { renderPublicPage } from '../../client/dist-ssr/entry-server.mjs';
+
+export class MutexDurableObject extends (DurableObject as new (ctx: unknown, env: unknown) => object) {
+  private readonly impl: BaseMutexDurableObject;
+  constructor(ctx: ConstructorParameters<typeof BaseMutexDurableObject>[0], env: unknown) {
+    super(ctx, env);
+    this.impl = new BaseMutexDurableObject(ctx, env);
+  }
+  fetch(request: Request): Promise<Response> {
+    return this.impl.fetch(request);
+  }
+}
+
+export class UserRealtimeDurableObject extends (DurableObject as new (ctx: unknown, env: unknown) => object) {
+  private readonly impl: BaseUserRealtimeDurableObject;
+  constructor(ctx: ConstructorParameters<typeof BaseUserRealtimeDurableObject>[0], env: unknown) {
+    super(ctx, env);
+    this.impl = new BaseUserRealtimeDurableObject(ctx, env);
+  }
+  fetch(request: Request): Promise<Response> {
+    return this.impl.fetch(request);
+  }
+  webSocketMessage(ws: WebSocket): Promise<void> {
+    return this.impl.webSocketMessage(ws);
+  }
+  alarm(): Promise<void> {
+    return this.impl.alarm();
+  }
+}
 
 const EDGE_INDEX_HTML = `<!doctype html>
 <html lang="ar" dir="rtl" data-theme="dark">
@@ -72,8 +102,6 @@ setEdgeSsrBundle({
   html: EDGE_INDEX_HTML,
   renderPublicPage: renderPublicPage as (data: SiteData) => { head: string; body: string },
 });
-
-export { MutexDurableObject, UserRealtimeDurableObject };
 
 export interface WorkerEnv {
   DB: unknown;
@@ -126,6 +154,20 @@ function buildRuntime(env: WorkerEnv, requestOrigin?: string) {
   const cache = new CloudflareCache(env.SESSION_KV, lockProvider);
   const adapter = new PrismaD1(env.DB as ConstructorParameters<typeof PrismaD1>[0]);
   const prisma = new PrismaClient({ adapter });
+  const origTransaction = prisma.$transaction.bind(prisma);
+  prisma.$transaction = (async (arg: unknown) => {
+    if (typeof arg === 'function') {
+      return (arg as (tx: PrismaClient) => Promise<unknown>)(prisma);
+    }
+    if (Array.isArray(arg)) {
+      const results: unknown[] = [];
+      for (const op of arg) {
+        results.push(await op);
+      }
+      return results;
+    }
+    return origTransaction(arg as never);
+  }) as typeof prisma.$transaction;
   const app = createApp({ config, redisClient: cache, prisma });
   return { config, lockProvider, cache, prisma, app };
 }
@@ -149,6 +191,14 @@ async function dispatchExpress(
     const socket = new Socket();
     Object.defineProperty(socket, 'remoteAddress', { value: clientIp, configurable: true });
     const req = new IncomingMessage(socket);
+    if (req.socket && !req.socket.remoteAddress) {
+      try {
+        Object.defineProperty(req.socket, 'remoteAddress', { value: clientIp, configurable: true });
+      } catch {
+        // Ignore if read-only in runtime shim
+      }
+    }
+    Object.defineProperty(req, 'ip', { value: clientIp, configurable: true, writable: true });
     req.method = request.method;
     req.url = pathAndQuery;
     req.headers = {};

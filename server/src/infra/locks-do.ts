@@ -117,7 +117,9 @@ export interface DurableObjectNamespaceLike {
   get(id: unknown): DurableObjectStubLike;
 }
 
-/** LockProvider backed by Cloudflare MutexDurableObject instances. */
+const sharedLocalFallback = new LocalAsyncMutex();
+
+/** LockProvider backed by Cloudflare MutexDurableObject instances (with automatic in-isolate fallback on Workers Free tier). */
 export class DurableObjectLockProvider implements LockProvider {
   constructor(private readonly namespace: DurableObjectNamespaceLike) {}
 
@@ -126,30 +128,45 @@ export class DurableObjectLockProvider implements LockProvider {
   }
 
   async acquire(key: string, ttlMs = DEFAULT_LOCK_TTL_MS): Promise<string> {
-    const deadline = Date.now() + ttlMs;
-    while (true) {
-      const res = await this.stub(key).fetch('https://mutex.internal/acquire', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ ttlMs }),
-      });
-      if (res.ok) {
-        const body = (await res.json()) as { token: string };
-        return body.token;
+    try {
+      const deadline = Date.now() + ttlMs;
+      while (true) {
+        const res = await this.stub(key).fetch('https://mutex.internal/acquire', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ ttlMs }),
+        });
+        if (res.ok) {
+          const body = (await res.json()) as { token: string };
+          return body.token;
+        }
+        if (res.status !== 423 || Date.now() >= deadline) {
+          throw new Error(`Failed to acquire lock ${key} (status ${res.status})`);
+        }
+        await new Promise((r) => setTimeout(r, 20));
       }
-      if (res.status !== 423 || Date.now() >= deadline) {
-        throw new Error(`Failed to acquire lock ${key} (status ${res.status})`);
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith('Failed to acquire lock ')) {
+        throw err;
       }
-      await new Promise((r) => setTimeout(r, 20));
+      return sharedLocalFallback.acquire(key, ttlMs);
     }
   }
 
   async release(key: string, token: string): Promise<void> {
-    await this.stub(key).fetch('https://mutex.internal/release', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ token }),
-    });
+    if (token.startsWith('local-')) {
+      await sharedLocalFallback.release(key, token);
+      return;
+    }
+    try {
+      await this.stub(key).fetch('https://mutex.internal/release', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+    } catch {
+      await sharedLocalFallback.release(key, token);
+    }
   }
 
   async withLocks<T>(
@@ -178,15 +195,19 @@ export class DurableObjectLockProvider implements LockProvider {
     ip: string,
     limit: RateLimitSpec,
   ): Promise<RateLimitDecision> {
-    const res = await this.stub(`rl:${scope}:${ip}`).fetch('https://mutex.internal/ratelimit', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(limit),
-    });
-    if (!res.ok) {
-      return { allowed: false, retryAfterSec: 1 };
+    try {
+      const res = await this.stub(`rl:${scope}:${ip}`).fetch('https://mutex.internal/ratelimit', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(limit),
+      });
+      if (!res.ok) {
+        return { allowed: false, retryAfterSec: 1 };
+      }
+      return (await res.json()) as RateLimitDecision;
+    } catch {
+      return sharedLocalFallback.checkRateLimit(scope, ip, limit);
     }
-    return (await res.json()) as RateLimitDecision;
   }
 }
 
