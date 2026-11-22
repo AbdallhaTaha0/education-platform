@@ -41,10 +41,20 @@ export function validateCourseCover(raw: unknown) {
 }
 
 /** Draft covers are visible only to administrators; public reads check course visibility every time. */
-export async function readCourseCover(prisma: PrismaClient, courseId: string, admin = false) {
+export async function readCourseCover(
+  prisma: PrismaClient,
+  courseId: string,
+  admin = false,
+  storage?: { getObject(key: string): Promise<{ body: Uint8Array; contentType: string }> } | null,
+): Promise<{ bytes: Uint8Array; mime: string }> {
   assertUuid(courseId, 'courseId');
   const course = await prisma.course.findUnique({ where: { id: courseId }, include: { cover: true } });
   if (!course?.cover || course.historical || (!admin && (course.status !== 'PUBLISHED' || course.deletionRequestedAt)))
     throw new ApiError(404, 'NOT_FOUND', 'Course photo not found.');
-  return course.cover;
+  if (course.cover.storageKey && storage) {
+    const obj = await storage.getObject(course.cover.storageKey);
+    return { bytes: obj.body, mime: course.cover.mime };
+  }
+  if (!course.cover.bytes) throw new ApiError(404, 'NOT_FOUND', 'Course photo not found.');
+  return { bytes: new Uint8Array(course.cover.bytes), mime: course.cover.mime };
 }

@@ -97,10 +97,14 @@ CREATE TABLE "Course" (
 -- CreateTable
 CREATE TABLE "CourseCover" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "bytes" BLOB NOT NULL,
+    "bytes" BLOB,
+    "storageKey" TEXT,
     "mime" TEXT NOT NULL,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- CreateIndex
+CREATE UNIQUE INDEX "CourseCover_storageKey_key" ON "CourseCover"("storageKey");
 
 -- CreateTable
 CREATE TABLE "Assessment" (
@@ -669,6 +673,7 @@ CREATE TABLE "InstaPaySettings" (
     "version" INTEGER NOT NULL DEFAULT 1,
     "updatedAt" DATETIME NOT NULL,
     "qrBytes" BLOB,
+    "qrStorageKey" TEXT,
     "qrMime" TEXT
 );
 

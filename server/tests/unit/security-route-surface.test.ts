@@ -202,6 +202,38 @@ const routes = [
   ],
   [
     "get",
+    "/admin/subjects"
+  ],
+  [
+    "post",
+    "/admin/subjects"
+  ],
+  [
+    "patch",
+    "/admin/subjects/11111111-1111-1111-1111-111111111111"
+  ],
+  [
+    "delete",
+    "/admin/subjects/11111111-1111-1111-1111-111111111111"
+  ],
+  [
+    "get",
+    "/admin/teachers"
+  ],
+  [
+    "post",
+    "/admin/teachers"
+  ],
+  [
+    "patch",
+    "/admin/teachers/11111111-1111-1111-1111-111111111111"
+  ],
+  [
+    "delete",
+    "/admin/teachers/11111111-1111-1111-1111-111111111111"
+  ],
+  [
+    "get",
     "/admin/learning/lessons/11111111-1111-1111-1111-111111111111/materials"
   ],
   [
@@ -457,8 +489,24 @@ const routes = [
     "/wallet/subscriptions"
   ]
 ] as const;
-const config = loadConfig(process.env);
-const app = createApp({ config, postgresPool: {} as Pool, redisClient: { status: 'ready', eval: async () => [1, 60] } as unknown as Redis, prisma: {} as PrismaClient }, { logger: createLogger('silent') });
+const config = loadConfig({
+  DATABASE_URL: 'file:test.sqlite',
+  REDIS_URL: 'cloudflare://kv',
+  AUTH_JWT_SECRET: 'test-secret-that-is-at-least-32-chars-long',
+  AUTH_ISSUER: 'edu-test',
+  AUTH_AUDIENCE: 'edu-web',
+  ALLOWED_ORIGINS: 'http://localhost:5173',
+  ...process.env,
+});
+const mockRedis = {
+  status: 'ready',
+  checkRateLimit: async () => ({ allowed: true, retryAfterSec: 0 }),
+  hasTombstone: async () => false,
+  setTombstone: async () => undefined,
+  exists: async () => 0,
+  set: async () => 'OK',
+} as unknown as Redis;
+const app = createApp({ config, postgresPool: {} as Pool, redisClient: mockRedis, prisma: {} as PrismaClient }, { logger: createLogger('silent') });
 describe('protected HTTP surface', () => {
   it.each(routes)('%s %s rejects missing credentials before service access', async (method, route) => {
     const caller = request(app);
@@ -662,6 +710,38 @@ const adminRoutes = [
   ],
   [
     "get",
+    "/admin/subjects"
+  ],
+  [
+    "post",
+    "/admin/subjects"
+  ],
+  [
+    "patch",
+    "/admin/subjects/11111111-1111-1111-1111-111111111111"
+  ],
+  [
+    "delete",
+    "/admin/subjects/11111111-1111-1111-1111-111111111111"
+  ],
+  [
+    "get",
+    "/admin/teachers"
+  ],
+  [
+    "post",
+    "/admin/teachers"
+  ],
+  [
+    "patch",
+    "/admin/teachers/11111111-1111-1111-1111-111111111111"
+  ],
+  [
+    "delete",
+    "/admin/teachers/11111111-1111-1111-1111-111111111111"
+  ],
+  [
+    "get",
     "/admin/learning/lessons/11111111-1111-1111-1111-111111111111/materials"
   ],
   [
@@ -756,7 +836,7 @@ describe('HTTP authorization boundary', () => {
     const sessionId = '33333333-3333-3333-3333-333333333333';
     const token = signAccessToken({ sub: userId, sid: sessionId, role: 'ADMIN' }, { secret: config.jwtSecret, issuer: config.authIssuer, audience: config.authAudience }).token;
     const guarded = createApp({ config, postgresPool: {} as Pool,
-      redisClient: { status: 'ready', eval: async () => [1, 60], exists: async () => 0 } as unknown as Redis,
+      redisClient: mockRedis,
       prisma: { authSession: { findUnique: async () => ({ id: sessionId, revokedAt: null, absoluteExpiresAt: new Date(Date.now() + 60000), user: { id: userId, role: 'STUDENT', email: 'fixture@example.test', displayName: 'Fixture', phone: '', createdAt: new Date() } }) } } as unknown as PrismaClient,
     }, { logger: createLogger('silent') });
     const response = await request(guarded)[method](route).set('Origin', config.allowedOrigins[0]!).set('Cookie', 'edu_access=' + token).send({});

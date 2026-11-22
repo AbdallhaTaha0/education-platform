@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { PrismaClient } from '@prisma/client';
@@ -32,13 +33,38 @@ export const safeJson = (value: unknown) =>
     .replace(/\u2028/g, '\\u2028')
     .replace(/\u2029/g, '\\u2029');
 let template: Promise<string> | undefined;
+
+function resolveRenderPaths(): { htmlPath: string; ssrPath: string } {
+  const candidates = [
+    {
+      htmlPath: resolve(process.cwd(), 'public-render', 'index.html'),
+      ssrPath: resolve(process.cwd(), 'public-render', 'entry-server.mjs'),
+    },
+    {
+      htmlPath: resolve(process.cwd(), '..', 'client', 'dist', 'index.html'),
+      ssrPath: resolve(process.cwd(), '..', 'client', 'dist-ssr', 'entry-server.mjs'),
+    },
+    {
+      htmlPath: resolve(process.cwd(), 'client', 'dist', 'index.html'),
+      ssrPath: resolve(process.cwd(), 'client', 'dist-ssr', 'entry-server.mjs'),
+    },
+  ];
+  for (const c of candidates) {
+    if (existsSync(c.htmlPath) && existsSync(c.ssrPath)) return c;
+  }
+  return candidates[0]!;
+}
+
 export async function renderSite(data: SiteData): Promise<string> {
-  const directory = resolve(process.cwd(), 'public-render');
-  template ??= readFile(resolve(directory, 'index.html'), 'utf8');
+  const { htmlPath, ssrPath } = resolveRenderPaths();
   // Node 22 runtime loads the bundled, private React SSR module; it has no top-level await.
-  const { renderPublicPage } = require(resolve(directory, 'entry-server.mjs')) as {
+  const { renderPublicPage } = require(ssrPath) as {
     renderPublicPage: (data: SiteData) => { head: string; body: string };
   };
+  template ??= readFile(htmlPath, 'utf8').catch((err) => {
+    template = undefined;
+    throw err;
+  });
   const rendered = renderPublicPage(data);
   let html = await template;
   html = html.replace(
