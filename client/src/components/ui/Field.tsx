@@ -37,15 +37,19 @@ export function Field({
         {labelAside}
       </div>
       {hasAdornment ? (
-        <div className="relative flex items-center">
+        <div
+          className={`flex min-h-[48px] w-full items-center rounded-control border bg-field transition-colors hover:border-border-strong focus-within:border-primary ${
+            error ? 'border-error-fg' : 'border-border-strong'
+          }`}
+        >
           {startAdornment !== undefined ? (
-            <span className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3.5 text-muted">
+            <span className="pointer-events-none flex shrink-0 items-center ps-3.5 text-muted">
               {startAdornment}
             </span>
           ) : null}
           {children}
           {endAdornment !== undefined ? (
-            <span className="absolute inset-y-0 end-0 flex items-center pe-1.5">
+            <span className="flex shrink-0 items-center pe-1.5">
               {endAdornment}
             </span>
           ) : null}
@@ -71,4 +75,8 @@ export function textInputClassName(invalid: boolean, extra = ''): string {
   return `min-h-[48px] w-full rounded-control border bg-field px-4 py-2.5 text-start text-base text-ink transition-colors placeholder:text-muted hover:border-border-strong focus:border-primary ${
     invalid ? 'border-error-fg' : 'border-border-strong'
   } ${extra}`.trim();
+}
+
+export function adornedInputClassName(extra = ''): string {
+  return `min-h-[46px] min-w-0 flex-1 border-0 bg-transparent px-3.5 py-2.5 text-start text-base text-ink placeholder:text-muted focus:outline-none ${extra}`.trim();
 }

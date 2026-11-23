@@ -99,19 +99,9 @@ function HeroSection({
               className="mt-6 rounded-2xl border border-border-strong bg-surface p-4 shadow-rest sm:p-5"
               aria-labelledby="grade-choice-title"
             >
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <div>
-                  <h2 id="grade-choice-title" className="text-base font-extrabold text-ink sm:text-lg">
-                    {c('أنت في أي صف؟', 'Which grade are you in?')}
-                  </h2>
-                  <p className="mt-0.5 text-xs text-muted sm:text-sm">
-                    {c(
-                      'اعرض الدورات المتاحة لصفّك، وقارن بينها قبل الاشتراك.',
-                      'See available courses for your grade and compare them before enrolling.',
-                    )}
-                  </p>
-                </div>
-              </div>
+              <h2 id="grade-choice-title" className="text-base font-extrabold text-ink sm:text-lg">
+                {c('أنت في أي صف؟', 'Which grade are you in?')}
+              </h2>
               <div className="mt-3.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {(['FIRST_SECONDARY', 'SECOND_SECONDARY'] as const).map((value, index) => {
                   const active = grade === value;
@@ -121,7 +111,7 @@ function HeroSection({
                       type="button"
                       aria-pressed={active}
                       onClick={() => onSelectGrade(value)}
-                      className={`flex min-h-[60px] w-full items-center gap-3 rounded-xl border p-3.5 text-start transition-colors ${
+                      className={`flex min-h-[56px] w-full items-center gap-3 rounded-xl border p-3.5 text-start transition-colors ${
                         active
                           ? 'border-primary-strong bg-selected shadow-rest'
                           : 'border-border-strong bg-field hover:border-primary hover:bg-interactive'
@@ -137,9 +127,6 @@ function HeroSection({
                         <strong className="block text-sm font-extrabold text-ink sm:text-base">
                           {gradeLabel(value, lang)}
                         </strong>
-                        <small className="mt-0.5 block text-xs text-muted">
-                          {c('عرض الدورات المتاحة', 'View available courses')}
-                        </small>
                       </span>
                       <span className="ms-auto inline-block text-muted ltr:rotate-180" aria-hidden="true">
                         ←

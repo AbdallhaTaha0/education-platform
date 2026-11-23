@@ -111,9 +111,6 @@ export function WalletPage({ go }: { go: (hash: string) => void }): JSX.Element 
                     <Money piastres={wallet.balancePiastres} />
                   </p>
                 </div>
-                <span className="inline-flex items-center rounded-full border border-border bg-field px-3 py-1 text-xs font-bold text-muted">
-                  {ar ? 'الشحن يدوي بمراجعة الإدارة' : 'Manual EGP recharge · Admin verified'}
-                </span>
               </div>
               <FormActions className="mt-5">
                 <Button
@@ -121,14 +118,14 @@ export function WalletPage({ go }: { go: (hash: string) => void }): JSX.Element 
                   disabledReason={
                     instructionsError
                       ? {
-                          ar: 'تعذر تحميل طرق الشحن. أعد المحاولة من رسالة الخطأ.',
-                          en: 'Transfer methods could not load. Retry using the error message.',
+                          ar: 'تعذر تحميل طرق الشحن. أعد المحاولة.',
+                          en: 'Transfer methods could not load. Please retry.',
                         }
                       : instructions === null
-                        ? { ar: 'جارٍ تحميل طرق الشحن.', en: 'Loading transfer methods.' }
+                        ? { ar: 'جارٍ التحميل…', en: 'Loading…' }
                         : {
-                            ar: 'لم تضف الإدارة طرق تحويل بعد. تواصل مع الدعم.',
-                            en: 'Transfer methods have not been configured. Contact support.',
+                            ar: 'الشحن غير متاح مؤقتًا.',
+                            en: 'Recharge is temporarily unavailable.',
                           }
                   }
                   onClick={() => go('#/wallet/recharge')}
@@ -174,8 +171,8 @@ export function WalletPage({ go }: { go: (hash: string) => void }): JSX.Element 
             <div className="mt-3">
               <Notice kind="info">
                 {ar
-                  ? 'الشحن غير متاح مؤقتًا؛ لم تُضف طرق التحويل بعد.'
-                  : 'Recharge is temporarily unavailable; transfer methods have not been configured.'}
+                  ? 'الشحن غير متاح مؤقتًا. تواصل مع الدعم.'
+                  : 'Recharge is temporarily unavailable. Contact support.'}
               </Notice>
             </div>
           ) : null}

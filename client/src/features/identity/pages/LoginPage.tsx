@@ -4,7 +4,7 @@ import { Button } from '../../../components/ui/Button';
 import { FormActions } from '../../../components/ui/FormActions';
 import { BrandMark } from '../../../components/ui/BrandMark';
 import { Container } from '../../../components/ui/Card';
-import { Field, textInputClassName } from '../../../components/ui/Field';
+import { Field, adornedInputClassName, textInputClassName } from '../../../components/ui/Field';
 import { Notice } from '../../../components/ui/Notice';
 import { useLang } from '../../../i18n';
 import { localize, useTitleFocus } from '../components/IdentityForm';
@@ -50,7 +50,6 @@ export function LoginScreen({ onDone }: { onDone: () => void }): JSX.Element {
           <h1 ref={titleRef} tabIndex={-1} className="text-2xl font-extrabold text-ink sm:text-3xl">
             {t.loginTitle}
           </h1>
-          <p className="mt-2 text-sm text-muted sm:text-base">{t.loginBody}</p>
         </div>
 
         <Notice kind="error">{errorCode ? localize(t, errorCode) : null}</Notice>
@@ -102,7 +101,7 @@ export function LoginScreen({ onDone }: { onDone: () => void }): JSX.Element {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={textInputClassName(false, 'pe-16')}
+              className={adornedInputClassName()}
             />
           </Field>
 
@@ -119,16 +118,11 @@ export function LoginScreen({ onDone }: { onDone: () => void }): JSX.Element {
               {ar ? 'ليس لديك حساب؟ أنشئ حساب طالب' : 'New here? Create a student account'}
             </a>
           </p>
-          <p className="mt-3 text-xs text-muted sm:text-sm">
-            {ar
-              ? 'استعادة كلمة المرور حاليًا بمساعدة الإدارة.'
-              : 'Password recovery requires admin assistance.'}
-          </p>
           <a
             href="#/support"
-            className="mt-1.5 inline-flex min-h-[40px] items-center text-sm font-semibold text-ink underline underline-offset-4 hover:text-primary-strong"
+            className="mt-2 inline-flex min-h-[40px] items-center text-sm font-semibold text-muted underline underline-offset-4 hover:text-primary-strong"
           >
-            {ar ? 'المساعدة في استعادة الحساب' : 'Account recovery help'}
+            {ar ? 'نسيت كلمة المرور؟ تواصل مع الدعم' : 'Forgot password? Contact support'}
           </a>
         </div>
       </div>

@@ -71,7 +71,7 @@ export function NotificationsPage(): JSX.Element {
           ) : (
             <>
               {!online ? <Notice kind="pending">{t.notificationsOffline}</Notice> : null}
-              <p className="mb-4 text-sm text-muted" data-testid="notification-connection">
+              <p className="sr-only" data-testid="notification-connection">
                 {connection === 'connected'
                   ? t.notificationsConnected
                   : connection === 'connecting'

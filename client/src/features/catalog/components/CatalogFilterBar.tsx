@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Container } from '../../../components/ui/Card';
-import { Field, textInputClassName } from '../../../components/ui/Field';
+import { Field, adornedInputClassName, textInputClassName } from '../../../components/ui/Field';
 import { gradeLabel } from '../../academic/model';
 import { useLang } from '../../../i18n';
 import type { PublicSubject, PublicTeacher } from '../types/models';
@@ -88,7 +88,7 @@ export function CatalogFilterBar({
                 id="catalog-search"
                 type="search"
                 placeholder={ar ? 'ابحث باسم الكورس أو الوصف…' : 'Search by course title or topic…'}
-                className={textInputClassName(false, 'ps-10')}
+                className={adornedInputClassName()}
                 value={query}
                 onChange={(e) => onQueryChange(e.target.value)}
               />

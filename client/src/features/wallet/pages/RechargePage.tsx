@@ -131,7 +131,6 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
                 {ar ? 'شحن المحفظة يدويًا' : 'Manual wallet recharge'}
               </p>
               <h1 className="mt-1 page-title text-ink">{t.rechargeTitle}</h1>
-              <p className="mt-1.5 text-sm text-muted sm:text-base">{t.rechargeNoAutoCredit}</p>
             </div>
 
             {instructions === null ? (
@@ -152,8 +151,8 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
             ) : !channelOptions.length ? (
               <Notice kind="info">
                 {ar
-                  ? 'الشحن غير متاح حاليًا؛ لم تُضف الإدارة طريقة تحويل. لا تحول أي مبلغ حتى تظهر التعليمات.'
-                  : 'Recharge is temporarily unavailable because no transfer method is configured. Wait for transfer instructions before sending money.'}
+                  ? 'الشحن غير متاح مؤقتًا. تواصل مع الدعم.'
+                  : 'Recharge is temporarily unavailable. Contact support.'}
               </Notice>
             ) : null}
 
@@ -169,11 +168,6 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
               {receiving ? (
                 <aside className="min-w-0 lg:sticky lg:top-24" data-testid="recharge-receiving">
                   <PaymentDetails receiving={receiving} stacked />
-                  <p className="mt-3 rounded-xl border border-border bg-surface/80 px-4 py-3 text-xs leading-relaxed text-muted">
-                    {ar
-                      ? 'إرسال الطلب ➔ مراجعة الإدارة ➔ إضافة الرصيد للمحفظة'
-                      : 'Submit request ➔ Admin verification ➔ Balance added to wallet'}
-                  </p>
                 </aside>
               ) : null}
 
@@ -192,11 +186,9 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
                         <Field
                           id="rch-amount"
                           label={t.fieldAmount}
-                          hint={ar ? 'المبلغ المحوَّل بالجنيه' : 'Transferred EGP amount'}
                         >
                           <input
                             id="rch-amount"
-                            aria-describedby="rch-amount-hint"
                             name="amount"
                             inputMode="decimal"
                             required
@@ -216,11 +208,9 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
                         <Field
                           id="rch-channel"
                           label={t.fieldChannel}
-                          hint={ar ? 'طريقة إرسال المبلغ' : 'Transfer method used'}
                         >
                           <select
                             id="rch-channel"
-                            aria-describedby="rch-channel-hint"
                             name="channel"
                             required
                             value={channel}
@@ -258,11 +248,9 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
                               ? 'مرجع التحويل (رقم العملية)'
                               : 'Transfer reference (transaction ID)'
                           }
-                          hint={ar ? 'رقم العملية بالإيصال' : 'Receipt transaction ID'}
                         >
                           <input
                             id="rch-reference"
-                            aria-describedby="rch-reference-hint"
                             name="reference"
                             required
                             dir="ltr"
@@ -275,11 +263,9 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
                         <Field
                           id="rch-date"
                           label={t.fieldTransferDate}
-                          hint={ar ? 'التاريخ المسجَّل بالإيصال' : 'Receipt transfer date'}
                         >
                           <input
                             id="rch-date"
-                            aria-describedby="rch-date-hint"
                             name="transferDate"
                             type="date"
                             required
@@ -292,11 +278,9 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
                         <Field
                           id="rch-sender"
                           label={t.fieldSenderName}
-                          hint={ar ? 'اسم مُرسل التحويل' : 'Transfer sender name'}
                         >
                           <input
                             id="rch-sender"
-                            aria-describedby="rch-sender-hint"
                             name="senderName"
                             required
                             value={senderName}
@@ -308,15 +292,14 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
                         <Field
                           id="rch-phone"
                           label={t.fieldSenderPhone}
-                          hint={ar ? 'رقم مُرسل التحويل' : 'Transfer sender phone'}
                         >
                           <input
                             id="rch-phone"
-                            aria-describedby="rch-phone-hint"
                             name="senderPhone"
                             type="tel"
                             required
                             dir="ltr"
+                            placeholder="+2010…"
                             value={senderPhone}
                             onChange={(e) => setSenderPhone(e.target.value)}
                             className={textInputClassName(false)}
@@ -337,16 +320,11 @@ export function RechargePage({ go }: { go: (hash: string) => void }): JSX.Elemen
                         id="rch-proof"
                         label={t.fieldProof}
                         error={fileError ?? undefined}
-                        hint={
-                          ar
-                            ? 'صورة إيصال التحويل (JPG أو PNG أو PDF حتى 5 ميجابايت)'
-                            : 'Transfer receipt image (JPG, PNG, or PDF up to 5 MB)'
-                        }
                         className="!mb-0"
                       >
                         <input
                           id="rch-proof"
-                          aria-describedby={`rch-proof-hint${fileError ? ' rch-proof-error' : ''}`}
+                          aria-describedby={fileError ? 'rch-proof-error' : undefined}
                           aria-invalid={fileError ? true : undefined}
                           name="proof"
                           type="file"

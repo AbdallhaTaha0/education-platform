@@ -74,7 +74,6 @@ export function RegisterScreen({ onDone }: { onDone: () => void }): JSX.Element 
           <h1 ref={titleRef} tabIndex={-1} className="text-2xl font-extrabold text-ink sm:text-3xl">
             {t.registerTitle}
           </h1>
-          <p className="mt-2 text-sm text-muted sm:text-base">{t.registerBody}</p>
         </div>
 
         <Notice kind="error">

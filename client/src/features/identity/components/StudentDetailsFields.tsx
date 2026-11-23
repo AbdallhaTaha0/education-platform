@@ -64,8 +64,8 @@ export function studentDataError(code: string | undefined, ar: boolean): string 
       : 'The details changed. Reload before saving; your edits are still in the form.';
   if (code === 'NATIONAL_ID_ADMIN_ONLY')
     return ar
-      ? 'لتصحيح الرقم القومي، تواصل مع الإدارة.'
-      : 'Contact ADMIN to correct your national ID.';
+      ? 'لتعديل الرقم القومي، تواصل مع الدعم.'
+      : 'Contact support to update your national ID.';
   if (code === 'STUDENT_DATA_UNCONFIGURED')
     return ar
       ? 'التسجيل غير متاح مؤقتًا. حاول لاحقًا.'
@@ -116,8 +116,8 @@ export function StudentDetailsFields({
           {!admin ? (
             <span className="mt-1 block text-xs text-muted">
               {label(
-                'تصحيح الرقم القومي عن طريق الإدارة فقط.',
-                'National ID corrections are handled by ADMIN.',
+                'لتعديل الرقم القومي، تواصل مع الدعم.',
+                'Contact support to update your national ID.',
               )}
             </span>
           ) : null}
@@ -149,21 +149,11 @@ export function StudentDetailsFields({
               maxLength={14}
               pattern="[0-9٠-٩۰-۹]{14}"
               value={value.nationalId}
+              placeholder={label('١٤ رقمًا', '14 digits')}
               onChange={(e) => set('nationalId', e.target.value)}
               aria-invalid={errorField === 'nationalId'}
-              aria-describedby={`${prefix}-id-hint`}
               className={textInputClassName(errorField === 'nationalId')}
             />
-            <p
-              id={`${prefix}-id-hint`}
-              dir={ar ? 'rtl' : 'ltr'}
-              className="mt-1.5 text-start text-xs leading-relaxed text-muted"
-            >
-              {label(
-                '١٤ رقمًا. يستخدم لمنع تكرار الحسابات، ويُحفظ مشفرًا. هذا ليس تحققًا حكوميًا من الهوية.',
-                '14 digits. Used to prevent duplicate accounts and stored encrypted. This is not government identity verification.',
-              )}
-            </p>
           </Field>
         ) : null}
 

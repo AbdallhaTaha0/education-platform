@@ -34,14 +34,14 @@ export function Button({
       : 'Wait for the current request to finish, then try again.') : undefined;
   return (
     <button
-      className={`${unstyled ? '' : `inline-flex min-h-[44px] items-center justify-center gap-2 rounded-control px-6 py-2 text-base font-bold no-underline transition-[background-color,border-color,box-shadow,transform] duration-150 enabled:hover:-translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2 ${VARIANTS[variant]} disabled:translate-y-0 disabled:!bg-disabled disabled:!text-muted disabled:!border-border disabled:!shadow-none`} ${className} ${reason ? 'flex-col !cursor-not-allowed' : ''}`}
+      className={`${unstyled ? '' : `inline-flex min-h-[44px] items-center justify-center gap-2 rounded-control px-6 py-2 text-base font-bold no-underline transition-[background-color,border-color,box-shadow,transform] duration-150 enabled:hover:-translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus focus-visible:outline-offset-2 ${VARIANTS[variant]} disabled:translate-y-0 disabled:!bg-disabled disabled:!text-muted disabled:!border-border disabled:!shadow-none`} ${className} ${reason ? '!cursor-not-allowed' : ''}`}
       {...rest}
       aria-labelledby={rest['aria-labelledby'] ?? (rest['aria-label'] ? undefined : `${id}-label`)}
       aria-describedby={[rest['aria-describedby'], reason ? `${id}-reason` : undefined].filter(Boolean).join(' ') || undefined}
       title={reason ?? rest.title}
     >
       <span id={`${id}-label`} className={unstyled ? 'contents' : 'inline-flex min-w-0 max-w-full items-center justify-center gap-2'}>{children}</span>
-      {reason ? <span id={`${id}-reason`} data-disabled-reason className="block max-w-[22rem] whitespace-normal text-xs font-normal leading-relaxed">{reason}</span> : null}
+      {reason ? <span id={`${id}-reason`} data-disabled-reason className="sr-only">{reason}</span> : null}
     </button>
   );
 }

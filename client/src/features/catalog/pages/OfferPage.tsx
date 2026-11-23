@@ -157,12 +157,7 @@ export function OfferPage({ slug }: { slug: string; onBack: () => void }): JSX.E
                         : 'Enrollment details'}
                   </p>
                   {owned ? (
-                    <div className="mt-4 space-y-4">
-                      <p className="text-sm leading-relaxed text-muted">
-                        {ar
-                          ? 'أنت مشترك في هذا الكورس بالفعل. يمكنك متابعة المشاهدة مباشرة أو اختيار درس من الخطة.'
-                          : 'You are subscribed to this course. Jump back into playback or pick a lesson from the plan.'}
-                      </p>
+                    <div className="mt-4">
                       <a
                         href={`#/learn/${encodeURIComponent(course.slug)}`}
                         className="inline-flex min-h-[48px] w-full items-center justify-center rounded-xl bg-primary px-6 py-3 text-base font-extrabold text-primary-ink no-underline shadow-rest transition-colors hover:bg-primary-hover"
@@ -192,11 +187,6 @@ export function OfferPage({ slug }: { slug: string; onBack: () => void }): JSX.E
                           </a>
                         </div>
                       ))}
-                      <p className="text-xs leading-relaxed text-muted sm:text-sm">
-                        {ar
-                          ? 'بعد الاشتراك ستجد الدروس المسجلة والاختبارات داخل مساحة التعلم الخاصة بك.'
-                          : 'After subscribing, you can open the recorded lessons and quizzes in your learning space.'}
-                      </p>
                     </div>
                   )}
                 </Card>
