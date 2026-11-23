@@ -30,6 +30,8 @@ import { setEdgeSsrBundle, type SiteData } from './modules/seo/router.js';
 import { cleanupExpiredProofs } from './modules/wallet/cleanup/service.js';
 // @ts-expect-error Prebuilt Vite SSR bundle emitted by `npm --prefix client run build:cloudflare`
 import { renderPublicPage } from '../../client/dist-ssr/entry-server.mjs';
+// @ts-expect-error Raw index.html template emitted by `npm --prefix client run build:cloudflare`
+import EDGE_INDEX_HTML from '../../client/dist/index.html';
 
 export class MutexDurableObject extends (DurableObject as new (ctx: unknown, env: unknown) => object) {
   private readonly impl: BaseMutexDurableObject;
@@ -59,47 +61,8 @@ export class UserRealtimeDurableObject extends (DurableObject as new (ctx: unkno
   }
 }
 
-const EDGE_INDEX_HTML = `<!doctype html>
-<html lang="ar" dir="rtl" data-theme="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="manifest" href="/site.webmanifest" />
-    <meta name="theme-color" content="#101318" />
-    <meta name="robots" content="noindex, follow" />
-    <meta name="application-name" content="FAYQ" />
-    <meta name="apple-mobile-web-app-title" content="FAYQ" />
-    <title>FAYQ — تعلمها. برمجها. حققها.</title>
-    <meta name="description" content="FAYQ — دورات برمجة مسجلة لطلاب المرحلة الثانوية. راجع السعر وشروط الوصول لكل دورة." />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="FAYQ" />
-    <meta property="og:title" content="FAYQ — تعلمها. برمجها. حققها." />
-    <meta property="og:description" content="FAYQ — دورات برمجة مسجلة لطلاب المرحلة الثانوية. راجع السعر وشروط الوصول لكل دورة." />
-    <meta property="og:locale" content="ar_EG" />
-    <meta property="og:locale:alternate" content="en_US" />
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="FAYQ" />
-    <meta name="twitter:description" content="FAYQ — Learn It. Code It. Get It." />
-    <script type="module" crossorigin src="/assets/index-CbjT6sv2.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-C7zoueBO.css">
-  </head>
-  <body>
-    <div id="root"></div>
-    <script>
-      try {
-        var stored = window.localStorage.getItem('edu-platform-theme');
-        document.documentElement.dataset.theme =
-          stored === 'light' || stored === 'dark' ? stored : 'dark';
-      } catch (e) {
-        document.documentElement.dataset.theme = 'dark';
-      }
-    </script>
-  </body>
-</html>`;
-
 setEdgeSsrBundle({
-  html: EDGE_INDEX_HTML,
+  html: EDGE_INDEX_HTML as string,
   renderPublicPage: renderPublicPage as (data: SiteData) => { head: string; body: string },
 });
 
