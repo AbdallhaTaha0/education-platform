@@ -428,33 +428,37 @@ export function AdminPackagesPage(): JSX.Element {
               <PaginatedCollection as="ul" id="admin-packages" disabled={busy} className="mt-6 grid gap-4 md:grid-cols-2">
                 {rows.map((p) => (
                   <li key={p.id}>
-                    <Card>
-                      <h2 className="text-xl font-bold">{ar ? p.titleAr : p.titleEn}</h2>
-                      <p className="mt-2">
-                        {(p.pricePiastres / 100).toFixed(2)} {ar ? 'ج.م' : 'EGP'} •{' '}
-                        {displayDeadline(p.endsAt, lang)}
-                      </p>
-                      <p className="my-3 text-muted">
-                        {p.status === 'PUBLISHED'
-                          ? ar
-                            ? 'منشورة'
-                            : 'Published'
-                          : p.status === 'ARCHIVED'
+                    <Card className="flex h-full flex-col gap-3 rounded-2xl border-border bg-surface !p-5 text-start">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <h2 className="text-xl font-extrabold text-ink">{ar ? p.titleAr : p.titleEn}</h2>
+                        <span className="inline-flex rounded-full border border-border bg-field px-2.5 py-0.5 text-xs font-bold text-muted">
+                          {p.status === 'PUBLISHED'
                             ? ar
-                              ? 'مؤرشفة'
-                              : 'Archived'
-                            : ar
-                              ? 'مسودة'
-                              : 'Draft'}
+                              ? 'منشورة'
+                              : 'Published'
+                            : p.status === 'ARCHIVED'
+                              ? ar
+                                ? 'مؤرشفة'
+                                : 'Archived'
+                              : ar
+                                ? 'مسودة'
+                                : 'Draft'}
+                        </span>
+                      </div>
+                      <p className="text-sm font-bold tabular-nums text-ink">
+                        {(p.pricePiastres / 100).toFixed(2)} {ar ? 'ج.م' : 'EGP'} ·{' '}
+                        <span className="font-normal text-muted">{displayDeadline(p.endsAt, lang)}</span>
                       </p>
-                      <Button variant="secondary" onClick={() => edit(p)} disabled={busy}>
-                        {ar ? 'تعديل' : 'Edit'}
-                      </Button>
-                      {p.status !== 'ARCHIVED' ? (
-                        <Button variant="secondary" onClick={() => setArchiveTarget(p)} disabled={busy}>
-                          {ar ? 'أرشفة' : 'Archive'}
+                      <div className="mt-auto flex flex-wrap gap-2 border-t border-border/60 pt-3">
+                        <Button variant="secondary" onClick={() => edit(p)} disabled={busy}>
+                          {ar ? 'تعديل' : 'Edit'}
                         </Button>
-                      ) : null}
+                        {p.status !== 'ARCHIVED' ? (
+                          <Button variant="secondary" onClick={() => setArchiveTarget(p)} disabled={busy}>
+                            {ar ? 'أرشفة' : 'Archive'}
+                          </Button>
+                        ) : null}
+                      </div>
                     </Card>
                   </li>
                 ))}

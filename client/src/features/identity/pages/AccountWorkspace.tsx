@@ -30,11 +30,10 @@ function StudentLinks(route: Route): WorkspaceLink[] {
 /**
  * Shared role-aware account workspace shell.
  *
- * Sidebar on desktop, accessible compact inline section menu on mobile.
- * This shell provides NO <main> landmark itself; inner pages keep their
- * single <main> so landmarks are never nested and id="main" is never
- * duplicated. Anonymous/loading states render children directly without
- * fetching protected role data.
+ * Sticky sidebar on Desktop (>=1024px), always-visible 1-tap horizontal
+ * scrollable pill strip on Tablet & Mobile (<1024px) so 15-18 students never
+ * hit a hidden dropdown trap. This shell provides NO <main> landmark itself;
+ * inner pages keep their single <main>.
  */
 export function AccountWorkspace({
   route,
@@ -49,14 +48,27 @@ export function AccountWorkspace({
   const ar = lang === 'ar';
 
   if (route.startsWith('admin') && status !== 'authenticated') {
-    return <main id="main"><section className="py-8"><Container>
-      {status === 'loading' ? <Loading text={t.loading} /> : <>
-        <Notice kind="info">{t.needLogin}</Notice>
-        <a href="#/login" className="mt-4 inline-flex min-h-[48px] items-center rounded-control bg-primary px-5 py-3 font-bold text-primary-ink">
-          {ar ? 'تسجيل الدخول' : 'Log in'}
-        </a>
-      </>}
-    </Container></section></main>;
+    return (
+      <main id="main">
+        <section className="py-8">
+          <Container>
+            {status === 'loading' ? (
+              <Loading text={t.loading} />
+            ) : (
+              <>
+                <Notice kind="info">{t.needLogin}</Notice>
+                <a
+                  href="#/login"
+                  className="mt-4 inline-flex min-h-[48px] items-center rounded-control bg-primary px-5 py-3 font-bold text-primary-ink no-underline hover:bg-primary-hover"
+                >
+                  {ar ? 'تسجيل الدخول' : 'Log in'}
+                </a>
+              </>
+            )}
+          </Container>
+        </section>
+      </main>
+    );
   }
 
   if (status !== 'authenticated' || !user) {
@@ -66,9 +78,7 @@ export function AccountWorkspace({
   if (user.role === 'ADMIN') return <AdminWorkspace route={route}>{children}</AdminWorkspace>;
 
   const links = StudentLinks(route).filter((l) => codingEnabled || l.href !== '#/practice');
-  const current = links.find((l) => l.active);
   const menuLabel = ar ? 'أقسام الحساب' : 'Account sections';
-  const currentLabel = current ? (ar ? current.ar : current.en) : menuLabel;
   const sidebarTitle = ar ? 'حسابي وتعلّمي' : 'My account and learning';
 
   return (
@@ -80,10 +90,7 @@ export function AccountWorkspace({
             <ul>
               {links.map((link) => (
                 <li key={link.href}>
-                  <a
-                    href={link.href}
-                    aria-current={link.active ? 'page' : undefined}
-                  >
+                  <a href={link.href} aria-current={link.active ? 'page' : undefined}>
                     {ar ? link.ar : link.en}
                   </a>
                 </li>
@@ -92,28 +99,21 @@ export function AccountWorkspace({
           </nav>
         </div>
       </aside>
-      <details key={route} className="workspace-mobile-menu" data-testid="workspace-section-menu">
-        <summary>
-          <span>
-            {menuLabel}: {currentLabel}
-          </span>
-          <span aria-hidden="true">▾</span>
-        </summary>
-        <nav aria-label={menuLabel}>
-          <ul>
-            {links.map((link) => (
-              <li key={link.href}>
-                <a
-                  href={link.href}
-                  aria-current={link.active ? 'page' : undefined}
-                >
-                  {ar ? link.ar : link.en}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      </details>
+      <nav
+        className="workspace-mobile-menu"
+        aria-label={menuLabel}
+        data-testid="workspace-section-menu"
+      >
+        <ul className="workspace-mobile-menu__strip">
+          {links.map((link) => (
+            <li key={link.href} className="shrink-0">
+              <a href={link.href} aria-current={link.active ? 'page' : undefined}>
+                {ar ? link.ar : link.en}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </nav>
       <div className="workspace-content">{children}</div>
     </div>
   );

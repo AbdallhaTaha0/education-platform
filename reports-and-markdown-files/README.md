@@ -1,5 +1,6 @@
 # Education platform documentation
 
+- [Whole-site UI/UX overhaul and component refactoring for 15–18 students](platform-updates/ui-ux-overhaul-teen-ergonomics-20261123.md): Desktop (`1440×900`), Tablet (`768×1024`), and Mobile (`390×844`) responsive redesign, 1-tap teen discovery/workspace navigation, 3-step guided recharge, modular component refactoring (`WP-UI1`–`WP-UI6`), and 10-gate verification.
 - [Cloudflare D1 + Workers migration and multi-teacher / multi-subject plan](deployment/cloudflare-d1-teachers-subjects-plan-20261122.md), [worker implementation prompt](deployment/cloudflare-d1-worker-prompt-20261122.md), and [implementation report](deployment/cloudflare-d1-implementation-report-20261122.md): 100% Cloudflare architecture (Workers, D1, Durable Objects, KV, Cron, R2), D1 transaction/lock refactoring inventory, multi-teacher/subject contract, verification evidence on `testing`, and cleanup record.
 - [Production candidate and guided cloud release](deployment/production-candidate-20261011.md): fresh database, private admin setup, Docker evidence and launch gates.
 - [Commercial DRM provider options](deployment/commercial-drm-options-20261011.md): pricing, evaluation restrictions and remaining integration.

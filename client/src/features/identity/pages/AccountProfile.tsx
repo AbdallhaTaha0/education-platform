@@ -37,9 +37,11 @@ export function AccountProfile({ go }: { go: (route: string) => void }): JSX.Ele
   if (status === 'loading') {
     return (
       <main id="main">
-        <Container>
-          <p className="text-muted">{t.authChecking}</p>
-        </Container>
+        <section className="py-10">
+          <Container>
+            <p className="text-muted">{t.authChecking}</p>
+          </Container>
+        </section>
       </main>
     );
   }
@@ -47,21 +49,25 @@ export function AccountProfile({ go }: { go: (route: string) => void }): JSX.Ele
   if (status === 'anonymous' || !user) {
     return (
       <main id="main">
-        <Container>
-          <div className="mx-auto max-w-[640px] rounded-card border border-border bg-surface p-6 shadow-rest">
-            <h1 ref={titleRef} tabIndex={-1}>
-              {ar ? 'الملف والأمان' : 'Profile & security'}
-            </h1>
-            <Notice kind="info">
-              {lastAuthCode === 'SESSION_EXPIRED' ? t.sessionExpiredNotice : t.needLogin}
-            </Notice>
-            <FormActions>
-              <Button variant="secondary" onClick={() => go('#/login')}>
-                {t.navLogin}
-              </Button>
-            </FormActions>
-          </div>
-        </Container>
+        <section className="py-10">
+          <Container>
+            <div className="mx-auto max-w-[560px] rounded-2xl border border-border bg-surface p-6 text-start shadow-rest">
+              <h1 ref={titleRef} tabIndex={-1} className="text-2xl font-extrabold text-ink sm:text-3xl">
+                {ar ? 'الملف والأمان' : 'Profile & security'}
+              </h1>
+              <div className="mt-4">
+                <Notice kind="info">
+                  {lastAuthCode === 'SESSION_EXPIRED' ? t.sessionExpiredNotice : t.needLogin}
+                </Notice>
+              </div>
+              <FormActions>
+                <Button variant="primary" onClick={() => go('#/login')}>
+                  {t.navLogin}
+                </Button>
+              </FormActions>
+            </div>
+          </Container>
+        </section>
       </main>
     );
   }
@@ -95,58 +101,60 @@ export function AccountProfile({ go }: { go: (route: string) => void }): JSX.Ele
   return (
     <main id="main">
       <Container>
-        <div className="mx-auto max-w-[640px] rounded-card border border-border bg-surface p-6 shadow-rest">
-        <p className="text-sm font-bold text-muted">
-          {ar ? 'حسابي — الملف والأمان' : 'My account — profile & security'}
-        </p>
-        <h1 ref={titleRef} tabIndex={-1} className="mt-1 text-3xl font-bold">
-          {ar ? 'الملف والأمان' : 'Profile & security'}
-        </h1>
-        <Notice kind={message?.kind ?? 'success'}>{message?.text ?? null}</Notice>
-        <dl className="mb-6 grid gap-3">
-          <div className="grid grid-cols-[140px_1fr] gap-3 border-b border-border py-2 max-sm:grid-cols-1 max-sm:gap-1">
-            <dt className="text-sm font-semibold text-muted">{t.fieldName}</dt>
-            <dd className="m-0 font-semibold [overflow-wrap:anywhere]">{person.displayName}</dd>
+        <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-surface p-5 text-start shadow-rest sm:p-6">
+          <p className="text-xs font-extrabold text-primary-strong">
+            {ar ? 'حسابي — الملف والأمان' : 'My account — profile & security'}
+          </p>
+          <h1 ref={titleRef} tabIndex={-1} className="mt-1 text-2xl font-extrabold text-ink sm:text-3xl">
+            {ar ? 'الملف والأمان' : 'Profile & security'}
+          </h1>
+          <div className="mt-4">
+            <Notice kind={message?.kind ?? 'success'}>{message?.text ?? null}</Notice>
           </div>
-          <div className="grid grid-cols-[140px_1fr] gap-3 border-b border-border py-2 max-sm:grid-cols-1 max-sm:gap-1">
-            <dt className="text-sm font-semibold text-muted">{t.fieldEmail}</dt>
-            <dd className="m-0 font-semibold [overflow-wrap:anywhere]" dir="ltr">
-              {person.email}
-            </dd>
-          </div>
-          <div className="grid grid-cols-[140px_1fr] gap-3 border-b border-border py-2 max-sm:grid-cols-1 max-sm:gap-1">
-            <dt className="text-sm font-semibold text-muted">{t.fieldPhone}</dt>
-            <dd className="m-0 font-semibold [overflow-wrap:anywhere]" dir="ltr">
-              {person.phone}
-            </dd>
-          </div>
-          <div className="grid grid-cols-[140px_1fr] gap-3 border-b border-border py-2 max-sm:grid-cols-1 max-sm:gap-1">
-            <dt className="text-sm font-semibold text-muted">{t.accountRole}</dt>
-            <dd className="m-0 font-semibold [overflow-wrap:anywhere]">
-              {person.role === 'ADMIN' ? t.roleAdmin : t.roleStudent}
-            </dd>
-          </div>
-          <div className="grid grid-cols-[140px_1fr] gap-3 border-b border-border py-2 max-sm:grid-cols-1 max-sm:gap-1">
-            <dt className="text-sm font-semibold text-muted">{t.accountSince}</dt>
-            <dd className="m-0 font-semibold [overflow-wrap:anywhere]">
-              {formatDate(person.createdAt, lang)}
-            </dd>
-          </div>
-        </dl>
-        <p className="text-sm text-muted">
-          {ar
-            ? 'البريد ورقم الهاتف للقراءة فقط. استعادة كلمة المرور بمساعدة الإدارة.'
-            : 'Email and phone are read-only. Password recovery requires admin assistance.'}
-        </p>
-        <AccountSettings key={person.id} displayName={person.displayName} />
-        <FormActions>
-          <Button variant="secondary" onClick={() => void doLogout()} disabled={busy}>
-            {t.logout}
-          </Button>
-          <Button variant="secondary" onClick={() => void doLogoutAll()} disabled={busy}>
-            {t.logoutAll}
-          </Button>
-        </FormActions>
+          <dl className="mb-6 divide-y divide-border/70 rounded-xl border border-border bg-field/60 px-4">
+            <div className="grid grid-cols-[140px_1fr] gap-3 py-3 max-sm:grid-cols-1 max-sm:gap-1">
+              <dt className="text-sm font-semibold text-muted">{t.fieldName}</dt>
+              <dd className="m-0 font-bold text-ink [overflow-wrap:anywhere]">{person.displayName}</dd>
+            </div>
+            <div className="grid grid-cols-[140px_1fr] gap-3 py-3 max-sm:grid-cols-1 max-sm:gap-1">
+              <dt className="text-sm font-semibold text-muted">{t.fieldEmail}</dt>
+              <dd className="m-0 font-semibold text-ink [overflow-wrap:anywhere]" dir="ltr">
+                {person.email}
+              </dd>
+            </div>
+            <div className="grid grid-cols-[140px_1fr] gap-3 py-3 max-sm:grid-cols-1 max-sm:gap-1">
+              <dt className="text-sm font-semibold text-muted">{t.fieldPhone}</dt>
+              <dd className="m-0 font-semibold text-ink [overflow-wrap:anywhere]" dir="ltr">
+                {person.phone}
+              </dd>
+            </div>
+            <div className="grid grid-cols-[140px_1fr] gap-3 py-3 max-sm:grid-cols-1 max-sm:gap-1">
+              <dt className="text-sm font-semibold text-muted">{t.accountRole}</dt>
+              <dd className="m-0 font-semibold text-ink [overflow-wrap:anywhere]">
+                {person.role === 'ADMIN' ? t.roleAdmin : t.roleStudent}
+              </dd>
+            </div>
+            <div className="grid grid-cols-[140px_1fr] gap-3 py-3 max-sm:grid-cols-1 max-sm:gap-1">
+              <dt className="text-sm font-semibold text-muted">{t.accountSince}</dt>
+              <dd className="m-0 font-semibold text-ink [overflow-wrap:anywhere]">
+                {formatDate(person.createdAt, lang)}
+              </dd>
+            </div>
+          </dl>
+          <p className="text-sm text-muted">
+            {ar
+              ? 'البريد ورقم الهاتف للقراءة فقط. استعادة كلمة المرور بمساعدة الإدارة.'
+              : 'Email and phone are read-only. Password recovery requires admin assistance.'}
+          </p>
+          <AccountSettings key={person.id} displayName={person.displayName} />
+          <FormActions>
+            <Button variant="secondary" onClick={() => void doLogout()} disabled={busy}>
+              {t.logout}
+            </Button>
+            <Button variant="secondary" onClick={() => void doLogoutAll()} disabled={busy}>
+              {t.logoutAll}
+            </Button>
+          </FormActions>
         </div>
       </Container>
     </main>

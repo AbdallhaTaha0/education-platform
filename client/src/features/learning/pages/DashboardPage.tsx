@@ -4,7 +4,13 @@ import { Container } from '../../../components/ui/Card';
 import { FormActions } from '../../../components/ui/FormActions';
 import { PaginatedCollection } from '../../../components/ui/Pagination';
 import { useDashboard } from '../hooks/useLearning';
-import { ErrorBlock, LoadingBlock, SectionHeading, SignInRequired, SubscriptionCard } from '../components/Learning';
+import {
+  ErrorBlock,
+  LoadingBlock,
+  SectionHeading,
+  SignInRequired,
+  SubscriptionCard,
+} from '../components/Learning';
 import { useLang, useTranslate } from '../../../i18n';
 import type { LearningLabels } from '../components/Learning';
 
@@ -40,17 +46,31 @@ export function DashboardPage({ onContinue, onRenew, onBrowse }: DashboardPagePr
   );
 
   const errorMessage = errorCode === null ? '' : t('learningLoadError');
-  const signInLost = ['TOKEN_MISSING', 'TOKEN_INVALID', 'SESSION_EXPIRED', 'SESSION_REVOKED'].includes(errorCode ?? '');
+  const signInLost = [
+    'TOKEN_MISSING',
+    'TOKEN_INVALID',
+    'SESSION_EXPIRED',
+    'SESSION_REVOKED',
+  ].includes(errorCode ?? '');
 
   return (
     <Container id="main">
-      <main className="py-8">
-        <h1 className="mb-2 text-3xl font-bold">{t('learningDashboardTitle')}</h1>
-        <p className="mb-8 text-muted">{t('learningDashboardSubtitle')}</p>
+      <main className="py-6 text-start md:py-8">
+        <p className="text-xs font-extrabold text-primary-strong">
+          {lang === 'ar' ? 'مساحة التعلّم' : 'Learning workspace'}
+        </p>
+        <h1 className="mt-1 page-title text-ink">{t('learningDashboardTitle')}</h1>
+        <p className="mb-7 mt-1.5 text-sm text-muted sm:text-base">
+          {t('learningDashboardSubtitle')}
+        </p>
 
         {loading ? <LoadingBlock label={t('learningLoading')} /> : null}
         {!loading && errorCode !== null ? (
-          signInLost ? <SignInRequired lang={lang} /> : <ErrorBlock message={errorMessage} retryLabel={t('retry')} onRetry={reload} />
+          signInLost ? (
+            <SignInRequired lang={lang} />
+          ) : (
+            <ErrorBlock message={errorMessage} retryLabel={t('retry')} onRetry={reload} />
+          )
         ) : null}
 
         {!loading && errorCode === null && data !== null ? (
@@ -64,7 +84,11 @@ export function DashboardPage({ onContinue, onRenew, onBrowse }: DashboardPagePr
                   {labels.emptyActive}
                 </p>
               ) : (
-                <PaginatedCollection as="ul" id="active-courses" className="grid gap-4 md:grid-cols-2">
+                <PaginatedCollection
+                  as="ul"
+                  id="active-courses"
+                  className="grid gap-4 md:grid-cols-2"
+                >
                   {data.active.map((item) => (
                     <SubscriptionCard
                       key={item.courseId}
@@ -83,7 +107,11 @@ export function DashboardPage({ onContinue, onRenew, onBrowse }: DashboardPagePr
                 <SectionHeading>
                   <span id="expired-heading">{t('learningExpiredHeading')}</span>
                 </SectionHeading>
-                <PaginatedCollection as="ul" id="expired-courses" className="grid gap-4 md:grid-cols-2">
+                <PaginatedCollection
+                  as="ul"
+                  id="expired-courses"
+                  className="grid gap-4 md:grid-cols-2"
+                >
                   {data.expired.map((item) => (
                     <SubscriptionCard
                       key={item.courseId}
@@ -100,16 +128,18 @@ export function DashboardPage({ onContinue, onRenew, onBrowse }: DashboardPagePr
             {data.active.length === 0 && data.expired.length === 0 ? (
               <div
                 data-testid="learning-empty"
-                className="rounded-card border border-border bg-surface p-6"
+                className="rounded-2xl border border-border bg-surface p-6 text-start shadow-rest"
               >
                 <p className="text-muted">{labels.noSubscription}</p>
-                <FormActions><button
-                  type="button"
-                  className="min-h-[44px] rounded-control bg-primary px-4 py-2 font-bold text-primary-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
-                  onClick={onBrowse}
-                >
-                  {labels.browseCourses}
-                </button></FormActions>
+                <FormActions>
+                  <button
+                    type="button"
+                    className="min-h-[44px] rounded-xl bg-primary px-5 py-2.5 font-extrabold text-primary-ink shadow-rest transition-colors hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                    onClick={onBrowse}
+                  >
+                    {labels.browseCourses}
+                  </button>
+                </FormActions>
               </div>
             ) : null}
           </div>

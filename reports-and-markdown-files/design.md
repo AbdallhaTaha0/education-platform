@@ -1,5 +1,9 @@
 # Education Platform — Design v1
 
+## Whole-site UI/UX overhaul & component refactoring for 15–18 students (2026-11-23)
+
+Owner requested a comprehensive desktop, tablet, and mobile UI/UX overhaul and refactoring tailored for 15–18-year-old secondary students (`WP-UI1`–`WP-UI6`). The home hero now uses a 2-column editorial layout keeping headlines, primary CTAs, artwork, and 1-tap grade selectors above the `900px` desktop/tablet fold, with localized Arabic founder titles and natural RTL/LTR alignment. Tablet (`768px–1023px`) retains top header navigation while Mobile (`<=767px`) uses the floating 4-item bottom dock. Student discovery leads with 1-tap grade/subject pills and a mobile collapsible filter panel (`CatalogFilterBar`, `CourseCard` with `bg-canvas/95` badge contrast). Offer and package detail pages use a 2-column sticky enrollment card layout. Auth forms keep `.auth-form-header` and `.form-actions` centered while start-aligning all inputs/labels, using a 2-column desktop registration grid, inline password reveal, and suppressed focus outlines on programmatic `[tabindex="-1"]` headings. `AccountWorkspace` replaces the hidden mobile `<details>` menu with an always-visible 1-tap horizontal pill strip, `AccountOverview` elevates the Resume Learning card to the top, `WalletPage`/`RechargePage` present a guided 3-step manual recharge flow, and `AdminAssessmentPanel` / `CourseForm` are refactored into modular 2-column components. See [verification report](platform-updates/ui-ux-overhaul-teen-ergonomics-20261123.md).
+
 ## Manual assessment completion (2026-10-09)
 
 Owner explicitly replaced the earlier three-second success redirect: show the

@@ -248,31 +248,41 @@ export function CourseLearningPage({
 
   return (
     <Container id="main">
-      <main className="py-8">
-        <a
-          href="#/dashboard"
-          className="mb-4 inline-flex min-h-[44px] items-center text-sm font-semibold text-muted underline"
-        >
-          {lang === 'ar' ? 'العودة إلى كورساتي' : 'Back to my courses'}
-        </a>
-        <h1 className="mb-2 text-3xl font-bold">
-          {lang === 'ar' ? course.titleAr : course.titleEn}
-        </h1>
-        <p className="mb-2 text-muted">
-          {lang === 'ar' ? course.descriptionAr : course.descriptionEn}
-        </p>
-        {course.expiresAt !== null ? (
-          <p data-testid="learning-expiry" className="mb-6 text-sm text-muted">
-            {labels.expiresOn} {formatDate(course.expiresAt, lang)} (
-            {lang === 'ar' ? 'القاهرة' : 'Cairo'})
+      <main className="py-5 text-start md:py-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <a
+            href="#/dashboard"
+            className="inline-flex min-h-[40px] items-center gap-1.5 text-sm font-bold text-primary-strong underline underline-offset-4 hover:opacity-85"
+          >
+            {lang === 'ar' ? 'العودة إلى كورساتي' : 'Back to my courses'}
+          </a>
+          {course.expiresAt !== null ? (
+            <p
+              data-testid="learning-expiry"
+              className="inline-flex items-center rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-muted"
+            >
+              {labels.expiresOn} {formatDate(course.expiresAt, lang)} (
+              {lang === 'ar' ? 'القاهرة' : 'Cairo'})
+            </p>
+          ) : (
+            <p
+              data-testid="learning-expiry"
+              className="inline-flex items-center rounded-full border border-border bg-surface px-3 py-1 text-xs font-semibold text-muted"
+            >
+              {lang === 'ar'
+                ? 'بدون انتهاء، حتى الحذف النهائي للكورس'
+                : 'No expiry, until permanent course removal'}
+            </p>
+          )}
+        </div>
+        <div className="mb-5">
+          <h1 className="text-2xl font-extrabold text-ink sm:text-3xl">
+            {lang === 'ar' ? course.titleAr : course.titleEn}
+          </h1>
+          <p className="mt-1 line-clamp-2 max-w-[70ch] text-sm text-muted">
+            {lang === 'ar' ? course.descriptionAr : course.descriptionEn}
           </p>
-        ) : (
-          <p data-testid="learning-expiry" className="mb-6 text-sm text-muted">
-            {lang === 'ar'
-              ? 'بدون انتهاء، حتى الحذف النهائي للكورس'
-              : 'No expiry, until permanent course removal'}
-          </p>
-        )}
+        </div>
 
         {playback.progressError ? (
           <div
@@ -294,14 +304,14 @@ export function CourseLearningPage({
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(300px,1fr)]">
           <div className="min-w-0">
             {selectedLesson !== null ? (
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-card border border-border bg-surface p-4">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3">
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-muted">
+                  <p className="text-xs font-bold text-primary-strong">
                     {lang === 'ar'
                       ? `الدرس ${selectedIndex + 1} من ${lessons.length}`
                       : `Lesson ${selectedIndex + 1} of ${lessons.length}`}
                   </p>
-                  <h2 className="mt-1 break-words text-lg font-bold">
+                  <h2 className="mt-0.5 break-words text-base font-extrabold text-ink sm:text-lg">
                     {lang === 'ar' ? selectedLesson.titleAr : selectedLesson.titleEn}
                   </h2>
                 </div>
@@ -316,7 +326,7 @@ export function CourseLearningPage({
                       .querySelector<HTMLElement>('#course-plan summary')
                       ?.focus({ preventScroll: true });
                   }}
-                  className="inline-flex min-h-[44px] items-center rounded-control border border-border px-3 text-sm font-semibold lg:hidden"
+                  className="inline-flex min-h-[44px] items-center rounded-xl border border-border-strong bg-elevated px-3.5 text-sm font-bold text-ink lg:hidden"
                 >
                   {lang === 'ar' ? 'خطة الكورس' : 'Course plan'}
                 </button>
@@ -412,7 +422,7 @@ export function CourseLearningPage({
             ) : null}
             {selectedLesson !== null ? (
               <div
-                className="mt-4 flex flex-wrap items-center justify-between gap-3"
+                className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-3"
                 aria-label={lang === 'ar' ? 'التنقل بين الدروس' : 'Lesson navigation'}
               >
                 <Button

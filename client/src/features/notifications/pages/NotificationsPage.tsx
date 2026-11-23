@@ -78,12 +78,14 @@ export function NotificationsPage(): JSX.Element {
                     ? t.notificationsConnecting
                     : t.notificationsDisconnected}
               </p>
-              <Card className="mb-6">
+              <Card className="mb-6 rounded-2xl border-border bg-surface !p-5 shadow-rest">
                 <div className="flex flex-wrap items-center justify-between gap-4">
                   <div>
-                    <p className="text-sm text-muted">{t.notificationsUnreadHeading}</p>
+                    <p className="text-xs font-bold uppercase tracking-wide text-muted">
+                      {t.notificationsUnreadHeading}
+                    </p>
                     <p
-                      className="mt-1 text-3xl font-extrabold"
+                      className="mt-1 text-3xl font-extrabold tabular-nums text-primary-strong"
                       data-testid="notification-unread-count"
                     >
                       <bdi>
@@ -93,7 +95,7 @@ export function NotificationsPage(): JSX.Element {
                       </bdi>
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-wrap gap-2.5">
                     <Button
                       variant="secondary"
                       disabled={state.loading || busy}
@@ -111,21 +113,32 @@ export function NotificationsPage(): JSX.Element {
                         state.unreadCount === 0 ||
                         state.unreadCount === null
                       }
-                      disabledReason={busy || state.loading || !state.loaded ? undefined : { ar: "لا توجد إشعارات غير مقروءة.", en: "There are no unread notifications." }}
+                      disabledReason={
+                        busy || state.loading || !state.loaded
+                          ? undefined
+                          : {
+                              ar: 'لا توجد إشعارات غير مقروءة.',
+                              en: 'There are no unread notifications.',
+                            }
+                      }
                       onClick={() => void store.readAll()}
                     >
                       {state.busy === 'all' ? t.notificationsSaving : t.notificationsMarkAll}
                     </Button>
                   </div>
                 </div>
-                <div className="mt-5 flex gap-2" role="group" aria-label={t.notificationsFilter}>
+                <div
+                  className="mt-4 flex flex-wrap gap-2 border-t border-border/70 pt-4"
+                  role="group"
+                  aria-label={t.notificationsFilter}
+                >
                   <Button
                     variant="secondary"
                     data-notification-filter
                     aria-pressed={!state.unreadOnly}
                     disabled={busy}
                     onClick={() => store.setFilter(false)}
-                    className={!state.unreadOnly ? 'border-primary text-primary-strong' : ''}
+                    className={!state.unreadOnly ? 'border-primary bg-selected text-primary-strong' : ''}
                   >
                     {!state.unreadOnly ? <span aria-hidden="true">✓</span> : null}
                     {t.notificationsAll}
@@ -136,7 +149,7 @@ export function NotificationsPage(): JSX.Element {
                     aria-pressed={state.unreadOnly}
                     disabled={busy}
                     onClick={() => store.setFilter(true)}
-                    className={state.unreadOnly ? 'border-primary text-primary-strong' : ''}
+                    className={state.unreadOnly ? 'border-primary bg-selected text-primary-strong' : ''}
                   >
                     {state.unreadOnly ? <span aria-hidden="true">✓</span> : null}
                     {t.notificationsUnread}
@@ -193,16 +206,28 @@ export function NotificationsPage(): JSX.Element {
                       data-testid="notification-item"
                       data-notification-id={item.id}
                     >
-                      <Card className={!read ? 'border-border-strong' : ''}>
+                      <Card
+                        className={
+                          !read
+                            ? 'rounded-2xl border-border-strong border-s-4 border-s-primary bg-surface'
+                            : 'rounded-2xl border-border bg-surface'
+                        }
+                      >
                         <div className="flex items-start gap-3">
                           <span
                             aria-hidden="true"
                             className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${read ? 'border border-border-strong' : 'bg-primary'}`}
                           />
-                          <div className="min-w-0 flex-1">
+                          <div className="min-w-0 flex-1 text-start">
                             <div className="flex flex-wrap items-start justify-between gap-2">
-                              <h2 className="text-lg font-bold">{title}</h2>
-                              <span className="text-sm font-semibold text-muted">
+                              <h2 className="text-lg font-extrabold text-ink">{title}</h2>
+                              <span
+                                className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-bold ${
+                                  read
+                                    ? 'border-border bg-field text-muted'
+                                    : 'border-primary/40 bg-primary/15 text-primary-strong'
+                                }`}
+                              >
                                 {read ? t.notificationsRead : t.notificationsUnread}
                               </span>
                             </div>

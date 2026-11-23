@@ -42,12 +42,12 @@ export function SubscriptionCard({
   return (
     <li
       data-testid={`subscription-${item.state.toLowerCase()}`}
-      className="rounded-card border border-border bg-surface p-4 shadow-rest"
+      className="flex flex-col rounded-2xl border border-border bg-surface p-5 text-start shadow-rest transition-colors hover:border-border-strong"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h3 className="truncate text-lg font-bold">{title}</h3>
-          <p className="mt-1 text-sm text-muted">
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-lg font-extrabold text-ink">{title}</h3>
+          <p className="mt-1.5 inline-flex items-center rounded-lg border border-border bg-field px-2.5 py-1 text-xs font-semibold text-muted">
             {item.expiresAt
               ? `${labels.expiresOn} ${formatDate(item.expiresAt, lang)} (${lang === 'ar' ? 'القاهرة' : 'Cairo'})`
               : lang === 'ar'
@@ -60,17 +60,18 @@ export function SubscriptionCard({
           tone={isActive ? 'success' : 'error'}
         />
       </div>
-      <div className="mt-3">
-        <div className="flex items-center justify-between text-xs text-muted">
-          <span>{labels.progress}</span>
-          <span>{item.percentComplete}%</span>
+      <div className="mt-4 rounded-xl border border-border/70 bg-field/60 p-3.5 tabular-nums">
+        <div className="flex items-center justify-between gap-2 text-xs">
+          <span className="font-semibold text-muted">
+            {labels.lessonCount}: {item.completedLessons}/{item.totalLessons}
+          </span>
+          <span className="rounded-full border border-border bg-surface px-2.5 py-0.5 font-extrabold text-ink">
+            {item.percentComplete}%
+          </span>
         </div>
-        <ProgressBar value={item.percentComplete} label={`${title} — ${labels.progress}`} className="mt-1" />
-        <p className="mt-1 text-xs text-muted">
-          {labels.lessonCount}: {item.completedLessons}/{item.totalLessons}
-        </p>
+        <ProgressBar value={item.percentComplete} label={`${title} — ${labels.progress}`} className="mt-2" />
       </div>
-      <FormActions className="mt-4">
+      <FormActions className="mt-auto pt-4">
         {isActive && item.availableForLearning === false ? (
           <p className="w-full text-sm text-muted">
             {lang === 'ar'
@@ -81,16 +82,16 @@ export function SubscriptionCard({
         {isActive && item.availableForLearning !== false && onContinue ? (
           <button
             type="button"
-            className="min-h-[44px] rounded-control bg-primary px-4 py-2 font-bold text-canvas focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+            className="min-h-[44px] w-full rounded-xl bg-primary px-5 py-2.5 font-extrabold text-primary-ink shadow-rest transition-colors hover:bg-primary-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
             onClick={() => onContinue(item.slug)}
           >
             {item.lastLessonId ? labels.resume : labels.continueLearning}
-                    </button>
+          </button>
         ) : null}
         {!isActive && onRenew ? (
           <button
             type="button"
-            className="min-h-[44px] rounded-control border border-primary px-4 py-2 font-bold text-primary-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+            className="min-h-[44px] w-full rounded-xl border border-primary bg-elevated px-5 py-2.5 font-bold text-primary-strong transition-colors hover:bg-interactive focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
             onClick={() => onRenew(item.slug)}
           >
             {labels.renew}
@@ -128,63 +129,104 @@ export function CourseOutline({
         const open = controlled ?? true;
         const sectionTotal = sumDurations(section.lessons.map((l) => l.durationSeconds));
         return (
-        <details
-          key={section.sectionId}
-          open={open}
-          onToggle={(e) => onToggleSection?.(section.sectionId, (e.target as HTMLDetailsElement).open)}
-          className="rounded-card border border-border bg-surface p-4"
-        >
-          <summary className="min-h-[44px] cursor-pointer rounded-control py-2 font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
-            {lang === 'ar' ? section.titleAr : section.titleEn}
-            <span className="ms-2 text-xs font-medium text-muted">{section.lessons.filter(l => l.completed).length}/{section.lessons.length} {labels.completed}</span>
-            <span data-testid="section-duration" dir="ltr" className="ms-2 text-xs font-medium text-muted">{formatDurationTotal(sectionTotal, lang)}</span>
-          </summary>
-          <ol className="mt-2 space-y-1">
-            {section.lessons.map((lesson) => {
-              const selected = lesson.lessonId === selectedLessonId;
-              const state = lesson.completed
-                ? 'completed'
-                : lesson.resumePositionSeconds > 0
-                  ? 'current'
-                  : 'not-started';
-              const durationLabel = formatDuration(lesson.durationSeconds ?? null);
-              return (
-                <li key={lesson.lessonId}>
-                  <button
-                    type="button"
-                    data-testid="lesson-row"
-                    data-lesson-state={state}
-                    data-playable={lesson.playable ? 'true' : 'false'}
-                    aria-current={selected ? 'true' : undefined}
-                    disabled={disabled === true || !lesson.playable} aria-describedby={`lesson-status-${lesson.lessonId}`}
-                    onClick={() => onSelect(lesson.lessonId)}
-                    className={`flex min-h-[64px] w-full items-center gap-3 rounded-control border px-3 py-3 text-start text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${
-                      selected
-                        ? 'border-primary bg-elevated text-ink'
-                        : 'border-border bg-canvas text-ink'
-                    } ${lesson.playable ? '' : 'opacity-60'}`}
-                  >
-                    <span aria-hidden="true" className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-base">{lesson.locked ? '↳' : lesson.completed ? '✓' : selected ? '▶' : lesson.position}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block break-words font-semibold">{lang === 'ar' ? lesson.titleAr : lesson.titleEn}</span>
-                      <span id={`lesson-status-${lesson.lessonId}`} className="mt-1 block text-xs text-muted">
-                      {disabled ? lang === 'ar' ? 'انتظر اكتمال طلب المشاهدة.' : 'Wait for the playback request to finish.' : lesson.locked ? lang === 'ar' ? 'اجتز التقييمات المطلوبة' : 'Pass required assessments' : !lesson.playable ? lang === 'ar' ? 'الفيديو غير متاح حاليًا' : 'Video currently unavailable' : state === 'completed'
-                        ? labels.completed
-                        : state === 'current'
-                          ? labels.resume
-                          : labels.notStarted}
+          <details
+            key={section.sectionId}
+            open={open}
+            onToggle={(e) => onToggleSection?.(section.sectionId, (e.target as HTMLDetailsElement).open)}
+            className="rounded-card border border-border bg-surface p-4"
+          >
+            <summary className="min-h-[44px] cursor-pointer rounded-control py-2 font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus">
+              {lang === 'ar' ? section.titleAr : section.titleEn}
+              <span className="ms-2 text-xs font-medium text-muted">
+                {section.lessons.filter((l) => l.completed).length}/{section.lessons.length}{' '}
+                {labels.completed}
+              </span>
+              <span data-testid="section-duration" dir="ltr" className="ms-2 text-xs font-medium text-muted">
+                {formatDurationTotal(sectionTotal, lang)}
+              </span>
+            </summary>
+            <ol className="mt-2 space-y-1">
+              {section.lessons.map((lesson) => {
+                const selected = lesson.lessonId === selectedLessonId;
+                const state = lesson.completed
+                  ? 'completed'
+                  : lesson.resumePositionSeconds > 0
+                    ? 'current'
+                    : 'not-started';
+                const durationLabel = formatDuration(lesson.durationSeconds ?? null);
+                return (
+                  <li key={lesson.lessonId}>
+                    <button
+                      type="button"
+                      data-testid="lesson-row"
+                      data-lesson-state={state}
+                      data-playable={lesson.playable ? 'true' : 'false'}
+                      aria-current={selected ? 'true' : undefined}
+                      disabled={disabled === true || !lesson.playable}
+                      aria-describedby={`lesson-status-${lesson.lessonId}`}
+                      onClick={() => onSelect(lesson.lessonId)}
+                      className={`flex min-h-[64px] w-full items-center gap-3 rounded-control border px-3 py-3 text-start text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus ${
+                        selected
+                          ? 'border-primary bg-elevated text-ink'
+                          : 'border-border bg-canvas text-ink'
+                      } ${lesson.playable ? '' : 'opacity-60'}`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-base"
+                      >
+                        {lesson.locked ? '↳' : lesson.completed ? '✓' : selected ? '▶' : lesson.position}
                       </span>
-                      <span data-testid="lesson-duration" dir="ltr" className="mt-1 block text-xs text-muted">
-                        {durationLabel ?? (lang === 'ar' ? 'المدة غير معروفة' : 'Duration unknown')}
+                      <span className="min-w-0 flex-1">
+                        <span className="block break-words font-semibold">
+                          {lang === 'ar' ? lesson.titleAr : lesson.titleEn}
+                        </span>
+                        <span id={`lesson-status-${lesson.lessonId}`} className="mt-1 block text-xs text-muted">
+                          {disabled
+                            ? lang === 'ar'
+                              ? 'انتظر اكتمال طلب المشاهدة.'
+                              : 'Wait for the playback request to finish.'
+                            : lesson.locked
+                              ? lang === 'ar'
+                                ? 'اجتز التقييمات المطلوبة'
+                                : 'Pass required assessments'
+                              : !lesson.playable
+                                ? lang === 'ar'
+                                  ? 'الفيديو غير متاح حاليًا'
+                                  : 'Video currently unavailable'
+                                : state === 'completed'
+                                  ? labels.completed
+                                  : state === 'current'
+                                    ? labels.resume
+                                    : labels.notStarted}
+                        </span>
+                        <span data-testid="lesson-duration" dir="ltr" className="mt-1 block text-xs text-muted">
+                          {durationLabel ?? (lang === 'ar' ? 'المدة غير معروفة' : 'Duration unknown')}
+                        </span>
                       </span>
-                    </span>
                     </button>
-                    {lesson.locked && !disabled ? <ul className="mt-2 space-y-1">{lesson.blockingAssessmentIds?.map((id,i)=><li key={id}><a href={`#/assessment/${id}`} className="inline-block min-h-[44px] px-3 py-2 text-sm font-semibold underline">{lang==='ar'?'حل التقييم المطلوب لفتح الدرس':'Solve the required assessment to unlock this lesson'} {i+1}</a></li>)}</ul>:null}
-                </li>
-              );
-            })}
-          </ol>
-        </details>
+                    {lesson.locked && !disabled ? (
+                      <ul className="mt-2 space-y-1">
+                        {lesson.blockingAssessmentIds?.map((id, i) => (
+                          <li key={id}>
+                            <a
+                              href={`#/assessment/${id}`}
+                              className="inline-block min-h-[44px] px-3 py-2 text-sm font-semibold underline"
+                            >
+                              {lang === 'ar'
+                                ? 'حل التقييم المطلوب لفتح الدرس'
+                                : 'Solve the required assessment to unlock this lesson'}{' '}
+                              {i + 1}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ol>
+          </details>
         );
       })}
     </div>
@@ -233,12 +275,23 @@ export function LoadingBlock({ label }: { label: string }): JSX.Element {
 }
 
 export function SignInRequired({ lang }: { lang: 'ar' | 'en' }): JSX.Element {
-  return <>
-    <ErrorBlock message={lang === 'ar' ? 'انتهت جلسة الدخول. سجل الدخول مجددًا لمتابعة التعلّم.' : 'Your sign-in session has ended. Sign in again to continue learning.'} />
-    <a href="#/login" className="mt-4 inline-flex min-h-[44px] items-center rounded-control bg-primary px-4 py-2 font-bold text-canvas">
-      {lang === 'ar' ? 'تسجيل الدخول' : 'Sign in'}
-    </a>
-  </>;
+  return (
+    <>
+      <ErrorBlock
+        message={
+          lang === 'ar'
+            ? 'انتهت جلسة الدخول. سجل الدخول مجددًا لمتابعة التعلّم.'
+            : 'Your sign-in session has ended. Sign in again to continue learning.'
+        }
+      />
+      <a
+        href="#/login"
+        className="mt-4 inline-flex min-h-[44px] items-center rounded-xl bg-primary px-5 py-2.5 font-bold text-primary-ink no-underline hover:bg-primary-hover"
+      >
+        {lang === 'ar' ? 'تسجيل الدخول' : 'Sign in'}
+      </a>
+    </>
+  );
 }
 
 export function ErrorBlock({
